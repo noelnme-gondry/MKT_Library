@@ -1,4 +1,5 @@
-import { AXIS_TERMS, buildValueCanonicalizer, parseFieldRef } from "@/lib/vocabulary/dataContext";
+import { prepareRecipeRows, normalizeRecipeValue as norm } from "./recipeRows";
+import { AXIS_TERMS, parseFieldRef } from "@/lib/vocabulary/dataContext";
 
 // 5-21 캠페인 성과 변동의 레시피 어댑터(docs/result-autonomy-spec.md §4). 레시피 상태 →
 // 엔진 입력(keys·행·기간)과 표시(블록·보기 필터)로 옮긴다. 엔진(PVM_MATH)은 그대로다 —
@@ -69,41 +70,12 @@ export function columnRefsInState(state) {
   return [...new Set(refs.filter((ref) => parseFieldRef(ref).kind === "column"))];
 }
 
-function norm(value, caseSensitive) {
-  const text = String(value ?? "").trim();
-  return caseSensitive ? text : text.toLowerCase();
-}
-
-/**
- * 엔진에 넣기 전 행 준비: ① 대소문자·공백만 다른 값을 대표 표기로(기본) ② 분석 범위 필터.
- * 보기 필터는 여기서 거르지 않는다 — 분해는 전체로 하고 표에서만 가린다(spec §5).
- */
 export function preparePvmRows(rows, { keys, filters = [], caseSensitive = false }) {
-  const analysisFilters = filters.filter((filter) => filter.scope === "analysis");
-  const fields = [...new Set([...keysToLevels(keys), ...analysisFilters.map((filter) => levelField(filter.field))])];
-  let prepared = rows;
-  const merged = [];
-  if (!caseSensitive && prepared.length) {
-    const canonicalizers = fields.map((field) => [field, buildValueCanonicalizer(prepared.map((row) => row[field]))]);
-    for (const [field, canon] of canonicalizers) {
-      for (const group of canon.merged) merged.push({ field, ...group });
-    }
-    if (merged.length) {
-      prepared = prepared.map((row) => {
-        const next = { ...row };
-        for (const [field, canon] of canonicalizers) {
-          if (row[field] != null && row[field] !== "") next[field] = canon.canonicalOf(row[field]);
-        }
-        return next;
-      });
-    }
-  }
-  for (const filter of analysisFilters) {
-    const field = levelField(filter.field);
-    const wanted = new Set(filter.values.map((value) => norm(value, caseSensitive)));
-    prepared = prepared.filter((row) => wanted.has(norm(row[field], caseSensitive)) === (filter.op === "in"));
-  }
-  return { rows: prepared, merged };
+  return prepareRecipeRows(rows, {
+    levels: keysToLevels(keys),
+    filters: filters.map((filter) => ({ ...filter, field: levelField(filter.field) })),
+    caseSensitive,
+  });
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -162,17 +134,7 @@ export function unappliedViewFilters(filters, keys) {
   return filters.filter((filter) => filter.scope === "view" && !levels.includes(levelField(filter.field)));
 }
 
-/** 한계 문구 제외 시 파일에 남기는 한 줄(2026-09-30 결정). */
-export function caveatExclusionNote(count, locale = "ko") {
-  return locale === "en"
-    ? `The author excluded ${count} analysis limitation(s) from this file.`
-    : `작성자가 분석 한계 ${count}건을 제외했습니다.`;
-}
-
-export function exportLimitations(limitations, includeCaveats, locale = "ko") {
-  if (includeCaveats || !limitations.length) return limitations;
-  return [caveatExclusionNote(limitations.length, locale)];
-}
+export { caveatExclusionNote, exportLimitations } from "@/lib/analysis-export/exportOptions";
 
 /** 예전 저장 입력(지표·기준 주·비교 주)을 레시피 단계로 옮긴다. 기본값이면 단계를 만들지 않는다. */
 export function legacyPvmSteps({ metricOverride = null, weekBasis = "calendar", lookback = 1 } = {}) {

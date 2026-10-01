@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 
 import ToolPageOutro from "@/components/ToolPageOutro";
@@ -11,44 +11,18 @@ const LINKS = [
 ];
 
 describe("ToolPageOutro", () => {
-  it("closes the analysis with one boundary and wraps every follow-up block in a single box", () => {
-    // 프로젝트 이어가기는 넘길 결과가 있을 때만 뜬다 — 게이트를 먼저 연다.
-    useAppStore.getState().setGroupAnalyzed("5-2", true);
-    const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
-    const outro = container.querySelector(".tool-outro");
-    expect(outro).toBeTruthy();
-    expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("다음 단계와 참고 자료");
-
-    // 프로젝트 이어가기 · 다음 단계 · 참고 자료 · 관련 글이 모두 하나의 마감 박스 안에.
-    const sections = outro.querySelectorAll(":scope > .tool-outro__section");
-    expect(sections).toHaveLength(4);
-    // 행이 없으면 이어서 볼 것도 없다 — 빈 구획을 남기지 않는다(PR #885).
-    expect(outro.querySelector(".tool-continuity")).toBeNull();
-    // 프로젝트 화면이 못 돌리는 분석은 자기 화면에서 프로젝트로 넘어간다 —
-    // 그 경로를 화면에 적어 두지 않으면 사용자는 없는 경로를 찾아 헤맨다.
-    expect(outro.querySelector(".project-handoff")).toBeTruthy();
-    expect(outro.querySelector(".tool-connections")).toBeTruthy();
-    expect(outro.querySelector(".tool-longform")).toBeTruthy();
-    expect(outro.querySelector(".tool-evidence")).toBeTruthy();
-    // 경계선은 마감 박스가 단독으로 소유한다(자식이 중복으로 그리지 않음).
-    expect(outro.querySelectorAll(".tool-outro__boundary")).toHaveLength(1);
-    // 보조기술이 통째로 건너뛸 수 있게 이름 붙은 landmark여야 한다.
-    expect(screen.getByRole("region", { name: "다음 단계와 참고 자료" })).toBe(outro);
-  });
-
-  it("keeps reference material in named sections after the result", () => {
-    const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
-    expect(container.querySelector(".tool-longform__disclosure").tagName).toBe("SECTION");
-    expect(container.querySelector(".tool-connections__more").tagName).toBe("SECTION");
-  });
-
-  it("mirrors the same structure and copy in English", () => {
-    const { container } = render(<ToolPageOutro toolId="5-2" locale="en" evidenceLinks={LINKS.map((item) => ({ ...item, title: "Item" }))} withConnections />);
-    const outro = container.querySelector(".tool-outro");
-    expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("Next steps and references");
-    expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(4);
-
-    expect(outro.querySelector(".tool-outro__boundary").textContent).not.toMatch(/[가-힣]/);
+  it.each(["ko", "en"])("keeps evidence reachable without repeating it below the result (%s)", locale => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    useAppStore.getState().setGroupAnalyzed("5-4", true);
+    const { container } = render(<ToolPageOutro toolId="5-4" locale={locale} evidenceLinks={LINKS} withConnections />);
+    expect(container.querySelector(".tool-next-step-panel")).toBeTruthy();
+    expect(container.querySelector(".tool-longform, .tool-evidence, .project-handoff")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Continue in a project" : "프로젝트로 이어가기" }));
+    expect(screen.getByRole("dialog").querySelector(".project-handoff")).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:locale === "en" ? "Close" : "닫기"}));
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Method and references" : "분석 방법과 참고 자료" }));
+    expect(screen.getByRole("dialog").querySelector(".tool-longform__faq")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByRole("link",{name:/운영 가이드 1/})).toBeTruthy();
   });
 
   it("calls the boundary a reference section when the page above is not an analysis", () => {
@@ -67,8 +41,24 @@ it("분석 전에는 프로젝트 이어가기 칸을 자리까지 비운다", (
   // 자식만 null을 돌려주고 래퍼가 남으면 **빈 박스**가 생긴다. 조건을 래퍼가
   // 소유해야 구조적으로 안 생긴다(§7 "쓸 수 없는 기능은 조건이 갖춰졌을 때만").
   useAppStore.setState(useAppStore.getInitialState(), true);
-  const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
-  const outro = container.querySelector(".tool-outro");
-  expect(outro.querySelector(".tool-outro__section--handoff")).toBeNull();
-  expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(3);
+  const { container } = render(<ToolPageOutro toolId="5-4" evidenceLinks={LINKS} withConnections />);
+  expect(container.querySelector(".project-handoff")).toBeNull();
+  expect(screen.queryByRole("button",{name:"프로젝트로 이어가기"})).toBeNull();
+  expect(screen.getByRole("button",{name:"분석 방법과 참고 자료"})).toBeTruthy();
 });
+
+for (const locale of ["ko", "en"]) for (const toolId of ["5-21", "5-22", "5-3", "5-2"]) {
+  it(`keeps ${toolId} next step short and opens references on demand (${locale})`, () => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    const { container } = render(<ToolPageOutro toolId={toolId} locale={locale} evidenceLinks={LINKS} withConnections />);
+    expect(container.querySelectorAll(".tool-connection-card")).toHaveLength(2);
+    expect(container.querySelector(".tool-connections__more, .tool-continuity, .tool-longform, .tool-evidence")).toBeNull();
+    const title = locale === "en" ? "Method and references" : "분석 방법과 참고 자료";
+    fireEvent.click(screen.getByRole("button", { name: title }));
+    const dialog = screen.getByRole("dialog", { name: title });
+    expect(dialog.querySelector(".tool-longform__faq")).toBeTruthy();
+    expect(within(dialog).getByRole("link", { name: /운영 가이드 1/ }).getAttribute("href")).toBe("/blog/guide-one");
+    fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Close" : "닫기" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+}

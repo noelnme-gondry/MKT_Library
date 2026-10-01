@@ -66,15 +66,15 @@ export const TOOL_GUIDE = {
   },
   "5-22": {
     when: "채널·캠페인이 '이미 포화(더 써도 효율 하락)인지, 아직 여유인지'를 한계 vs 평균 효율로 진단합니다.",
-    grain: "1행 = 하루 × 채널(또는 캠페인) 실적",
+    grain: "1행 = 하루 × 분석 대상(채널·캠페인·OS·국가) 실적",
     needs: [
       { col: "date", label: "날짜", why: "최근 지출점·곡선 적합", required: true },
       { col: "cost", label: "광고비", why: "포화 곡선의 X축", required: true },
-      { col: "channel 또는 campaign_name", label: "채널/캠페인", why: "진단 단위", required: true },
+      { col: "channel·campaign·platform·country 중 하나", label: "나눠 볼 기준", why: "진단 단위(채널이 없으면 캠페인·OS·국가로 시작)", required: true },
       { col: "installs 또는 actions", label: "전환", why: "효율(CPA) 계산", required: true },
       { col: "revenue_d7", label: "매출", why: "ROAS 기준 포화도(옵션)", required: false },
     ],
-    prep: ["5-2·5-3와 같은 효율 CSV를 공유합니다 — 한 번 올리면 형제 도구가 이어받습니다."],
+    prep: ["5-2·5-3와 같은 효율 CSV를 공유합니다 — 한 번 올리면 형제 도구가 이어받습니다.", "분석 설정에서 OS별·국가별·포화만 보기 등을 고를 수 있습니다. 보기 설정은 순위표에만 적용됩니다."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-21": {
@@ -300,14 +300,14 @@ export const TOOL_GUIDE = {
       { col: "date", label: "날짜", why: "사전 추세와 집행 후 구간을 나누는 기준", required: true },
       { col: "brand_search 또는 direct_traffic·installs·actions", label: "성과 지표", why: "증가분을 추정할 대상", required: true },
       { col: "campaign_on", label: "브랜드 캠페인 집행 여부", why: "집행 전 OFF → 집행 후 ON인 한 번의 연속 구간", required: true },
-      { col: "cost", label: "캠페인 비용", why: "투자 규모와 증분 성과를 함께 기록", required: false },
+      { col: "cost", label: "캠페인 비용", why: "집행 기간의 브랜드 비용 합계와 추정 증분 성과당 단가 계산", required: false },
     ],
     prep: [
       "집행 여부는 on/off, 1/0, 집행/중단처럼 해석 가능한 값으로 넣습니다.",
       "ON/OFF가 여러 번 반복되면 이번 버전은 분석하지 않습니다 — 구간 하나만 남기거나 통제군 설계를 쓰세요.",
       "대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다. 인과 확정이 아니라 추정 증가분입니다.",
     ],
-    example: "date,brand_search,campaign_on\n2025-01-01,180,off\n2025-01-02,186,off\n2025-02-05,280,on\n2025-02-06,291,on",
+    example: "date,brand_search,campaign_on,cost\n2025-01-01,180,off,0\n2025-01-02,186,off,0\n2025-02-05,280,on,78000\n2025-02-06,291,on,82000",
   },
   "5-27": {
     when: "스토어 전환율이 떨어졌을 때, 제품 페이지가 나빠진 건지 전환이 낮은 소스의 비중이 늘어난 건지 나눠서 확인합니다.",
@@ -427,15 +427,15 @@ export const TOOL_GUIDE_EN = {
   },
   "5-22": {
     when: "Diagnose whether a channel/campaign is already saturated (more spend = worse efficiency) or still has room, via marginal vs. average efficiency.",
-    grain: "1 row = 1 day × channel (or campaign) performance",
+    grain: "1 row = 1 day × analysis entity (channel, campaign, OS or country)",
     needs: [
       { col: "date", label: "Date", why: "Recent spend point, curve fitting", required: true },
       { col: "cost", label: "Ad spend", why: "X-axis of the saturation curve", required: true },
-      { col: "channel or campaign_name", label: "Channel/campaign", why: "Diagnosis unit", required: true },
+      { col: "one of channel, campaign, platform, country", label: "Analysis axis", why: "Diagnosis unit (falls back to campaign, OS or country when channel is absent)", required: true },
       { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
       { col: "revenue_d7", label: "Revenue", why: "ROAS-based saturation (optional)", required: false },
     ],
-    prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up."],
+    prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up.", "Choose By OS, By country or Show saturated only in Analysis setup. View settings affect the ranking only."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-4": {
@@ -654,14 +654,14 @@ export const TOOL_GUIDE_EN = {
       { col: "date", label: "Date", why: "Splits the pre-trend from the campaign window", required: true },
       { col: "brand_search or direct_traffic / installs / actions", label: "Outcome", why: "The metric whose lift is estimated", required: true },
       { col: "campaign_on", label: "Brand campaign status", why: "One continuous OFF-before / ON-after window", required: true },
-      { col: "cost", label: "Campaign cost", why: "Records investment alongside the incremental outcome", required: false },
+      { col: "cost", label: "Campaign cost", why: "Sums brand campaign cost and calculates cost per estimated incremental outcome", required: false },
     ],
     prep: [
       "Use recognizable status values such as on/off, 1/0, or active/inactive.",
       "Repeated ON/OFF cycles are not analyzed in this version — isolate one window or use a control-group design.",
       "Without a control, seasonality, PR, and promotions are not separated. This is estimated lift, not confirmed causality.",
     ],
-    example: "date,brand_search,campaign_on\n2025-01-01,180,off\n2025-01-02,186,off\n2025-02-05,280,on\n2025-02-06,291,on",
+    example: "date,brand_search,campaign_on,cost\n2025-01-01,180,off,0\n2025-01-02,186,off,0\n2025-02-05,280,on,78000\n2025-02-06,291,on,82000",
   },
   "5-27": {
     when: "When store conversion drops, separate whether the product page got worse or the share of low-converting traffic sources grew.",

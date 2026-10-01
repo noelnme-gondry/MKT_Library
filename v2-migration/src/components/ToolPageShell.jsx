@@ -20,7 +20,7 @@ const COPY = {
   en: { summaryLabel: "Summary", toc: "Contents" },
 };
 
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1 }) {
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1, stickyHeader = true, className = "" }) {
   const T = COPY[locale] || COPY.ko;
   // 도구 이름의 SSOT는 스토어 IA다. 컴포넌트가 제목을 직접 넘기면 리네임 때
   // 두 곳이 갈린다 — toolId가 있으면 레지스트리 이름이 이긴다.
@@ -37,12 +37,12 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   const hasHeader = hasTitle || Boolean(chips) || Boolean(stickyFilter);
 
   return (
-    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof resolvedTitle === "string" ? titleId : undefined}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""} ${className}`} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof resolvedTitle === "string" ? titleId : undefined}>
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
             (index.html pageShell 5-x 분기 이관) */}
-        {hasHeader && <header className="page-sticky-bar tool-instrument-header tool-instrument-header--sticky">
+        {hasHeader && <header className={`page-sticky-bar tool-instrument-header tool-instrument-header--sticky${stickyHeader ? "" : " tool-instrument-header--static"}`}>
           <div className="page-sticky-row1">
             {hasTitle && (
               <div className="tool-instrument-header__heading">

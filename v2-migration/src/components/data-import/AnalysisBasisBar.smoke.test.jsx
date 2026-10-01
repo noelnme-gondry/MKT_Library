@@ -53,7 +53,7 @@ describe("AnalysisBasisBar", () => {
     canonicalData.records.push({ date: null, dimensions: { channel: "Meta" }, metrics: { cost: 100, installs: 10 } });
     render(<AnalysisBasisBar canonicalData={canonicalData} mappedRows={mappedRows} mapping={{ Date: "date", Cost: "cost", Installs: "installs" }} toolId="5-2" locale="en" variant="tooltip" />);
     const mark = screen.getByRole("button", { name: /to check/ });
-    expect(mark.textContent).toBe("!");
+    expect(mark.textContent).toBe("Notes · 1");
     fireEvent.click(mark);
     expect(screen.getByRole("dialog").textContent).toMatch(/Some rows have no date.*\(1 rows\)/);
   });

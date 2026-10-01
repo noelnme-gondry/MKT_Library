@@ -57,7 +57,7 @@ describe("allocResponseCurve (5-3 PRISM P4 반응 곡선 헬퍼)", () => {
     expect(out.markers.knee).toBeNull();
   });
 
-  it("강한 수확체감 → 과포화 시작(onset)이 관측 범위 안에서 잡힌다", () => {
+  it("강한 수확체감도 관측 처음부터 기준 초과이면 onset을 식별할 수 없다", () => {
     // CPR 급상승: results = sqrt형(오목) → 한계CPA가 평균 대비 커지는 지점 존재.
     const pts = [];
     for (let c = 100; c <= 2000; c += 100) {
@@ -66,8 +66,28 @@ describe("allocResponseCurve (5-3 PRISM P4 반응 곡선 헬퍼)", () => {
     }
     const w = wrap(pts);
     const out = allocResponseCurve(w, { now: 300, plan: 1500 });
-    expect(out.markers.onset).not.toBeNull();
-    expect(out.markers.onset.x).toBeGreaterThan(0);
+    expect(out.markers.onset).toBeNull();
+    expect(out.saturation.status).toBe("above_at_start");
+  });
+
+  it("관측 첫 구간부터 기준 초과면 시작점을 만들지 않는다", () => {
+    const w = { xMin: 1000, xMax: 2000, model: { predict: x => 10 + x / 10 } };
+    const out = allocResponseCurve(w, { now: 1200, plan: 1600 });
+    expect(out.markers.onset).toBeNull();
+    expect(out.saturation.status).toBe("above_at_start");
+  });
+
+  it("관측 안에서 기준을 넘는 구간만 표시하고 계획·외삽 폭은 판단에 영향을 주지 않는다", () => {
+    // R=x/(10+0.01x), marginal CPA / average CPA = 1+0.001x.
+    // 임계 1.3은 x=300 부근. 유한차분 격자 오차만 허용한다.
+    const w = { xMin: 100, xMax: 1000, model: { predict: x => 10 + x / 100 } };
+    const a = allocResponseCurve(w, { now: 200, plan: 600 });
+    const b = allocResponseCurve(w, { now: 200, plan: 10000 });
+    expect(a.saturation.status).toBe("crossing");
+    expect(a.markers.onset.x).toBeGreaterThanOrEqual(300);
+    expect(a.markers.onset.x).toBeLessThanOrEqual(330);
+    expect(a.markers.onset).toEqual(b.markers.onset);
+    expect(a.markers.knee).toEqual(b.markers.knee);
   });
 
   it("결정론 — 동일 입력 두 번 호출 시 byte-동일", () => {

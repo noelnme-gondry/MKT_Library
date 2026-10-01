@@ -35,9 +35,9 @@ function confirmEventDefinition(locale = "ko") {
 }
 
 describe("SubscriptionSurvivalAnalysis render smoke", () => {
-  it("uses the shared local-control filter appearance", () => {
+  it("groups visible filters by purpose", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
-    expect(container.querySelector(".analysis-local-controls__inner")).toBeTruthy();
+    expect(container.querySelectorAll(".survival-settings fieldset")).toHaveLength(3);
     expect(container.querySelector(".form-row")).toBeNull();
     expect(container.querySelectorAll(".mon-filter-item")).toHaveLength(9);
   });
@@ -57,9 +57,11 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed locale={locale} />);
     confirmEventDefinition(locale);
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Analyze" : "분석하기" }));
-    expect(container.querySelector("#subscription-survival-result").textContent).toContain(locale === "en"
-      ? "At horizon 4: 1 observed through the horizon, 3 earlier observed exits, 1 earlier censorings, and 0 not yet entered."
-      : "4기간까지 관측 1건 · 그 전 이탈 확인 3건 · 그 전 중도절단 1건 · 아직 관측 진입 전 0건");
+    const followup = container.querySelector(".survival-followup");
+    for (const [key, count] of Object.entries({ observedToHorizon: 1, earlyExit: 3, earlyCensored: 1, notEntered: 0 })) {
+      expect(followup.querySelector(`[data-followup="${key}"] dd`).firstChild.textContent).toBe(String(count));
+    }
+    expect(followup.textContent).toContain(locale === "en" ? "Later outcome unknown" : "이후 유지·이탈 여부는 모름");
     fireEvent.pointerDown(screen.getByRole("button", { name: locale === "en" ? "Get results" : "결과 받기" }), { button: 0, ctrlKey: false });
     expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
   });
@@ -88,7 +90,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
-    const horizon = screen.getByLabelText("관측 horizon");
+    const horizon = screen.getByLabelText("확인할 기간");
     fireEvent.change(horizon, { target: { value: "2" } });
     expect(container.textContent).toContain("현재 결과는 최신 설정과 다를 수 있습니다");
     expect(container.querySelector("#subscription-survival-result")).toBeNull();
@@ -139,6 +141,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(screen.getByRole("alert").textContent).toContain("관측 종료일");
     fireEvent.change(screen.getByLabelText("관측 종료일"), { target: { value: "2026-03-31" } });
+    fireEvent.blur(screen.getByLabelText("관측 종료일"));
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();

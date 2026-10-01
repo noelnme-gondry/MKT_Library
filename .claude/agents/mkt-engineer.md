@@ -41,6 +41,8 @@ tools:
 **신규 도구는 디자인시스템 공용규약 필수**(§12.21: `format.js`·전역 통화·`ds/DataTable`·`ds/CsvGuide`·`ds/ResultActionCard`·`ds/PillGroup`).
 
 **분석 설정 입력창(레시피)**(§12.32): 단어 사전(`lib/vocabulary`) → 칩 = 레시피 단계만 저장, 상태는 `foldSteps` 파생. 보기 설정은 표에만(Σ·결론은 가리기 전 행), 근거 블록은 `locked`.
+동적 참조는 사전 `fieldParams`로 선언해 후보·재적용에서 함께 검증한다. 원본 컬럼은 헤더로 존재를 확인하고, 자동 축 라벨은 엔진 슬롯 위치를 보존하며 거절한 명령을 성공으로 알리지 않는다.
+공용 범위는 `sharedFilters`, 행 투영은 `recipeRows`를 재사용한다. 카드 밖 그림은 `figureExportSettings` + `AnalysisExportProvider`를 별도로 연결해야 설정·실제 기간을 받는다. 도구별 보기 판정 의미는 어댑터에서 선언한다.
 
 **하단 마감은 `ToolPageOutro` 하나**(§12.30): 분석 아래 붙는 것(다음 단계·참고 자료·관련 글)은 전부 그 박스 안. 경계선("분석 결과는 여기까지")은 outro만 소유하고 자식은 자기 테두리를 벗는다. 타이포 하한은 두 단이다 — 전역 9.5px, **결론 카드·스코어카드·매핑 표면은 12px**(`app/typographyFloor.test.js`가 선택자 계열에서 파생). **글자 크기는 `--fs-xs`(12)~`--fs-3xl`(44) 8단에서만 고른다** — px 리터럴은 CSS·JSX 양쪽에서 `app/typeScale.test.js`가 막는다(스케일을 바꿔야 하면 토큰을 먼저).
 

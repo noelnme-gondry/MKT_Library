@@ -604,6 +604,7 @@ export function improveAllocationFromCurrent({
 /* What-if 시나리오: 현재 예산의 0.5×~2× 구간을 동일 알고리즘으로 재배분해 예상 성과 비교.
    index.html renderAllocScenario의 runAt 로직 이식(순수). 모델 재적합 없이 modelsMap lookup. */
 export function computeAllocScenarios({
+  includeItems = false,
   modelsMap,
   dailyBudget,
   metric,
@@ -643,7 +644,7 @@ export function computeAllocScenarios({
     const totResults = r.items.reduce((s, it) => s + (it.results || 0), 0);
     const totCost = r.totalAllocated || r.items.reduce((s, it) => s + (it.cost || 0), 0);
     const avgCpr = totResults > 0 ? totCost / totResults : null;
-    return { budget, totResults, totCost, avgCpr };
+    return { budget, totResults, totCost, avgCpr, ...(includeItems ? { items: r.items } : {}) };
   };
   return mults.map((m) => ({ m, ...runAt(dailyBudget * m) }));
 }

@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
+import { DashboardWorkspaceContext, useDashboardSetting, useDashboardAction, useDashboardFilter } from "./DashboardWorkspaceContext";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
@@ -54,22 +55,23 @@ const CUSTOM_CHARTS_COPY = {
 export default function CustomChartsSection({
   sectionNo = "＋", chartScope, metricScope, title, locale = "ko",
 }) {
+  const workspace = useContext(DashboardWorkspaceContext);
   const T = CUSTOM_CHARTS_COPY[locale] || CUSTOM_CHARTS_COPY.ko;
   const sectionTitle = title || (locale === "en" ? "Custom charts" : "커스텀 차트");
   const csvData = useAppStore((s) => s.csvData);
-  const dashboardFilter = useAppStore((s) => s.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const selectedCohort = useAppStore((s) => s.selectedCohort);
   const denomBasis = useAppStore((s) => s.denomBasis);
   const displayCurrency = useAppStore((s) => s.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((s) => s.isDarkMode);
-  const customMetrics = useAppStore((s) => s.customMetrics[metricScope]);
-  const customCharts = useAppStore((s) => s.customCharts[chartScope]);
-  const chartCfg = useAppStore((s) => s.viewConfig[chartScope]);
-  const addCustomChart = useAppStore((s) => s.addCustomChart);
-  const removeCustomChart = useAppStore((s) => s.removeCustomChart);
-  const setViewConfig = useAppStore((s) => s.setViewConfig);
-  const resetViewConfig = useAppStore((s) => s.resetViewConfig);
+  const customMetrics = useDashboardSetting("customMetrics", metricScope);
+  const customCharts = useDashboardSetting("customCharts", chartScope);
+  const chartCfg = useDashboardSetting("viewConfig", chartScope);
+  const addCustomChart = useDashboardAction("addCustomChart");
+  const removeCustomChart = useDashboardAction("removeCustomChart");
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
 
   const [builderOpen, setBuilderOpen] = useState(false);
   const [cfgOpen, setCfgOpen] = useState(false);
@@ -135,14 +137,15 @@ export default function CustomChartsSection({
     locale,
   );
 
+  if (workspace && !chartDefs.length) return null;
   return (
     <section className="block">
       <div className="section-head">
         <h2 className="section-title">{sectionTitle}</h2>
         <div style={{ display: "flex", gap: "6px" }}>
-          <button className="ab-pill" onClick={() => setBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
+          <button className="ab-pill dashboard-legacy-edit" onClick={() => setBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
           {chartMetas.length > 0 && (
-            <button className="ab-pill" onClick={() => setCfgOpen(true)} title={T.editChartsTitle}>{T.editCharts}</button>
+            <button className="ab-pill dashboard-legacy-edit" onClick={() => setCfgOpen(true)} title={T.editChartsTitle}>{T.editCharts}</button>
           )}
         </div>
       </div>

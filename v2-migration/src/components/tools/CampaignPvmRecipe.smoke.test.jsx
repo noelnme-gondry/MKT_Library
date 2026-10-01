@@ -4,7 +4,7 @@
 // 순수 어댑터는 lib/recipe/pvmRecipe.test.js가 보고, 여기서는 엔진(buildPvmCache)과 화면이
 // 실제로 레시피를 따르는지, 그리고 축·범위를 바꿔도 항등식(Σ = 전체 변화)이 지켜지는지 본다.
 import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import CampaignPvm, { buildPvmCache } from "@/components/tools/CampaignPvm";
 
@@ -115,13 +115,124 @@ describe("CampaignPvm — 명령 입력창", () => {
     fireEvent.mouseDown(option);
   };
 
+  it.each(["ko", "en"])("%s: 날짜는 독립 적용·취소되며 실제 집계와 기간 명령까지 연결된다", (locale) => {
+    const en = locale === "en";
+    const { container } = render(<CampaignPvm locale={locale} />);
+    const open = (comparison = false) => {
+      fireEvent.click(screen.getByRole("button", { name: comparison ? (en ? /^Comparison period/ : /^비교 기간/) : (en ? /^Analysis period/ : /^분석 기간/) }));
+      return within(screen.getByRole("dialog"));
+    };
+    let dialog = open();
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-23" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Cancel" : "취소" }));
+    expect(useAppStore.getState().dashboardFilter.dateStart).toBeNull();
+    dialog = open();
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-23" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
+    expect(useAppStore.getState().dashboardFilter).toMatchObject({ dateStart: "2026-01-23", dateEnd: "2026-01-25", comparisonStart: "2026-01-12", comparisonEnd: "2026-01-18" });
+    expect(container.querySelector(".analysis-period-notes").textContent).toContain(en ? "3 days" : "3일");
+    // 시작>종료를 제출해도 이전 결과와 필터를 유지한다.
+    dialog = open(true);
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-20" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
+    expect(dialog.getByRole("alert")).toBeTruthy();
+    expect(useAppStore.getState().dashboardFilter.comparisonStart).toBe("2026-01-12");
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-05" } });
+    fireEvent.change(dialog.getByLabelText(en ? "End date" : "종료일"), { target: { value: "2026-01-11" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
+    expect(useAppStore.getState().dashboardFilter.dateStart).toBe("2026-01-23");
+    // 화면 요약을 원본 행에서 직접 합산한 단가와 대조한다(같은 엔진 재호출 아님).
+    const cpi = (start, end) => {
+      const rows = makeSlice().raw.filter(row => row.Date >= start && row.Date <= end);
+      return Math.round(rows.reduce((sum, row) => sum + row.Spend, 0) / rows.reduce((sum, row) => sum + row.Installs, 0)).toLocaleString("en-US");
+    };
+    const result = container.querySelector("#s-pvm-result .result-action-card");
+    expect(result.textContent).toContain(cpi("2026-01-05", "2026-01-11"));
+    expect(result.textContent).toContain(cpi("2026-01-23", "2026-01-25"));
+    type(en ? "2 weeks" : "2주");
+    choose(en ? "Compare with 2 weeks ago" : "2주 전과 비교");
+    expect(useAppStore.getState().dashboardFilter.dateStart).toBeNull();
+    expect([...container.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
+  });
+
+  it.each(["ko", "en"])("%s: 선택한 축 컬럼이 사라지면 칩을 보존하고 사유를 보인다", (locale) => {
+    const { container } = render(<CampaignPvm locale={locale} />);
+    type("OS");
+    choose(locale === "ko" ? "OS별" : "By OS");
+    const withoutOs = makeSlice();
+    delete withoutOs.mapping.OS;
+    withoutOs.headers = withoutOs.headers.filter((header) => header !== "OS");
+    withoutOs.raw = withoutOs.raw.map(({ OS, ...row }) => row);
+    act(() => useAppStore.getState().setCsvData(withoutOs));
+    expect(container.querySelector(".recipe-command__chip.is-rejected")).toBeTruthy();
+    expect(container.querySelector(".recipe-command__chip-reason").textContent).toContain(locale === "ko" ? "필요한 컬럼이 없음" : "Required column missing");
+    expect(within(container.querySelector("#s-pvm-channels")).getByRole("heading").textContent).toBe(locale === "ko" ? "채널별 결과" : "By Channel");
+    // 컬럼이 돌아오면 저장한 단계도 다시 적용된다. 원본 단계를 지우면 안 된다.
+    act(() => useAppStore.getState().setCsvData(makeSlice()));
+    expect(container.querySelector(".recipe-command__chip-reason")).toBeNull();
+    expect(within(container.querySelector("#s-pvm-channels")).getByRole("heading").textContent).toBe(locale === "ko" ? "OS별 결과" : "By OS");
+  });
+
+  it.each(["ko", "en"])("%s: 자동 대체 축도 표·요약에서 실제 캠페인 이름을 쓴다", (locale) => {
+    seed(makeSlice({ withChannel: false }));
+    const { container } = render(<CampaignPvm locale={locale} />);
+    const section = container.querySelector("#s-pvm-channels");
+    expect(section.textContent).toContain("Meta_Android");
+    expect(within(section).getByRole("heading").textContent).toBe(locale === "ko" ? "캠페인별 결과" : "By Campaign");
+    expect(container.querySelector("#s-pvm-result").textContent).toContain(locale === "ko" ? "분석 캠페인" : "Campaign count");
+  });
+
+  it.each(["ko", "en"])("%s: 마지막 선택값 제외는 거절 사유를 보이고 성공으로 알리지 않는다", (locale) => {
+    render(<CampaignPvm locale={locale} />);
+    type("Meta");
+    choose(locale === "ko" ? "Meta만 분석" : "Analyze Meta only");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    type("Meta");
+    choose(locale === "ko" ? "Meta 제외하고 분석" : "Analyze without Meta");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain(locale === "ko" ? "분석할 값이 남지 않아" : "no values would remain");
+    expect(status.classList.contains("sr-only")).toBe(false);
+    // 거절 후 다른 값 선택은 정상 적용되고 예전 오류가 남지 않는다.
+    type("TikTok");
+    choose(locale === "ko" ? "TikTok만 분석" : "Analyze TikTok only");
+    expect(screen.getByRole("status").textContent).not.toContain(locale === "ko" ? "분석할 값이 남지 않아" : "no values would remain");
+  });
+
+  it.each(["ko", "en"])("%s: 콘텐츠 도메인의 기존 비교 설정은 계속 작동한다", (locale) => {
+    const { container } = render(<CampaignPvm domain="content" locale={locale} />);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    const compare = screen.getByRole("radio", { name: locale === "ko" ? "2주전" : "2 weeks ago" });
+    expect(compare.disabled).toBe(false);
+    fireEvent.click(compare);
+    expect(compare.getAttribute("aria-checked")).toBe("true");
+    expect(container.querySelector("#s-pvm-result").textContent).toContain("2026-01-05");
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].lookback).toBe(2);
+    const rolling = screen.getByRole("radio", { name: locale === "ko" ? "최근 7일" : "Last 7 days" });
+    fireEvent.click(rolling);
+    expect(rolling.getAttribute("aria-checked")).toBe("true");
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].weekBasis).toBe("rolling7");
+  });
+
+  it("자동 캠페인→소재 축은 중간 슬롯이 없어도 소재 표 이름을 보존한다", () => {
+    const slice = makeSlice({ withChannel: false });
+    slice.headers.push("Creative");
+    slice.mapping.Creative = "creative_id";
+    slice.raw = slice.raw.map((row) => ({ ...row, Creative: `${row.Campaign}_creative` }));
+    seed(slice);
+    const { container } = render(<CampaignPvm />);
+    expect(container.querySelector("#s-pvm-campaigns")).toBeNull();
+    expect(within(container.querySelector("#s-pvm-creatives")).getByRole("heading").textContent).toBe("소재별 결과");
+    expect(container.querySelector("#s-pvm-creatives tbody").textContent).toContain("_creative");
+  });
+
   it("분석 설정 입력창은 필터 막대 안에 있다 — 따로 떨어진 구역이 없다", () => {
     const { container } = render(<CampaignPvm />);
     expect(container.querySelector("#s-pvm-recipe")).toBeNull();
     const slot = container.querySelector(".tool-instrument-header .dashboard-filter-bar__command");
     expect(slot?.querySelector("[role=combobox]")).toBeTruthy();
     // 입력창이 필터 선택보다 위에 온다.
-    const scope = container.querySelector(".dashboard-filter-bar__scope");
+    const scope = container.querySelector(".recipe-scope-controls");
     expect(slot.compareDocumentPosition(scope) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -134,7 +245,10 @@ describe("CampaignPvm — 명령 입력창", () => {
     expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"]?.recipeSteps || []).toEqual([]);
     expect(screen.getByRole("button", { name: "채널: Meta 빼기" })).toBeTruthy();
     // 필터 막대의 채널 버튼도 같은 값을 말한다.
-    expect(document.querySelector(".mon-multisel-btn.is-active")?.textContent).toContain("Meta");
+    fireEvent.click(screen.getByRole("button", { name: /분석 대상/ }));
+    const panel = screen.getByRole("dialog", { name: "분석 대상" });
+    expect(within(panel).getByRole("button", { name: "Meta", exact: true }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(panel).getByRole("button", { name: "완료" }));
     fireEvent.click(screen.getByRole("button", { name: "채널: Meta 빼기" }));
     expect(useAppStore.getState().dashboardFilter.channels.size).toBe(0);
   });
@@ -151,7 +265,8 @@ describe("CampaignPvm — 명령 입력창", () => {
     useAppStore.setState({ dashboardFilter: { ...EMPTY_FILTER(), platforms: new Set(["iOS"]), dateStart: "2026-01-12" } });
     render(<CampaignPvm />);
     expect(screen.getByRole("button", { name: "플랫폼: iOS 빼기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "기간 2026-01-12 ~ 끝 빼기" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "기간 2026-01-12 ~ 끝 빼기" })).toBeNull();
+    expect(screen.getByRole("button", { name: /^분석 기간/ })).toBeTruthy();
   });
 
   it("대소문자만 다른 원본 표기까지 함께 필터에 넣는다", () => {
@@ -232,9 +347,10 @@ describe("CampaignPvm — 명령 입력창", () => {
     expect(screen.getByText(/분석 한계 문구를 빼고, 뺐다는 사실만 한 줄로/)).toBeTruthy();
   });
 
-  it("지표 알약을 눌러도 칩(레시피)이 된다 — 두 벌 상태가 없다", () => {
+  it("기간 명령은 칩과 실제 비교 기간을 함께 바꾼다", () => {
     render(<CampaignPvm />);
-    fireEvent.click(screen.getByRole("radio", { name: /2주전/ }));
+    type("2주");
+    choose("2주 전과 비교");
     expect(screen.getByRole("button", { name: "2주 전과 비교 빼기" })).toBeTruthy();
     expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].recipeSteps).toEqual([{ id: "period.lookback.2", params: {} }]);
   });

@@ -15,12 +15,12 @@ export function isAllocCurveSegmentEstimated(x0, x1, xMin, xMax) {
  * ALLOC_MATH.predictSafeCpr 재사용이라 새 수학 없음.
  *
  * 마커 4종:
- *  - now   : 최근 실제 일 지출(관측 현재점)
+ *  - now   : 최근 실제 일 지출에서의 모형 예측 결과
  *  - plan  : 이 도구가 배분한 일 지출(계획점)
- *  - knee  : 효율 최적 — 한계수확(₩당 결과)이 정점의 kneeFrac 이하로 처음 떨어지는 지출
+ *  - knee  : 관측 구간 내 최대 한계효율 대비 하락 지점 — 한계수확(₩당 결과)이 정점의 kneeFrac 이하로 처음 떨어지는 지출
  *            (수확체감/오목 곡선에서만 존재, 아니면 null — 억지 마커 금지 §8)
- *  - onset : 과포화 시작 — 국소 한계CPA / 평균CPA ≥ satHigh 가 처음 성립하는 지출
- *            (관측+추정 범위 안에서 안 넘으면 null — 정직)
+ *  - onset : 관측 구간에서 국소 한계CPA / 평균CPA가 satHigh를 아래에서 넘는 첫 격자점
+ *            (첫 관측 구간부터 초과하면 시작점 식별 불가 → null)
  *
  * satHigh 는 5-22 SAT_CONFIG 와 동일 임계 재사용(도구 간 포화 정의 정합).
  */
@@ -52,13 +52,20 @@ export function allocResponseCurve(wrapper, opts = {}) {
     points.push({ x, y: resultsAt(x) });
   }
 
+  // 진단은 관측 범위 안의 독립 격자만 사용한다. 0~xMin / xMax~cap의
+  // clamp 연결부와 사용자 계획 금액은 진단 임계·최댓값을 바꾸면 안 된다.
+  const observed = xMax > xMin && xMin >= 0
+    ? Array.from({ length: steps + 1 }, (_, i) => {
+      const x = xMin + (xMax - xMin) * i / steps;
+      return { x, y: resultsAt(x) };
+    }) : [];
   // 국소 한계수확(₩당 추가 결과) — 인접 격자점 차분.
-  const marg = new Array(points.length).fill(0);
+  const marg = new Array(observed.length).fill(0);
   let peakMarginal = 0;
   let peakIdx = 0;
-  for (let i = 1; i < points.length; i++) {
-    const d = points[i].x - points[i - 1].x;
-    const dr = points[i].y - points[i - 1].y;
+  for (let i = 1; i < observed.length; i++) {
+    const d = observed[i].x - observed[i - 1].x;
+    const dr = observed[i].y - observed[i - 1].y;
     marg[i] = d > 0 ? dr / d : 0;
     if (marg[i] > peakMarginal) {
       peakMarginal = marg[i];
@@ -69,27 +76,35 @@ export function allocResponseCurve(wrapper, opts = {}) {
   // knee: 정점 이후 한계수확이 정점의 kneeFrac 미만으로 처음 떨어지는 x.
   let knee = null;
   if (peakMarginal > 0) {
-    for (let i = peakIdx + 1; i < points.length; i++) {
+    for (let i = peakIdx + 1; i < observed.length; i++) {
       if (marg[i] < peakMarginal * kneeFrac) {
-        knee = points[i].x;
+        knee = observed[i].x;
         break;
       }
     }
   }
 
-  // onset: 국소 한계CPA / 평균CPA ≥ satHigh 첫 지출(한계효용 ≤ 0 이면 Infinity → 즉시 성립).
+  // onset: 관측 안에서 기준 아래→위로 넘는 경우만. 첫 구간부터 초과하면 시작점 미식별.
   let onset = null;
-  for (let i = 1; i < points.length; i++) {
-    const x = points[i].x;
-    const avgRes = points[i].y;
+  let status = "unavailable";
+  for (let i = 1; i < observed.length; i++) {
+    const x = observed[i].x;
+    const avgRes = observed[i].y;
     if (!(x > 0) || !(avgRes > 0)) continue;
     const avgCpr = x / avgRes;
     if (!(avgCpr > 0)) continue;
     const marginalCpr = marg[i] > 1e-12 ? 1 / marg[i] : Infinity;
-    if (marginalCpr / avgCpr >= satHigh) {
-      onset = x;
+    const above = marginalCpr / avgCpr >= satHigh;
+    if (status === "unavailable" && above) {
+      status = "above_at_start";
       break;
     }
+    if (above) {
+      onset = x;
+      status = "crossing";
+      break;
+    }
+    status = "below_threshold";
   }
 
   const mark = (v) => (v > 0 && v <= cap ? { x: v, y: resultsAt(v) } : null);
@@ -98,6 +113,8 @@ export function allocResponseCurve(wrapper, opts = {}) {
     xMin,
     xMax,
     cap,
+    saturation: { status, threshold: satHigh },
+    kneeFraction: kneeFrac,
     markers: {
       now: mark(now),
       plan: mark(plan),

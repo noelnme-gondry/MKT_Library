@@ -116,8 +116,15 @@ export function formatCustomScorecardValue(model, currency = "KRW", locale = "ko
 export function buildCustomChartConfig(def, rows, opts) {
   const { cohort = 7, denomBasis = "installs", resolveMetricCompute, metricLabelOf, locale = "ko" } = opts || {};
   const groups = groupAggByDim(rows, def.dim, cohort, denomBasis);
-  const series = buildChartSeries(groups, resolveMetricCompute(def.metric), { topN: 20, sortDesc: def.type !== "line" });
-  const colors = series.labels.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]);
+  const all = buildChartSeries(groups, resolveMetricCompute(def.metric), { topN: def.sort ? 0 : 20, sortDesc: def.sort ? false : def.type !== "line" });
+  let pairs = all.labels.map((label, i) => ({ label, value: all.values[i] }));
+  if (def.sort === 'desc') pairs.sort((a, b) => b.value - a.value);
+  if (def.sort === 'asc') pairs.sort((a, b) => a.value - b.value);
+  if (def.sort === 'label') pairs.sort((a, b) => a.label.localeCompare(b.label));
+  if (def.topN) pairs = pairs.slice(0, Math.max(1, Math.min(100, def.topN)));
+  const series = { labels: pairs.map(p => p.label), values: pairs.map(p => p.value) };
+  const accent = def.palette === 'teal' ? CHART_THEME.success : CHART_THEME.primary;
+  const colors = series.labels.map((_, i) => def.palette && def.palette !== 'series' ? accent : CHART_THEME.series[i % CHART_THEME.series.length]);
   const isPie = def.type === "pie" || def.type === "doughnut";
   const isLine = def.type === "line";
   const chartType = isPie ? def.type : isLine ? "line" : "bar";
@@ -129,8 +136,8 @@ export function buildCustomChartConfig(def, rows, opts) {
       datasets: [{
         label: metricLabelOf ? metricLabelOf(def.metric) : def.metric,
         data: series.values,
-        backgroundColor: isPie ? colors : isLine ? CHART_THEME.primary : colors.map((color) => withAlpha(color)),
-        borderColor: isLine ? CHART_THEME.primary : colors,
+        backgroundColor: isPie ? colors : isLine ? accent : colors.map((color) => withAlpha(color)),
+        borderColor: isLine ? accent : colors,
         borderWidth: isLine ? 2 : 1,
         borderRadius: isPie ? 0 : 4,
         tension: 0.3,
@@ -140,7 +147,7 @@ export function buildCustomChartConfig(def, rows, opts) {
     },
     options: isPie ? {
       responsive: common.responsive, maintainAspectRatio: common.maintainAspectRatio, animation: common.animation, cutout: def.type === "doughnut" ? "62%" : 0,
-      plugins: { legend: { position: "right", labels: { ...common.plugins.legend.labels, color: CHART_THEME.text, padding: 10 } }, tooltip: common.plugins.tooltip },
+      plugins: { legend: { display: def.legend !== "none", position: def.legend === "bottom" ? "bottom" : "right", labels: { ...common.plugins.legend.labels, color: CHART_THEME.text, padding: 10 } }, tooltip: common.plugins.tooltip },
     } : (() => {
       const dim = DIM_CANDIDATES.find((candidate) => candidate.key === def.dim);
       const dimLabel = dim ? (locale === "en" ? dim.labelEn || dim.label : dim.label) : def.dim;
@@ -150,7 +157,7 @@ export function buildCustomChartConfig(def, rows, opts) {
       return {
         ...common,
         indexAxis: horizontal ? "y" : "x",
-        plugins: { ...common.plugins, legend: { display: false } },
+        plugins: { ...common.plugins, legend: { ...common.plugins.legend, display: Boolean(def.legend && def.legend !== "none"), position: def.legend === "right" ? "right" : "bottom" } },
         scales: {
           ...common.scales,
           x: { ...common.scales?.x, title: axisTitle(horizontal ? metricLabel : dimLabel) },

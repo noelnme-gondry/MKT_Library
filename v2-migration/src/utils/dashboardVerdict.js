@@ -1,9 +1,11 @@
+import { periodDays } from "@/lib/analysisPeriod";
+import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 // 운영 대시보드(5-2/9-7) 결론 카드 + 다운로드 — 도구가 "계산한" 인사이트만 준다
 // (업로드 원천 데이터 되돌려주기 금지). WoW 최근 vs 직전 기간의 증감을 CPA·CPI·
 // CTR·CVR·ROAS·리텐션·이익까지 파생지표 전부 포함해 판정+표로 제공.
 // 렌더층 헬퍼(골든 아님) — dashboardAggregator 순수함수만 소비. 데이터 부족·컬럼
 // 미매핑이면 정직하게 생략(§8 날조 금지). WoW는 5-2류 시계열 전용 판정.
-import { getMonFilteredRows, getMappedRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { getMappedRows, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { DERIVED_METRICS, computeMetrics } from "@/utils/metrics/metricRegistry";
 import { resolveRetentionSnapshot } from "@/utils/retentionSnapshot";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
@@ -43,7 +45,7 @@ export function buildDashboardVerdict({
 
   if (!csvData || !csvData.raw || csvData.raw.length === 0) return { insufficient: true };
 
-  const rows = getMonFilteredRows(csvData, filterState);
+  const periods = dashboardPeriods(csvData, filterState, windowDays);
   // 추천 카드가 리텐션을 앞에 세울 때는 "현재 날짜"가 아니라 파일의 관측 기준일을
   // 함께 확인한다. 기준일을 알 수 없는 파일은 코호트 추천 후보에서 제외된다.
   const retentionSnapshot = resolveRetentionSnapshot({
@@ -52,18 +54,10 @@ export function buildDashboardVerdict({
     fileModifiedAt: csvData.fileModifiedAt,
     manualDate: csvData.retentionSnapshotOverride,
   });
-  const daily = aggregateByKey(rows, "date", ["cost"]) // 날짜 목록만 필요
-    .map((d) => d._key)
-    .sort();
-
-  const w = windowDays;
-  if (daily.length < 2) return { insufficient: true, days: daily.length, windowDays: w };
-  const recentDates = new Set(daily.slice(-w));
-  const prevDates = new Set(daily.slice(-2 * w, -w));
-  if (recentDates.size === 0 || prevDates.size === 0) return { insufficient: true, days: daily.length, windowDays: w };
-
-  const recentRaw = rows.filter((r) => recentDates.has(r.date));
-  const prevRaw = rows.filter((r) => prevDates.has(r.date));
+  const daily = periods.dates;
+  const w = periods.custom ? periodDays(periods.current) : windowDays;
+  const recentRaw = periods.recentRows, prevRaw = periods.previousRows;
+  if (!recentRaw.length || !prevRaw.length) return { insufficient: true, days: daily.length, windowDays: w };
 
   const mapped = new Set(Object.values(csvData.mapping || {}));
   const basis = effectiveDenomBasis(csvData, denomBasis);
@@ -132,7 +126,7 @@ export function buildDashboardVerdict({
     if (newRows.length) newCreativeSignal = { count: new Set(newRows.map((row) => row.creative_id)).size, cost: sum(newRows, "cost"), result: sum(newRows, convKey) };
   }
   const creativeSummary = mapped.has("creative_id") ? buildCreativeQuickSummary(csvData) : null;
-  const pvmSummary = buildPvmQuickSummary({ csvData, dashboardFilter: filterState, denomBasis });
+  const pvmSummary = buildPvmQuickSummary({ csvData, dashboardFilter: filterState, denomBasis, periods });
 
   let tone = "neutral";
   const effImproved = dEff != null && dEff <= -SIG;
@@ -142,7 +136,7 @@ export function buildDashboardVerdict({
   if (effImproved || (roasImproved && !effWorsened)) tone = "good";
   else if (effWorsened || (roasWorsened && !effImproved)) tone = "bad";
 
-  const period = tr(`최근 ${w}일`, `last ${w} days`);
+  const period = periods.custom ? tr("선택 기간", "selected period") : tr(`최근 ${w}일`, `last ${w} days`);
   // Describe the measured change once; colour/tone is a separate operational signal.
   const change = dEff == null ? null : (Math.abs(dEff) * 100).toFixed(1);
   const headline = dEff == null

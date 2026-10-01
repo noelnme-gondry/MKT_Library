@@ -13,7 +13,7 @@ import { sourceCurrencyOf } from "@/utils/format";
 // 재사용 가능하도록 분리. 통화 토글은 예전에 Header(브레드크럼 옆)로 뺐다가, 실제로는
 // "토글 기준" 필터줄(이 컴포넌트)에 붙어있어야 자연스럽다는 피드백으로 여기 복귀 —
 // 통화 토글 UI는 이 컴포넌트 하나뿐(도구별 중복 금지, 디자인시스템).
-export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "declare" } = {}) {
+export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "declare", showBasis = true } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -70,7 +70,7 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
 
   return (
     <>
-        {(hasInstalls || hasActions) && (
+        {showBasis && (hasInstalls || hasActions) && (
           <div className="analysis-control-group">
             <span className="analysis-control-group__label" id={`${idBase}-basis`}>{tr("성과 기준", "Performance basis")}</span>
             <div className="segmented" role="group" aria-labelledby={`${idBase}-basis`}>
@@ -93,10 +93,10 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
           )}
         </div>
         {isConversionMode && <FixedRateNote sourceCurrency={sourceCurrency} displayCurrency={displayCurrency} locale={locale} />}
-        <BlockedOptionsNote items={[
+        {showBasis && <BlockedOptionsNote items={[
           { label: tr("설치", "Installs"), reason: !hasInstalls ? (hasActions ? tr("양수 값이 없어 가입 기준을 자동 적용했습니다", "No positive values; Actions was applied automatically") : tr("사용 가능한 양수 값이 없습니다", "No usable positive values")) : "" },
           { label: tr("가입", "Actions"), reason: !hasActions ? tr("사용 가능한 양수 값이 없습니다", "No usable positive values") : "" },
-        ]} />
+        ]} />}
     </>
   );
 }

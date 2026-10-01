@@ -1,15 +1,17 @@
 "use client";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardSetting, useDashboardAction, useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
+import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
-import { getMonFilteredRows, aggregateByKey, fmtCurrencyCompact, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { aggregateByKey, fmtCurrencyCompact, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
-import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
-import PillGroup from "@/components/ds/PillGroup";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import BudgetHealthCard from "./BudgetHealthCard";
 import { FigureHead } from "@/components/ds/FigurePngButton";
@@ -81,40 +83,39 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
   const scLabel = useCallback((k) => (locale === "en" ? (SC_LABELS_EN[k] || C.scLabels[k] || k) : C.scLabels[k]), [locale, C]);
   const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const denomBasis = useAppStore((state) => state.denomBasis);
-  const scopeCfg = useAppStore((state) => state.viewConfig[SCORECARD_SCOPE]);
-  const setViewConfig = useAppStore((state) => state.setViewConfig);
-  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
-  const customMetrics = useAppStore((state) => state.customMetrics[KPI_METRIC_SCOPE]);
-  const addCustomMetric = useAppStore((state) => state.addCustomMetric);
-  const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
-  const updateCustomMetric = useAppStore((state) => state.updateCustomMetric);
-  // WoW 기간은 store 공유(결론 카드와 연동). setWindowDays는 store 세터로 대체.
+  const scopeCfg = useDashboardSetting("viewConfig", SCORECARD_SCOPE);
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
+  const customMetrics = useDashboardSetting("customMetrics", KPI_METRIC_SCOPE);
+  const addCustomMetric = useDashboardAction("addCustomMetric");
+  const removeCustomMetric = useDashboardAction("removeCustomMetric");
+  const updateCustomMetric = useDashboardAction("updateCustomMetric");
+  // 비교 기간은 상단 선택기와 결론 카드가 같은 store 상태를 공유한다.
   const windowDays = useAppStore((state) => state.dashWindowDays);
-  const setWindowDays = useAppStore((state) => state.setDashWindowDays);
-  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [selectedMetric, setSelectedMetric] = useDashboardControl("selectedMetric", null);
   const [editMode, setEditMode] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
-  const { recent, prev, daily, hasData, mapping } = useMemo(() => {
+  const { recent, prev, daily, hasData, mapping, recentKeys, customPeriod } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0) {
       return { hasData: false, mapping: {} };
     }
-    const rows = getMonFilteredRows(csvData, dashboardFilter);
+    const periods = dashboardPeriods(csvData, dashboardFilter, windowDays);
+    const rows = periods.rows;
     const _daily = aggregateByKey(rows, "date", ["cost", "impressions", "clicks", "installs", "actions", "revenue_d7", "pu_d7"]).sort((a, b) => a._key > b._key ? 1 : -1);
 
-    if (_daily.length === 0) return { hasData: false, mapping: csvData.mapping || {} };
+    if (!periods.recentRows.length || !periods.previousRows.length) return { hasData: false, mapping: csvData.mapping || {} };
 
-    const w = windowDays;
-    const _recent = _daily.slice(-w);
-    const _prev = _daily.slice(-2 * w, -w);
+    const _recent = _daily.filter(row => periods.recentDates.has(row._key));
+    const _prev = _daily.filter(row => periods.prevDates.has(row._key));
     const basis = effectiveDenomBasis(csvData, denomBasis);
 
     const sum = (arr, k) => arr.reduce((s, d) => s + (d[k] || 0), 0);
@@ -135,7 +136,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
       };
     };
 
-    return { hasData: true, recent: agg(_recent), prev: agg(_prev), daily: _daily, mapping: csvData.mapping || {} };
+    return { hasData: true, recent: agg(_recent), prev: agg(_prev), daily: _daily.filter(row => periods.recentDates.has(row._key) || periods.prevDates.has(row._key)), recentKeys: periods.recentDates, customPeriod: periods.custom, mapping: csvData.mapping || {} };
   }, [csvData, dashboardFilter, windowDays, denomBasis]);
 
   const cards = useMemo(() => {
@@ -219,7 +220,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           <div className="ab-stat-label">{c.label}</div>
           <div className="ab-stat-value tnum">{c.fmt(c.val)}</div>
           <div className={`ab-stat-hint ${cls}`}>
-            {d == null ? T.noPrevData : T.wow(arrow, Math.abs(d * 100).toFixed(1))}
+            {d == null ? T.noPrevData : customPeriod ? `${arrow} ${Math.abs(d * 100).toFixed(1)}%` : T.wow(arrow, Math.abs(d * 100).toFixed(1))}
           </div>
         </button>
       ),
@@ -230,10 +231,9 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
   useEffect(() => {
     if (selectedMetric && !orderedCards.find(c => c.k === selectedMetric)) {
       // 선택 지표가 더는 유효하지 않으면 1회 리셋 — 조건부라 무한루프 없음(의도된 패턴)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedMetric(null);
     }
-  }, [orderedCards, selectedMetric]);
+  }, [orderedCards, selectedMetric, setSelectedMetric]);
 
   const seriesVal = useCallback((d, sel) => {
     switch (sel) {
@@ -261,21 +261,20 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     if (!hasData || !selectedMetric || !chartRef.current) return;
     if (chartInstanceRef.current) chartInstanceRef.current.destroy();
 
-    const w = windowDays;
-    const slice2W = daily.slice(-2 * w);
+    const slice2W = daily;
     if (slice2W.length < 2) return;
 
     const vals = slice2W.map(d => seriesVal(d, selectedMetric));
     const labels = slice2W.map(d => d._key.slice(5)); // MM-DD
     const n = slice2W.length;
-    const pivotIdx = n - w;
+    const pivotIdx = slice2W.findIndex(row => recentKeys.has(row._key));
 
-    const ptBg = vals.map((_, i) => i < pivotIdx ? "#fbbf2460" : "#adc6ff60");
-    const ptBorder = vals.map((_, i) => i < pivotIdx ? "#fbbf24" : "#adc6ff");
-    const barColors = vals.map((_, i) => i < pivotIdx ? "#fbbf2480" : "#adc6ff80");
+    const ptBg = slice2W.map(row => recentKeys.has(row._key) ? CHART_THEME.primary : CHART_THEME.muted);
+    const ptBorder = slice2W.map(row => recentKeys.has(row._key) ? CHART_THEME.primary : CHART_THEME.muted);
+    const barColors = ptBorder;
     
-    const gridColor = getCssVar("--border") || "#2a2a2a";
-    const tickColor = getCssVar("--text-muted") || "#9ca3af";
+    const gridColor = CHART_THEME.grid;
+    const tickColor = CHART_THEME.muted;
 
     const customDef = (customMetrics || []).find((m) => m.id === selectedMetric);
     const isContinuous = customDef
@@ -296,13 +295,13 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
       tension: 0.1,
       fill: false,
       segment: {
-        borderColor: (ctx) => (ctx.p1DataIndex <= pivotIdx ? "#fbbf24" : "#adc6ff"),
+        borderColor: (ctx) => ptBorder[ctx.p1DataIndex],
       },
     }] : [{
       label: "",
       data: vals,
       backgroundColor: barColors,
-      borderColor: barColors.map(c => c.replace("80", "cc")),
+      borderColor: barColors,
       borderWidth: 1,
     }];
 
@@ -344,25 +343,20 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics, seriesVal, cards, locale]);
+  }, [hasData, daily, selectedMetric, recentKeys, isDarkMode, customMetrics, seriesVal, cards, locale]);
 
   if (!hasData) {
-    return <div className="tab-pane active"><p className="muted">{T.noData}</p></div>;
+    return <DashboardTabLayout className="tab-pane active"><p className="muted">{T.noData}</p></DashboardTabLayout>;
   }
 
   return (
-    <div className="tab-pane active" id="tab-scorecard">
+    <DashboardTabLayout className="tab-pane active" id="tab-scorecard">
       {/* 예산 배분 진단·CTA는 마케팅 전용(콘텐츠엔 예산배분 도구가 없음) → content 제외. */}
-      {!isContent && <BudgetHealthCard locale={locale} />}
+      {!isContent && <BudgetHealthCard locale={locale} data-dashboard-static />}
       <section className="block" id="s-score">
-        <h2 className="section-title">{T.kpiTitle(windowDays)}</h2>
-        <PillGroup
-          label={T.periodLabel}
-          value={windowDays}
-          onChange={setWindowDays}
-          options={[7, 14, 28].map((d) => ({ value: d, label: T.days(d) }))}
-          extra={<>
-          <button className="ab-pill" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title={T.customMetricTitle}>
+        <h2 className="section-title">{customPeriod ? (locale === "en" ? "Selected-period KPIs" : "선택 기간 KPI 비교") : T.kpiTitle(windowDays)}</h2>
+        <div className="dashboard-section-actions">
+          <button className="ab-pill dashboard-legacy-edit" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title={T.customMetricTitle}>
             {T.customMetric}
           </button>
           {editMode ? (
@@ -371,12 +365,11 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
               <button className="ab-pill active" onClick={() => setEditMode(false)} style={{ fontWeight: 700 }}>{T.editDone}</button>
             </>
           ) : (
-            <button className="ab-pill" onClick={() => setEditMode(true)} title={T.editTitle}>
+            <button className="ab-pill dashboard-legacy-edit" onClick={() => setEditMode(true)} title={T.editTitle}>
               {T.edit}
             </button>
           )}
-          </>}
-        />
+        </div>
         {editMode && (
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0 0" }}>{T.editHint}</p>
         )}
@@ -392,7 +385,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           />
         </div>
         <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>
-          {locale === "en" ? T.scFootnote(windowDays) : C.scFootnote(windowDays)}
+          {customPeriod ? (locale === "en" ? "Totals for the two selected periods; not normalized by duration." : "선택한 두 기간의 합계 비교입니다. 기간 길이로 보정하지 않습니다.") : locale === "en" ? T.scFootnote(windowDays) : C.scFootnote(windowDays)}
         </p>
       </section>
 
@@ -411,17 +404,17 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
       {selectedMetric && (
         <section className="block" id="s-score-daily" style={{ paddingTop: "8px" }}>
           <h3 style={{ fontSize: "var(--fs-md)", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
-            {T.dailyDetailTitle(windowDays, cards.find(c => c.k === selectedMetric)?.label || selectedMetric, Math.min(daily.length, 2 * windowDays))}
+            {customPeriod ? (locale === "en" ? "Daily values in the selected periods" : "선택한 두 기간의 일별 값") : T.dailyDetailTitle(windowDays, cards.find(c => c.k === selectedMetric)?.label || selectedMetric, daily.length)}
           </h3>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 8px" }}>
-            {T.legendHint(windowDays)}
+            {locale === "en" ? "Gray: comparison period · Blue: analysis period" : "회색: 비교 기간 · 파란색: 분석 기간"}
           </p>
-          {daily.slice(-2 * windowDays).length < 2 * windowDays && (
+          {!customPeriod && daily.length < 2 * windowDays && (
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0" }}>
               {T.insufficientData(daily.slice(-2 * windowDays).length)}
             </p>
           )}
-          {daily.slice(-2 * windowDays).length >= 2 && (<>
+          {daily.length >= 2 && (<>
             <FigureHead exportTitle={locale === "en" ? "Daily performance trends" : "일별 성과 추이"} target={chartRef} fileName="scorecard_daily" locale={locale} />
             <div className="chart-container" style={{ height: "220px" }}>
               <canvas id="scorecard-daily-chart" ref={chartRef}></canvas>
@@ -429,6 +422,6 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           </>)}
         </section>
       )}
-    </div>
+    </DashboardTabLayout>
   );
 }

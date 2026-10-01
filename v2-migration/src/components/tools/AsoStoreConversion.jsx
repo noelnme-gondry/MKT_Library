@@ -1,4 +1,5 @@
 "use client";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import CsvUploader from "@/components/CsvUploader";
@@ -363,7 +364,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
           )}</p>}
         </section>
 
-        {series && series.dates.length > 1 && <section className="block" id="aso-trend">
+        {series && series.dates.length > 1 && <RecipeBlock className="block" id="aso-trend">
           <FigureHead title={tr("전환율 추이", "Conversion trend")} target={chartRef} fileName="aso_conversion_trend" locale={locale} />
           <p className="muted">{tr(
             "굵은 선은 전체 비율, 점선은 소스별 비율입니다. 관측 비율의 변화가 페이지 요소 때문인지는 이 차트만으로 알 수 없습니다.",
@@ -374,7 +375,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             `앞뒤 비교 기준일은 ${cutDate}입니다. 이 날짜 이전이 앞 기간, 이후가 뒤 기간입니다.`,
             `The two halves split at ${cutDate} — earlier dates form the first period, later ones the second.`,
           )}</p>}
-        </section>}
+        </RecipeBlock>}
 
         <StoreEventLog locale={locale} csvEvents={csvEvents} mergedEvents={allEvents} offAxis={axisEvents.offAxis} />
 

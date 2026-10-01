@@ -1,4 +1,6 @@
 "use client";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardSetting, useDashboardAction, useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
 import PillGroup from "@/components/ds/PillGroup";
@@ -149,24 +151,24 @@ export default function LtvTab({ locale = "ko" } = {}) {
   // 엔진(ltvMath·cohortMath)이 붙이는 "전체"·"(미지정)" 그룹 라벨 렌더층 로컬라이즈.
   const luLabel = useCallback((k) => (k === "(미지정)" ? (locale === "en" ? "(unspecified)" : "(미지정)") : k === "전체" ? (locale === "en" ? "All" : "전체") : k), [locale]);
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const denomBasis = useAppStore((state) => state.denomBasis);
   const setDenomBasis = useAppStore((state) => state.setDenomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const ltvTableCfg = useAppStore((state) => state.viewConfig[LTV_TABLE_SCOPE]);
-  const setViewConfig = useAppStore((state) => state.setViewConfig);
-  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const ltvTableCfg = useDashboardSetting("viewConfig", LTV_TABLE_SCOPE);
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
   const [ltvCfgOpen, setLtvCfgOpen] = useState(false);
-  const [unitField, setUnitField] = useState("channel");
-  const [ltvHorizon, setLtvHorizon] = useState(30);
+  const [unitField, setUnitField] = useDashboardControl("unitField", "channel");
+  const [ltvHorizon, setLtvHorizon] = useDashboardControl("ltvHorizon", 30);
   // ROAS 성숙 예측 상태(§4)
-  const [matUnit, setMatUnit] = useState("_all");
-  const [matAnchors, setMatAnchors] = useState(null); // null = 전체 사용 가능 Dn
-  const [matShowCurve, setMatShowCurve] = useState(true);
-  const [matShowEmpirical, setMatShowEmpirical] = useState(true);
-  const [matHorizon, setMatHorizon] = useState(360);
+  const [matUnit, setMatUnit] = useDashboardControl("matUnit", "_all");
+  const [matAnchors, setMatAnchors] = useDashboardControl("matAnchors", null); // null = 전체 사용 가능 Dn
+  const [matShowCurve, setMatShowCurve] = useDashboardControl("matShowCurve", true);
+  const [matShowEmpirical, setMatShowEmpirical] = useDashboardControl("matShowEmpirical", true);
+  const [matHorizon, setMatHorizon] = useDashboardControl("matHorizon", 360);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -185,11 +187,10 @@ export default function LtvTab({ locale = "ko" } = {}) {
       if (!mapped.has(unitField) && Array.from(mapped).length > 0) {
         const fallback = avail.find(a => mapped.has(a.k));
         // 무효 unitField를 유효 기본값으로 1회 보정 — 조건부라 무한루프 없음(의도된 패턴)
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (fallback) setUnitField(fallback.k);
       }
     }
-  }, [csvData, unitField, T]);
+  }, [csvData, unitField, T, setUnitField]);
 
   const { rows, hasData, availFields, mappedFields, hasInstalls, hasActions } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0) return { hasData: false, availFields: [], mappedFields: new Set() };
@@ -285,7 +286,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
         maintainAspectRatio: false,
         plugins: {
           ...chartCommonOpts().plugins,
-          legend: { labels: { color: getCssVar("--text-muted"), font: { size: 11 } } },
+          legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "line", boxWidth: 20, color: getCssVar("--text-muted"), font: { size: 11 } } },
           tooltip: {
             ...chartCommonOpts().plugins.tooltip,
             callbacks: {
@@ -314,7 +315,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
   }, [hasData, rows, dataCurrency, isDarkMode, luLabel, locale]);
 
   if (!hasData) {
-    return <div className="tab-pane active" id="tab-ltv"><p className="muted">{T.noData}</p></div>;
+    return <DashboardTabLayout className="tab-pane active" id="tab-ltv"><p className="muted">{T.noData}</p></DashboardTabLayout>;
   }
 
   const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(0) + "%";
@@ -363,9 +364,10 @@ export default function LtvTab({ locale = "ko" } = {}) {
   const orderedLtvCols = applyMetricView(ltvCols, ltvTableCfg, (c) => c.k);
 
   return (
-    <div className="tab-pane active" id="tab-ltv">
+    <DashboardTabLayout className="tab-pane active" id="tab-ltv">
       <section className="block" id="s-ctl">
         <h2 className="section-title">{T.s1Title}</h2>
+        <div className="dashboard-analysis-controls">
         <PillGroup
           label={T.unitLabel}
           value={unitField}
@@ -391,12 +393,13 @@ export default function LtvTab({ locale = "ko" } = {}) {
             return { value: k, label: <>{l}</>, disabled: !avail };
           })}
         />
+        </div>
       </section>
 
       <section className="block" id="s-table">
         <div className="section-head">
           <h2 className="section-title">{T.s2Title(ltvHorizon)}</h2>
-          <button className="ab-pill" onClick={() => setLtvCfgOpen(true)} title={T.editColsTitle}>{T.editCols}</button>
+          <button className="ab-pill dashboard-legacy-edit" onClick={() => setLtvCfgOpen(true)} title={T.editColsTitle}>{T.editCols}</button>
         </div>
         <p className="muted">
           {T.s2Desc(HEALTHY_RATIO, WARN_RATIO)}
@@ -653,6 +656,6 @@ export default function LtvTab({ locale = "ko" } = {}) {
         }}
       />
       <CustomChartsSection sectionNo="5" chartScope="5-2:ltv-charts" metricScope="5-2:viz-kpi" title={T.customChartsTitle} locale={locale} />
-    </div>
+    </DashboardTabLayout>
   );
 }

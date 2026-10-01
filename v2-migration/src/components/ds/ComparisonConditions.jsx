@@ -22,15 +22,15 @@ export default function ComparisonConditions({ conditions, locale = "ko" }) {
     ["seasonality", "같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", [["reviewed", "확인했고 없었습니다", "Checked; none"], ["changed", "있었습니다", "Yes"]]],
     ["delivery", "광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", [["continuous", "아니요, 계속 집행했습니다", "No, delivery was steady"], ["interrupted", "네, 있었습니다", "Yes"]]],
   ];
-  return <section className="analysis-design-check" aria-label={en ? "Observational comparison conditions" : "관찰 비교 조건"}>
+  return <section className="analysis-design-check analysis-design-check--comparison" aria-label={en ? "Observational comparison conditions" : "관찰 비교 조건"}>
     <h3>{en ? "Before you trust this result" : "이 결과를 믿기 전에"}</h3>
     <p>{en ? "CSV totals cannot distinguish tracking changes from real demand or advertising changes. These declarations are not independently verified and reset when the input or analysis scope changes." : "CSV 합계만으로 추적 변경과 실제 수요·광고 변화를 구분할 수 없습니다. 아래는 독립 검증된 사실이 아닌 입력자의 선언이며 입력·분석 범위를 바꾸면 초기화됩니다."}</p>
-    {fields.map(([key, ko, english, options]) => <label key={key} htmlFor={`${id}-${key}`}>{en ? english : ko}
+    <div className="comparison-condition-grid">{fields.map(([key, ko, english, options]) => <label key={key} htmlFor={`${id}-${key}`}>{en ? english : ko}
       <select id={`${id}-${key}`} value={conditions.values[key]} onChange={(event) => conditions.set(key, event.target.value)}>
         <option value="">{en ? "Not sure yet" : "아직 모름"}</option>
         {options.map(([value, koOption, enOption]) => <option key={value} value={value}>{en ? enOption : koOption}</option>)}
       </select>
-    </label>)}
+    </label>)}</div>
     <p role="status">{comparisonConditionsNote(conditions.ready, locale)}</p>
   </section>;
 }

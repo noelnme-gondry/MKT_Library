@@ -6,7 +6,7 @@ import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 // (suppression + pre/post on/off), across method tab switches. Golden covers the
 // pure math (incrPrePostMath / incrMath); this catches render-throw (§7).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import Incrementality from "@/components/tools/Incrementality";
@@ -173,13 +173,45 @@ describe("Incrementality render smoke", () => {
     // 예시 데이터는 켠 시점을 함께 싣는다 — 누르자마자 결론이다(2026-09-24).
     expect(on.queryByText("전환 시점을 먼저 지정하세요")).toBeNull();
     expect(on.getByText(/결론 — 신규/)).toBeTruthy();
-    expect(on.container.querySelector(".tool-core-figure .result-effect")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "분석 근거 보기" }));
+    expect(screen.getByRole("dialog").querySelector(".tool-core-figure .result-effect")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
     on.unmount();
     seed(buildIncrPrepostDemo("off"));
     const off = render(<Incrementality />);
     fireEvent.click(off.getByText(/종료 \(전후\)/));
     fireEvent.change(off.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
     expect(off.getByText(/결론 — 종료/)).toBeTruthy();
+  });
+
+  it.each(["ko", "en"])("keeps pre/post figures once and opens detailed evidence on demand (%s)", async (locale) => {
+    seed(buildIncrPrepostDemo("off"));
+    const view = render(<Incrementality locale={locale} />);
+    const en = locale === "en";
+    fireEvent.click(screen.getByRole("tab", { name: en ? /Shutdown/ : /종료/ }));
+    // Tab navigation restores focus on the next animation frame. Settle that
+    // transition before testing the separate dialog's focus restoration.
+    await act(async () => new Promise(resolve => requestAnimationFrame(resolve)));
+    const result = view.container.querySelector(".incr-prepost-result");
+    expect(within(result).getAllByText(en ? "Pre avg (daily)" : "전환 전 평균(일)")).toHaveLength(1);
+    expect(result.querySelectorAll(".result-action-card__stats")).toHaveLength(1);
+    expect(result.querySelector(".alloc-card")).toBeNull();
+    expect(within(result).getByLabelText(en ? "Estimated change interval" : "변화 추정 범위").textContent).not.toContain(en ? "Not estimable" : "추정 불가");
+    expect(within(result).getByText(en ? /Comparison conditions unconfirmed/ : /비교 조건 미확인/)).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(result).queryByText(en ? /No pretrend violation was detected/ : /사전추세 위반은 발견되지/)).toBeNull();
+    const chart = result.querySelector("#incr-prepost-chart");
+    const actions = result.querySelector(".result-action-card__utilities");
+    expect(chart.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const trigger = screen.getByRole("button", { name: en ? "View analysis evidence" : "분석 근거 보기" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: en ? "Analysis evidence" : "분석 근거" });
+    expect(within(dialog).getByText(en ? /No pretrend violation was detected/ : /사전추세 위반은 발견되지/)).toBeTruthy();
+    expect(dialog.querySelector(".result-effect")).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it("clears the explicit cutoff when switching launch → shutdown framing", () => {

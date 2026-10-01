@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 import { fmtCurrency, fmtNum } from "@/utils/format";
+import { allocationEfficiency } from "@/lib/analysis-results/allocationPresentation";
 
 // 결과 작업대의 분석별 핵심 그림. 예전에는 PVM·포화도·예산·VIF·소재 피로도가 전부 같은
 // 가로 막대(ResultBars)로 그려져 "무엇을 보여 주는 분석인지"가 그림에서 사라졌다(2026-09-25).
@@ -124,7 +125,7 @@ export function ResultMixRate({ visualization, locale, currency, fallback = null
       <li><span>{tr(locale, `최근 ${metric}`, `Recent ${metric}`)}</span><b>{end != null ? format.level(end) : "—"}</b></li>
     </ol>
     <FigureRows rows={rows} limit={6} locale={locale} className="result-split">
-      {(row) => <li key={row.entity}>
+      {(row) => <li key={row.entity} className="result-split__entity" data-design-exempt="nested: user-requested grouping of each entity and its contribution bars">
         <div className="result-split__head"><strong>{row.entity}</strong><span className="tnum" data-tone={directionTone(row.contribution, lowerIsBetter, format.epsilon)}>{format.signed(row.contribution)}</span></div>
         {/* 막대 줄의 이름 칸은 좁다(줄마다 같은 폭이어야 막대가 맞는다) — 긴 이름은 짧은 이름으로. 전체 이름은 다리·설명에 있다. */}
         {parts.map((part) => <div className={`result-split__bar is-${part.key}`} key={part.key}>
@@ -134,7 +135,13 @@ export function ResultMixRate({ visualization, locale, currency, fallback = null
         </div>)}
       </li>}
     </FigureRows>
-    <figcaption><p>{up}</p>{parts.map(part => <p key={part.key}><strong>{part.label}</strong>: {part.hint}</p>)}</figcaption>
+    <figcaption className="result-mix-guide">
+      <p className="sr-only">{up}</p>
+      <div className="result-mix-guide__direction" aria-hidden="true"><span>← {metric} {tr(locale, "하락", "decrease")}</span><span>0</span><span>{metric} {tr(locale, "상승", "increase")} →</span></div>
+      <dl className="result-mix-guide__legend">{parts.map(part => <div key={part.key}>
+        <dt><i className={`is-${part.key}`} aria-hidden="true" />{part.label}</dt><dd>{part.hint}</dd>
+      </div>)}</dl>
+    </figcaption>
   </figure>;
 }
 
@@ -239,7 +246,7 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
   const fromKey = options.from || "current";
   const toKey = options.to || "budget";
   const rows = (visualization.data || [])
-    .map((row) => ({ entity: row.entity, current: finite(row[fromKey]), next: finite(row[toKey]) }))
+    .map((row) => ({ entity: row.entity, current: finite(row[fromKey]), next: finite(row[toKey]), currentResults: finite(row.currentOutcomes), nextResults: finite(row.expectedOutcomes) }))
     .filter((row) => row.current != null || row.next != null)
     .sort((a, b) => Math.abs((b.next || 0) - (b.current || 0)) - Math.abs((a.next || 0) - (a.current || 0)));
   if (!rows.length) return fallback;
@@ -247,20 +254,37 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
   if (!(max > 0)) return fallback;
   const size = (value) => `${Math.max(0, ((value || 0) / max) * 100)}%`;
   return <figure className="result-chart result-shift" aria-label={visualization.question}>
-    <FigureRows rows={rows} limit={8} locale={locale}>
+    <figcaption className="result-shift__guide">
+      <span>{tr(locale, "변경 금액이 큰 순서", "Largest budget changes first")}</span>
+      <span>{tr(locale, "모든 막대는 같은 금액 눈금입니다", "All bars share the same currency scale")}</span>
+      {options.metric && <span className="result-shift__basis">{options.baseline === "modeled" ? tr(locale, "효율은 두 배분안의 예측값을 비교합니다. 실제 성과를 보장하지 않습니다.", "Efficiency compares predictions for both plans, not guaranteed outcomes.") : tr(locale, "효율은 현재 실적과 변경안의 예측값을 비교합니다. 실제 개선을 보장하지 않습니다.", "Efficiency compares current observed performance with the plan’s prediction, not a guaranteed improvement.")}</span>}
+    </figcaption>
+    <FigureRows rows={rows} className="result-shift__grid" limit={8} locale={locale}>
       {(row) => {
         const delta = row.current != null && row.next != null ? row.next - row.current : null;
-        return <li key={row.entity}>
-          <div className="result-shift__head"><strong>{row.entity}</strong><span className="tnum">{signedMoney(delta, currency)}</span></div>
-          <div className="result-shift__bars" aria-hidden="true">
-            <i className="is-current" style={{ "--shift-size": size(row.current) }} />
-            <i className="is-next" style={{ "--shift-size": size(row.next) }} />
+        const direction = delta == null ? "unknown" : delta > 0 ? "increase" : delta < 0 ? "decrease" : "hold";
+        const label = delta == null ? tr(locale, "비교 불가", "Unavailable") : delta > 0 ? tr(locale, "증액", "Increase") : delta < 0 ? tr(locale, "감액", "Decrease") : tr(locale, "유지", "Unchanged");
+        const efficiency = options.metric ? allocationEfficiency(row.current, row.currentResults, row.next, row.nextResults, options.metric) : null;
+        const efficiencyValue = value => value == null ? "—" : efficiency.roas ? `${(value * 100).toFixed(1)}%` : money(value, currency);
+        return <li key={row.entity} className="result-shift__entity">
+          <div className="result-shift__head"><strong>{row.entity}</strong><span className="result-shift__direction" data-direction={direction}>{label}</span></div>
+          <div className="result-shift__comparison">
+            {[["current", tr(locale, "현재", "Current"), row.current], ["next", tr(locale, "변경안", "Plan"), row.next]].map(([key, name, value]) => <div className={`result-shift__measure is-${key}`} key={key}>
+              <div><span>{name}</span><strong className="tnum">{value != null ? money(value, currency) : "—"}</strong></div>
+              <div className="result-shift__track" aria-hidden="true"><i style={{ "--shift-size": size(value) }} /></div>
+            </div>)}
           </div>
-          <p className="tnum">{tr(locale, "지금", "Now")} {row.current != null ? money(row.current, currency) : "—"} → {tr(locale, "바꾼 안", "Plan")} {row.next != null ? money(row.next, currency) : "—"}</p>
+          <div className="result-shift__delta"><span>{tr(locale, "하루 예산 변화", "Daily budget change")}</span><strong className="tnum">{signedMoney(delta, currency)}</strong></div>
+          {efficiency && <div className="result-shift__efficiency">
+            <span>{tr(locale, `예상 ${efficiency.label} 변화`, `Projected ${efficiency.label} change`)}</span>
+            <strong className="tnum">{efficiencyValue(efficiency.current)} → {efficiencyValue(efficiency.next)}</strong>
+            <span data-tone={efficiency.improvementPct == null || Math.abs(efficiency.improvementPct) < 0.05 ? "flat" : efficiency.improvementPct > 0 ? "better" : "worse"}>
+              {efficiency.improvementPct == null ? tr(locale, "비교할 성과 데이터 없음", "Outcome comparison unavailable") : Math.abs(efficiency.improvementPct) < 0.05 ? tr(locale, "효율 변화 없음", "Efficiency unchanged") : tr(locale, `${Math.abs(efficiency.improvementPct).toFixed(1)}% ${efficiency.improvementPct > 0 ? "개선" : "악화"} 예상`, `${Math.abs(efficiency.improvementPct).toFixed(1)}% ${efficiency.improvementPct > 0 ? "improvement" : "deterioration"} projected`)}
+            </span>
+          </div>}
         </li>;
       }}
     </FigureRows>
-    <figcaption><i className="result-shift__key is-current" /> {tr(locale, "지금 하루 예산", "Daily budget now")} <i className="result-shift__key is-next" /> {tr(locale, "바꾼 안의 하루 예산", "Daily budget in the plan")}</figcaption>
   </figure>;
 }
 

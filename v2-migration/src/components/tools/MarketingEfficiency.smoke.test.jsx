@@ -5,7 +5,7 @@
 // asserts the component MOUNTS without throwing in the no-data and with-data
 // states (including the response-curve chart effect once >=1 fittable entity).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, act, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, act, fireEvent, waitFor, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingEfficiency from "@/components/tools/MarketingEfficiency";
 import { SAT_MATH } from "@/utils/satMath";
@@ -117,18 +117,18 @@ describe("MarketingEfficiency render smoke", () => {
     const { rerender } = render(<MarketingEfficiency />);
     // Before analyze: gate placeholder shown, no §0 summary section yet.
     expect(screen.getByText(/분석 대기 중/)).toBeTruthy();
-    expect(screen.queryByText(/한눈에 보기/)).toBeNull();
+    expect(document.querySelector("#s-sat-summary .result-action-card")).toBeNull();
     // Set the group gate (as CsvUploader's analyze button would).
     act(() => useAppStore.getState().setGroupAnalyzed("5-22"));
     rerender(<MarketingEfficiency />);
     // After analyze: §0 summary + §1 ranking render.
-    expect(screen.getByText(/한눈에 보기/)).toBeTruthy();
+    expect(document.querySelector("#s-sat-summary .result-action-card")).toBeTruthy();
     // "포화도 순위" now appears twice (section heading + right-side TOC link
     // added via ToolPageShell) — assert at least one match rather than a
     // single unique node.
     expect(screen.getAllByText(/포화도 순위/).length).toBeGreaterThan(0);
     expect(screen.getByText("채널별 증액·감액 우선순위")).toBeTruthy();
-    expect(screen.getByRole("img", { name: /채널 Cost와 CPA 의사결정 지도/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /채널 Cost와 CPI 의사결정 지도/ })).toBeTruthy();
     expect(screen.getByText("평균 효율 vs 다음 예산 투입 시 한계효율")).toBeTruthy();
     expect(screen.queryByText(/다음 1원/)).toBeNull();
     fireEvent.click(document.querySelector(".decision-review-launch"));
@@ -177,17 +177,19 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByRole("button", { name: "Meta" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("shows the average-to-marginal values as a hover tip on each marginal-gap row", () => {
+  it("keeps average and marginal values visible beside their plot with individual bottom scales", () => {
     seedWithData();
     useAppStore.getState().setGroupAnalyzed("5-22");
     const { container } = render(<MarketingEfficiency />);
 
-    const tips = container.querySelectorAll(".marginal-gap__tip");
-    expect(tips.length).toBeGreaterThan(0);
-    tips.forEach((tip) => {
-      expect(tip.textContent).toMatch(/평균 .+ → 한계 .+ · /);
-      expect(["left", "right"]).toContain(tip.getAttribute("data-side"));
+    const rows = container.querySelectorAll(".marginal-gap__row");
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row.querySelector(".marginal-gap__label.is-average").textContent).toMatch(/평균.+/);
+      expect(row.querySelector(".marginal-gap__label.is-marginal").textContent).toMatch(/한계.+/);
+      expect(row.querySelectorAll(".marginal-gap__axis span").length).toBe(3);
     });
+    expect(container.querySelector(".marginal-gap__tip")).toBeNull();
   });
 
   it("uses a locale-safe English title without a one-dollar expression", () => {
@@ -229,5 +231,113 @@ describe("MarketingEfficiency render smoke", () => {
     fireEvent.click(next);
     expect(next.getAttribute("aria-pressed")).toBe("true");
     expect(initiallySelected[0].getAttribute("aria-pressed")).toBe("false");
+  });
+});
+
+
+// 사용자 진입 → 게이트 → 명령 입력 → 공유 필터/레시피 경로를 함께 검증한다.
+describe("Saturation result autonomy", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAppStore.setState({ ...useAppStore.getInitialState(), savedSetupApplied: 0, savedSetupAppliedTool: null, savedSetupAppliedInputs: {}, savedSetupAppliedProject: null });
+    useAppStore.getState().setCurrentRouteId("5-22");
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    expect(useAppStore.getState().isGroupAnalyzed("5-22")).toBe(true);
+  });
+  const choose = (query, label, locale = "ko") => {
+    const input = screen.getByRole("combobox", { name: locale === "en" ? "Analysis setup" : "분석 설정" });
+    fireEvent.change(input, { target: { value: query } });
+    const option = screen.getAllByRole("option").find((item) => within(item).queryByText(label, { exact: true }));
+    expect(option).toBeTruthy();
+    fireEvent.mouseDown(option);
+  };
+
+  it.each(["ko", "en"])("applies axis and view steps without refitting for display/export settings (%s)", (locale) => {
+    const fit = vi.spyOn(SAT_MATH, "analyzeEntity");
+    const { container } = render(<MarketingEfficiency locale={locale} />);
+    expect(fit).toHaveBeenCalledTimes(2);
+    choose("PNG", locale === "en" ? "PNG without header" : "PNG에 머리글 넣지 않기", locale);
+    choose("top5", locale === "en" ? "Show top 5" : "상위 5개만 보기", locale);
+    choose("Google", locale === "en" ? "Show Google only" : "Google만 보기", locale);
+    expect(container.querySelectorAll("#s-sat tbody tr")).toHaveLength(1);
+    expect(container.querySelector("#s-sat tbody").textContent).toContain("Google");
+    expect(screen.getByText(locale === "en" ? /1 ranking row.*hidden/ : /순위표 1개 행을 가렸습니다/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "ROAS (higher is better)" : "ROAS (높을수록 좋음)" }));
+    expect(fit).toHaveBeenCalledTimes(2);
+    choose("OS", locale === "en" ? "By OS" : "OS별", locale);
+    expect(fit).toHaveBeenCalledTimes(3);
+    expect(within(container.querySelector("#s-sat")).getByRole("columnheader", { name: "OS" })).toBeTruthy();
+    expect(container.querySelector("#s-sat-curve h2").textContent).toContain("iOS");
+    expect(screen.getByText(locale === "en" ? /does not match the ranking axis/ : /현재 순위표의 축이 아니어서/)).toBeTruthy();
+    const saved = useAppStore.getState().viewConfig["analysis-inputs:5-22"].recipeSteps;
+    expect(saved).toContainEqual({ id: "level.field", params: { field: "platform" } });
+    fit.mockRestore();
+  });
+
+  it.each(["ko", "en"])("routes scope commands through shared filters and rejects an empty scope (%s)", (locale) => {
+    const { container } = render(<MarketingEfficiency locale={locale} />);
+    choose("Meta", locale === "en" ? "Analyze Meta only" : "Meta만 분석", locale);
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    expect(container.querySelectorAll("#s-sat tbody tr")).toHaveLength(1);
+    choose("Meta", locale === "en" ? "Analyze without Meta" : "Meta 제외하고 분석", locale);
+    expect(screen.getByText(locale === "en" ? /no values would remain/ : /분석할 값이 남지 않아/)).toBeTruthy();
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Remove Channel: Meta" : "채널: Meta 빼기" }));
+    expect(container.querySelectorAll("#s-sat tbody tr")).toHaveLength(2);
+  });
+
+  it.each(["ko", "en"])("hides and restores optional figures while keeping evidence (%s)", (locale) => {
+    const { container } = render(<MarketingEfficiency locale={locale} />);
+    const hide = locale === "en" ? "Hide Response curve" : "응답곡선 숨기기";
+    choose(hide, hide, locale);
+    expect(container.querySelector("#s-sat-curve")).toBeNull();
+    expect(container.querySelector('a[href="#s-sat-curve"]')).toBeNull();
+    expect(container.querySelector("#s-marginal-gap")).toBeTruthy();
+    expect(container.querySelector("#s-sat-summary")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? `Remove ${hide}` : `${hide} 빼기` }));
+    expect(container.querySelector("#s-sat-curve canvas")).toBeTruthy();
+  });
+
+  it.each(["ko", "en"])("starts without a channel and migrates older saved setups after mounting (%s)", (locale) => {
+    const original = useAppStore.getState().csvData;
+    const mapping = { ...original.mapping, Channel: "__ignore__", Campaign: "__ignore__" };
+    useAppStore.getState().setCsvData({ ...original, mapping });
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    const { container } = render(<MarketingEfficiency locale={locale} />);
+    expect(container.querySelector("#s-sat tbody").textContent).toContain("iOS");
+    expect(within(container.querySelector("#s-sat")).getByRole("columnheader", { name: "OS" })).toBeTruthy();
+    expect(screen.queryByText(locale === "en" ? /Compare with prior week/ : /직전주와 비교/)).toBeNull();
+    act(() => {
+      useAppStore.getState().setCsvData(original);
+      useAppStore.getState().setGroupAnalyzed("5-22");
+      useAppStore.setState({ savedSetupAppliedTool: "5-22", savedSetupAppliedInputs: { satState: { grain: "campaign", metric: "roas", selected: "Google Brand" } }, savedSetupApplied: 1 });
+    });
+    expect(container.querySelector("#s-sat tbody").textContent).toContain("Meta Brand");
+    expect(container.querySelector("#s-sat-curve h2").textContent).toContain("Google Brand");
+    expect(within(container.querySelector("#s-sat")).getByRole("columnheader", { name: locale === "en" ? "Avg ROAS" : "평균 ROAS" })).toBeTruthy();
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-22"].recipeSteps).toContainEqual({ id: "metric.saturation.roas", params: {} });
+  });
+
+  it.each(["ko", "en"])("keeps a saved raw axis visible as rejected when the next CSV lacks its column (%s)", (locale) => {
+    const original = useAppStore.getState().csvData;
+    const csv = { ...original, headers: [...original.headers, "Region"], raw: original.raw.map((row) => ({ ...row, Region: row.Channel === "Google" ? "East" : "West" })) };
+    useAppStore.getState().setCsvData(csv);
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    const { container } = render(<MarketingEfficiency locale={locale} />);
+    choose("Region", locale === "en" ? "By Region" : "Region별", locale);
+    expect(container.querySelector("#s-sat tbody").textContent).toContain("East");
+    act(() => {
+      useAppStore.getState().setCsvData(original);
+      useAppStore.getState().setGroupAnalyzed("5-22");
+    });
+    expect(screen.getByRole("button", { name: locale === "en" ? /Remove By Region/ : /Region별 빼기/ })).toBeTruthy();
+    expect(container.querySelector("#s-sat tbody").textContent).toContain("Google");
+    expect(container.querySelector(".recipe-command").textContent).toMatch(locale === "en" ? /missing|Missing/ : /컬럼/);
+    act(() => {
+      useAppStore.getState().setCsvData(csv);
+      useAppStore.getState().setGroupAnalyzed("5-22");
+    });
+    expect(container.querySelector("#s-sat tbody").textContent).toContain("East");
   });
 });

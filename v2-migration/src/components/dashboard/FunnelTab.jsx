@@ -1,4 +1,6 @@
 "use client";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardSetting, useDashboardAction, useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
@@ -36,16 +38,16 @@ export default function FunnelTab({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const fieldLabel = (key) => (locale === "en" ? FUNNEL_FIELD_LABEL_EN[key] : FUNNEL_FIELD_LABEL[key]) || key;
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const funnelTableCfg = useAppStore((state) => state.viewConfig[FUNNEL_TABLE_SCOPE]);
-  const setViewConfig = useAppStore((state) => state.setViewConfig);
-  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const funnelTableCfg = useDashboardSetting("viewConfig", FUNNEL_TABLE_SCOPE);
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
   const [funnelCfgOpen, setFunnelCfgOpen] = useState(false);
 
-  const [unitField, setUnitField] = useState("_all");
-  const [cvrStep, setCvrStep] = useState(2);
-  const [weekdayAdj, setWeekdayAdj] = useState(false);
+  const [unitField, setUnitField] = useDashboardControl("unitField", "_all");
+  const [cvrStep, setCvrStep] = useDashboardControl("cvrStep", 2);
+  const [weekdayAdj, setWeekdayAdj] = useDashboardControl("weekdayAdj", false);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -84,7 +86,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
         data: cvrData,
         borderColor: CHART_THEME.primary,
         backgroundColor: getCssVar("--chart-primary-soft") || "rgba(143,177,255,0.12)",
-        fill: true,
+        fill: false,
         tension: 0.2,
         pointRadius: ptR,
         pointBackgroundColor: ptColors,
@@ -110,11 +112,11 @@ export default function FunnelTab({ locale = "ko" } = {}) {
         maintainAspectRatio: false,
         plugins: {
           ...chartCommonOpts().plugins,
-          legend: { labels: { color: getCssVar("--text-muted"), font: { size: 11 } } },
+          legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "line", boxWidth: 20, color: getCssVar("--text-muted"), font: { size: 11 } } },
         },
         scales: {
           x: {
-            title: { display: true, text: tr("퍼널 단계", "Funnel step"), color: getCssVar("--text-muted") },
+            title: { display: true, text: tr("날짜", "Date"), color: getCssVar("--text-muted") },
             ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 12 },
             grid: { color: getCssVar("--border") },
           },
@@ -134,12 +136,12 @@ export default function FunnelTab({ locale = "ko" } = {}) {
 
   if (!hasData) {
     return (
-      <div className="tab-pane active" id="tab-funnel">
+      <DashboardTabLayout className="tab-pane active" id="tab-funnel">
         <section className="block" id="s-funnel-wow">
           <h2 className="section-title">{tr("퍼널 진단", "Funnel diagnosis")}</h2>
           <p className="muted">{tr("데이터 없음", "No data")}</p>
         </section>
-      </div>
+      </DashboardTabLayout>
     );
   }
 
@@ -181,7 +183,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
   const orderedFunnelCols = applyMetricView(funnelCols, funnelTableCfg, (col) => col.k);
 
   return (
-    <div className="tab-pane active" id="tab-funnel">
+    <DashboardTabLayout className="tab-pane active" id="tab-funnel">
       {/* §1 주간 변화(WoW) */}
       <section className="block" id="s-funnel-wow">
         {!c.wow ? (
@@ -262,7 +264,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
           })}
         />
         <div className="ab-pillgroup" style={{ margin: 0 }}>
-          <span className="ab-pillgroup-label">§3 {tr("요일", "Weekday")}</span>
+          <span className="ab-pillgroup-label">{tr("요일 보정", "Weekday adjustment")}</span>
           {c.weekdayAdjOk ? (
             <button className={`ab-pill ${adjOn ? "active" : ""}`} onClick={() => setWeekdayAdj((v) => !v)}>
               {tr("요일 보정", "Weekday adj.")} {adjOn ? "ON" : "OFF"}
@@ -390,7 +392,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       <section className="block" id="s-funnel" style={{ marginTop: "24px" }}>
         <div className="section-head">
           <h2 className="section-title">{tr("전체 퍼널 단계 표", "Full funnel stage table")}</h2>
-          <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
+          <button className="ab-pill dashboard-legacy-edit" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
         </div>
         <DataTable
           ariaLabel={tr("전체 퍼널 단계", "Full funnel stages")}
@@ -437,6 +439,6 @@ export default function FunnelTab({ locale = "ko" } = {}) {
         }}
       />
       <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom charts")} locale={locale} />
-    </div>
+    </DashboardTabLayout>
   );
 }

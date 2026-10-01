@@ -1,4 +1,4 @@
-import { buildVocabulary, missingRequirements } from "@/lib/vocabulary/vocabulary";
+import { buildVocabulary, missingEntryRequirements } from "@/lib/vocabulary/vocabulary";
 import { FILE_NAME_PATTERNS, PNG_HEADER_MODES, REPORT_SECTIONS } from "@/lib/analysis-export/exportOptions";
 
 // 레시피 = 유저가 고른 단어(단계)의 순서 목록(docs/result-autonomy-spec.md §2).
@@ -202,12 +202,11 @@ export function foldSteps(steps, vocabulary, spec = {}, context = null) {
     .map((step, order) => ({ step, order, phase: vocab.get(step.id).phase ?? 0 }))
     .sort((a, b) => a.phase - b.phase || a.order - b.order)
     .map((item) => item.step);
-  // context(mappedFields)가 주어지면 필요한 컬럼이 없는 단계도 거절한다 — 다음 기간 CSV에
+  // context(mappedFields·headers)가 주어지면 필요한 컬럼이 없는 단계도 거절한다 — 다음 기간 CSV에
   // 그 컬럼이 빠졌을 때 칩은 남기되 조용히 무시하지 않고 이유를 보이게.
-  const mappedFields = context?.mappedFields ? new Set(context.mappedFields) : null;
   for (const step of ordered) {
     const entry = vocab.get(step.id);
-    if (mappedFields && missingRequirements(entry.requires, mappedFields).length) {
+    if (context && missingEntryRequirements(entry, step.params, context).length) {
       rejected.push({ step, code: "MISSING_FIELD" });
       continue;
     }

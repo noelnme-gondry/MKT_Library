@@ -1,12 +1,25 @@
 "use client";
 import { FigureHead } from "@/components/ds/FigurePngButton";
-import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
+import { allocationAccountSteps } from "@/lib/recipe/allocationRecipe";
+import { useAllocationRecipe } from "@/lib/recipe/useAllocationRecipe";
+import { useAccountRecipes } from "@/lib/recipe/useAccountRecipes";
+import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
+import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
+import { localizedTool } from "@/lib/toolConnections";
+import { figureExportSettings, exportLimitations } from "@/lib/analysis-export/exportOptions";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
+import AllocationChartCountries from "@/components/tools/AllocationChartCountries";
+import { allocationScenarioView } from "@/lib/analysis-results/allocationPresentation";
+import AllocationDistribution from "@/components/tools/AllocationDistribution";
+import AllocationScopeControl from "@/components/tools/AllocationScopeControl";
+import ResultPeriodPicker from "@/components/ds/ResultPeriodPicker";
+import ModalDialog from "@/components/ds/ModalDialog";
+import { periodProblem } from "@/lib/analysisPeriod";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
-import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
+import { useAppStore, computeAnalyzeSig, findMeta } from "@/store/useDataStore";
 import PeriodSensitivityPanel from "@/components/ds/PeriodSensitivityPanel";
 import { splitObservationPeriods, comparePeriodDirections } from "@/lib/analysis-results/periodSensitivity";
 import { ALLOC_MATH } from "@/utils/allocationMath";
@@ -22,7 +35,7 @@ import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
-import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
+import { getCssVar } from "@/utils/chartUtils";
 import { showToast } from "@/utils/toast";
 import { sourceCurrencyOf } from "@/utils/format";
 import {
@@ -232,6 +245,29 @@ function buildByChannel(rows, unit, metric) {
   return m;
 }
 
+// 보기 전용 집계. 국가·채널 보기에서는 OS를 합산한 일별 비용/성과로 다시 적합한다.
+// 배분용 byChannel / modelsMap / unitField는 변경하지 않는다.
+export function buildAllocationChartPoints(rows, chartUnit, allocationUnit, metric) {
+  return chartUnit === "country_channel"
+    ? buildByChannel(rows.map(row => ({ ...row, platform: "" })), "channel", metric)
+    : buildByChannel(rows, allocationUnit, metric);
+}
+
+// 국가 선택은 표시 이름을 잘라 추측하지 않고 원본 국가 필드에서 파생한다.
+export function buildAllocationChartCountries(rows, chartUnit, allocationUnit, available) {
+  const countries = new Map();
+  for (const row of rows) {
+    const key = chartUnit === "country_channel"
+      ? getRowGroupKey({ ...row, platform: "" }, "channel")
+      : getRowGroupKey(row, allocationUnit);
+    if (!available.has(key)) continue;
+    const country = String(row.country ?? "").trim();
+    if (!countries.has(country)) countries.set(country, new Set());
+    countries.get(country).add(key);
+  }
+  return [...countries].sort(([a], [b]) => a.localeCompare(b));
+}
+
 /* 채널 포인트 → outlier 제거 + (최근 가중치) → fitBest → wrapper.
    index.html getCachedModels 이식. adv = {trendType, outlierMethod, outlierStrength, weightMode, halfLifeDays}.
    trendType="auto"면 R² 최적, 아니면 지정 타입 강제 적합. */
@@ -306,6 +342,7 @@ export function buildAllocationModels(byChannel, adv, modelOverrides = {}) {
 // This diagnostic does not change the primary allocation or its math.
 export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency }) {
   const periods = splitObservationPeriods(rows);
+  const budgetEvidence = [];
   const results = periods.map((period) => {
     const byChannel = buildByChannel(period.rows, unitField, effectiveMetric);
     const modelsMap = buildAllocationModels(byChannel, adv, groupModels);
@@ -315,6 +352,7 @@ export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, 
     const currentSpends = Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0]));
     const allocation = allocMode === "b" ? calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currentSpends }) : calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh });
     const funded = !limits.unavailableChannels.length && plannedDailyBudget <= limits.maxBudget && isAllocationFullyFunded({ allocation, budget: plannedDailyBudget, currency });
+    budgetEvidence.push({ maxSupportedBudget: limits.maxBudget, allocatedBudget: allocation.items.reduce((sum, item) => sum + item.cost, 0), budgetFeasible: funded, unavailableModels: limits.unavailableChannels.length });
     return new Map([...modelsMap].map(([name, model]) => {
       const cost = allocation.items.find((item) => item.channel === name)?.cost;
       const current = historyByCh[name]?.totalCost;
@@ -323,13 +361,14 @@ export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, 
       const delta = cost - current;
       const direction = funded && enough && inRange && Number.isFinite(current)
         ? Math.abs(delta) <= Math.max(0.01, current * 1e-6) ? "hold" : delta > 0 ? "increase" : "decrease" : null;
-      return [name, { direction, n: model?.kept?.length || 0, min: model?.xMin, max: model?.xMax }];
+      const reason = !funded ? "budget" : !enough ? "sample" : !inRange ? "range" : !Number.isFinite(current) ? "baseline" : null;
+      return [name, { direction, current, planned: cost, reason, n: model?.kept?.length || 0, min: model?.xMin, max: model?.xMax }];
     }));
   });
   // A different channel universe changes the optimization problem, not just the period.
   const complete = results[0].size === results[1].size && [...results[0].keys()].every((name) => results[1].has(name));
-  if (!complete) for (const result of results) for (const value of result.values()) value.direction = null;
-  return { periods: periods.map(({ start, end }) => ({ start, end })), rows: comparePeriodDirections(...results) };
+  if (!complete) for (const result of results) for (const value of result.values()) { value.direction = null; value.reason = "universe"; }
+  return { periods: periods.map(({ start, end }, i) => ({ start, end, ...budgetEvidence[i] })), rows: comparePeriodDirections(...results) };
 }
 
 /* 산점도(점+추세선) Chart.js datasets 빌더 — Step2(단일 단위) · Step3(다중 채널) 공유.
@@ -362,6 +401,7 @@ export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normaliz
         .map((p) => norm(p.x, p.y))
         .filter((v) => v && isFinite(v.x) && isFinite(v.y));
       datasets.push({
+        entity: ch,
         label: `${ch} (Points)`,
         data: ptData,
         backgroundColor: color,
@@ -393,6 +433,7 @@ export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normaliz
         }
       }
       datasets.push({
+        entity: ch,
         label: `${ch} · ${model.type}`,
         data: trendPts,
         backgroundColor: color,
@@ -422,80 +463,6 @@ function toggleInSet(prev, value, allValues) {
   return cur;
 }
 
-// ── ★2 Step3 빠른 필터 바 — 드롭다운(전체 포함) + [적용] ────────────────────
-// 요약칩(읽기전용)을 인라인 드롭다운으로 교체. draft 로컬 상태라 드롭다운을 바꿔도
-// [적용] 누르기 전엔 결과가 안 변함(step3 재계산 X). 적용 시 부모 applyFiltersWith가
-// 시그 비교 → 바뀌었으면 재검증(Step2), 안 바뀌었으면 그대로 유지(★1). 컴포넌트라
-// step3 재진입마다 draft가 현재 applied 값으로 리셋(effect 불필요).
-function AllocQuickFilterBar({ applied, filterOptions, objectives, onApply, locale = "ko" }) {
-  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
-  const toSel = (v) => (v == null ? "__all__" : [...v][0] || "__all__");
-  const [objective, setObjective] = useState(applied.objective);
-  const [unitField, setUnitField] = useState(applied.unitField);
-  const [country, setCountry] = useState(toSel(applied.countries));   // "__all__" | 단일국가
-  const [channel, setChannel] = useState(toSel(applied.channels));    // "__all__" | 단일채널
-  const [platform, setPlatform] = useState(applied.platform);
-
-  const singleCountry = unitField === "channel" || unitField === "campaign_name";
-  const selStyle = { fontSize: "var(--fs-xs)", padding: "3px 6px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface-container-lowest)", color: "var(--text-1)", fontWeight: 600 };
-  const lbl = { fontSize: "var(--fs-xs)", color: "var(--text-muted)" };
-
-  const apply = () => {
-    const countries = country === "__all__" ? null : new Set([country]);
-    const channels = channel === "__all__" ? null : new Set([channel]);
-    onApply({ objective, unitField, countries, channels, platform });
-  };
-  const dirty = objective !== applied.objective || unitField !== applied.unitField
-    || country !== toSel(applied.countries) || channel !== toSel(applied.channels) || platform !== applied.platform;
-
-  return (
-    <div style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", marginTop: "10px", fontSize: "var(--fs-xs)", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-      <span style={lbl}>{tr("목표", "Goal")}</span>
-      <select style={selStyle} value={objective || ""} onChange={(e) => setObjective(e.target.value)}>
-        {Object.entries(objectives).map(([k, o]) => <option key={k} value={k}>{o.short} {o.arrow}</option>)}
-      </select>
-      <span style={lbl}>{tr("단위", "Unit")}</span>
-      <select style={selStyle} value={unitField} onChange={(e) => setUnitField(e.target.value)}>
-        <option value="country">{tr("국가별", "By country")}</option>
-        <option value="channel">{tr("국가 × 채널별", "Country × channel")}</option>
-        <option value="campaign_name">{tr("국가 × 채널 × 캠페인별", "Country × channel × campaign")}</option>
-      </select>
-      {filterOptions.hasCountry && (
-        <>
-          <span style={lbl}>{tr("국가", "Country")}</span>
-          <select style={selStyle} value={country === "__all__" && singleCountry ? (filterOptions.countries[0] || "") : country} onChange={(e) => setCountry(e.target.value)}>
-            {!singleCountry && <option value="__all__">{tr("전체", "All")}</option>}
-            {filterOptions.countries.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </>
-      )}
-      {filterOptions.hasChannel && (
-        <>
-          <span style={lbl}>{tr("채널", "Channel")}</span>
-          <select style={selStyle} value={channel} onChange={(e) => setChannel(e.target.value)}>
-            <option value="__all__">{tr("전체", "All")}</option>
-            {filterOptions.channels.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </>
-      )}
-      {filterOptions.hasPlatform && (
-        <>
-          <span style={lbl}>OS</span>
-          <select style={selStyle} value={platform} onChange={(e) => setPlatform(e.target.value)}>
-            <option value="all">{tr("전체 OS", "All OS")}</option>
-            <option value="android">Android</option>
-            <option value="ios">iOS</option>
-          </select>
-        </>
-      )}
-      <button className={`btn ${dirty ? "primary" : "secondary"}`} style={{ padding: "4px 12px", fontSize: "var(--fs-xs)", marginLeft: "auto" }} onClick={apply}>
-        {dirty ? tr("적용 (재검증)", "Apply (re-verify)") : tr("적용됨", "Applied")}
-      </button>
-    </div>
-  );
-}
-
-
 export default function BudgetAllocation({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const objI18n = locale === "en" ? ALLOC_OBJECTIVES_EN : ALLOC_OBJECTIVES;
@@ -509,57 +476,90 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       .replace("· 정규화 (0~1)", "· normalized (0–1)"),
   }), [locale]);
   const csvData = useAppStore((state) => state.csvData);
+  const recipeControl = useAllocationRecipe(csvData);
+  const accountRecipes = useAccountRecipes("5-3", recipeControl.vocabulary);
+  const recipe = recipeControl.fold.state;
+  const hiddenBlocks = recipe.view.hidden;
   // 전역 분모 기준(설치/가입) — 효율 계열 도구(5-2/5-21/5-22/5-3)가 공유(§12.18).
   const denomBasis = useAppStore((state) => state.denomBasis);
   // 결과-먼저 착지(PRISM 뷰 P2): 데이터가 있으면 위저드(step 1)가 아니라 결과(step 3)로
   // 바로 진입한다. objective 미선택은 basis 기본값으로 폴백(effectiveObjective/metric)이라
   // allocation이 즉시 계산된다. 상세 설정(step 1)·곡선 검증(step 2)은 컨트롤 바·링크로 여전히 접근.
   const [step, setStep] = useState(3);
-  const [unitField, setUnitField] = useState("channel");
+  const [methodOpen, setMethodOpen] = useState(false);
+  const methodTrigger = useRef(null);
+  const { analysisRange: analysisRange } = recipeControl.controls;
+  const { analysisRange: setAnalysisRange } = recipeControl.setters;
+  const { unitField: unitField } = recipeControl.controls;
+  const { unitField: setUnitField } = recipeControl.setters;
 
   // PRISM의 단일 의사결정 입력: 총 예산 또는 효율 목표. 채널별 금액을 고정하는
   // 수동 편집기는 배분 결과를 왜곡하므로 이 화면에서는 제공하지 않는다.
-  const [planningBasis, setPlanningBasis] = useSavedToolInput("5-3", "planningBasis", "budget"); // budget | target
-  const [targetValue, setTargetValue] = useSavedToolInput("5-3", "targetValue", null);
-  const [budgetPeriod, setBudgetPeriod] = useSavedToolInput("5-3", "budgetPeriod", "daily"); // daily | monthly
-  const [budget, setBudget] = useSavedToolInput("5-3", "budget", "");
+  const { planningBasis: planningBasis } = recipeControl.controls;
+  const { planningBasis: setPlanningBasis } = recipeControl.setters; // budget | target
+  const { targetValue: targetValue } = recipeControl.controls;
+  const { targetValue: setTargetValue } = recipeControl.setters;
+  const { budgetPeriod: budgetPeriod } = recipeControl.controls;
+  const { budgetPeriod: setBudgetPeriod } = recipeControl.setters; // daily | monthly
+  const { budget: budget } = recipeControl.controls;
+  const { budget: setBudget } = recipeControl.setters;
   const [budgetAutoDefaulted, setBudgetAutoDefaulted] = useState(false); // 최초 진입 시 최근 일예산 합계로 1회 채움
-  const [recentDays, setRecentDays] = useSavedToolInput("5-3", "recentDays", 7);
-  const [allocMode, setAllocMode] = useSavedToolInput("5-3", "allocMode", "c"); // c | b
+  const { recentDays: recentDays } = recipeControl.controls;
+  const { recentDays: setRecentDays } = recipeControl.setters;
+  const { allocMode: allocMode } = recipeControl.controls;
+  const { allocMode: setAllocMode } = recipeControl.setters; // c | b
   // 적합이 얇은 채널로 예산을 옮기지 않는다(§8.6 입증책임 비대칭 · product-ssot D-14).
   // 신뢰도는 이미 R²와 데이터 점 수로 계산하고 있었지만 **표시만** 하고 배분에는
   // 쓰지 않았다 — 가장 불확실한 추정치로 돈을 옮기는 상태였다. 기본 ON.
-  const [holdLowConfidence, setHoldLowConfidence] = useSavedToolInput("5-3", "holdLowConfidence", true);
+  const { holdLowConfidence: holdLowConfidence } = recipeControl.controls;
+  const { holdLowConfidence: setHoldLowConfidence } = recipeControl.setters;
   // 효율 CSV 숫자는 환산하지 않는다. 업로드 때 선언한 원본 통화가 포맷과
   // 최적화 step의 단위이며, 전역 값은 구 세션 데이터용 fallback일 뿐이다.
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const currency = sourceCurrencyOf(csvData, displayCurrency);
 
   // 최적화 목표 (필수) — metric을 파생. install|action|roas
-  const [objective, setObjective] = useState(null);
+  const { objective: objective } = recipeControl.controls;
+  const { objective: setObjective } = recipeControl.setters;
   // 국가/채널/OS 필터 (Step 1 위저드)
-  const [selectedCountries, setSelectedCountries] = useState(null); // null=전체, Set
-  const [selectedChannelsFilter, setSelectedChannelsFilter] = useState(null); // null=전체, Set
-  const [platformFilter, setPlatformFilter] = useState("all"); // all|android|ios
+  const { selectedCountries: selectedCountries } = recipeControl.controls;
+  const { selectedCountries: setSelectedCountries } = recipeControl.setters; // null=전체, Set
+  const { selectedChannelsFilter: selectedChannelsFilter } = recipeControl.controls;
+  const { selectedChannelsFilter: setSelectedChannelsFilter } = recipeControl.setters; // null=전체, Set
+  const { platformFilter: platformFilter } = recipeControl.controls;
+  const { platformFilter: setPlatformFilter } = recipeControl.setters; // all|android|ios
 
   // 고급 추세선 컨트롤 (Step 2/3 상세 설정)
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [trendType, setTrendType] = useSavedToolInput("5-3", "trendType", "auto"); // auto|linear|log|poly2|power
-  const [weightMode, setWeightMode] = useSavedToolInput("5-3", "weightMode", "none"); // none|linear|exponential
-  const [outlierMethod, setOutlierMethod] = useSavedToolInput("5-3", "outlierMethod", "iqr"); // none|iqr|modz
-  const [outlierStrength, setOutlierStrength] = useSavedToolInput("5-3", "outlierStrength", "standard"); // standard|strong|very_strong
-  const [normalizeMode, setNormalizeMode] = useState("raw"); // raw|log|minmax|robust (차트 표시 전용)
-  const [hidePoints, setHidePoints] = useState(false); // 추세선만 표시
+  const { trendType: trendType } = recipeControl.controls;
+  const { trendType: setTrendType } = recipeControl.setters; // auto|linear|log|poly2|power
+  const { weightMode: weightMode } = recipeControl.controls;
+  const { weightMode: setWeightMode } = recipeControl.setters; // none|linear|exponential
+  const { outlierMethod: outlierMethod } = recipeControl.controls;
+  const { outlierMethod: setOutlierMethod } = recipeControl.setters; // none|iqr|modz
+  const { outlierStrength: outlierStrength } = recipeControl.controls;
+  const { outlierStrength: setOutlierStrength } = recipeControl.setters; // standard|strong|very_strong
+  const { normalizeMode: normalizeMode } = recipeControl.controls;
+  const { normalizeMode: setNormalizeMode } = recipeControl.setters; // raw|log|minmax|robust (차트 표시 전용)
+  const { hidePoints: hidePoints } = recipeControl.controls;
+  const { hidePoints: setHidePoints } = recipeControl.setters; // 추세선만 표시
   // 차트 표시 대상 채널 (예산 분배와 무관, 차트에만). null=자동 상위6, Set=명시
-  const [chartChannels, setChartChannels] = useState(null);
+  const { chartChannels: chartChannels } = recipeControl.controls;
+  const { chartChannels: setChartChannels } = recipeControl.setters;
+  const { lowerChartCountries: lowerChartCountries } = recipeControl.controls;
+  const { lowerChartCountries: setLowerChartCountries } = recipeControl.setters;
+  const { chartUnit: chartUnit } = recipeControl.controls;
+  const { chartUnit: setChartUnit } = recipeControl.setters;
 
   // ★3 §3 상세 표 롤업 뷰 레벨. detail=finest(편집형) · country_channel · country · all(전체).
   // 분배는 항상 finest에서 계산, 롤업은 표시층 합산(레이트는 Σcost/Σresults 재계산, §8).
-  const [rollupLevel, setRollupLevel] = useState("detail");
+  const { rollupLevel: rollupLevel } = recipeControl.controls;
+  const { rollupLevel: setRollupLevel } = recipeControl.setters;
 
   // Step 2 검증(추세선 검증) 상태 — index.html ALLOC_STATE.verifySelectedGroup/groupModels/groupVerification 이식.
   const [verifySelectedGroup, setVerifySelectedGroup] = useState(null); // 좌측 목록에서 선택된 단위
-  const [groupModels, setGroupModels] = useState({}); // { unit: "linear"|"log"|"poly2"|"power" } — 단위별 모델 override
+  const { groupModels: groupModels } = recipeControl.controls;
+  const { groupModels: setGroupModels } = recipeControl.setters; // { unit: "linear"|"log"|"poly2"|"power" } — 단위별 모델 override
   const [groupVerification, setGroupVerification] = useState({}); // { unit: "verified" }
 
   const hasRawData = csvData?.raw?.length > 0;
@@ -572,11 +572,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const verifyChartInstance = useRef(null);
   const scenarioChartRef = useRef(null);
   const scenarioChartInstance = useRef(null);
-  const barChartRef = useRef(null);
-  const barChartInstance = useRef(null);
   const curveChartRef = useRef(null);
   const curveChartInstance = useRef(null);
-  const [curveChannel, setCurveChannel] = useState(null); // §6 반응 곡선 선택 채널
+  const { curveChannel: curveChannel } = recipeControl.controls;
+  const { curveChannel: setCurveChannel } = recipeControl.setters; // §6 반응 곡선 선택 채널
 
   // 매핑된 표준 필드 감지
   const mappedKeys = useMemo(
@@ -639,6 +638,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     [hasData, csvData],
   );
 
+  const observationDates = useMemo(() => [...new Set(allRows.map(row => row.date).filter(date => /^\d{4}-\d{2}-\d{2}$/.test(date || "")))].sort(), [allRows]);
+  const activeRange = !periodProblem(analysisRange) ? analysisRange : { start: observationDates[0] || "", end: observationDates.at(-1) || "" };
+
   // 필터 옵션 자동 감지 (국가/채널/OS + cascading). index.html detectAllocFilterOptions 이식.
   const filterOptions = useMemo(() => {
     const countries = new Set();
@@ -675,7 +677,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // 필터 적용된 rows. index.html getMappedRowsForAlloc 이식.
   const rows = useMemo(() => {
-    let out = allRows;
+    let out = periodProblem(analysisRange) ? allRows : allRows.filter(row => row.date >= analysisRange.start && row.date <= analysisRange.end);
     if (selectedCountries && selectedCountries.size > 0)
       out = out.filter((r) => selectedCountries.has(String(r.country || "").trim()));
     if (selectedChannelsFilter && selectedChannelsFilter.size > 0)
@@ -688,7 +690,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         return true;
       });
     return out;
-  }, [allRows, selectedCountries, selectedChannelsFilter, platformFilter]);
+  }, [allRows, analysisRange, selectedCountries, selectedChannelsFilter, platformFilter]);
 
   // 고급 컨트롤 묶음 (모델 재적합 트리거)
   const adv = useMemo(
@@ -701,6 +703,17 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     () => buildByChannel(rows, unitField, effectiveMetric),
     [rows, unitField, effectiveMetric],
   );
+  const chartByChannel = useMemo(
+    () => step === 3 ? buildAllocationChartPoints(rows, chartUnit, unitField, effectiveMetric) : new Map(),
+    [step, rows, chartUnit, unitField, effectiveMetric],
+  );
+  const chartCountryGroups = useMemo(
+    () => buildAllocationChartCountries(rows, chartUnit, unitField, chartByChannel),
+    [rows, chartUnit, unitField, chartByChannel],
+  );
+  const lowerCountryGroups = useMemo(() => buildAllocationChartCountries(rows, "allocation", unitField, byChannel), [rows, unitField, byChannel]);
+  const lowerChartEntities = useMemo(() => new Set(lowerCountryGroups.filter(([country]) => lowerChartCountries == null || lowerChartCountries.has(country)).flatMap(([, entities]) => [...entities])), [lowerCountryGroups, lowerChartCountries]);
+  const lowerScopeLabel = lowerCountryGroups.filter(([country]) => lowerChartCountries == null || lowerChartCountries.has(country)).map(([country]) => country || tr("국가 미지정", "Unspecified")).join(" · ") || tr("선택 없음", "None selected");
   // Step 2에서 확정한 채널별 모델을 Step 3의 실제 분배에도 그대로 사용한다.
   // 이전에는 검증 산점도만 override를 반영해, "Linear로 확정"해도 자동 모델로
   // 예산이 계산되는 화면-계산 불일치가 있었다.
@@ -1050,13 +1063,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     });
   }, [allocation.items, effectiveMetric, historyByCh, recentDays]);
 
+  const visibleAllocationItems = useMemo(() => allocation.items.filter(item => lowerChartEntities.has(item.channel)), [allocation.items, lowerChartEntities]);
+
   // §6 반응 곡선(PRISM P4): 선택 채널 없거나 사라지면 계획 지출 최대 채널로 폴백.
   const curveCh = useMemo(() => {
-    const its = allocation.items;
+    const its = visibleAllocationItems;
     if (!its.length) return null;
     if (curveChannel && its.some((it) => it.channel === curveChannel)) return curveChannel;
     return [...its].sort((a, b) => (b.cost || 0) - (a.cost || 0))[0].channel;
-  }, [allocation.items, curveChannel]);
+  }, [visibleAllocationItems, curveChannel]);
 
   // 선택 채널의 지출→결과 반응 곡선 + now/plan/knee/onset 마커(순수 헬퍼, 엔진 불변).
   const responseCurve = useMemo(() => {
@@ -1200,9 +1215,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   }, [allocation.items, effectiveMetric, historyByCh, currency, tr]);
 
   // What-if 시나리오 데이터
-  const scenarios = useMemo(() => {
+  const allScenarios = useMemo(() => {
     if (!(plannedDailyBudget > 0)) return [];
     return computeAllocScenarios({
+      includeItems: true,
       modelsMap,
       dailyBudget: plannedDailyBudget,
       metric: effectiveMetric,
@@ -1223,6 +1239,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     historyByCh,
     currentSpends,
   ]);
+
+  const scenarios = useMemo(() => allocationScenarioView(allScenarios, lowerChartCountries == null ? null : lowerChartEntities), [allScenarios, lowerChartCountries, lowerChartEntities]);
 
   // Step 2 검증 단위 목록 정렬(데이터 수 desc) + 유효하지 않으면 첫 항목으로 폴백(render-derived, setState 없음).
   const verifyGroups = useMemo(
@@ -1316,13 +1334,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   useEffect(() => {
     if (step !== 3 || !hasData || !chartRef.current) return;
 
-    const byCh = buildByChannel(rows, unitField, effectiveMetric);
-    // 차트 표시 대상: 명시 선택(chartChannels) 우선, 없으면 최근 지출 상위 6.
+    const byCh = chartByChannel;
+    // 차트 표시 대상: 명시 선택 우선, 기본은 국가·채널 전체.
     const ranked = ALLOC_MATH.sortChannelsByRecentCost(byCh, recentDays);
     const topChannels =
-      chartChannels && chartChannels.size > 0
+      chartChannels
         ? ranked.filter((ch) => chartChannels.has(ch))
-        : ranked.slice(0, 6);
+        : ranked;
 
     const isRoasView = effectiveMetric === "revenue_d7";
     // ROAS 뷰는 항상 raw (getAxisLabels와 동일 규칙). 그 외엔 사용자 정규화 모드.
@@ -1332,6 +1350,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       hidePoints,
       normalizeMode: nmode,
       isRoas: isRoasView,
+      colorOf: ch => CHART_THEME.series[ranked.indexOf(ch) % CHART_THEME.series.length],
     });
 
     const ctx = chartRef.current.getContext("2d");
@@ -1355,12 +1374,31 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         animation: false,
         plugins: {
           legend: {
-            position: "right",
+            position: "bottom",
+            onClick: (_event, item, legend) => {
+              const entity = legend.chart.data.datasets[item.datasetIndex].entity;
+              setChartChannels(prev => {
+                const next = new Set(prev || ranked);
+                if (next.has(entity)) next.delete(entity); else next.add(entity);
+                return next;
+              });
+            },
             labels: {
               color: CHART_THEME.text,
               font: { family: "Inter", size: 10 },
               usePointStyle: true,
               boxWidth: 8,
+              boxHeight: 8,
+              pointStyleWidth: 14,
+              generateLabels: chart => {
+                const seen = new Set();
+                return Chart.defaults.plugins.legend.labels.generateLabels(chart).filter(label => {
+                  const entity = chart.data.datasets[label.datasetIndex].entity;
+                  if (seen.has(entity)) return false;
+                  seen.add(entity);
+                  return true;
+                }).map(label => ({ ...label, text: chart.data.datasets[label.datasetIndex].entity, pointStyle: "line", strokeStyle: chart.data.datasets[label.datasetIndex].backgroundColor, lineWidth: 2 }));
+              },
             },
           },
           tooltip: {
@@ -1404,7 +1442,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         chartInstance.current.destroy();
       }
     };
-  }, [step, hasData, rows, unitField, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels]);
+  }, [step, hasData, chartByChannel, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels, hiddenBlocks, setChartChannels]);
 
   // What-if 시나리오 차트 (예산 배수 → 예상 결과수 곡선). index.html renderAllocScenarioChart 이식.
   useEffect(() => {
@@ -1438,11 +1476,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             data: scenarios.map((s) => Math.round(s.totResults)),
             borderColor: CHART_THEME.primary,
             backgroundColor: getCssVar("--chart-primary-soft") || "rgba(143,177,255,0.18)",
-            fill: true,
-            tension: 0.3,
-            pointRadius: scenarios.map((s) => (s.m === 1.0 ? 6 : 3)),
+            fill: false,
+            tension: 0,
+            borderWidth: 2,
+            pointBorderColor: CHART_THEME.primary,
+            pointBorderWidth: 2,
+            pointRadius: scenarios.map((s) => (s.m === 1.0 ? 5 : 3)),
             pointBackgroundColor: scenarios.map((s) =>
-              s.m === 1.0 ? "#fbbf24" : "#adc6ff",
+              s.m === 1.0 ? CHART_THEME.primary : CHART_THEME.surface,
             ),
           },
         ],
@@ -1453,19 +1494,20 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         animation: false,
         plugins: {
           legend: { display: false },
+          title: { display: true, text: lowerScopeLabel, color: axisText },
           tooltip: {
             callbacks: {
               label: (c) =>
                 tr(
-                  `예산 ${fmtCurrency(scenarios[c.dataIndex].budget, currency)} → ${Math.round(scenarios[c.dataIndex].totResults).toLocaleString()} ${unitLabel}`,
-                  `Budget ${fmtCurrency(scenarios[c.dataIndex].budget, currency)} → ${Math.round(scenarios[c.dataIndex].totResults).toLocaleString()} ${unitLabel}s`
+                  `전체 예산 ${fmtCurrency(scenarios[c.dataIndex].budget, currency)} · 선택 국가 배분 ${fmtCurrency(scenarios[c.dataIndex].totCost, currency)} → ${Math.round(scenarios[c.dataIndex].totResults).toLocaleString()} ${unitLabel}`,
+                  `Total budget ${fmtCurrency(scenarios[c.dataIndex].budget, currency)} · Selected-country spend ${fmtCurrency(scenarios[c.dataIndex].totCost, currency)} → ${Math.round(scenarios[c.dataIndex].totResults).toLocaleString()} ${unitLabel}s`
                 ),
             },
           },
         },
         scales: {
           x: {
-            title: { display: true, text: tr("예산 배수 (현재 대비)", "Budget multiplier (vs current)"), color: axisText },
+            title: { display: true, text: tr("예산 배수 (선택한 계획 대비)", "Budget multiplier (vs selected plan)"), color: axisText },
             ticks: { color: axisText },
             grid: { color: axisGrid },
           },
@@ -1488,7 +1530,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         scenarioChartInstance.current = null;
       }
     };
-  }, [step, scenarios, effectiveMetric, currency, locale, tr]);
+  }, [step, scenarios, effectiveMetric, currency, locale, tr, lowerScopeLabel, hiddenBlocks]);
 
   // §6 채널 반응 곡선(PRISM P4) — 선택 채널의 지출→결과 곡선 + now/plan/knee/onset 마커.
   useEffect(() => {
@@ -1508,15 +1550,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const xMax = rc.xMax;
     const colLine = getCssVar("--chart-primary") || "#8fb1ff";
     const colMuted = getCssVar("--text-muted") || "#9aa4b2";
-    const colNow = getCssVar("--text-primary") || "#e6e9ef";
+    const colNow = CHART_THEME.muted;
     const colKnee = getCssVar("--chart-tertiary") || "#ffc56e";
     const colOnset = getCssVar("--chart-accent") || "#ff8d7e";
     const mk = rc.markers;
     const markerSet = [
       { key: "now", pt: mk.now, color: colNow, label: tr("현재", "Now") },
       { key: "plan", pt: mk.plan, color: colLine, label: tr("계획", "Plan") },
-      { key: "knee", pt: mk.knee, color: colKnee, label: tr("효율 최적", "Optimal") },
-      { key: "onset", pt: mk.onset, color: colOnset, label: tr("과포화 시작", "Over-saturation") },
+      { key: "knee", pt: mk.knee, color: colKnee, label: tr("한계효율 50% 지점", "50% marginal efficiency") },
+      { key: "onset", pt: mk.onset, color: colOnset, label: tr("한계비용 주의 기준", "Marginal-cost threshold") },
     ].filter((m) => m.pt);
     const fmtX = (v) => fmtCurrency(v, currency);
     curveChartInstance.current = new Chart(ctx, {
@@ -1528,8 +1570,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             data: rc.points.map((p) => ({ x: p.x, y: p.y })),
             borderColor: colLine,
             backgroundColor: getCssVar("--chart-primary-soft") || "rgba(143,177,255,0.14)",
-            fill: true,
-            tension: 0.25,
+            fill: false,
+            tension: 0,
             pointRadius: 0,
             borderWidth: 2,
             order: 2,
@@ -1546,9 +1588,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             data: [{ x: m.pt.x, y: m.pt.y }],
             borderColor: m.color,
             backgroundColor: m.color,
-            pointRadius: 6,
-            pointHoverRadius: 8,
-            pointStyle: m.key === "now" ? "rectRot" : "circle",
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBorderWidth: 2,
+            pointStyle: "circle",
             order: 1,
           })),
         ],
@@ -1560,9 +1603,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         parsing: false,
         interaction: { mode: "nearest", intersect: false },
         plugins: {
+          title: { display: true, text: responseCurve.channel, color: axisText },
           legend: {
             display: true,
-            labels: { color: axisText, usePointStyle: true, boxWidth: 8 },
+            labels: { color: axisText, usePointStyle: true, boxWidth: 8, boxHeight: 8, pointStyleWidth: 8, padding: 18, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(label => ({ ...label, pointStyle: label.datasetIndex === 0 ? "line" : "circle" })) },
           },
           tooltip: {
             callbacks: {
@@ -1601,95 +1645,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         curveChartInstance.current = null;
       }
     };
-  }, [step, responseCurve, effectiveMetric, currency, locale, tr]);
-
-  // §4 추천 배분 비중 — 단일 가로 스택 바 Chart.js(indexAxis:'y') 차트. index.html §4 alloc-bar 이식(CSS flexbox → canvas).
-  // 채널별 weight(%) 세그먼트를 하나의 category("배분")에 쌓아 legacy와 동일한 "한 줄 막대 + 범례" 모양 유지.
-  useEffect(() => {
-    if (step !== 3 || !hasData || !barChartRef.current) return;
-    const barItems = allocation.items || [];
-    if (!(plannedDailyBudget > 0) || barItems.length === 0) {
-      if (barChartInstance.current) {
-        barChartInstance.current.destroy();
-        barChartInstance.current = null;
-      }
-      return;
-    }
-
-    const common = chartCommonOpts();
-    const gridColor = getCssVar("--border") || common.scales.y.grid.color;
-    const tickColor = getCssVar("--text-muted") || common.scales.x.ticks.color;
-
-    const ctx = barChartRef.current.getContext("2d");
-    if (barChartInstance.current) barChartInstance.current.destroy();
-
-    barChartInstance.current = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: [tr("배분", "Allocation")],
-        datasets: barItems.map((it, i) => ({
-          label: it.channel,
-          data: [it.weight * 100],
-          backgroundColor: CHART_THEME.series[i % CHART_THEME.series.length],
-          borderWidth: 0,
-          stack: "alloc",
-        })),
-      },
-      options: {
-        indexAxis: "y",
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: {
-          legend: {
-            display: true,
-            position: "bottom",
-            labels: { color: tickColor, font: { family: "Inter", size: 11 }, usePointStyle: true, boxWidth: 8, padding: 12 },
-          },
-          tooltip: {
-            backgroundColor: CHART_THEME.surface,
-            titleColor: CHART_THEME.textPrimary,
-            bodyColor: CHART_THEME.textPrimary,
-            borderColor: CHART_THEME.border,
-            borderWidth: 1,
-            callbacks: { label: (c) => `${c.dataset.label} ${c.parsed.x.toFixed(1)}%` },
-          },
-        },
-        scales: {
-          x: {
-            stacked: true,
-            min: 0,
-            max: 100,
-            ticks: { color: tickColor, callback: (v) => `${v}%` },
-            grid: { color: gridColor },
-          },
-          y: {
-            stacked: true,
-            ticks: { display: false },
-            grid: { display: false },
-          },
-        },
-      },
-    });
-
-    // Step 전환 시 새로 마운트되는 캔버스는 최초 폭이 0으로 측정될 수 있음(§7 0px 함정) —
-    // 레이아웃 안정 후 1회 resize로 강제 재측정.
-    requestAnimationFrame(() => barChartInstance.current?.resize());
-
-    return () => {
-      if (barChartInstance.current) {
-        barChartInstance.current.destroy();
-        barChartInstance.current = null;
-      }
-    };
-  }, [step, hasData, allocation.items, plannedDailyBudget, tr]);
+  }, [step, responseCurve, effectiveMetric, currency, locale, tr, hiddenBlocks]);
 
   if (!hasData) {
     return (
-      <div className="tab-pane active" id="tab-alloc">
+      <div className="tab-pane active allocation-workspace" id="tab-alloc">
         <ToolPageShell
           locale={locale}
-          titleLevel={0}
+          titleToolId="5-3"
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
         >
           <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
@@ -1726,10 +1689,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       { v: "campaign_name", label: tr("캠페인별 (Country × Channel × Campaign)", "By campaign (Country × Channel × Campaign)"), desc: tr("가장 세분화. 캠페인 수 많을 때 국가 필터 필수", "The most granular level. A country filter is required when there are many campaigns") },
     ];
     return (
-      <div className="tab-pane active" id="tab-alloc">
+      <div className="tab-pane active allocation-workspace" id="tab-alloc">
         <ToolPageShell
           locale={locale}
-          titleLevel={0}
+          titleToolId="5-3"
+          stickyHeader={false}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip">
@@ -1885,8 +1849,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   // 고급 추세선 컨트롤 패널 (가중치·이상치 방법/강도·정규화·포인트 토글). Step 2/3 공유.
   const advancedPanel = (
     <div className="analysis-advanced-controls">
-      <button className="ab-pill" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((v) => !v)}>
-        {advancedOpen ? tr("▲ 상세 설정 닫기", "▲ Close advanced settings") : tr("▼ 상세 설정 (가중치·이상치·정규화·표시)", "▼ Advanced settings (weighting · outliers · normalization · display)")}
+      <button className="btn secondary" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((v) => !v)}>
+        {advancedOpen ? tr("상세 설정 닫기", "Close advanced settings") : tr("상세 설정 (가중치·이상치·정규화·표시)", "Advanced settings (weighting · outliers · normalization · display)")}
       </button>
       {advancedOpen && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginTop: "10px", fontSize: "var(--fs-xs)" }}>
@@ -2010,10 +1974,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     };
 
     return (
-      <div className="tab-pane active" id="tab-alloc">
+      <div className="tab-pane active allocation-workspace" id="tab-alloc">
         <ToolPageShell
           locale={locale}
-          titleLevel={0}
+          titleToolId="5-3"
+          stickyHeader={false}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip">
@@ -2186,7 +2151,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // --- Step 3: Simulation ---
   const items = allocation.items;
-  const rankedChannels = ALLOC_MATH.sortChannelsByRecentCost(byChannel, recentDays);
+  const rankedChannels = ALLOC_MATH.sortChannelsByRecentCost(chartByChannel, recentDays);
+  const chartSelectionCount = rankedChannels.filter(ch => !chartChannels || chartChannels.has(ch)).length;
+  const toggleChartTargets = targets => setChartChannels(prev => {
+    const next = new Set(prev || rankedChannels);
+    const allSelected = targets.every(ch => next.has(ch));
+    for (const ch of targets) { if (allSelected) next.delete(ch); else next.add(ch); }
+    return next;
+  });
   const unitLabel = getMetricUnitLabel(effectiveMetric, locale);
   const metricLabel = getCostMetricLabel(effectiveMetric);
   const roas = isRoasMetric(effectiveMetric);
@@ -2391,27 +2363,30 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   })();
 
   const step3Toc = [
-    { id: "s-controls", title: tr("PRISM 조정", "PRISM controls") },
-    { id: "s-result", title: tr("추천 결과", "Recommendation") },
-    { id: "s-scatter", title: tr("곡선 근거", "Curve evidence") },
-    { id: "s-table", title: tr("상세", "Detail") },
-    { id: "s-bar", title: tr("배분", "Allocation") },
-    { id: "s-scenario", title: tr("시나리오", "Scenarios") },
-    { id: "s-algo", title: tr("알고리즘", "Algorithm") },
+    { id: "s-controls", title: tr("계획 설정", "Plan settings") },
+    { id: "s-result", title: tr("현재·변경안", "Current vs. plan") },
+    { id: "s-scatter", title: tr("효율·추세선", "Efficiency & trends") },
+    { id: "s-table", title: tr("채널별 배분", "Channel allocation") },
+    { id: "s-bar", title: tr("배분 비중", "Allocation share") },
+    { id: "s-scenario", title: tr("예산 시나리오", "Budget scenarios") },
+    { id: "s-response", title: tr("채널 응답곡선", "Channel response") },
+    { id: "s-algo", title: tr("계산 기준", "Calculation details") },
   ];
   const step3StickyFilter = (
-    <>
-      <AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>
-      {/* ★2 요약칩 → 드롭다운+적용 (토글 칩 바로 아래). draft라 적용 전엔 결과 불변. */}
-      <AllocQuickFilterBar
-        key={`objective-${objective ?? "__default__"}-${basisObjective}`}
-        applied={{ objective, unitField, countries: selectedCountries, channels: selectedChannelsFilter, platform: platformFilter }}
-        filterOptions={filterOptions}
-        objectives={ALLOC_OBJECTIVES}
-        onApply={applyFiltersWith}
-        locale={locale}
-      />
-    </>
+    <div className="allocation-context-controls">
+      <RecipeCommandInput vocabulary={recipeControl.vocabulary} context={{ toolId: "5-3", toolSpec: recipeControl.spec, mappedFields: mappedKeys, currentLevels: [] }} steps={recipeControl.steps} onStepsChange={recipeControl.setSteps} onApplyPreset={recipeControl.applyPreset} isStepVisible={step => !step.id.startsWith("allocation.")} presets={{ ...accountRecipes, save: (name, steps) => accountRecipes.save(name, allocationAccountSteps(recipe, steps)) }} rejected={recipeControl.fold.rejected} locale={locale} label={tr("보기·다운로드 설정", "View & download settings")} />
+      <div className="allocation-context-controls__scope">
+        {observationDates.length > 0 && <ResultPeriodPicker label={tr("분석 기간", "Analysis period")} range={activeRange} locale={locale} onApply={range => {
+          setAnalysisRange(range); setGroupModels({}); setGroupVerification({}); setAppliedSig(null); setVerifiedSig(null);
+        }} />}
+        <AllocationScopeControl
+          key={JSON.stringify([objective, unitField, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
+          applied={{ objective: effectiveObjective, unitField, countries: selectedCountries, channels: selectedChannelsFilter, platform: platformFilter }}
+          filterOptions={filterOptions} onApply={applyFiltersWith} locale={locale}
+        />
+      </div>
+      <div className="allocation-context-controls__display"><BasisCurrencyToggleBar locale={locale} showBasis={false} /></div>
+    </div>
   );
   const planningObjectiveKeys = ["install", "action", "roas"];
   const planningObjectiveControl = (
@@ -2446,25 +2421,27 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   );
 
   return (
-    <div className="tab-pane active" id="tab-alloc">
-      {/* 헤더는 라우터가 주입하는 ToolIntro(단일 h1+설명+크로스링크)가 담당 — 셸 제목/요약은
-          중복이라 제거(결과-먼저: 컨트롤 바 바로 아래에 스코어카드·결론). 알고리즘 설명은
-          하단 §알고리즘 섹션(s-algo)에 유지. 셸은 sticky 컨트롤 바 + 칩만. */}
+    <div className="tab-pane active allocation-workspace" id="tab-alloc">
+      <AnalysisExportProvider value={figureExportSettings({ options: recipe.export, toolId: "5-3", toolTitle: locale === "en" ? localizedTool("5-3", "en")?.title : findMeta("5-3")?.title, scope: { dateStart: activeRange.start, dateEnd: activeRange.end }, resultState: canStorePlan ? "ready" : "insufficient", source: { importSource: isDemoData(csvData) ? "demo" : csvData.importSource, fileName: isDemoData(csvData) ? "" : csvData.fileName }, projectName: () => isDemoData(csvData) ? "" : useAppStore.getState().projects.find(project => project.id === useAppStore.getState().activeProjectId)?.name })}>
       <ToolPageShell
         locale={locale}
+        titleToolId="5-3"
+        title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
+        stickyHeader={false}
         chips={
           <span className="chip">
             <span className="dot"></span>{csvData?.fileName || ""}
           </span>
         }
-        toc={step3Toc}
+        toc={step3Toc.filter(item => !hiddenBlocks.includes(item.id))}
         stickyFilter={step3StickyFilter}
       >
+      <section className="allocation-data" aria-label={tr("데이터·매핑", "Data & mapping")}><CsvUploader toolId="5-3" locale={locale} /></section>
       <section className="block prism-driver" id="s-controls" aria-labelledby="prism-driver-title">
         <div className="prism-driver__head">
           <div>
             <h2 className="section-title" id="prism-driver-title">{tr("무엇을 정할까요?", "What do you want to set?")}</h2>
-            <p>{tr("예산이나 효율 목표 하나만 정하면, PRISM이 채널별 금액을 자동으로 계산합니다. 채널 행은 결과표이며 직접 조정하지 않습니다.", "Set one portfolio constraint — budget or efficiency target — and PRISM calculates the channel allocation. Channel rows are read-only results, not manual controls.")}</p>
+            <p>{tr("총 예산 또는 목표 효율을 정하고, 현재 배분과 변경안의 비용·성과를 비교하세요.", "Set a total budget or efficiency target, then compare the current allocation with the plan’s spend and projected outcomes.")}</p>
           </div>
           <div className="prism-driver__mode" role="group" aria-label={tr("PRISM 조정 기준", "PRISM planning basis")}>
             <button
@@ -2627,7 +2604,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               <button key={days} type="button" className={recentDays === days ? "active" : ""} aria-pressed={recentDays === days} onClick={() => setRecentDays(days)}>{tr(`${days}일`, `${days}d`)}</button>
             ))}
           </div>
-          <small>{tr("최근 N일 평균으로 반응 곡선과 기준 KPI를 계산", "Response curves and baseline KPI use the last N-day average")}</small>
+          <small>{tr("현재 배분·기준 KPI는 최근 N일의 일평균입니다. 곡선은 분석 기간 전체로 적합합니다.", "Current allocation and baseline KPI use the last N-day daily average; curves use the full analysis period.")}</small>
         </div>
 
         <section data-information-section="" className="prism-driver__method">
@@ -2642,8 +2619,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 (관측 최대 지출 · ∩형 꼭짓점)으로 반영하지만, 상한 안에서 나누는
                 비율은 최근 평균 CPR의 역수다 — 한계효율이 떨어지는 구간에서도
                 평균이 좋으면 계속 배분된다. */}
-            <details className="allocation-method-details">
-              <summary>{tr("배분 방식 설명", "About the allocation method")}</summary>
+            <div className="allocation-method-details" aria-label={tr("배분 방식 설명", "About the allocation method")}>
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 10px" }}>
               {allocMode === "c"
                 ? tr(
@@ -2655,7 +2631,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   "Marginal-utility greedy fills the channel whose next unit of spend produces the most results. It can disagree with average-efficiency ranking — a saturated channel drops back even when its average looks good.",
                 )}
             </p>
-            </details>
+            </div>
               {/* 0원부터 쌓으면 규모가 커져야 싸지는 채널을 못 고른다. 엔진이 지금 배분에서
                   출발한 안을 골랐다면 그 사실을 말한다 — 이름과 다른 방식의 결과를 조용히 내지 않는다. */}
               {allocMode === "b" && allocation.source === "from_current" ? <p className="allocation-method-note">{tr(
@@ -2725,9 +2701,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               improved ? "var(--success)" : "var(--danger)",
             )}
             {card(
-              tr("재배분 규모", "Reallocation size"),
+              tr("총지출 변화", "Total spend change"),
               fmtCurrency(moved, currency),
-              tr("채널 간 이동액", "moved across channels"),
+              tr("현재 대비 증감의 절댓값", "absolute change from current"),
             )}
           </div>
         );
@@ -2739,16 +2715,20 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       {/* 결론·액션 카드 */}
       {verdict && canStorePlan && (
         <ResultActionCard
-          coreFigure={canStorePlan && <ToolCoreFigure embedded
+          coreFigure={canStorePlan && <><ToolCoreFigure embedded
             figure={budgetShiftFigure({
-              rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost })),
+              metric: effectiveMetric,
+              rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost, currentOutcomes: historyByCh[item.channel]?.totalResults ?? null, expectedOutcomes: item.results })),
               locale,
             })}
             locale={locale}
             currency={currency}
             downloadName="budget_shift"
-          />}
+          />
+          </>}
           toolId="5-3"
+          exportOptions={recipe.export}
+          scopeEvidence={{ periods: [{ id: "after", start: activeRange.start, end: activeRange.end }], filters: { countries: [...(selectedCountries || [])], channels: [...(selectedChannelsFilter || [])], platform: platformFilter }, currency }}
           locale={locale}
           tone={verdict.tone}
           title={tr("결론 — 이 예산으로 무엇을 할까", "Conclusion — what to do with this budget")}
@@ -2792,7 +2772,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   `After changing one operating variable, did actual ${metricLabel} improve from the baseline?`,
                 ),
           }}
-          points={verdict.acts.map((text) => ({ text }))}
           stats={[
             {
               label: tr(planBudgetPeriod === "monthly" ? "총 월예산" : "총 일예산", planBudgetPeriod === "monthly" ? "Total monthly budget" : "Total daily budget"),
@@ -2837,7 +2816,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 name: allocMode === "c" ? "absolute-cpr-weighting" : "marginal-utility-greedy",
                 version: "budget-allocation-v1",
                 assumptions: [tr("채널별 현재값은 선택한 최근 기간의 일평균입니다.", "Current channel values are daily averages over the selected recent window.")],
-                limitations: [tr("추천 비용·성과를 바꾸려면 사이트에서 곡선을 다시 적합하고 배분해야 합니다. 관측 연관 시뮬레이션이며 인과 증분이 아닙니다.", "Changing recommended spend and results requires refitting curves and reallocating on the site. This is an observational simulation, not causal incrementality.")],
+                limitations: exportLimitations([tr("추천 비용·성과를 바꾸려면 사이트에서 곡선을 다시 적합하고 배분해야 합니다. 관측 연관 시뮬레이션이며 인과 증분이 아닙니다.", "Changing recommended spend and results requires refitting curves and reallocating on the site. This is an observational simulation, not causal incrementality.")], recipe.export.includeCaveats, locale),
               },
             };
           }}
@@ -2866,39 +2845,51 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         />
       )}
 
-      {canStorePlan && <PeriodSensitivityPanel
-        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
-        locale={locale}
-        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency })}
-      />}
-
-      {/* §1 효율·추세선 분석 — PRISM 결과-먼저(P5): 진단 산점도는 기본 접힘, 펼칠 때 canvas resize(§7 0px). */}
+      {/* 효율·추세선: 배분안 다음에 국가·채널 관측 분포를 바로 비교한다. */}
       <section data-information-section=""
         className="block alloc-fold"
         id="s-scatter"
+        hidden={hiddenBlocks.includes("s-scatter")}
       >
         <header data-information-heading="" className="section-title alloc-fold-summary" style={{ }}>
           {tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
-          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("추세선 모델·이상치·산점도 — 펼쳐서 검증", "Trendline model · outliers · scatter — expand to verify")}</span>
+          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("분석 기간의 관측점과 적합 곡선을 비교합니다.", "Compare observed points with fitted curves over the analysis period.")}</span>
         </header>
         <div className="alloc-card" style={{ marginTop: "12px" }}>
+          <div className="prism-driver__mode" role="group" aria-label={tr("산점도 보기 단위", "Scatterplot grouping")}>
+            {[["country_channel", tr("국가·채널별", "Country · channel")], ["allocation", tr("배분 단위별", "Allocation detail")]].map(([value, label]) => <button key={value} type="button" aria-pressed={chartUnit === value} className={chartUnit === value ? "active" : ""} onClick={() => { setChartUnit(value); setChartChannels(null); }}>{label}</button>)}
+          </div>
+          <p className="muted">{chartUnit === "country_channel" ? tr("같은 국가·채널의 OS별 비용과 성과를 일별로 합쳐 비교합니다. 점은 관측값, 선은 적합 곡선입니다.", "Daily spend and outcomes are combined across OS within each country and channel. Points show observations; lines show fitted curves.") : tr("예산 배분과 같은 단위로 관측값과 곡선을 비교합니다.", "Compare observations and curves at the allocation level.")}</p>
           {advancedPanel}
           {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
-          {rankedChannels.length > 1 && (
+          {rankedChannels.length > 0 && (
             <div style={{ marginBottom: "0.75rem" }}>
               <strong style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{tr("차트 표시 대상 선택", "Select chart display targets")}</strong>
               <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "4px 0 8px" }}>{tr("아래에서 선택한 대상만 차트에 표시됩니다. (예산 분배와는 무관)", "Only the targets selected below are shown on the chart. (Unrelated to budget allocation)")}</p>
+              <div className="allocation-chart-countries" role="group" aria-label={tr("차트 국가 선택", "Chart countries")}>
+                {[[null, new Set(rankedChannels)], ...chartCountryGroups].map(([country, targets]) => {
+                  const keys = [...targets];
+                  const selected = keys.filter(ch => !chartChannels || chartChannels.has(ch)).length;
+                  const pressed = selected === keys.length ? true : selected === 0 ? false : "mixed";
+                  const label = country === null ? tr("전체", "All") : country || tr("국가 미지정", "Unspecified country");
+                  return <button key={country === null ? "all" : `country:${country}`} type="button" aria-pressed={pressed} aria-label={label} onClick={() => toggleChartTargets(keys)}>
+                    <span aria-hidden="true">{pressed === true ? "✓" : pressed === "mixed" ? "−" : "+"}</span>
+                    <strong>{label}</strong><span className="tnum" aria-hidden="true">{selected}/{keys.length}</span>
+                  </button>;
+                })}
+              </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                 {rankedChannels.map((ch) => {
-                  const active = chartChannels ? chartChannels.has(ch) : rankedChannels.slice(0, 6).includes(ch);
+                  const active = chartChannels ? chartChannels.has(ch) : rankedChannels.includes(ch);
                   return (
                     <button
                       key={ch}
                       className={`ab-pill ${active ? "active" : ""}`}
+                      aria-pressed={active}
                       style={{ fontSize: "var(--fs-xs)" }}
                       onClick={() =>
                         setChartChannels((prev) => {
-                          const base = prev || new Set(rankedChannels.slice(0, 6));
+                          const base = prev || new Set(rankedChannels);
                           const next = new Set(base);
                           if (next.has(ch)) next.delete(ch);
                           else next.add(ch);
@@ -2911,109 +2902,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               </div>
             </div>
           )}
-          <FigureHead exportTitle={locale === "en" ? "Budget and cost curves" : "예산과 비용 곡선"} target={chartRef} fileName="budget_cost_curve" locale={locale} />
-          <div className="chart-canvas-wrap" style={{ height: "400px" }}>
+          {chartSelectionCount > 0
+            ? <FigureHead exportTitle={locale === "en" ? "Budget and cost curves" : "예산과 비용 곡선"} target={chartRef} fileName="budget_cost_curve" locale={locale} />
+            : <p className="allocation-chart-empty" role="status">{tr("표시 중인 대상이 없습니다. 국가 또는 채널을 켜서 비교하세요.", "No targets are displayed. Turn on a country or channel to compare.")}</p>}
+          <div className="chart-canvas-wrap" style={{ height: "400px", display: chartSelectionCount > 0 ? "block" : "none" }}>
             <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
           </div>
         </div>
       </section>
-
-      {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
-      {diagnosis && (
-        <section data-information-section="" className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
-          <header data-information-heading="" className="alloc-insight-summary">
-            <span className="alloc-insight-summary__title">{tr("진단", "Diagnosis")}</span>
-            <strong>{diagnosis.summary}</strong>
-            <span className="alloc-insight-summary__action">{tr("근거 보기", "View evidence")}</span>
-          </header>
-          <div className="alloc-diag-grid">
-          {diagnosis.insufficient ? (
-            <article className="alloc-diag-item muted">
-              <span>{tr("진단 대기", "Waiting for data")}</span>
-              <strong>{tr("최근 집행 데이터가 부족합니다", "Not enough recent spend data")}</strong>
-              <p>
-              {tr(
-                `최근 ${recentDays}일 데이터를 더 확보하세요.`,
-                `Add more data from the last ${recentDays} days.`
-              )}
-              </p>
-            </article>
-          ) : (
-            diagnosis.lines.map((l, i) => (
-              <article key={`${l.label}-${i}`} className={`alloc-diag-item ${l.cls}`}>
-                <span>{l.label}</span>
-                <strong>{l.title}</strong>
-                <p>{l.text}</p>
-              </article>
-            ))
-          )}
-          </div>
-        </section>
-      )}
-
-      {/* 총 합계 비교 카드 */}
-      {summary && (
-        <section data-information-section="" className="alloc-total-card alloc-fold">
-          <header data-information-heading="" className="alloc-insight-summary alloc-total-summary">
-            <span className="alloc-insight-summary__title">{tr("총 합계 비교", "Total comparison")}</span>
-            <strong>{comparisonHeadline}</strong>
-            <span className="alloc-insight-summary__action">{tr("수치 보기", "View figures")}</span>
-          </header>
-          <div className="alloc-total-meta">
-            {tr(
-              `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${planBudgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
-              `Algorithm: ${allocMode === "c" ? "absolute CPR weighting" : "marginal-utility greedy"} · Basis: ${planBudgetPeriod === "monthly" ? "monthly (÷30)" : "daily"} budget · Comparison: last ${summary.recentDays}-day CPR`
-            )}
-          </div>
-          <div className="alloc-total-grid">
-            <section className="alloc-total-block">
-              <div className="alloc-total-block-title">{tr(`현재 기준 · 최근 ${summary.recentDays}일`, `Current baseline · last ${summary.recentDays} days`)}</div>
-              <div className="alloc-total-row highlight"><span>{tr("일평균 비용", "Average daily cost")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost, currency)}</strong></div>
-              {summary.prev.installs > 0 && <div className="alloc-total-row"><span>{tr("설치", "Installs")}</span><strong className="tnum">{formatNumberK(summary.prev.installs, 0)}</strong></div>}
-              {summary.prev.actions > 0 && <div className="alloc-total-row"><span>{tr("액션", "Actions")}</span><strong className="tnum">{formatNumberK(summary.prev.actions, 0)}</strong></div>}
-              {summary.prev.revenue > 0 && <div className="alloc-total-row"><span>{tr("매출", "Revenue")}</span><strong className="tnum">{fmtCurrency(summary.prev.revenue, currency)}</strong></div>}
-              <div className="alloc-total-sep" />
-              {summary.prev.installs > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPI", "Average CPI")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.installs, currency, { metric: true })}</strong></div>}
-              {summary.prev.actions > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPA", "Average CPA")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.actions, currency, { metric: true })}</strong></div>}
-              {summary.prevROAS != null && <div className="alloc-total-row"><span>{tr("평균 ROAS", "Average ROAS")}</span><strong className="tnum">{(summary.prevROAS * 100).toFixed(1)}%</strong></div>}
-            </section>
-            <div className="alloc-total-arrow" aria-hidden="true">→</div>
-            <section className="alloc-total-block is-recommended">
-              <div className="alloc-total-block-title">{tr("추천안 · 일 단위", "Recommendation · daily")}</div>
-              <div className="alloc-total-row highlight"><span>{tr("총 배분 비용", "Total allocated cost")}</span><strong className="tnum">{fmtCurrency(summary.next.cost, currency)}{allocation.unallocated > 0 && <small> {tr("미배분", "unallocated")} {fmtCurrency(allocation.unallocated, currency)}</small>}</strong></div>
-              <div className="alloc-total-row"><span>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</span><strong className="tnum">{formatNumberK(summary.next.results, 0)}</strong></div>
-              {summary.nextRevenue > 0 && <div className="alloc-total-row"><span>{tr("예상 매출", "Projected revenue")}</span><strong className="tnum">{fmtCurrency(summary.nextRevenue, currency)}</strong></div>}
-              <div className="alloc-total-sep" />
-              <div className="alloc-total-row"><span>{tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`)}</span><strong className="tnum">{fmtCostMetric(summary.nextAvgCPR, effectiveMetric, currency)}{(() => {
-                const dPrev = displayMetricValue(summary.prevAvgCPR, effectiveMetric);
-                const dNext = displayMetricValue(summary.nextAvgCPR, effectiveMetric);
-                if (dPrev == null || dNext == null || dPrev === 0) return null;
-                const d = dNext - dPrev;
-                const good = roas ? d > 0 : d < 0;
-                const ar = d > 0 ? "▲" : d < 0 ? "▼" : "—";
-                const pct = Math.abs(d / dPrev) * 100;
-                return <span className={`alloc-total-delta ${good ? "is-good" : "is-bad"}`}>{ar} {pct.toFixed(1)}%</span>;
-              })()}</strong></div>
-              {summary.nextROAS != null && <div className="alloc-total-row"><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
-            </section>
-          </div>
-        </section>
-      )}
-
-      {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
-      {verify && plannedDailyBudget > 0 && items.length >= 2 && (
-        <section data-information-section="" className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
-          <header data-information-heading="" className="alloc-insight-summary">
-            <span className="alloc-insight-summary__title">{tr("배분 점검", "Allocation check")}</span>
-            <strong>{verify.head}</strong>
-            <span className="alloc-insight-summary__action">{tr("근거 보기", "View evidence")}</span>
-          </header>
-          <div className="alloc-verify-detail">
-            <span>{verify.body}</span>
-            {verify.note && <small>{verify.note}</small>}
-          </div>
-        </section>
-      )}
 
       {showTable && (() => {
         // #3 이전(과거) 평균 컬럼 — 최근 N일 평균 일예산/결과/CPR + 전체 비중
@@ -3232,32 +3128,32 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         );
       })()}
 
-      <section className="block" id="s-bar">
-          <h2 className="section-title">
-            {tr("권장 배분 비중", "Recommended allocation share")}
-          </h2>
-          {!(plannedDailyBudget > 0) || items.length === 0 ? (
-            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
-              {tr("전역 예산 또는 효율 목표를 정하면 채널별 권장 비중이 표시됩니다.", "Set a global budget or efficiency target to see the recommended channel allocation share.")}
-            </p>
-          ) : (<>
-            <FigureHead exportTitle={locale === "en" ? "Budget share by channel" : "채널별 예산 비중"} target={barChartRef} fileName="budget_share" locale={locale} />
-            <div className="chart-container" style={{ height: "120px" }}>
-              <canvas id="alloc-bar" ref={barChartRef}></canvas>
-            </div>
-          </>
-          )}
-        </section>
+      {canStorePlan && <>
+          <AllocationDistribution hidden={hiddenBlocks.includes("s-bar")} locale={locale} scopeLabel={lowerScopeLabel} controls={<AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />} rows={(() => {
+            const channelsByEntity = new Map();
+            for (const row of rows) {
+              const key = getRowGroupKey(row, unitField);
+              if (!channelsByEntity.has(key)) channelsByEntity.set(key, new Set());
+              if (row.channel) channelsByEntity.get(key).add(String(row.channel).trim());
+            }
+            return visibleAllocationItems.map(item => {
+              const names = channelsByEntity.get(item.channel);
+              return { entity: item.channel, group: names?.size === 1 ? [...names][0] : item.channel, current: historyByCh[item.channel]?.totalCost ?? 0, next: item.cost };
+            });
+          })()} />
+      </>}
 
       {/* §5 What-if 시나리오 */}
-      <section className="block" id="s-scenario">
+      <section className="block" id="s-scenario" hidden={hiddenBlocks.includes("s-scenario")}>
           <h2 className="section-title">{tr("예산을 바꾸면 결과가 어떻게 달라지나?", "How would results change at another budget?")}</h2>
-          {!(plannedDailyBudget > 0) || scenarios.length === 0 ? (
+        <AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />
+          {!lowerChartEntities.size ? <p className="allocation-chart-empty">{tr("표시할 국가를 선택하세요.", "Select a country to display.")}</p> : !(plannedDailyBudget > 0) || scenarios.length === 0 ? (
             <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
               {tr("전역 입력을 정하면 해당 계획 예산의 0.5×~2× 구간을 같은 알고리즘으로 비교합니다.", "Set a global input to compare the 0.5×–2× range around that planned budget with the same algorithm.")}
             </p>
           ) : (
             <div className="alloc-card">
+              <p className="allocation-chart-scope">{tr(`${lowerScopeLabel}의 예상 결과입니다. 예산 배수는 전체 계획 기준이며, 아래 금액은 선택 국가에 실제 배분된 일예산입니다.`, `Projected results for ${lowerScopeLabel}. Multipliers apply to the full plan; daily spend below is the amount allocated to the selected countries.`)}</p>
               <FigureHead exportTitle={locale === "en" ? "Budget scenario comparison" : "예산 시나리오 비교"} target={scenarioChartRef} fileName="budget_scenarios" locale={locale} />
               <div className="chart-container" style={{ height: "280px" }}>
                 <canvas id="alloc-scenario-chart" ref={scenarioChartRef}></canvas>
@@ -3267,10 +3163,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   <thead>
                     <tr>
                       <th>{tr("시나리오", "Scenario")}</th>
-                      <th style={{ textAlign: "right" }}>{tr("예산(일)", "Budget (daily)")}</th>
+                      <th style={{ textAlign: "right" }}>{tr("선택 국가 배분액(일)", "Selected spend (daily)")}</th>
                       <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</th>
                       <th style={{ textAlign: "right" }}>{tr(`예상 평균 ${metricLabel}`, `Projected avg. ${metricLabel}`)}</th>
-                      <th style={{ textAlign: "right" }}>Δ{unitLabel} {tr("vs 현재", "vs current")}</th>
+                      <th style={{ textAlign: "right" }}>Δ{unitLabel} {tr("vs 기준안", "vs base plan")}</th>
                       <th style={{ textAlign: "right" }}>ΔCost</th>
                       <th style={{ textAlign: "right" }}>{tr(`증분 ${roas ? "ROAS" : metricLabel}`, `Incremental ${roas ? "ROAS" : metricLabel}`)}</th>
                     </tr>
@@ -3285,8 +3181,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                         const isBase = s.m === 1.0;
                         return (
                           <tr key={s.m} style={{ background: isBase ? "rgba(173,198,255,0.10)" : "transparent" }}>
-                            <td className="tnum">{s.m}× {isBase && <span style={{ color: "var(--primary, #adc6ff)", fontSize: "var(--fs-xs)" }}>{tr("현재", "current")}</span>}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(s.budget, currency)}</td>
+                            <td className="tnum">{s.m}× {isBase && <span style={{ color: "var(--primary, #adc6ff)", fontSize: "var(--fs-xs)" }}>{tr("기준안", "base plan")}</span>}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(s.totCost, currency)}</td>
                             <td className="tnum" style={{ textAlign: "right" }}><strong>{formatNumberK(s.totResults, 0)}</strong> {unitLabel}{locale === "en" ? "s" : ""}</td>
                             <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(s.avgCpr, effectiveMetric, currency)}</td>
                             <td className="tnum" style={{ textAlign: "right" }}>{isBase ? "—" : (dResults >= 0 ? "+" : "") + formatNumberK(dResults, 0)}</td>
@@ -3301,8 +3197,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               </div>
               <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
                 {tr(
-                  <>증분 {roas ? "ROAS" : metricLabel} = 현재 대비 <strong>추가 비용 1단위가 만드는 추가 {unitLabel}</strong>의 효율. 증액할수록 악화되면(=한계효용 체감) 그 지점이 증액 한계입니다.</>,
-                  <>Incremental {roas ? "ROAS" : metricLabel} = the efficiency of <strong>the extra {unitLabel}s produced by one more unit of spend</strong>, vs. current. If it keeps worsening as you increase spend (diminishing marginal utility), that&apos;s the point where you should stop scaling up.</>
+                  <>증분 {roas ? "ROAS" : metricLabel} = 기준안 대비 <strong>{roas ? "매출 변화 ÷ 비용 변화" : `${unitLabel} 1건 변화당 비용 변화`}</strong>입니다. 관측 비용·성과 관계에 따른 예측이며 실제 증분 효과를 뜻하지 않습니다.</>,
+                  <>Incremental {roas ? "ROAS" : metricLabel} = <strong>{roas ? "revenue change ÷ spend change" : `spend change per additional ${unitLabel}`}</strong> vs. the base plan. This is a prediction from observed spend and outcomes, not a causal incremental effect.</>
                 )}
               </p>
             </div>
@@ -3310,29 +3206,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         </section>
 
       {/* §6 채널 반응 곡선 (PRISM P4) — 지출→결과 곡선 + now/plan/knee/onset 마커 */}
-      <section className="block" id="s-response">
+      <section className="block" id="s-response" hidden={hiddenBlocks.includes("s-response")}>
         <h2 className="section-title">{tr("채널별 추가 지출 효과는?", "What does additional spend produce by channel?")}</h2>
-        {!responseCurve || !responseCurve.curve || !responseCurve.curve.points.length ? (
+        <AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />
+        {!lowerChartEntities.size ? <p className="allocation-chart-empty">{tr("표시할 국가를 선택하세요.", "Select a country to display.")}</p> : !responseCurve || !responseCurve.curve || !responseCurve.curve.points.length ? (
           <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
-            {tr("총 예산을 입력하고 채널을 선택하면 지출을 늘릴 때 결과가 어떻게 늘어나는지(수확체감·과포화 지점 포함) 곡선으로 보여줍니다.", "Enter a total budget and pick a channel to see how results grow as you increase spend — including the diminishing-returns and over-saturation points.")}
+            {tr("총 예산을 입력하고 채널을 선택하면 지출을 늘릴 때 결과가 어떻게 늘어나는지(현재·계획 지점 포함) 곡선으로 보여줍니다.", "Enter a total budget and pick a channel to see how results grow as you increase spend — including current and planned spend.")}
           </p>
         ) : (
           <div className="alloc-card">
-            {/* 채널 선택 pill */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
-              {allocation.items.map((it, i) => (
-                <button
-                  key={it.channel}
-                  type="button"
-                  className={`btn ${it.channel === curveCh ? "" : "secondary"}`}
-                  onClick={() => setCurveChannel(it.channel)}
-                  style={{ padding: "4px 10px", fontSize: "var(--fs-xs)", display: "inline-flex", alignItems: "center", gap: "5px" }}
-                >
-                  <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: CHART_THEME.series[i % CHART_THEME.series.length] }}></span>
-                  {it.channel}
-                </button>
-              ))}
-            </div>
+            <div className="allocation-curve-select"><label htmlFor="allocation-response-entity">{tr("확인할 배분 대상", "Allocation to inspect")}</label><select id="allocation-response-entity" value={curveCh} onChange={event => setCurveChannel(event.target.value)}>{visibleAllocationItems.map(item => <option key={item.channel} value={item.channel}>{item.channel}</option>)}</select></div>
             <FigureHead exportTitle={locale === "en" ? "Response by budget" : "예산별 응답곡선"} target={curveChartRef} fileName="budget_response_curve" locale={locale} />
             <div className="chart-container" style={{ height: "300px" }}>
               <canvas id="alloc-response-curve" ref={curveChartRef}></canvas>
@@ -3341,7 +3224,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             {(() => {
               const c = responseCurve.curve;
               const m = c.markers;
-              const roasM = isRoasMetric(effectiveMetric);
               const resAt = (pt) => (pt ? `${formatNumberK(pt.y, 0)} ${unitLabel}${locale === "en" ? "s" : ""}` : "—");
               return (
                 <div style={{ fontSize: "var(--fs-xs)", marginTop: "10px", lineHeight: 1.6, color: "var(--text-1)" }}>
@@ -3352,13 +3234,18 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   </div>
                   <div style={{ color: "var(--text-muted)", marginTop: "2px" }}>
                     {m.knee
-                      ? tr(`효율 최적 ≈ ${fmtCurrency(m.knee.x, currency)} — 이 지점부터 추가 지출당 결과 증가가 뚜렷이 둔화됩니다.`, `Optimal ≈ ${fmtCurrency(m.knee.x, currency)} — beyond here, results per extra unit of spend slow down sharply.`)
-                      : tr("효율 최적 지점: 관측 범위에서 뚜렷한 수확체감 꺾임이 없습니다.", "Optimal point: no clear diminishing-returns knee within the observed range.")}
+                      ? tr(`한계효율 ${Math.round(c.kneeFraction * 100)}% 지점 ≈ ${fmtCurrency(m.knee.x, currency)} — 관측 범위의 최대 한계효율 대비 감소한 지점이며 최적 예산을 뜻하지 않습니다.`, `${Math.round(c.kneeFraction * 100)}% marginal efficiency ≈ ${fmtCurrency(m.knee.x, currency)} — relative to the observed-range peak, not an optimal budget.`)
+                      : tr("관측 범위에서 한계효율이 최대치의 50% 아래로 내려간 지점은 확인되지 않습니다.", "No point below 50% of peak marginal efficiency was identified in the observed range.")}
                   </div>
-                  <div style={{ color: "var(--text-muted)", marginTop: "2px" }}>
-                    {m.onset
-                      ? tr(`과포화 시작 ≈ ${fmtCurrency(m.onset.x, currency)} — 이 지점을 넘으면 추가 1${roasM ? "원" : "건"}의 ${roasM ? "매출 효율" : "획득 비용"}이 평균보다 나빠집니다.`, `Over-saturation ≈ ${fmtCurrency(m.onset.x, currency)} — past this point each extra unit performs worse than your average.`)
-                      : tr("과포화 지점: 관측+추정 범위 안에서는 아직 과포화에 도달하지 않았습니다.", "Over-saturation: not yet reached within the observed + estimated range.")}
+                  <div className="allocation-response-status" data-status={c.saturation.status}>
+                    <strong>{tr(`한계비용 판단 · 평균비용의 ${c.saturation.threshold}배 기준`, `Marginal-cost assessment · ${c.saturation.threshold}× average cost`)}</strong>
+                    <span>{c.saturation.status === "above_at_start"
+                      ? tr("관측 범위 처음부터 주의 기준을 초과합니다. 기준을 넘기 시작한 지출액은 이 데이터로 식별할 수 없습니다.", "The threshold is already exceeded at the start of the observed range. These data cannot identify where the crossing began.")
+                      : m.onset
+                        ? tr(`약 ${fmtCurrency(m.onset.x, currency)}에서 한계비용이 평균비용의 ${c.saturation.threshold}배를 넘는 것으로 추정됩니다. 매출·설치가 더 이상 늘지 않는 지점이라는 뜻은 아닙니다.`, `Marginal cost is estimated to cross ${c.saturation.threshold}× average cost near ${fmtCurrency(m.onset.x, currency)}. This does not mean outcomes stop increasing.`)
+                        : c.saturation.status === "below_threshold"
+                          ? tr(`관측 범위에서 한계비용이 평균비용의 ${c.saturation.threshold}배를 넘는 구간은 확인되지 않습니다.`, `No segment above ${c.saturation.threshold}× average cost was identified in the observed range.`)
+                          : tr("한계비용 기준을 판단할 관측 범위가 부족합니다.", "Insufficient observed range to assess marginal cost.")}</span>
                   </div>
                   <div style={{ color: "var(--text-muted)", marginTop: "4px", fontSize: "var(--fs-xs)" }}>
                     {tr(`관측 범위 ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · 점선 구간은 데이터 밖 추정(신뢰 낮음).`, `Observed range ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · the dashed segment is an out-of-data estimate (low confidence).`)}
@@ -3370,12 +3257,124 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         )}
       </section>
 
+      {canStorePlan && <PeriodSensitivityPanel
+        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
+        locale={locale}
+        variant="allocation"
+        baselineDays={recentDays}
+        periods={splitObservationPeriods(rows)}
+        budgetLabel={fmtCurrency(plannedDailyBudget, currency)}
+        formatMoney={number => fmtCurrency(number, currency)}
+        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency })}
+      />}
+
+      {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
+      {diagnosis && (
+        <section data-information-section="" className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
+          <header data-information-heading="" className="alloc-insight-summary">
+            <span className="alloc-insight-summary__title">{tr("진단", "Diagnosis")}</span>
+            <strong>{diagnosis.summary}</strong>
+
+          </header>
+          <div className="alloc-diag-grid">
+          {diagnosis.insufficient ? (
+            <article className="alloc-diag-item muted">
+              <span>{tr("진단 대기", "Waiting for data")}</span>
+              <strong>{tr("최근 집행 데이터가 부족합니다", "Not enough recent spend data")}</strong>
+              <p>
+              {tr(
+                `최근 ${recentDays}일 데이터를 더 확보하세요.`,
+                `Add more data from the last ${recentDays} days.`
+              )}
+              </p>
+            </article>
+          ) : (
+            diagnosis.lines.map((l, i) => (
+              <article key={`${l.label}-${i}`} className={`alloc-diag-item ${l.cls}`}>
+                <span>{l.label}</span>
+                <strong>{l.title}</strong>
+                <p>{l.text}</p>
+              </article>
+            ))
+          )}
+          </div>
+        </section>
+      )}
+
+      {/* 총 합계 비교 카드 */}
+      {summary && (
+        <section data-information-section="" className="alloc-total-card alloc-fold">
+          <header data-information-heading="" className="alloc-insight-summary alloc-total-summary">
+            <span className="alloc-insight-summary__title">{tr("총 합계 비교", "Total comparison")}</span>
+            <strong>{comparisonHeadline}</strong>
+
+          </header>
+          <div className="alloc-total-meta">
+            {tr(
+              `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${planBudgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
+              `Algorithm: ${allocMode === "c" ? "absolute CPR weighting" : "marginal-utility greedy"} · Basis: ${planBudgetPeriod === "monthly" ? "monthly (÷30)" : "daily"} budget · Comparison: last ${summary.recentDays}-day CPR`
+            )}
+          </div>
+          <div className="alloc-total-grid">
+            <section className="alloc-total-block">
+              <div className="alloc-total-block-title">{tr(`현재 기준 · 최근 ${summary.recentDays}일`, `Current baseline · last ${summary.recentDays} days`)}</div>
+              <div className="alloc-total-row highlight"><span>{tr("일평균 비용", "Average daily cost")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost, currency)}</strong></div>
+              {summary.prev.installs > 0 && <div className="alloc-total-row"><span>{tr("설치", "Installs")}</span><strong className="tnum">{formatNumberK(summary.prev.installs, 0)}</strong></div>}
+              {summary.prev.actions > 0 && <div className="alloc-total-row"><span>{tr("액션", "Actions")}</span><strong className="tnum">{formatNumberK(summary.prev.actions, 0)}</strong></div>}
+              {summary.prev.revenue > 0 && <div className="alloc-total-row"><span>{tr("매출", "Revenue")}</span><strong className="tnum">{fmtCurrency(summary.prev.revenue, currency)}</strong></div>}
+              <div className="alloc-total-sep" />
+              {summary.prev.installs > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPI", "Average CPI")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.installs, currency, { metric: true })}</strong></div>}
+              {summary.prev.actions > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPA", "Average CPA")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.actions, currency, { metric: true })}</strong></div>}
+              {summary.prevROAS != null && <div className="alloc-total-row"><span>{tr("평균 ROAS", "Average ROAS")}</span><strong className="tnum">{(summary.prevROAS * 100).toFixed(1)}%</strong></div>}
+            </section>
+            <div className="alloc-total-arrow" aria-hidden="true">→</div>
+            <section className="alloc-total-block is-recommended">
+              <div className="alloc-total-block-title">{tr("추천안 · 일 단위", "Recommendation · daily")}</div>
+              <div className="alloc-total-row highlight"><span>{tr("총 배분 비용", "Total allocated cost")}</span><strong className="tnum">{fmtCurrency(summary.next.cost, currency)}{allocation.unallocated > 0 && <small> {tr("미배분", "unallocated")} {fmtCurrency(allocation.unallocated, currency)}</small>}</strong></div>
+              <div className="alloc-total-row"><span>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</span><strong className="tnum">{formatNumberK(summary.next.results, 0)}</strong></div>
+              {summary.nextRevenue > 0 && <div className="alloc-total-row"><span>{tr("예상 매출", "Projected revenue")}</span><strong className="tnum">{fmtCurrency(summary.nextRevenue, currency)}</strong></div>}
+              <div className="alloc-total-sep" />
+              <div className="alloc-total-row"><span>{tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`)}</span><strong className="tnum">{fmtCostMetric(summary.nextAvgCPR, effectiveMetric, currency)}{(() => {
+                const dPrev = displayMetricValue(summary.prevAvgCPR, effectiveMetric);
+                const dNext = displayMetricValue(summary.nextAvgCPR, effectiveMetric);
+                if (dPrev == null || dNext == null || dPrev === 0) return null;
+                const d = dNext - dPrev;
+                const good = roas ? d > 0 : d < 0;
+                const ar = d > 0 ? "▲" : d < 0 ? "▼" : "—";
+                const pct = Math.abs(d / dPrev) * 100;
+                return <span className={`alloc-total-delta ${good ? "is-good" : "is-bad"}`}>{ar} {pct.toFixed(1)}%</span>;
+              })()}</strong></div>
+              {summary.nextROAS != null && <div className="alloc-total-row"><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
+            </section>
+          </div>
+        </section>
+      )}
+
+      {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
+      {verify && plannedDailyBudget > 0 && items.length >= 2 && (
+        <section data-information-section="" className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
+          <header data-information-heading="" className="alloc-insight-summary">
+            <span className="alloc-insight-summary__title">{tr("배분 점검", "Allocation check")}</span>
+            <strong>{verify.head}</strong>
+
+          </header>
+          <div className="alloc-verify-detail">
+            <span>{verify.body}</span>
+            {verify.note && <small>{verify.note}</small>}
+          </div>
+        </section>
+      )}
+
       {/* §7 알고리즘 노트 (index.html s-algo 이식) */}
-      <section className="block" id="s-algo">
-        <h2 className="section-title">{tr("계산 기준", "Calculation details")}</h2>
+      <section className="block allocation-method-entry" id="s-algo">
+        <div><h2 className="section-title">{tr("계산 기준", "Calculation details")}</h2><p>{tr("배분 방식의 수식과 적용 조건을 확인하세요.", "Review the allocation formulas and conditions.")}</p></div>
+        <button type="button" className="btn secondary" ref={methodTrigger} onClick={() => setMethodOpen(true)}>{tr("계산 방법 보기", "View calculation method")}</button>
+      </section>
+      <ModalDialog open={methodOpen} onClose={() => setMethodOpen(false)} returnFocusRef={methodTrigger} ariaLabel={tr("계산 기준", "Calculation details")} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel">
+        <header className="tool-reference-panel__head"><h2>{tr("계산 기준", "Calculation details")}</h2><button type="button" className="btn ghost" onClick={() => setMethodOpen(false)}>{tr("닫기", "Close")}</button></header>
         <p>{tr(
-          <>본 페이지는 Campaign Allocator(Streamlit)의 <strong>모드 A · 효율 기반 추천 비중</strong>을 JS로 포팅한 것입니다. 핵심 식:</>,
-          <>This page is a JS port of Campaign Allocator&apos;s (Streamlit) <strong>Mode A · efficiency-based recommended share</strong>. Core formula:</>
+          <><strong>안정적 효율 가중</strong>은 최근 평균 효율로 초기 비중을 정합니다. 실제 배분에는 채널별 관측 상한과 저신뢰 채널 유지 조건이 함께 적용됩니다. 기본 비중식:</>,
+          <><strong>Stable efficiency weighting</strong> starts from recent average efficiency. Actual allocation also applies channel-specific observed ceilings and low-confidence holds. Initial weighting formula:</>
         )}</p>
         <pre style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "12px", fontSize: "var(--fs-xs)", overflowX: "auto", lineHeight: 1.5 }}>
           <code>{tr(
@@ -3433,8 +3432,9 @@ allocation = total_budget × weight`
             )}</p>
           </div>
         </div>
-      </section>
+      </ModalDialog>
       </ToolPageShell>
+      </AnalysisExportProvider>
     </div>
   );
 }

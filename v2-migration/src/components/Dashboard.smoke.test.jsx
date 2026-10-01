@@ -116,15 +116,16 @@ describe("Dashboard render smoke", () => {
     });
   }
 
-  it("puts the active data panel before collapsed analysis utilities", () => {
+  it("keeps utilities after the data and opens history explicitly", () => {
     seedWithData();
     const { container } = render(<Dashboard />);
     const dataPanel = container.querySelector("#dashboard-tabpanel");
-    const utilities = container.querySelector(".dashboard-support-tools");
-    expect(container.querySelector(".dashboard-next-actions__utility a")?.getAttribute("href")).toBe("#dashboard-tabpanel");
+    const utilities = container.querySelector(".dashboard-utilities");
     expect(dataPanel).toBeTruthy();
     expect(utilities).toBeTruthy();
-    expect(utilities.id).toBe("dashboard-support-tools");
+    expect(screen.queryByRole("dialog", { name: "판단 기록" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "판단 기록 보기" }));
+    expect(screen.getByRole("dialog", { name: "판단 기록" })).toBeTruthy();
     expect(dataPanel.compareDocumentPosition(utilities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(utilities.hasAttribute("open")).toBe(false);
   });

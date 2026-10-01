@@ -1,4 +1,4 @@
-import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
+import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, SATURATION_AXIS_FIELDS } from "@/utils/csvConstants";
 import { getToolGuide } from "@/utils/toolGuide";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
 import { buildVifSpendPanel } from "./vifReadiness";
@@ -16,7 +16,7 @@ export const ANALYSIS_CONTRACTS = {
   "5-21": { minRows: 8, minPeriods: 14, minEntityActivePeriods: 8, entityFields: ["channel"], spendKeys: ["spend", "cost"], resultKeys: ["installs", "actions"], priority: 2 },
   // 응답곡선은 채널/캠페인별 지출 수준이 달라져야 한다. 수가 적거나 지출 변동이
   // 거의 없으면 절대 CPR 결과는 열되 한계효율 결론에는 주의 표시를 한다.
-  "5-22": { minRows: 20, minPeriods: 8, minEntityActivePeriods: 6, minEntitySpendCv: 0.05, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 3 },
+  "5-22": { minRows: 20, minPeriods: 8, minEntityActivePeriods: 6, minEntitySpendCv: 0.05, entityFields: SATURATION_AXIS_FIELDS, spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 3 },
   // 예산 배분은 단일 채널이면 배분 비교 자체가 불가능하다. 다만 현재 성과 읽기는
   // 유효하므로 차단 대신 주의로 남긴다.
   "5-3": { minRows: 8, minPeriods: 7, minEntities: 2, minEntityActivePeriods: 4, minEntitySpendCv: 0.03, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 4 },

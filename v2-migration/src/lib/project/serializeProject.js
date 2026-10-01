@@ -1,3 +1,4 @@
+import { dashboardSnapshotSteps } from "@/lib/recipe/dashboardRecipe";
 import { validateProjectFile } from "./projectSchema";
 
 function serializeBindings(bindings = []) {
@@ -59,7 +60,7 @@ export async function serializeProject(state, locale = "ko") {
     locale: locale === "en" ? "en" : "ko",
     exportedAt: new Date().toISOString(),
     groups,
-    viewConfig: structuredClone(state.viewConfig || {}),
+    viewConfig: { ...structuredClone(state.viewConfig || {}), ...(groups.efficiency ? { "analysis-inputs:5-2": { ...structuredClone(state.viewConfig?.["analysis-inputs:5-2"] || {}), recipeSteps: dashboardSnapshotSteps(state, state.viewConfig?.["analysis-inputs:5-2"]?.recipeSteps || []) } } : {}) },
     customMetrics: structuredClone(state.customMetrics || {}),
     customCharts: structuredClone(state.customCharts || {}),
   });

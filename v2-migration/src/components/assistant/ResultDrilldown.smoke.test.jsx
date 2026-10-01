@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import { buildSampleJourney, getSampleJourney } from "@/lib/sampleJourney";
 import { toolIndexEntry } from "@/lib/toolIndex";
@@ -46,10 +46,13 @@ it.each(["ko", "en"])("keeps actual periods, metric and values through summary �
   const detail = render(<CampaignPvm locale={locale} />);
   const detailNumbers = [...detail.container.querySelectorAll(".result-mix-rate .result-bridge b")].map(node => node.textContent);
   expect(detailNumbers).toEqual(summaryNumbers);
-  expect(screen.getByText(locale === "en" ? "Same periods as the summary" : "요약과 같은 기간")).toBeTruthy();
-  expect([...detail.container.querySelectorAll(".result-periods time")].map(node => node.dateTime)).toEqual([period.currentStart, period.currentEnd, period.previousStart, period.previousEnd]);
-  // The context is not a permanent lock; the user can choose a different period.
-  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change periods" : "기간 다시 선택" }));
-  expect(screen.getByRole("radio", { name: locale === "en" ? "Last 7 days" : "최근 7일" }).getAttribute("aria-checked")).toBe("true");
+  expect([...detail.container.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual([period.currentStart, period.currentEnd, period.previousStart, period.previousEnd]);
+  // 요약에서 넘어온 기간도 날짜 자체에서 수정한다. 비교 기간은 보존된다.
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? /^Analysis period/ : /^분석 기간/ }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(locale === "en" ? "Start date" : "시작일"), { target: { value: period.currentEnd } });
+  fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Apply" : "적용" }));
+  expect(useAppStore.getState().dashboardFilter).toMatchObject({ dateStart: period.currentEnd, comparisonStart: period.previousStart, comparisonEnd: period.previousEnd });
+  expect(detail.container.querySelector(".result-action-card")).toBeTruthy();
   detail.unmount();
 }, 15000);

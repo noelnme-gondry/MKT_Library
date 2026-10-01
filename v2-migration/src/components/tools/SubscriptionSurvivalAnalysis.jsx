@@ -1,4 +1,5 @@
 "use client";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 
 import { isDemoData } from "@/lib/dataOrigin";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
@@ -11,6 +12,8 @@ import DataTable from "@/components/ds/DataTable";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import DownloadHub from "@/components/ds/DownloadHub";
 import AnalysisFilterField from "@/components/ds/AnalysisFilterField";
+import InfoPopover from "@/components/ds/InfoPopover";
+import IsoDateInput from "@/components/ds/IsoDateInput";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
@@ -153,15 +156,31 @@ function statusCopy(status, locale) {
   }[status] || tx(locale, "계산하지 못함", "Not computed");
 }
 
-function evidenceHeadline({ evidence, hazard, locale }) {
+function evidenceHeadline({ evidence, hazard, timeUnit, locale }) {
   if (evidence.status === "ABSTAIN") return tx(locale, "이탈 또는 종료 이벤트가 관측되지 않아 위험 구간 결론을 보류합니다", "No dropout or exit event was observed, so risk timing is withheld");
   if (evidence.status === "INSUFFICIENT_DATA") return tx(locale, "현재 입력만으로는 생존 결론을 만들기 어렵습니다", "The current input cannot support a survival conclusion");
   if (!hazard?.maxHazard) return tx(locale, "위험 구간을 계산하지 못했습니다", "No risk interval could be estimated");
-  return tx(locale, `${hazard.maxHazard.time} ${unitWord(locale)} 구간의 이탈·종료 위험이 가장 높게 관측됐습니다`, `Dropout or exit risk was highest in interval ${hazard.maxHazard.time}`);
+  return tx(locale, `${hazard.maxHazard.time}${survivalUnit(timeUnit, locale)} 구간의 이탈·종료 위험이 가장 높게 관측됐습니다`, `Dropout or exit risk was highest at ${hazard.maxHazard.time} ${survivalUnit(timeUnit, locale)}`);
 }
 
-function unitWord(locale) {
-  return locale === "en" ? "period" : "기간";
+function survivalUnit(unit, locale) {
+  return unit === "month" ? tx(locale, "개월", "months") : unit === "week" ? tx(locale, "주", "weeks") : tx(locale, "일", "days");
+}
+
+function SurvivalFollowupSummary({ result, locale }) {
+  const { followup, horizon, timeUnit, prepared } = result;
+  const groups = [
+    { key: "observedToHorizon", label: tx(locale, "기간 끝까지 관측", "Observed through horizon"), note: tx(locale, "설정한 기간까지 상태를 확인", "Followed through the selected horizon"), tone: "observed" },
+    { key: "earlyExit", label: tx(locale, "그 전에 이탈 확인", "Earlier observed exits"), note: tx(locale, "이탈·종료 이벤트가 기록됨", "An exit event was recorded"), tone: "exit" },
+    { key: "earlyCensored", label: tx(locale, "그 전에 관측 종료", "Earlier follow-up ended"), note: tx(locale, "이후 유지·이탈 여부는 모름 (중도절단)", "Later outcome unknown (censored)"), tone: "censored" },
+    { key: "notEntered", label: tx(locale, "아직 관측 진입 전", "Not yet entered"), note: tx(locale, "설정한 기간 이후에 관측 시작", "Observation starts after this horizon"), tone: "pending" },
+  ];
+  return <section className="survival-followup" aria-label={tx(locale, "관측 현황", "Follow-up status")}>
+    <header><h3>{tx(locale, `${horizon}${survivalUnit(timeUnit, locale)}까지 무엇을 확인했나요?`, `What was observed through ${horizon} ${survivalUnit(timeUnit, locale)}?`)}</h3><span>{tx(locale, `전체 ${followup.total}건 · 전체 관측 중 이탈 ${prepared.eventCount}건 / 중도절단 ${prepared.censoredCount}건`, `${followup.total} episodes · all observed events: ${prepared.eventCount} / censored: ${prepared.censoredCount}`)}</span></header>
+    <div className="survival-followup__bar" aria-hidden="true">{groups.map(group => <span key={group.key} data-tone={group.tone} style={{ width: `${followup.total ? followup[group.key] / followup.total * 100 : 0}%` }} />)}</div>
+    <dl className="survival-followup__legend">{groups.map(group => <div key={group.key} data-followup={group.key} data-tone={group.tone}><dt>{group.label}</dt><dd>{fmtNum(followup[group.key])}<small>{group.note}</small></dd></div>)}</dl>
+    <p>{tx(locale, "위 막대는 관측 현황입니다. 유지율은 중도절단을 반영한 추정치이므로 위 인원의 단순 비율과 다릅니다.", "The bar describes follow-up. Survival accounts for censoring and is not the simple proportion of these counts.")}</p>
+  </section>;
 }
 
 export function buildSegmentCurveChartData(curves = []) {
@@ -300,11 +319,11 @@ function SegmentSurvivalChart({ curves, locale, isDarkMode }) {
     const cancelResize = scheduleSubscriptionChartResize(chart);
     return () => { cancelResize(); chart.destroy(); if (chartRef.current === chart) chartRef.current = null; };
   }, [chartData, isDarkMode, locale]);
-  return <section className="block" id="subscription-segment-curves">
+  return <RecipeBlock className="block" id="subscription-segment-curves">
     <FigureHead level={3} title={tx(locale, "세그먼트별 생존곡선", "Segment survival curves")} target={canvasRef} fileName="survival_by_segment" locale={locale} />
     <p id="subscription-segment-curves-note" className="muted">{tx(locale, "각 선은 해당 세그먼트의 마지막 실제 관측 시점에서 멈춥니다. 관측 범위 밖으로 연장하지 않습니다.", "Each line stops at that segment's last observed time. It is not extended beyond observed support.")}</p>
     <div className="chart-container"><canvas ref={canvasRef} role="img" aria-label={tx(locale, "세그먼트별 핵심 액션 생존곡선", "Action survival curves by segment")} aria-describedby="subscription-segment-curves-note" /></div>
-  </section>;
+  </RecipeBlock>;
 }
 
 export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rowsOverride, analyzed: analyzedOverride } = {}) {
@@ -394,6 +413,13 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
     ...(result.segmentSummaries.length ? [{ label: tx(locale, "세그먼트 요약 CSV", "Segment summary CSV"), analyticsType: "segment_summary", onSelect: () => downloadCsv(csvBody(["segment", "n", "events", "censored", "censoring_rate", "horizon", "survival_at_horizon", "rmst", "ltv", "cac", "ltv_cac", "evidence_status"], result.segmentSummaries.map((row) => [row.segment, row.n, row.events, row.censored, row.censoringRate, row.horizon, row.survival, row.rmst, row.ltv, row.cac, row.ltvCac, row.evidenceStatus])), "subscription_survival_segments") }] : []),
   ]} /> : null;
 
+  const resultPoints = result ? [
+        { text: tx(locale, `${result.horizon}기간까지 관측 ${result.followup.observedToHorizon}건 · 그 전 이탈 확인 ${result.followup.earlyExit}건 · 그 전 중도절단 ${result.followup.earlyCensored}건 · 아직 관측 진입 전 ${result.followup.notEntered}건입니다. 이른 이탈은 결과가 확인된 사례이며, 이른 중도절단은 이후 상태를 알 수 없습니다.`, `At horizon ${result.horizon}: ${result.followup.observedToHorizon} observed through the horizon, ${result.followup.earlyExit} earlier observed exits, ${result.followup.earlyCensored} earlier censorings, and ${result.followup.notEntered} not yet entered. Early exits have known outcomes; outcomes after early censoring are unknown.`) },
+        { text: result.median == null ? tx(locale, "관측 기간 내 중앙 생존기간에 도달하지 않았습니다.", "Median survival was not reached within the observation window.") : tx(locale, `중앙 생존기간은 ${result.median}기간입니다.`, `Median survival is ${result.median} periods.`) },
+        { text: result.economics.status === "available" ? tx(locale, `관측기간 내 비용 회수는 ${result.economics.paybackPeriod}기간에 도달했습니다.`, `Cost recovery was reached in period ${result.economics.paybackPeriod} within the observed horizon.`) : result.economics.reason === "payback_not_reached" ? tx(locale, "관측 기간 내 비용 회수에 도달하지 않았습니다.", "Cost recovery was not reached within the observed horizon.") : result.economics.reason === "zero_cac" ? tx(locale, "개체 획득·유지비가 0이어서 가치 비율과 비용 회수는 계산하지 않았습니다.", "Entity cost is zero, so the value ratio and cost recovery are not calculated.") : tx(locale, "기간당 반복 가치·매출총이익률과 모든 에피소드의 개체 획득·유지비가 있어야 가치 비율·비용 회수를 계산합니다.", "Recurring value, gross margin, and entity cost for every episode are required for the value ratio and cost recovery.") },
+        ...(result.evidence.reason === "no_censored_rows" ? [{ text: tx(locale, "모든 에피소드가 이탈·종료로 끝나 중도절단 정보가 없습니다. 관측 종료 규칙을 확인한 뒤 방향만 참고하세요.", "Every episode ended in an exit event, so there is no censoring information. Check the observation-end rule and treat this as directional.") }] : []),
+        { text: tx(locale, "위험 구간 전의 핵심 액션 유지 개입안은 A/B 테스트 또는 홀드아웃으로 검증하세요.", "Validate action-retention interventions before the risk interval with an A/B test or holdout.") },
+      ] : [];
   const availableSegments = SEGMENTS.filter((key) => sourceRows.some((row) => firstDefined(row, [key]) != null));
 
   // 페이지 h1은 상단 ToolIntro가 갖는다(§ 5-25·5-26·5-27과 동일).
@@ -403,18 +429,22 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
     {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
     {hasRows && !gateOpen && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /><p className="muted">{tx(locale, "매핑을 확인한 뒤 ‘데이터 분석하기’를 눌러 결과를 계산하세요.", "Confirm the mapping, then choose Analyze data to calculate results.")}</p></section>}
     {hasRows && gateOpen && <section className="block" aria-label={tx(locale, "분석 설정", "Analysis settings")}>
-      <div className="analysis-local-controls">
-        <div className="analysis-local-controls__inner">
+      <div className="survival-settings">
+        <fieldset><legend>{tx(locale, "관측 기준", "Observation scope")}</legend><div className="survival-settings__grid">
           <AnalysisFilterField label={tx(locale, "입력 방식", "Input mode")}><select className="mon-filter-select" value={draft.inputMode} onChange={(event) => setDraft((value) => ({ ...value, inputMode: event.target.value }))}><option value="periods">{tx(locale, "기간 + 이벤트 여부", "Duration + event flag")}</option><option value="dates">{tx(locale, "시작·이벤트·관측 종료일", "Start, event, and observation dates")}</option></select></AnalysisFilterField>
           <AnalysisFilterField label={tx(locale, "시간 단위", "Time unit")}><select className="mon-filter-select" value={draft.timeUnit} onChange={(event) => setDraft((value) => ({ ...value, timeUnit: event.target.value }))}><option value="day">{tx(locale, "일", "Day")}</option><option value="week">{tx(locale, "주", "Week")}</option><option value="month">{tx(locale, "월", "Month")}</option></select></AnalysisFilterField>
-          <AnalysisFilterField label={tx(locale, "관측 horizon", "Observed horizon")}><input className="mon-filter-input" type="number" min="0" max={maxObserved} value={draft.horizon} placeholder={String(maxObserved)} onChange={(event) => setDraft((value) => ({ ...value, horizon: event.target.value }))} /></AnalysisFilterField>
-          <AnalysisFilterField label={tx(locale, "관측 종료일", "Observation end date")}><input className="mon-filter-input" type="date" value={draft.observationEndDate} aria-required={draft.inputMode === "dates" ? "true" : undefined} onChange={(event) => setDraft((value) => ({ ...value, observationEndDate: event.target.value }))} /></AnalysisFilterField>
+          <AnalysisFilterField label={tx(locale, "확인할 기간", "Evaluation horizon")}><input className="mon-filter-input" type="number" min="0" max={maxObserved} value={draft.horizon} placeholder={String(maxObserved)} onChange={(event) => setDraft((value) => ({ ...value, horizon: event.target.value }))} /></AnalysisFilterField>
+          <div className="mon-filter-item"><label className="mon-filter-label" htmlFor="survival-end-date">{tx(locale, "관측 종료일", "Observation end date")}</label><IsoDateInput allowEmpty id="survival-end-date" aria-label={tx(locale, "관측 종료일", "Observation end date")} locale={locale} value={draft.observationEndDate} onChange={(event) => setDraft((value) => ({ ...value, observationEndDate: event.target.value }))} /></div>
+        </div><p>{tx(locale, "기간은 선택한 시간 단위로 입력하세요. 날짜 방식에서 행별 종료일이 없으면 위 관측 종료일을 사용합니다.", "Enter duration in the selected unit. In date mode, the date above fills missing row-level observation end dates.")}</p></fieldset>
+        <fieldset><legend>{tx(locale, "이탈 정의·비교", "Exit definition and comparison")}</legend><div className="survival-settings__grid survival-settings__grid--definition">
           <AnalysisFilterField label={tx(locale, "이탈·종료 이벤트 정의", "Dropout or exit event definition")}><input className="mon-filter-input" type="text" value={draft.eventDefinition} aria-required="true" placeholder={tx(locale, "예: 14일간 핵심 액션 미실행", "e.g. no key action for 14 days")} onChange={(event) => setDraft((value) => ({ ...value, eventDefinition: event.target.value }))} /></AnalysisFilterField>
           <AnalysisFilterField label={tx(locale, "세그먼트", "Segment")}><select className="mon-filter-select" value={draft.segmentKey} onChange={(event) => setDraft((value) => ({ ...value, segmentKey: event.target.value }))}><option value="">{tx(locale, "전체만", "Overall only")}</option>{availableSegments.map((key) => <option key={key} value={key}>{key}</option>)}</select></AnalysisFilterField>
+        </div></fieldset>
+        <fieldset><legend>{tx(locale, "가치 계산 · 선택", "Value calculation · optional")}</legend><div className="survival-settings__grid survival-settings__grid--value">
           <AnalysisFilterField label={tx(locale, "기간당 반복 가치 (선택)", "Recurring value per period (optional)")}><input className="mon-filter-input" type="number" min="0" value={draft.arpu} onChange={(event) => setDraft((value) => ({ ...value, arpu: event.target.value }))} /></AnalysisFilterField>
           <AnalysisFilterField label={tx(locale, "매출총이익률 % (선택)", "Gross margin % (optional)")}><input className="mon-filter-input" type="number" min="0" max="100" value={draft.margin} onChange={(event) => setDraft((value) => ({ ...value, margin: event.target.value }))} /></AnalysisFilterField>
           <AnalysisFilterField label={tx(locale, "기간 할인율 % (선택)", "Discount rate per period (optional)")}><input className="mon-filter-input" type="number" min="0" value={draft.discountRate} onChange={(event) => setDraft((value) => ({ ...value, discountRate: event.target.value }))} /></AnalysisFilterField>
-        </div>
+        </div><p>{tx(locale, "반복 가치·이익률과 CSV의 개체 획득·유지비가 있으면 관측기간 가치와 비용 회수를 함께 확인할 수 있습니다.", "With recurring value, margin, and entity cost in the CSV, you can also assess value and cost recovery within the observed horizon.")}</p></fieldset>
       </div>
       {draft.inputMode === "dates" && <p className="muted">{tx(locale, "이탈·종료 이벤트일이 있으면 사건으로, 없으면 행의 관측 종료일 또는 위 기준일에서 중도절단으로 처리합니다. 날짜 차이는 UTC 기준이며 부분 주·월은 해당 관측 구간으로 올림합니다.", "An exit or dropout event date is observed; without one, the episode is censored at its row-level end date or the date above. Dates use UTC; partial weeks/months are assigned to their observed interval.")}</p>}
       {validationMessage && <p className="callout" role="alert">{validationMessage}</p>}
@@ -422,7 +452,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
       {isStale && <p className="callout">{tx(locale, "설정이 바뀌었습니다. 현재 결과는 최신 설정과 다를 수 있습니다.", "Settings changed. The current result may not match them.")} <button type="button" className="ab-pill" onClick={run}>{tx(locale, "다시 분석", "Re-analyze")}</button></p>}
     </section>}
     {result && !isStale && <>
-      <div id="subscription-survival-result"><ResultActionCard toolId={TOOL_ID} locale={locale} resultState={result.evidence.status === "READY" ? "ready" : "withheld"} tone={result.evidence.status === "READY" ? "neutral" : "bad"} title={statusCopy(result.evidence.status, locale)} headline={evidenceHeadline({ evidence: result.evidence, hazard: result.hazard, locale })} decisionPrefill={decisionPrefill} download={download} workbookExport={() => ({
+      <div id="subscription-survival-result"><ResultActionCard toolId={TOOL_ID} locale={locale} resultState={result.evidence.status === "READY" ? "ready" : "withheld"} tone={result.evidence.status === "READY" ? "neutral" : "bad"} title={statusCopy(result.evidence.status, locale)} headline={evidenceHeadline({ evidence: result.evidence, hazard: result.hazard, timeUnit: result.timeUnit, locale })} decisionPrefill={decisionPrefill} download={download} workbookExport={() => ({
         calculationMode: "exact_after_preprocessing",
         calculationTables: [followupTable(result.followup, result.segmentSummaries), {
           name: "SURVIVAL_CURVE",
@@ -448,20 +478,16 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
           limitations: [tx(locale, "Greenwood·log-log 신뢰구간과 세그먼트 log-rank는 엔진 출력이며 관측 범위 밖으로 외삽하지 않습니다.", "Greenwood log-log intervals and segment log-rank are engine outputs; nothing is extrapolated beyond observed support.")],
         },
       })} stats={[
-        { label: tx(locale, "최대 위험 구간의 위험집합", "At risk at peak hazard"), value: result.hazard.maxHazard?.atRisk == null ? "—" : fmtNum(result.hazard.maxHazard.atRisk), detail: tx(locale, "해당 구간 직전 관측 중인 개체 수", "Entities still under observation just before that interval") },
-        { label: tx(locale, "이탈·종료", "Exit events"), value: fmtNum(result.prepared.eventCount) },
-        { label: tx(locale, "중도절단", "Censored"), value: fmtNum(result.prepared.censoredCount) },
-        { label: tx(locale, `${result.horizon}기간 생존율`, `${result.horizon}-period survival`), value: fmtPct(result.table.length ? result.table.filter((row) => row.time <= result.horizon).at(-1)?.survival : null) },
-        { label: tx(locale, "RMST", "RMST"), value: result.rmst == null ? "—" : fmtNum(result.rmst, 2) },
-        { label: tx(locale, "관측기간 반복 가치", "Observed-horizon recurring value"), value: result.ltv == null ? "—" : fmtCurrency(result.ltv, { precise: true }) },
-        { label: tx(locale, "가치:획득·유지비", "Value:entity cost"), value: result.economics.ltvCac == null ? "—" : fmtNum(result.economics.ltvCac, 2) },
-      ]} points={[
-        { text: tx(locale, `${result.horizon}기간까지 관측 ${result.followup.observedToHorizon}건 · 그 전 이탈 확인 ${result.followup.earlyExit}건 · 그 전 중도절단 ${result.followup.earlyCensored}건 · 아직 관측 진입 전 ${result.followup.notEntered}건입니다. 이른 이탈은 결과가 확인된 사례이며, 이른 중도절단은 이후 상태를 알 수 없습니다.`, `At horizon ${result.horizon}: ${result.followup.observedToHorizon} observed through the horizon, ${result.followup.earlyExit} earlier observed exits, ${result.followup.earlyCensored} earlier censorings, and ${result.followup.notEntered} not yet entered. Early exits have known outcomes; outcomes after early censoring are unknown.`) },
-        { text: result.median == null ? tx(locale, "관측 기간 내 중앙 생존기간에 도달하지 않았습니다.", "Median survival was not reached within the observation window.") : tx(locale, `중앙 생존기간은 ${result.median}기간입니다.`, `Median survival is ${result.median} periods.`) },
-        { text: result.economics.status === "available" ? tx(locale, `관측기간 내 비용 회수는 ${result.economics.paybackPeriod}기간에 도달했습니다.`, `Cost recovery was reached in period ${result.economics.paybackPeriod} within the observed horizon.`) : result.economics.reason === "payback_not_reached" ? tx(locale, "관측 기간 내 비용 회수에 도달하지 않았습니다.", "Cost recovery was not reached within the observed horizon.") : result.economics.reason === "zero_cac" ? tx(locale, "개체 획득·유지비가 0이어서 가치 비율과 비용 회수는 계산하지 않았습니다.", "Entity cost is zero, so the value ratio and cost recovery are not calculated.") : tx(locale, "기간당 반복 가치·매출총이익률과 모든 에피소드의 개체 획득·유지비가 있어야 가치 비율·비용 회수를 계산합니다.", "Recurring value, gross margin, and entity cost for every episode are required for the value ratio and cost recovery.") },
-        ...(result.evidence.reason === "no_censored_rows" ? [{ text: tx(locale, "모든 에피소드가 이탈·종료로 끝나 중도절단 정보가 없습니다. 관측 종료 규칙을 확인한 뒤 방향만 참고하세요.", "Every episode ended in an exit event, so there is no censoring information. Check the observation-end rule and treat this as directional.") }] : []),
-        { text: tx(locale, "위험 구간 전의 핵심 액션 유지 개입안은 A/B 테스트 또는 홀드아웃으로 검증하세요.", "Validate action-retention interventions before the risk interval with an A/B test or holdout.") },
-      ]} /></div>
+        { label: tx(locale, `${result.horizon}${survivalUnit(result.timeUnit, locale)} 유지율`, `Survival at ${result.horizon} ${survivalUnit(result.timeUnit, locale)}`), value: fmtPct(result.table.length ? result.table.filter((row) => row.time <= result.horizon).at(-1)?.survival : null), detail: tx(locale, "중도절단을 반영한 KM 추정", "KM estimate accounting for censoring") },
+        { label: tx(locale, "가장 높은 구간 이탈률", "Highest interval exit risk"), value: fmtPct(result.hazard.maxHazard?.hazard ?? null), detail: result.hazard.maxHazard ? tx(locale, `${result.hazard.maxHazard.time}${survivalUnit(result.timeUnit, locale)} · 직전 관측 ${result.hazard.maxHazard.atRisk}건 중 이탈 ${result.hazard.maxHazard.events}건`, `${result.hazard.maxHazard.time} ${survivalUnit(result.timeUnit, locale)} · ${result.hazard.maxHazard.events} exits / ${result.hazard.maxHazard.atRisk} at risk`) : tx(locale, "이탈 구간 추정 불가", "Exit timing not estimable") },
+        { label: tx(locale, "중앙 유지기간", "Median survival"), value: result.median == null ? "—" : `${fmtNum(result.median)} ${survivalUnit(result.timeUnit, locale)}`, detail: result.median == null ? tx(locale, "관측 기간 내 중앙 생존기간에 도달하지 않았습니다.", "Median survival was not reached within the observation window.") : tx(locale, "추정 유지율이 50%가 되는 시점", "When estimated survival reaches 50%") },
+        { label: tx(locale, "관측 범위 내 평균 유지기간", "Restricted mean survival"), value: result.rmst == null ? "—" : `${fmtNum(result.rmst, 2)} ${survivalUnit(result.timeUnit, locale)}`, detail: tx(locale, `${result.horizon}${survivalUnit(result.timeUnit, locale)}까지만 계산 (RMST)`, `Restricted to ${result.horizon} ${survivalUnit(result.timeUnit, locale)} (RMST)`) },
+      ]} coreFigure={<SurvivalFollowupSummary result={result} locale={locale} />} points={resultPoints} pointsContent={<div className="survival-result-action">
+        {result.ltv != null && <p>{tx(locale, "관측기간 반복 가치", "Observed-horizon recurring value")} <strong>{fmtCurrency(result.ltv, { precise: true })}</strong> · {tx(locale, "가치:획득·유지비", "Value:entity cost")} <strong>{result.economics.ltvCac == null ? "—" : fmtNum(result.economics.ltvCac, 2)}</strong></p>}
+        {result.ltv != null && <p>{resultPoints[2].text}</p>}
+        {result.evidence.reason === "no_censored_rows" && <p>{resultPoints.find(point => point.text.includes(locale === "en" ? "Every episode" : "모든 에피소드"))?.text}</p>}
+        <div className="analysis-evidence-strip"><p>{resultPoints.at(-1).text}</p><InfoPopover label={tx(locale, "가치 계산·해석 조건", "Value calculation and interpretation")} glyph={tx(locale, "가치·해석 조건", "Value and interpretation")} className="analysis-evidence-button">{resultPoints.slice(1, -1).map((point, index) => <p key={index}>{point.text}</p>)}</InfoPopover></div>
+      </div>} /></div>
       <ChartCanvas table={result.table} hazard={result.hazard} locale={locale} isDarkMode={isDarkMode} />
       <section className="block" id="subscription-risk-table"><h2 className="section-title">{tx(locale, "위험집합과 이탈·종료 수", "Risk set and exit-event counts")}</h2><DataTable ariaLabel={tx(locale, "구간별 위험집합 표", "Interval risk-set table")} columns={[
         { key: "time", label: tx(locale, "기간", "Period"), align: "right" }, { key: "atRisk", label: tx(locale, "위험집합", "At risk"), align: "right" }, { key: "events", label: tx(locale, "이탈·종료", "Exit events"), align: "right" }, { key: "censored", label: tx(locale, "중도절단", "Censored"), align: "right" }, { key: "survival", label: tx(locale, "생존율", "Survival"), align: "right", fmt: (value) => fmtPct(value) }, { key: "hazard", label: tx(locale, "조건부 이탈·종료 위험", "Conditional exit risk"), align: "right", fmt: (value) => fmtPct(value) },

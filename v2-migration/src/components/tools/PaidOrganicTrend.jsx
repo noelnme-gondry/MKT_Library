@@ -1,4 +1,5 @@
 "use client";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 import { useClientReady } from "@/lib/useClientReady";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -352,11 +353,11 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                 <article><span>{C.opposite}</span><strong>{result.oppositeCount}/{result.meaningfulCount || 0}</strong></article>
               </section>
 
-              <section className="paid-organic-chart-card">
+              <RecipeBlock id="paid-organic-movement" className="paid-organic-chart-card">
                 <header><div><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p><FigurePngButton title={locale === "en" ? "Paid and organic traffic changes" : "유료·오가닉 유입 변화"} target={canvasRef} fileName="paid_organic_movement" locale={locale} /></header>
                 <div className="paid-organic-chart"><canvas ref={canvasRef}></canvas></div>
                 {(result.invalidRows > 0 || result.invalidWeeks > 0) && <small className="paid-organic-quality">{C.invalid(result.invalidRows, result.invalidWeeks)}</small>}
-              </section>
+              </RecipeBlock>
 
               <section className={`paid-organic-verdict is-${verdictCopy[2]}`}>
                 <div><h2>{verdictCopy[0]}</h2><p>{verdictCopy[1]}</p></div>

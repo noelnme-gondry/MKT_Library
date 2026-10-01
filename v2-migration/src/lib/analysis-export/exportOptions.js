@@ -23,6 +23,18 @@ export function normalizeExportOptions(options = {}) {
   };
 }
 
+/** 결과 카드 안팎의 그림이 동일한 기간·출처·파일 이름 규칙을 사용한다. */
+export function figureExportSettings({ options, toolId, toolTitle, scope = {}, resultState, source, projectName = "" }) {
+  return {
+    figureContext: { toolTitle, scope, resultState, source },
+    exportOptions: options ? normalizeExportOptions(options) : null,
+    fileNameFor: (kind) => buildExportFileName(options, {
+      toolTitle, toolId, projectName: typeof projectName === "function" ? projectName() : projectName, kind,
+      period: { start: scope.comparisonStart || scope.dateStart, end: scope.dateEnd },
+    }),
+  };
+}
+
 /** kind: "docx" | "xlsx". 입력 payload는 바꾸지 않는다. */
 export function applyReportSections(payload, options, kind) {
   const { reportHidden } = normalizeExportOptions(options);
@@ -86,4 +98,16 @@ export function buildExportFileName(options, { toolTitle = "", toolId = "", peri
     dateTool: [today, tool],
   }[fileNamePattern];
   return [...parts, safePart(kind)].filter(Boolean).join("_") || null;
+}
+
+/** 한계 문구 제외 시 파일에 남기는 한 줄(2026-09-30 결정). */
+export function caveatExclusionNote(count, locale = "ko") {
+  return locale === "en"
+    ? `The author excluded ${count} analysis limitation(s) from this file.`
+    : `작성자가 분석 한계 ${count}건을 제외했습니다.`;
+}
+
+export function exportLimitations(limitations, includeCaveats, locale = "ko") {
+  if (includeCaveats || !limitations.length) return limitations;
+  return [caveatExclusionNote(limitations.length, locale)];
 }

@@ -1,7 +1,14 @@
 "use client";
+import DashboardWorkspace from "./dashboard/DashboardWorkspace";
 import { isDemoData } from "@/lib/dataOrigin";
-import React, { useState, useEffect, useMemo } from "react";
-import PillGroup from "@/components/ds/PillGroup";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useDashboardRecipe } from "@/lib/recipe/useDashboardRecipe";
+import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
+import DashboardComparisonPeriod from "@/components/dashboard/DashboardComparisonPeriod";
+import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
+import { getMonFilteredRows } from "@/utils/dashboardAggregator";
+import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
+import { figureExportSettings, exportLimitations } from "@/lib/analysis-export/exportOptions";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import ModalDialog from "@/components/ds/ModalDialog";
@@ -19,7 +26,6 @@ import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
 import SeasonalityTab from "@/components/dashboard/SeasonalityTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
-import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
@@ -28,7 +34,6 @@ import DashboardRecommendedViews from "@/components/dashboard/DashboardRecommend
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { downloadCsv, downloadText } from "@/utils/download";
 import AnalysisHistory from "@/components/data-import/AnalysisHistory";
-import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { runDashboardVerdict, shouldUseDashboardVerdictWorker } from "@/lib/analysis/dashboardVerdictWorkerClient";
 import { sourceCurrencyOf } from "@/utils/format";
@@ -58,7 +63,7 @@ const EN_DASH_COPY = {
 export default function Dashboard({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
   const isContent = domain === "content";
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const enC = EN_DASH_COPY[domain] || EN_DASH_COPY.performance;
   // 콘텐츠판은 9-7 CSV 슬라이스·게이트를, 기본판은 5-2를 사용.
   const toolId = isContent ? "9-7" : "5-2";
@@ -68,6 +73,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const dashboardTab = useAppStore((state) => state.dashboardTab);
   const setDashboardTab = useAppStore((state) => state.setDashboardTab);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const setDashboardFilter = useAppStore(state => state.setDashboardFilter);
+  const recipeControl = useDashboardRecipe({ csvData, dashboardFilter, setDashboardFilter, locale, enabled: !isContent });
+  const recipe = recipeControl.fold.state;
+  const hidden = isContent ? [] : recipe.view.hidden;
+  const [utility, setUtility] = useState(null);
+  const utilityTrigger = useRef(null);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
@@ -93,6 +104,15 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // 결과(탭·차트)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
   const showResults = hasData && analyzed;
 
+  const periods = useMemo(() => dashboardPeriods(showResults ? csvData : null, dashboardFilter, dashWindowDays), [showResults, csvData, dashboardFilter, dashWindowDays]);
+  const chartDates = useMemo(() => getMonFilteredRows(showResults ? csvData : null, dashboardFilter).map(row => row.date).filter(Boolean).sort(), [showResults, csvData, dashboardFilter]);
+  const changeWindow = days => {
+    setDashWindowDays(days);
+    setDashboardFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null });
+  };
+  const changePeriods = (current, previous) => setDashboardFilter({ dateStart: current.start, dateEnd: current.end, compareEnabled: true, comparisonStart: previous.start, comparisonEnd: previous.end, comparisonPreset: "custom" });
+  const comparisonLabel = `${periods.current.start || "—"} – ${periods.current.end || "—"} / ${periods.previous.start || "—"} – ${periods.previous.end || "—"}`;
+
   // 결론 카드 판정(WoW) — 결과가 열린 뒤에만 계산. dashboardAggregator 순수함수
   // 재사용(엔진 불변), 데이터 부족하면 insufficient로 카드 미노출(§8 정직).
   const syncVerdict = useMemo(() => {
@@ -111,6 +131,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     locale,
     dateStart: dashboardFilter.dateStart || null,
     dateEnd: dashboardFilter.dateEnd || null,
+    compareEnabled: dashboardFilter.compareEnabled,
+    comparisonStart: dashboardFilter.comparisonStart,
+    comparisonEnd: dashboardFilter.comparisonEnd,
     platforms: [...(dashboardFilter.platforms || [])].sort(),
     countries: [...(dashboardFilter.countries || [])].sort(),
     channels: [...(dashboardFilter.channels || [])].sort(),
@@ -179,11 +202,11 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
       method: {
         name: workbookTr("기간 집계 비교", "Period aggregate comparison"),
         version: "dashboard-verdict",
-        assumptions: [workbookTr(`최근 ${dashWindowDays}일과 직전 ${dashWindowDays}일을 비교`, `Compares the last ${dashWindowDays} days with the prior ${dashWindowDays} days`)],
-        limitations: [workbookTr("필터·컬럼 매핑·기간 집계는 브라우저 분석 시점의 전처리 스냅샷입니다.", "Filters, column mapping, and period aggregation are preprocessing snapshots from the browser analysis.")],
+        assumptions: [comparisonLabel],
+        limitations: exportLimitations([workbookTr("필터·컬럼 매핑·기간 집계는 브라우저 분석 시점의 전처리 스냅샷입니다.", "Filters, column mapping, and period aggregation are preprocessing snapshots from the browser analysis.")], recipe.export.includeCaveats, locale),
       },
     };
-  }, [dashWindowDays, locale, verdict]);
+  }, [comparisonLabel, recipe.export.includeCaveats, locale, verdict]);
   const dashboardRecommendations = useMemo(() => buildDashboardRecommendations({
     verdict,
     mapping: csvData?.mapping,
@@ -216,7 +239,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   }, [csvData, isContent, isDemo, locale, showResults, toolId, verdict, workerKey]);
 
   return (
-    <div className={`section active dashboard-shell${showResults ? " has-results" : ""}`}>
+    <div className={`section active dashboard-shell${!isContent ? " dashboard-workspace" : ""}${showResults ? " has-results" : ""}`}>
       
       {/* Main Content Area */}
       <div className="dashboard-shell__main">
@@ -225,7 +248,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             같은 박스 안에 이어 붙여 한 도구 셸처럼 보이게(제목만 박스 밖에
             동떨어져 보이던 문제 해결). 결과가 열린 뒤엔 스크롤해도 상단(topbar
             아래 top:48px)에 고정. */}
-        <div className="page-sticky-bar">
+        <div className="page-sticky-bar dashboard-workspace__header">
           <div className="page-sticky-row1 dashboard-sticky-context">
             <div className="tool-instrument-header__heading">
               <h1 className="page-sticky-title">{pageTitle.name}</h1>
@@ -245,7 +268,10 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
           </div>
           {showResults && (
             <>
-              <DashboardFilterBar locale={locale} />
+              <DashboardFilterBar locale={locale} dateLabel={tr("차트 데이터 기간", "Chart data period")} compact={!isContent} commandSlot={!isContent ? <RecipeCommandInput vocabulary={recipeControl.vocabulary} context={recipeControl.context}
+                steps={recipeControl.steps} onStepsChange={recipeControl.setSteps} onApplyPreset={recipeControl.applyPreset}
+                {...recipeControl.shared} extraChips={recipeControl.shared.extraChips.filter(chip => chip.id !== "date")}
+                presets={recipeControl.presets} rejected={recipeControl.fold.rejected} locale={locale} /> : null} />
               <DashboardTabs domain={domain} locale={locale} />
             </>
           )}
@@ -287,12 +313,14 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
+            {!["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
             {workerPending && (
               <div className="callout" role="status" aria-live="polite" style={{ marginBottom: "1rem" }}>
                 <div className="ico">◌</div>
                 <div className="body"><strong>{tr("대용량 데이터 분석 중", "Analyzing large dataset")}</strong><p>{tr("화면을 멈추지 않고 결과를 계산하고 있습니다.", "The result is being computed without blocking the page.")}</p></div>
               </div>
             )}
+            {activeTab === "viz" && verdict?.insufficient && <section className="dashboard-comparison-period" role="status"><strong>{tr("비교할 데이터가 부족합니다", "Not enough data to compare")}</strong><p>{tr("분석 기간과 비교 기간 모두에 관측값이 있어야 합니다. 위 날짜와 분석 대상을 확인하세요.", "Both periods need observations. Check the dates and selected analysis scope above.")}</p></section>}
             {/* 전체 결론은 첫 진입인 시각화 탭에서만 보여 준다. 하위 탭에서는
                 현재 선택한 분석의 그래프·조작 기능이 첫 화면을 차지한다. */}
             {activeTab === "viz" && verdict && !verdict.insufficient && (
@@ -318,6 +346,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 stats={verdict.stats}
                 locale={locale}
                 workbookExport={dashboardWorkbookExport}
+                exportOptions={isContent ? undefined : recipe.export}
                 scopeEvidence={verdict.scopeEvidence}
                 decisionPrefill={{
                   conclusion: verdict.headline,
@@ -335,11 +364,11 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   metric: verdict.stats.find((stat) => stat.emphasis === "primary")?.label || verdict.stats[0]?.label || "",
                   baseline: verdict.stats.find((stat) => stat.emphasis === "primary")?.value || verdict.stats[0]?.value || "",
                   baselineDate: dashboardFilter.dateEnd || "",
-                  comparisonWindowDays: dashWindowDays,
-                  sourcePeriod: tr(`최근 ${dashWindowDays}일 vs 직전 ${dashWindowDays}일`, `Last ${dashWindowDays} days vs. prior ${dashWindowDays} days`),
+                  comparisonWindowDays: verdict.windowDays,
+                  sourcePeriod: comparisonLabel,
                   reviewQuestion: tr(
-                    `다음 ${dashWindowDays}일에도 같은 지표가 현재 기준보다 개선됐는가?`,
-                    `After the next ${dashWindowDays} days, did the same metric improve from this baseline?`,
+                    `다음 ${verdict.windowDays}일에도 같은 지표가 현재 기준보다 개선됐는가?`,
+                    `After the next ${verdict.windowDays} days, did the same metric improve from this baseline?`,
                   ),
                 }}
                 analysisMeta={
@@ -351,21 +380,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     metric={tr("최근 성과 변화", "Recent performance change")}
                     unit={tr("비교 기간 대비 변화율·매핑된 KPI 단위", "Change rate vs. prior window; mapped KPI units")}
                     meaning={tr("관측상 요약 — 광고의 인과효과나 증분효과가 아님", "Observed summary — not causal or incremental attribution")}
-                    sampleSize={{ label: tr("사용 행", "Rows used"), value: csvData.raw.length, detail: tr("현재 필터와 업로드 범위", "Current filter and upload scope") }}
-                    scope={tr(`최근 ${dashWindowDays}일 vs 직전 ${dashWindowDays}일`, `Last ${dashWindowDays} days vs. prior ${dashWindowDays} days`)}
+                    sampleSize={{ label: tr("사용 행", "Rows used"), value: periods.recentRows.length + periods.previousRows.length, detail: tr("현재 필터와 업로드 범위", "Current filter and upload scope") }}
+                    scope={comparisonLabel}
                     method={tr("WoW 운영 요약", "WoW operational summary")}
                     version="dashboard-verdict"
                     cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
                     warnings={[tr("이 카드는 관측 요약입니다. 인과효과로 해석하려면 증분분석 또는 실험이 필요합니다.", "This is an observed summary. Use incrementality or an experiment for causal claims.")]}
-                  />
-                }
-                controls={
-                  <PillGroup
-                    label={tr("비교", "Window")}
-                    style={{ display: "inline-flex", alignItems: "center" }}
-                    value={dashWindowDays}
-                    onChange={setDashWindowDays}
-                    options={[7, 14, 28].map((d) => ({ value: d, label: tr(`${d}일`, `${d}d`) }))}
                   />
                 }
                 download={
@@ -386,33 +406,23 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                       warnings: ["Observed summary; not causal attribution"],
                     })}
                     items={[
-                      { icon: "⬇", analyticsType: "csv", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
-                      { icon: "⬇", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary", "md", locale) },
+                      { icon: "⬇", analyticsType: "csv", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: context => downloadCsv(verdict.export.csv, context?.fileNameFor?.("csv") || (isContent ? "content_dashboard_summary" : "dashboard_summary")) },
+                      { icon: "⬇", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: context => downloadText(verdict.export.text, context?.fileNameFor?.("md") || (isContent ? "content_dashboard_summary" : "dashboard_summary"), "md", locale) },
                     ]}
                   />
                 }
                 />
-                <section data-information-section="" className="dashboard-next-actions">
-                  <header data-information-heading="">
-                    <span><strong>{tr("다음 분석으로 이어가기", "Continue to the next analysis")}</strong><em>{tr("현재 결과에서 확인할 다음 질문", "The next questions to check from this result")}</em></span>
-                  </header>
-                  <div className="dashboard-next-actions__body">
-                    <div className="dashboard-next-actions__utility">
-                      <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
-                      <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
-                    </div>
-                    <DashboardRecommendedViews
-                      {...dashboardRecommendations}
-                      locale={locale}
-                      onSelect={selectRecommendedView}
-                    />
-                  </div>
-                </section>
+
               </section>
             )}
 
+            <AnalysisExportProvider value={isContent ? null : figureExportSettings({ options: recipe.export, toolId, toolTitle: pageTitle.name,
+              scope: activeTab === "scorecard" ? { ...dashboardFilter, dateStart: periods.current.start, dateEnd: periods.current.end, compareEnabled: true, comparisonStart: periods.previous.start, comparisonEnd: periods.previous.end } : { ...dashboardFilter, dateStart: chartDates[0], dateEnd: chartDates.at(-1), compareEnabled: false, comparisonStart: null, comparisonEnd: null },
+              resultState: chartDates.length ? "ready" : "insufficient", source: { importSource: isDemo ? "demo" : csvData.importSource, fileName: isDemo ? "" : csvData.fileName },
+              projectName: () => isDemo ? "" : useAppStore.getState().projects.find(project => project.id === useAppStore.getState().activeProjectId)?.name })}>
             <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
-              {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
+              <DashboardWorkspace enabled={!isContent} key={activeTab} tab={activeTab} locale={locale}>
+              {activeTab === "viz" && <VizTab domain={domain} locale={locale} hideSupporting={hidden.includes("supporting")} />}
               {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
               {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
               {!isContent && activeTab === "seasonality" && <SeasonalityTab locale={locale} />}
@@ -429,21 +439,27 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   </p>
                 </div>
               )}
+              </DashboardWorkspace>
             </div>
-            {verdict && !verdict.insufficient && (
-              <section data-information-section="" className="dashboard-support-tools" id="dashboard-support-tools">
-                <header data-information-heading="">
-                  <span>{tr("분석 보조 도구", "Analysis utilities")}</span>
-                  <small>{tr("기록 · 다음 분석 · 이벤트 마커", "History · next analyses · event markers")}</small>
-                  <b aria-hidden="true">＋</b>
-                </header>
-                <div className="dashboard-support-tools__body">
-                  <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
-                  <AnalysisPathway csvData={csvData} locale={locale} />
-                  <MonEventMarkerUI locale={locale} />
-                </div>
+            </AnalysisExportProvider>
+            {activeTab === "viz" && verdict && !verdict.insufficient && !hidden.includes("recommendations") && (
+              <section className="dashboard-next-actions">
+                <DashboardRecommendedViews {...dashboardRecommendations} additional={[]} locale={locale} onSelect={selectRecommendedView} />
               </section>
             )}
+            {verdict && !verdict.insufficient && <AnalysisHistory recordOnly toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />}
+            {verdict && !verdict.insufficient && <section className="dashboard-utilities" aria-label={tr("기록과 이벤트", "History and events")}>
+              <div><h2>{tr("기록과 이벤트", "History and events")}</h2><p>{tr("지난 판단을 찾거나 차트에 캠페인 변경일을 남깁니다.", "Review previous decisions or mark campaign changes on your charts.")}</p></div>
+              <div className="dashboard-utilities__actions">
+                {[["history", tr("판단 기록 보기", "View decision history")], ["events", tr("이벤트 마커 관리", "Manage event markers")]].map(([key, label]) => <button className="btn ghost" type="button" key={key} onClick={event => { utilityTrigger.current = event.currentTarget; setUtility(key); }}>{label}</button>)}
+              </div>
+              <ModalDialog open={utility !== null} onClose={() => setUtility(null)} returnFocusRef={utilityTrigger} ariaLabel={utility === "history" ? tr("판단 기록", "Decision history") : tr("이벤트 마커", "Event markers")} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel">
+                <header className="tool-reference-panel__head"><h2>{utility === "history" ? tr("판단 기록", "Decision history") : tr("이벤트 마커", "Event markers")}</h2><button type="button" className="btn ghost" onClick={() => setUtility(null)}>{tr("닫기", "Close")}</button></header>
+                {utility === "history" && <AnalysisHistory record={false} toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />}
+                {utility === "events" && <MonEventMarkerUI locale={locale} />}
+              </ModalDialog>
+            </section>}
+
           </div>
         )}
       </div>

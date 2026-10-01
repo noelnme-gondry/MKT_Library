@@ -38,8 +38,27 @@ describe("buildMarginalEfficiencyGap", () => {
     expect(result.points.find((point) => point.name === "B")).toMatchObject({
       marginal: Infinity,
       isUnbounded: true,
-      plotMarginal: result.domainMax,
+      plotMarginal: result.points.find((point) => point.name === "B").domainMax,
     });
+  });
+
+  it("each pair keeps its own zero-based range when a larger channel is present", () => {
+    const small = { name: "TikTok", ok: true, avgCpr: 776.3, marginalCpr: 1063, satIndex: 1.37 };
+    const large = { name: "ASA", ok: true, avgCpr: 3921, marginalCpr: 6742, satIndex: 1.72 };
+    const alone = buildMarginalEfficiencyGap([small]).points[0];
+    const combined = buildMarginalEfficiencyGap([small, large]).points;
+    expect(combined[0]).toEqual(alone);
+    expect(combined[0].domainMax).toBe(1200);
+    expect(combined[1].domainMax).toBe(8000);
+    expect((alone.marginal - alone.average) / alone.domainMax).toBeGreaterThan(0.2);
+  });
+
+  it("keeps zero and equal-value pairs finite without fabricating a difference", () => {
+    for (const value of [0, 0.0001, 12]) {
+      const point = buildMarginalEfficiencyGap([{ name: "A", avgCpr: value, marginalCpr: value }]).points[0];
+      expect(point.domainMax).toBeGreaterThan(value);
+      expect(point.plotMarginal).toBe(point.average);
+    }
   });
 
   it("필수 값이 없는 대상은 0으로 위장하지 않고 제외", () => {

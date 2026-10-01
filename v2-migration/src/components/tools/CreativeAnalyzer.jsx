@@ -1,4 +1,6 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -482,8 +484,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .replace("추세 외삽", "Trend extrapolation"));
   const decMetaAll = useMemo(() => buildDecomposeMeta(locale), [locale]);
   const csvData = useAppStore((state) => state.csvData);
-  const [metric, setMetric] = useState("ctr");
-  const [activeProblem, setActiveProblem] = useState("swaps");
+  const [metric, setMetric] = useSavedToolInput("9-6", "metric", "ctr");
+  const [activeProblem, setActiveProblem] = useSavedToolInput("9-6", "activeProblem", "swaps");
   // 탭 계약(product-ssot §6.1): 화살표·Home·End로 이동하고 선택 항목만 tab 순서에 남는다.
   // 이 도구만 계약이 통째로 빠져 있어 마우스로만 조작할 수 있었다(D-09).
   const onProblemKeyDown = useCallback((event, currentId, ids) => {
@@ -498,11 +500,11 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     const nextId = ids[nextIndex];
     setActiveProblem(nextId);
     window.requestAnimationFrame(() => document.getElementById(`creative-problem-tab-${nextId}`)?.focus());
-  }, []);
+  }, [setActiveProblem]);
   // §8 Concept Matrix 셀 클릭 → §2 성과표 필터 (index CREATIVE_STATE.selectedCell)
   const [selectedCell, setSelectedCell] = useState(null); // {row, col} | null
   // §7 Auto-Planner: 주당 신규 소재 공급량 + Gantt 표시 주수
-  const [weeklyVelocity, setWeeklyVelocity] = useState(
+  const [weeklyVelocity, setWeeklyVelocity] = useSavedToolInput("9-6", "weeklyVelocity",
     CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity,
   );
   const ganttWeeks = 8;
@@ -1735,7 +1737,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         )}
       </section>
 
-      <section className="block" id="s-matrix" hidden={activeProblem !== "drivers"}>
+      <RecipeBlock className="block" id="s-matrix" hidden={activeProblem !== "drivers"}>
         <h2 className="section-title">{tr("어떤 요소 조합이 좋았나?", "Which element combinations worked?")}{matrix ? ` — ${rowAttr} × ${colAttr}` : ""}</h2>
         {matrix && matrix.grid.length ? (
           <>
@@ -1841,7 +1843,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         ) : (
           <div className="callout warning"><div className="ico">!</div><div className="body"><strong>{tr("성과표 생성 불가", "Cannot generate performance grid")}</strong><p>{tr(`${rowAttr} 컬럼과 ${colAttr} 컬럼이 모두 매핑되어야 합니다.`, `Both the ${rowAttr} and ${colAttr} columns must be mapped.`)}</p></div></div>
         )}
-      </section>
+      </RecipeBlock>
 
       <section className="block" id="s-next" hidden={activeProblem !== "production"}>
         <h2 className="section-title">{tr("다음 테스트에서 무엇을 확인할까?", "What should the next test check?")}</h2>

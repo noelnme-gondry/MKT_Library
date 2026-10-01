@@ -1,5 +1,7 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
+import React, { useMemo, useEffect, useRef } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
@@ -96,15 +98,15 @@ const PACING_COPY = {
 export default function PacingTab({ locale = "ko" } = {}) {
   const T = PACING_COPY[locale] || PACING_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
 
-  const [metric, setMetric] = useState("cost");
-  const [forecastMode, setForecastMode] = useState("linear");
-  const [actionDef, setActionDef] = useState("registration");
-  const [monthlyTarget, setMonthlyTarget] = useState("");
+  const [metric, setMetric] = useDashboardControl("metric", "cost");
+  const [forecastMode, setForecastMode] = useDashboardControl("forecastMode", "linear");
+  const [actionDef, setActionDef] = useDashboardControl("actionDef", "registration");
+  const [monthlyTarget, setMonthlyTarget] = useDashboardControl("monthlyTarget", "");
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -227,7 +229,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
         maintainAspectRatio: false,
         plugins: {
           ...chartCommonOpts().plugins,
-          legend: { labels: { color: getCssVar("--text-muted"), font: { size: 11 } } },
+          legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "line", boxWidth: 20, color: getCssVar("--text-muted"), font: { size: 11 } } },
         },
         scales: {
           x: {
@@ -251,12 +253,12 @@ export default function PacingTab({ locale = "ko" } = {}) {
 
   if (!hasData) {
     return (
-      <div className="tab-pane active" id="tab-pacing">
+      <DashboardTabLayout className="tab-pane active" id="tab-pacing">
         <section className="block" id="s-pace">
           <h2 className="section-title">{T.sectionTitle}</h2>
           <p className="muted">{T.noDateData}</p>
         </section>
-      </div>
+      </DashboardTabLayout>
     );
   }
 
@@ -266,10 +268,11 @@ export default function PacingTab({ locale = "ko" } = {}) {
   const hasActions = mapped.has("actions");
 
   return (
-    <div className="tab-pane active" id="tab-pacing">
+    <DashboardTabLayout className="tab-pane active" id="tab-pacing">
       <section className="block" id="s-pace">
         <h2 className="section-title">{T.sectionTitle}</h2>
 
+        <div className="dashboard-analysis-controls">
         <PillGroup
           label={T.metricLabel}
           value={metric}
@@ -333,6 +336,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
           />
         </div>
 
+        </div>
         {paceData && (
           <div className="ab-stat-row" style={{ margin: "8px 0 12px" }}>
             <div className="ab-stat">
@@ -391,6 +395,6 @@ export default function PacingTab({ locale = "ko" } = {}) {
 
       </section>
       <CustomChartsSection sectionNo="2" chartScope="5-2:pacing-charts" metricScope="5-2:viz-kpi" title={T.customChartsTitle} locale={locale} />
-    </div>
+    </DashboardTabLayout>
   );
 }

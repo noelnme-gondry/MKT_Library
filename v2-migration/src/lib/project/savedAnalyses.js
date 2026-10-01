@@ -1,3 +1,4 @@
+import { dashboardSnapshotSteps } from "@/lib/recipe/dashboardRecipe";
 import { cleanToolInputs, inputScope } from "@/lib/analysis-settings/toolInputs";
 import { describeDataSeries } from "./dataSeries";
 import { validateProjectFile } from "./projectSchema";
@@ -5,6 +6,8 @@ import { headerFingerprint, serializeProject } from "./serializeProject";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 
 export const MAX_SAVED_ANALYSES = 20;
+// Private dashboard layouts travel only with local project settings, never account recipes.
+const dashboardOnly = (values = {}) => Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("5-2:") || key === "dashboard-workspace"));
 export function validateSavedAnalyses(items = []) {
   if (!Array.isArray(items) || items.length > MAX_SAVED_ANALYSES) throw new Error("SAVED_ANALYSES_LIMIT");
   const ids = new Set();
@@ -14,7 +17,7 @@ export function validateSavedAnalyses(items = []) {
     const input = validateProjectFile(item.configuration);
     const scope = inputScope(item.toolId);
     const inputs = cleanToolInputs(item.toolId, input.viewConfig?.[scope]);
-    const configuration = { ...input, viewConfig: Object.keys(inputs).length ? { [scope]: inputs } : {}, customMetrics: {}, customCharts: {} };
+    const configuration = { ...input, viewConfig: { ...(item.toolId === "5-2" ? dashboardOnly(input.viewConfig) : {}), ...(Object.keys(inputs).length ? { [scope]: inputs } : {}) }, customMetrics: item.toolId === "5-2" ? dashboardOnly(input.customMetrics) : {}, customCharts: item.toolId === "5-2" ? dashboardOnly(input.customCharts) : {} };
     const group = TOOL_GROUP[item.toolId];
     if (!configuration.groups || Object.keys(configuration.groups).length !== 1 || !configuration.groups[group]) throw new Error("SAVED_ANALYSIS_SCOPE");
     const config = configuration.groups[group];
@@ -28,9 +31,10 @@ export async function captureSavedAnalysis(state, toolId, name, locale) {
   if (!group || (!hasCsv && !Object.keys(cleanToolInputs(toolId, state.viewConfig[inputScope(toolId)])).length)) throw new Error("SAVED_ANALYSIS_NO_DATA");
   const configuration = await serializeProject(state, locale);
   configuration.groups = { [group]: configuration.groups[group] || { headerFingerprint: await headerFingerprint([]), mapping: {}, filters: {} } };
-  for (const key of ["viewConfig", "customMetrics", "customCharts"]) configuration[key] = {};
+  const serializedInputs = configuration.viewConfig[inputScope(toolId)];
+  for (const key of ["viewConfig", "customMetrics", "customCharts"]) configuration[key] = toolId === "5-2" ? dashboardOnly(configuration[key]) : {};
   const scope = inputScope(toolId);
-  configuration.viewConfig[scope] = cleanToolInputs(toolId, state.viewConfig[scope]);
+  configuration.viewConfig[scope] = cleanToolInputs(toolId, serializedInputs || state.viewConfig[scope]);
   const series = describeDataSeries(state.csvGroups[group] || {}, group);
   const dataContext = { currency: series.currency, basis: group === "efficiency" ? state.denomBasis : null, start: series.start, end: series.end };
   return validateSavedAnalyses([{ id: crypto.randomUUID(), name, toolId, configuration, dataContext, hasCsv }])[0];
@@ -50,6 +54,10 @@ export function savedAnalysisConfiguration(item, state, useCurrentPeriod = true)
     for (const key of ["dateStart", "dateEnd", "comparisonStart", "comparisonEnd", "comparisonPreset", "compareEnabled"]) configuration.groups[group].filters[key] = current[key] ?? null;
   }
   for (const key of ["viewConfig", "customMetrics", "customCharts"]) configuration[key] = { ...state[key], ...configuration[key] };
+  // Applying another tool must not replay an old dashboard control snapshot.
+  if (group === "efficiency" && item.toolId !== "5-2" && configuration.viewConfig["analysis-inputs:5-2"]) {
+    configuration.viewConfig["analysis-inputs:5-2"] = { ...configuration.viewConfig["analysis-inputs:5-2"], recipeSteps: dashboardSnapshotSteps(state, configuration.viewConfig["analysis-inputs:5-2"].recipeSteps || []) };
+  }
   return configuration;
 }
 

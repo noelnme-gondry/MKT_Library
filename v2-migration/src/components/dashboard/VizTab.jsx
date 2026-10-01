@@ -1,4 +1,6 @@
 "use client";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardSetting, useDashboardAction, useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
 import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import HelpTip from "@/components/ds/HelpTip";
 import Chart from "@/utils/chartGlobals";
@@ -204,7 +206,7 @@ const VIZ_DASH_COPY_EN = {
   },
 };
 
-export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
+export default function VizTab({ domain = "performance", locale = "ko", hideSupporting = false } = {}) {
   const router = useRouter();
   const C = resolveDashCopy(domain);
   const D = locale === "en" ? VIZ_DASH_COPY_EN[domain] || VIZ_DASH_COPY_EN.performance : C;
@@ -213,33 +215,33 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const selectedCohort = useAppStore((state) => state.selectedCohort);
   const setSelectedCohort = useAppStore((state) => state.setSelectedCohort);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const eventMarkers = useAppStore((state) => state.eventMarkers);
   // 지표 뷰 설정(표시/순서) — KPI 카드·차트 각각 독립 scope.
-  const storedKpiCfg = useAppStore((state) => state.viewConfig[VIZ_KPI_SCOPE]);
+  const storedKpiCfg = useDashboardSetting("viewConfig", VIZ_KPI_SCOPE);
   // 기존 빈 설정은 예전 "전부 표시" 기본값이다. compact-v1을 명시한 사용자의
   // 편집 결과만 존중해, 업데이트 직후에도 새 기본 위계가 실제로 적용되게 한다.
   const hasCustomKpiView = storedKpiCfg?.preset === "compact-v1";
-  const chartCfg = useAppStore((state) => state.viewConfig[VIZ_CHART_SCOPE]);
-  const setViewConfig = useAppStore((state) => state.setViewConfig);
-  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const chartCfg = useDashboardSetting("viewConfig", VIZ_CHART_SCOPE);
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
   // 커스텀 지표(Phase C) — Viz KPI surface scope에 조립·저장.
-  const customMetrics = useAppStore((state) => state.customMetrics[VIZ_KPI_SCOPE]);
-  const addCustomMetric = useAppStore((state) => state.addCustomMetric);
-  const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
-  const updateCustomMetric = useAppStore((state) => state.updateCustomMetric);
-  const customCharts = useAppStore((state) => state.customCharts[VIZ_CHART_SCOPE]);
-  const addCustomChart = useAppStore((state) => state.addCustomChart);
-  const removeCustomChart = useAppStore((state) => state.removeCustomChart);
+  const customMetrics = useDashboardSetting("customMetrics", VIZ_KPI_SCOPE);
+  const addCustomMetric = useDashboardAction("addCustomMetric");
+  const removeCustomMetric = useDashboardAction("removeCustomMetric");
+  const updateCustomMetric = useDashboardAction("updateCustomMetric");
+  const customCharts = useDashboardSetting("customCharts", VIZ_CHART_SCOPE);
+  const addCustomChart = useDashboardAction("addCustomChart");
+  const removeCustomChart = useDashboardAction("removeCustomChart");
   const [kpiEditMode, setKpiEditMode] = useState(false);
   const [chartCfgOpen, setChartCfgOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
   // null일 때만 데이터에서 첫 선택을 정한다. 사용자가 고른 카드는 필터 변경 뒤에도 유지한다.
-  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [selectedMetric, setSelectedMetric] = useDashboardControl("selectedMetric", null);
   const detailCanvasRef = useRef(null);
   const detailChartRef = useRef(null);
 
@@ -927,7 +929,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
           : [];
 
   return (
-    <div className="tab-pane active" id="tab-viz">
+    <DashboardTabLayout className="tab-pane active" id="tab-viz">
       {/* Cohort Toggle — 콘텐츠는 매출/결제/잔존율(코호트 지표)이 없어 제외(§정직성). */}
       {!isContent && (
       <section className="dashboard-cohort-control" id="s-cohort" aria-label={T.cohortSectionTitle}>
@@ -947,14 +949,14 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         <div className="dashboard-section-head">
           <h2 className="section-title">{T.kpiSectionTitle}</h2>
           <div className="dashboard-section-actions">
-            <button className="ab-pill" onClick={() => setBuilderOpen(true)} title={T.addMetricTitle}>{T.addMetric}</button>
+            <button className="ab-pill dashboard-legacy-edit" onClick={() => setBuilderOpen(true)} title={T.addMetricTitle}>{T.addMetric}</button>
             {kpiEditMode ? (
               <>
                 <button className="ab-pill" onClick={() => resetViewConfig(VIZ_KPI_SCOPE)} title={T.resetTitle}>{T.reset}</button>
                 <button className="ab-pill active" onClick={() => setKpiEditMode(false)}>{T.done}</button>
               </>
             ) : (
-              <button className="ab-pill" onClick={() => setKpiEditMode(true)} title={T.editTitle}>{T.edit}</button>
+              <button className="ab-pill dashboard-legacy-edit" onClick={() => setKpiEditMode(true)} title={T.editTitle}>{T.edit}</button>
             )}
           </div>
         </div>
@@ -1008,12 +1010,12 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       </div>
 
       {/* 기본+사용자 보조 차트 — KPI 탐색 차트와 별도 설정을 유지한다. */}
-      <section className="block dashboard-supporting-charts" id="s-custom-charts">
+      <section className="block dashboard-supporting-charts" id="s-custom-charts" hidden={hideSupporting}>
         <div className="dashboard-section-head">
           <h2 className="section-title">{locale === "en" ? "Custom charts" : "보조 차트"}</h2>
           <div className="dashboard-section-actions">
-            <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
-            <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
+            <button className="ab-pill dashboard-legacy-edit" onClick={() => setChartBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
+            <button className="ab-pill dashboard-legacy-edit" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
         <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>{locale === "en" ? "Use the ready-made charts or add your own, then edit visibility and order." : "기본 차트를 바로 사용하거나 새 차트를 추가하고, 표시 여부와 순서를 편집할 수 있습니다."}</p>
@@ -1027,7 +1029,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         ) : (
           <div className="chart-grid cols-2">
             {orderedCharts.map((c) => (
-              <div key={c.k} className="chart-card" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
+              <div key={c.k} className="chart-card" data-design-exempt="nested: independent chart title, plot and export action grouped inside the supporting-chart surface (design.md §2)" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
                 <div className="chart-title">{c.title}</div>
                 <div className="chart-sub">{c.sub}</div>
                 {customScorecardFor(c.k) ? (
@@ -1075,6 +1077,6 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         onCreate={(def) => addCustomChart(VIZ_CHART_SCOPE, def)}
         onDelete={(id) => removeCustomChart(VIZ_CHART_SCOPE, id)}
       />
-    </div>
+    </DashboardTabLayout>
   );
 }

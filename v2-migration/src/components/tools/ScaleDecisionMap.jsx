@@ -10,12 +10,13 @@ import {
   getCssVar,
 } from "@/utils/chartUtils";
 import { fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { decisionCostBounds, decisionCostTick } from "@/utils/scaleDecisionAxis";
 import { buildScaleDecisionMatrix } from "@/utils/scaleDecisionMatrix";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
 const ACTION_ORDER = ["scale", "maintain", "watch", "stop", "reduce"];
 
-function actionCopy(locale, metric) {
+function actionCopy(locale, metric, costMetricLabel) {
   const en = locale === "en";
   const shared = {
     scale: { label: en ? "Scale" : "증액 검토", detail: en ? "low cost · strong efficiency" : "낮은 비용 · 좋은 효율", tone: "primary" },
@@ -25,7 +26,7 @@ function actionCopy(locale, metric) {
   if (metric === "cpa") {
     return {
       ...shared,
-      stop: { label: en ? "Consider stopping" : "종료 검토", detail: en ? "low cost · high CPA" : "낮은 비용 · 높은 CPA", tone: "danger" },
+      stop: { label: en ? "Consider stopping" : "종료 검토", detail: en ? `low cost · high ${costMetricLabel}` : `낮은 비용 · 높은 ${costMetricLabel}`, tone: "danger" },
     };
   }
   return {
@@ -84,9 +85,9 @@ function buildDecisionFieldPlugin({ thresholds, positions, actions }) {
         ctx.fillRect(x, y, Math.max(0, width), Math.max(0, height));
       }
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = CHART_THEME.border;
+      ctx.strokeStyle = CHART_THEME.text;
       ctx.setLineDash([5, 5]);
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(xMid, chartArea.top);
       ctx.lineTo(xMid, chartArea.bottom);
@@ -113,8 +114,11 @@ function buildDecisionFieldPlugin({ thresholds, positions, actions }) {
         const point = dataset.data[index];
         if (!element || !point) continue;
         const text = point.name.length > 18 ? `${point.name.slice(0, 17)}…` : point.name;
-        const x = element.x + element.options.radius + 4;
-        const y = element.y;
+        const textWidth = chart.ctx.measureText(text).width;
+        const rightX = element.x + element.options.radius + 5;
+        const x = Math.max(chart.chartArea.left + 2, Math.min(chart.chartArea.right - textWidth - 2,
+          rightX + textWidth <= chart.chartArea.right ? rightX : element.x - element.options.radius - textWidth - 5));
+        const y = Math.max(chart.chartArea.top + 8, Math.min(chart.chartArea.bottom - 8, element.y));
         chart.ctx.lineWidth = 3;
         chart.ctx.strokeStyle = outline;
         chart.ctx.strokeText(text, x, y);
@@ -129,6 +133,7 @@ function buildDecisionFieldPlugin({ thresholds, positions, actions }) {
 export default function ScaleDecisionMap({
   rows,
   grain,
+  entityLabel = null,
   metric,
   resultField,
   revenueField,
@@ -145,11 +150,12 @@ export default function ScaleDecisionMap({
     resultField,
     revenueField,
   }), [rows, grain, metric, resultField, revenueField]);
-  const actions = useMemo(() => actionCopy(locale, metric), [locale, metric]);
+  const costMetricLabel = resultField === "installs" ? "CPI" : "CPA";
+  const actions = useMemo(() => actionCopy(locale, metric, costMetricLabel), [locale, metric, costMetricLabel]);
   const positions = useMemo(() => quadrantPositions(metric), [metric]);
   const isEn = locale === "en";
-  const grainLabel = grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널");
-  const metricLabel = metric === "roas" ? "ROAS" : "CPA";
+  const grainLabel = entityLabel || (grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널"));
+  const metricLabel = metric === "roas" ? "ROAS" : costMetricLabel;
   const resultLabel = resultField === "installs" ? (isEn ? "installs" : "설치") : (isEn ? "actions" : "액션·가입");
   const actionCounts = Object.fromEntries(ACTION_ORDER.map((key) => [key, 0]));
   matrix.points.forEach((point) => { if (point.action) actionCounts[point.action] += 1; });
@@ -184,7 +190,7 @@ export default function ScaleDecisionMap({
       plugins: [plugin],
       options: {
         ...common,
-        layout: { padding: { top: 30, right: 72, bottom: 6, left: 4 } },
+        layout: { padding: { top: 20, right: 12, bottom: 8, left: 4 } },
         plugins: {
           ...common.plugins,
           legend: { display: false },
@@ -193,8 +199,8 @@ export default function ScaleDecisionMap({
             ...common.plugins.tooltip,
             callbacks: {
               title: (items) => items[0]?.raw?.name || "",
-              label: (context) => `${isEn ? "Cost" : "비용"}: ${fmtCurrencyPrecise(context.raw.x, currency)}`,
-              afterLabel: (context) => [
+              label: (context) => [
+                `${isEn ? "Cost" : "비용"}: ${fmtCurrencyPrecise(context.raw.x, currency)}`,
                 `${metricLabel}: ${formatMetric(context.raw.y, metric, currency, locale)}`,
                 `${resultLabel}: ${Number(context.raw.results || 0).toLocaleString(isEn ? "en-US" : "ko-KR")}`,
                 `${isEn ? "Action" : "행동"}: ${actions[context.raw.action].label}`,
@@ -205,22 +211,26 @@ export default function ScaleDecisionMap({
         scales: {
           x: {
             ...common.scales.x,
-            type: "logarithmic",
-            title: { display: true, text: isEn ? "Cost in analyzed period →" : "분석 기간 Cost →", color: CHART_THEME.muted },
-            grid: { color: CHART_THEME.grid },
+            type: "linear",
+            ...decisionCostBounds(matrix.points.map(point => point.cost)),
+            title: { display: true, text: isEn ? "Period cost · linear scale →" : "기간 총비용 · 선형 눈금 →", color: CHART_THEME.muted },
+            grid: { color: CHART_THEME.grid, lineWidth: 0.5, drawTicks: true },
             ticks: {
               ...common.scales.x.ticks,
-              callback: (value) => fmtCurrencyCompact(value, currency, locale),
+              maxTicksLimit: 5,
+              callback: (value, index, ticks) => decisionCostTick(Number(value), ticks, currency, locale),
             },
           },
           y: {
             ...common.scales.y,
             beginAtZero: true,
+            grid: { color: CHART_THEME.grid, lineWidth: 0.5, drawTicks: false },
+            border: { display: false, dash: [] },
             title: {
               display: true,
               text: metric === "roas"
                 ? (isEn ? "ROAS · higher is better ↑" : "ROAS · 높을수록 좋음 ↑")
-                : (isEn ? "CPA · lower is better ↓" : "CPA · 낮을수록 좋음 ↓"),
+                : (isEn ? `${costMetricLabel} · lower is better ↓` : `${costMetricLabel} · 낮을수록 좋음 ↓`),
               color: CHART_THEME.muted,
             },
             ticks: {
@@ -238,17 +248,12 @@ export default function ScaleDecisionMap({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [matrix, actions, positions, metric, metricLabel, currency, locale, grainLabel, resultLabel, isEn, isDarkMode]);
+  }, [matrix, actions, positions, metric, metricLabel, costMetricLabel, currency, locale, grainLabel, resultLabel, isEn, isDarkMode]);
 
   const visibleActions = ACTION_ORDER.filter((key) => actions[key]);
-  const thresholdCopy = Number.isFinite(matrix.thresholds.cost) && Number.isFinite(matrix.thresholds.efficiency)
-    ? (isEn
-      ? `Reference lines: median cost ${fmtCurrencyCompact(matrix.thresholds.cost, currency, locale)} · blended ${metricLabel} ${formatMetric(matrix.thresholds.efficiency, metric, currency, locale)}`
-      : `기준선: 비용 중앙값 ${fmtCurrencyCompact(matrix.thresholds.cost, currency, locale)} · 전체 가중 ${metricLabel} ${formatMetric(matrix.thresholds.efficiency, metric, currency, locale)}`)
-    : "";
 
   return (
-    <section className="block scale-decision-map" id="s-scale-map" aria-labelledby="scale-decision-map-title">
+    <section className="block scale-decision-map saturation-surface" id="s-scale-map" aria-labelledby="scale-decision-map-title">
       <header className="scale-decision-map__head">
         <div>
           <h2 className="section-title" id="scale-decision-map-title">
@@ -256,7 +261,7 @@ export default function ScaleDecisionMap({
           </h2>
           <p>{isEn
             ? `Compare total cost with blended ${metricLabel}. Bubble size is actual ${resultLabel}; it is not an incremental-effect estimate.`
-            : `총비용과 전체 가중 ${metricLabel}을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
+            : `총비용과 전체 가중 효율(${metricLabel})을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
         </div>
         {matrix.points.length >= 2 && (
           <FigurePngButton title={locale === "en" ? "Efficiency and scale comparison" : "효율과 규모 비교"} target={canvasRef} fileName={`scale_decision_${grain}_${metric}`} locale={locale} />
@@ -269,6 +274,10 @@ export default function ScaleDecisionMap({
           : `${metricLabel}을 계산할 수 있는 ${grainLabel}이 2개 이상 있어야 상대 사분면을 그릴 수 있습니다.`}</p>
       ) : (
         <>
+          <div className="scale-decision-map__threshold" role="group" aria-label={isEn ? "Dashed reference lines" : "점선 기준값"}>
+            <span><i aria-hidden="true" /><span>{isEn ? "Vertical · median cost" : "세로선 · 비용 중앙값"}<strong>{fmtCurrencyPrecise(matrix.thresholds.cost, currency)}</strong></span></span>
+            <span><i aria-hidden="true" /><span>{isEn ? `Horizontal · blended ${metricLabel}` : `가로선 · 전체 가중 ${metricLabel}`}<strong>{formatMetric(matrix.thresholds.efficiency, metric, currency, locale)}</strong></span></span>
+          </div>
           <div className="scale-decision-map__plot">
             {Object.entries(positions).map(([position, action]) => (
               <span className={`scale-decision-map__quadrant is-${position}`} data-tone={actions[action].tone} key={position}>
@@ -286,10 +295,9 @@ export default function ScaleDecisionMap({
               />
             </div>
           </div>
-          <p className="scale-decision-map__threshold">{thresholdCopy}</p>
           <div className="scale-decision-map__actions" aria-label={isEn ? "Quadrant counts" : "사분면별 대상 수"}>
             {visibleActions.map((action) => (
-              <div data-tone={actions[action].tone} key={action}>
+              <div data-tone={actions[action].tone} key={action} data-design-exempt="nested: quadrant counts grouped by interpretation within the observed-efficiency surface">
                 <span>{actions[action].label}</span>
                 <strong>{actionCounts[action]}</strong>
                 <small>{actions[action].detail}</small>
@@ -297,8 +305,8 @@ export default function ScaleDecisionMap({
             ))}
           </div>
           <p className="scale-decision-map__limit">{isEn
-            ? "This map prioritizes review from observed cost and efficiency. Confirm marginal efficiency in the saturation analysis below before changing budget."
-            : "이 지도는 관측 비용·효율로 검토 순서를 정합니다. 실제 예산 변경 전에는 아래 포화도 분석의 한계효율을 함께 확인하세요."}</p>
+            ? "This map prioritizes review from observed cost and efficiency. Confirm marginal efficiency in the average–marginal comparison before changing budget."
+            : "이 지도는 관측 비용·효율로 검토 순서를 정합니다. 실제 예산 변경 전에는 평균·한계효율 비교의 한계효율을 함께 확인하세요."}</p>
           {/* 표는 width를 무시해 .sr-only의 1px이 안 먹는다 — 폰에서 409px로 가로 넘침(2026-09-24). 감싼 div가 자른다. */}
           <div className="sr-only"><table>
             <caption>{isEn ? "Scale decision map data" : "증액·감액 우선순위 데이터"}</caption>

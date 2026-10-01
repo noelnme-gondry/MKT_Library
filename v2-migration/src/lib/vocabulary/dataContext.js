@@ -191,8 +191,18 @@ export function buildDataContext({ headers, rows = [], mapping = {}, toolId = nu
     toolId,
     toolSpec,
     locale,
+    headers: headerList,
     mappedFields,
     dimensions: [...standardDims, ...columnDims],
     fieldCandidates,
   };
+}
+
+/** 없어진 컬럼도 원래 이름으로 표시한다. 내부 col: 참조는 사용자 카피가 아니다. */
+export function dimensionLabelFor(field, context) {
+  const dimension = (context?.dimensions || []).find((item) => item.field === field);
+  if (dimension) return dimension.label;
+  const parsed = parseFieldRef(field);
+  return parsed.kind === "column" ? { ko: parsed.header, en: parsed.header }
+    : AXIS_TERM_MAP.get(field) || { ko: field, en: field };
 }

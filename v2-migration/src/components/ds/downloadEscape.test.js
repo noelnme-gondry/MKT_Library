@@ -28,8 +28,10 @@ function dispatchedComponent(routeId) {
     path.join(path.dirname(COMPONENTS), "app/(ko)/[[...slug]]/PageClient.jsx"),
     "utf-8",
   );
-  const match = new RegExp(`routeId === "${routeId}"\\s*&&\\s*<([A-Z][\\w]*)`).exec(pageClient);
-  return match ? match[1] : null;
+  // Transparent context wrappers are not the dispatched analysis component.
+  const dispatch = pageClient.split("\n").find(line => line.includes(`routeId === "${routeId}"`));
+  const dynamicNames = new Set([...pageClient.matchAll(/const (\w+) = dyn\(/g)].map(match => match[1]));
+  return [...(dispatch || "").matchAll(/<([A-Z][\w]*)/g)].map(match => match[1]).find(name => dynamicNames.has(name)) || null;
 }
 
 // 문자열 포함으로 보면 주석 한 줄에 속는다 — 실제로 D-07 사유 주석의 "DownloadHub"
