@@ -39,6 +39,8 @@ Move terms that proved out in Discovery into Exact, and add each moved term as a
 
 Give Discovery an exploration budget and review cadence. Continue when new candidates are valuable; reduce or pause when budget or exploration value is low.
 
+![Structure: terms that meet both conditions move from Discovery to Exact, and promoted terms are added to Discovery as negatives](/blog-assets-en/asa-keyword-expansion/two-campaigns.svg)
+
 ## Promotion needs two conditions, together
 
 When reading the search terms report, look at these two side by side.

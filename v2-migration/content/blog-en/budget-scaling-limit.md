@@ -38,6 +38,8 @@ Ad channels generally follow diminishing returns. Cheap inventory and responsive
 
 So this state is extremely common: average CPA sits under target while marginal CPA has already passed it. Scaling in that zone slowly degrades the average, and a few weeks later someone asks why CPA went up. That is exactly the cycle above.
 
+![Concept diagram comparing the slope from the origin (average) with the tangent at current spend (marginal) on a cumulative conversion curve](/blog-assets-en/budget-scaling-limit/average-vs-marginal.svg)
+
 ## Saturation is one ratio
 
 No need to complicate it.

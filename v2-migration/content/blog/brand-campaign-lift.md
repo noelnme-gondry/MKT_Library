@@ -64,6 +64,8 @@ updated: "2026-09-09"
 
 이걸 중단점 시계열(ITS)이라고 부르는데, 이름은 몰라도 됩니다. [브랜드 캠페인 증분 분석](/tools/brand-campaign-incrementality)에 날짜·성과·집행 여부 세 컬럼만 넣으면 추세랑 불확실성 구간까지 같이 나와요.
 
+![집행 전 8주 추세를 연장한 점선과 집행 중 실제값 사이의 면적을 추정 증가분으로 표시한 예시 그래프](/blog-assets/brand-campaign-lift/pre-trend-baseline.svg)
+
 
 ## 여기서 한 번 크게 데는 지점이 있어요
 

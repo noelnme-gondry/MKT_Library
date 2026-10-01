@@ -37,6 +37,8 @@ For example:
 
 What stands out here is install → signup at 25%. Of clickers, 40% install, but only 25% of those sign up — the other 75% have no recorded signup in the chosen window. Check delays, tracking gaps, and alternate paths; this rate alone does not establish the biggest improvement opportunity.
 
+![Example funnel from 100,000 impressions to 2,000 clicks, 800 installs, 200 signups and 16 purchases, with the 25% install-to-signup step highlighted](/blog-assets-en/funnel-dropoff-analysis/funnel-steps.svg)
+
 ## Conversion rate priority — value at stake, not the lowest rate
 
 There's a trap: the lowest pass-through stage isn't always priority one.

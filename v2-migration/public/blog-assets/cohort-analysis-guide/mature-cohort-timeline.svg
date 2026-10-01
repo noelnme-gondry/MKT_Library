@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">D1·D7·D30 성숙 코호트 타임라인</title>
-  <desc id="desc">Illustrative timeline showing latest eligible cohorts when data ends on July 30.</desc>
+  <desc id="desc">데이터가 7월 30일에 끝날 때 D1·D7·D30 각각 포함할 수 있는 마지막 코호트를 보여 주는 예시 타임라인.</desc>
   <rect width="1200" height="520" fill="#101827"/>
   <text x="64" y="72" fill="#f8fafc" font-family="Arial, sans-serif" font-size="34" font-weight="700">성숙한 코호트만 비교한다</text>
   <text x="64" y="110" fill="#a8b5c8" font-family="Arial, sans-serif" font-size="20">예시 데이터 · 데이터 최대 날짜 7월 30일</text>

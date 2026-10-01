@@ -56,6 +56,8 @@ The formula is two divisions. What's wrong isn't the formula — it's the values
 
 3. **Looking only at the blended average.** Overall LTV:CAC of 3:1 often hides a mix of 5:1 channels and sub-1:1 channels. Leave it because the average looks good, and money keeps leaking into the bad channels. For budget decisions, look at the channel level.
 
+![Bars comparing CAC $100 with revenue LTV $240 (2.4:1) and 30%-contribution LTV $72 (0.72:1)](/blog-assets-en/ltv-cac-ratio/ltv-basis.svg)
+
 ## Reading LTV:CAC
 
 Common benchmarks:

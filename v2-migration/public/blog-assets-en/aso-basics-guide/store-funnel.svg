@@ -1,0 +1,19 @@
+<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="330" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">Split store conversion into two layers to see the cause</text>
+  <rect x="50" y="62" width="560" height="44" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="330" y="90" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">Impressions 100,000</text>
+  <rect x="180" y="142" width="300" height="44" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="330" y="170" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">Page views 12,000</text>
+  <rect x="245" y="222" width="170" height="44" rx="6" fill="#2563eb"/>
+  <text x="330" y="250" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Installs 3,600</text>
+  <line x1="330" y1="108" x2="330" y2="136" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="330,136 335,126 325,126" fill="#94a3b8"/>
+  <text x="350" y="122" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="start">Browse conversion 12%</text>
+  <text x="350" y="139" fill="#475569" font-size="12" text-anchor="start">driven by icon, title, ranking</text>
+  <line x1="330" y1="188" x2="330" y2="216" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="330,216 335,206 325,206" fill="#94a3b8"/>
+  <text x="350" y="202" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="start">Page conversion 30%</text>
+  <text x="350" y="219" fill="#475569" font-size="12" text-anchor="start">driven by screenshots, copy, ratings</text>
+  <text x="380" y="316" fill="#475569" font-size="13" text-anchor="middle">Example numbers. A single blended 3.6% hides which layer moved</text>
+</svg>

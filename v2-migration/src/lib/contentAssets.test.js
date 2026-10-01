@@ -117,6 +117,21 @@ describe("원고 그림 자산", () => {
     expect(missing, `없는 그림 파일:\n${missing.join("\n")}`).toEqual([]);
   });
 
+  // 한 태그에 같은 속성이 두 번 있으면 XML 파싱이 실패해 브라우저가 그림을 통째로 그리지
+  // 않는다. 빌드·글자 폭 검사는 문자열만 보므로 통과한다(2026-10-01 VIF 그림에서 실제로 났다).
+  it("SVG 태그에 같은 속성이 두 번 들어가지 않는다", () => {
+    const broken = [];
+    for (const file of svgFiles) {
+      const svg = fs.readFileSync(file, "utf8");
+      for (const tag of svg.match(/<[a-zA-Z][^<>]*>/g) || []) {
+        const names = [...tag.matchAll(/\s([a-zA-Z_:][\w:.-]*)\s*=\s*["']/g)].map((match) => match[1]);
+        const dup = names.find((name, index) => names.indexOf(name) !== index);
+        if (dup) broken.push(`${path.relative(REPO_ROOT, file)}: ${dup} in ${tag.slice(0, 60)}`);
+      }
+    }
+    expect(broken, `속성이 중복된 SVG 태그:\n${broken.join("\n")}`).toEqual([]);
+  });
+
   it("원고 언어와 그림 속 글자의 언어가 맞는다", () => {
     // EN 글이 한글 도표를, KO 글이 영어 도표를 쓰고 있던 사고가 12건 있었다
     // (`ad-performance-diagnosis` EN 6장이 한글, `cohort-analysis-guide` KO 3장이 영어).

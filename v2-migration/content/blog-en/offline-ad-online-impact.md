@@ -34,6 +34,8 @@ Do not read performance-channel conversions directly. If digital budget rose dur
 
 **Short scale (hourly)**: check whether traffic in the 15–60 minutes after a spot deviates from the usual level for that weekday and hour. This spike is weak causal evidence on its own, but it cross-checks whether the long-scale estimate points the right way.
 
+![Left: weekly actuals against the pre-flight trend; right: traffic 15–60 minutes after a spot against the usual level for that hour](/blog-assets-en/offline-ad-online-impact/two-time-scales.svg)
+
 If the two scales disagree, collect more data instead of concluding.
 
 ## When digital is mixed in

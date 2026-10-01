@@ -1,0 +1,26 @@
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="340" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">Discovery는 찾고, Exact는 돈을 씁니다</text>
+  <rect x="50" y="70" width="230" height="110" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="165" y="98" fill="#0f172a" font-size="15" font-weight="700" text-anchor="middle">Discovery</text>
+  <text x="165" y="122" fill="#475569" font-size="12" text-anchor="middle">Search Match·브로드</text>
+  <text x="165" y="142" fill="#475569" font-size="12" text-anchor="middle">목표: 후보 발견</text>
+  <text x="165" y="162" fill="#475569" font-size="12" text-anchor="middle">탐색 예산 안에서만</text>
+  <rect x="480" y="70" width="230" height="110" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="595" y="98" fill="#1e3a8a" font-size="15" font-weight="700" text-anchor="middle">Exact</text>
+  <text x="595" y="122" fill="#1e3a8a" font-size="12" text-anchor="middle">정확 매치만</text>
+  <text x="595" y="142" fill="#1e3a8a" font-size="12" text-anchor="middle">목표: 효율 관리</text>
+  <text x="595" y="162" fill="#1e3a8a" font-size="12" text-anchor="middle">예산의 주력</text>
+  <line x1="285" y1="110" x2="474" y2="110" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="474,110 464,105 464,115" fill="#2563eb"/>
+  <text x="380" y="96" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">승격</text>
+  <text x="380" y="130" fill="#475569" font-size="11" text-anchor="middle">전환이 충분히 쌓였고</text>
+  <text x="380" y="145" fill="#475569" font-size="11" text-anchor="middle">목표 CPA 안에 들 때</text>
+  <path d="M595 186 C595 240 165 240 165 186" fill="none" stroke="#d97706" stroke-width="2" stroke-dasharray="5 4"/>
+  <polygon points="165,184 160,194 170,194" fill="#d97706"/>
+  <text x="380" y="258" fill="#b45309" font-size="12" font-weight="700" text-anchor="middle">옮긴 검색어는 Discovery에 네거티브로 추가</text>
+  <line x1="110" y1="180" x2="110" y2="282" stroke="#dc2626" stroke-width="2"/>
+  <polygon points="110,282 115,272 105,272" fill="#dc2626"/>
+  <text x="124" y="296" fill="#b91c1c" font-size="12" font-weight="700" text-anchor="start">소진만 있고 전환 없음 → 네거티브 후보</text>
+  <text x="380" y="326" fill="#475569" font-size="13" text-anchor="middle">두 조건을 함께 만족한 검색어만 옮깁니다</text>
+</svg>

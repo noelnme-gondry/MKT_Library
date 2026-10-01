@@ -57,6 +57,8 @@ The point is to construct "what would have happened without the campaign." With 
 
 This design is called an interrupted time series. [Brand campaign incrementality](/tools/brand-campaign-incrementality) computes the trend and the uncertainty interval from three columns: date, outcome, and campaign status.
 
+![Illustrative chart: the pre-campaign trend extended as a dashed line, with the area between it and actuals during the flight marked as estimated lift](/blog-assets-en/brand-campaign-lift/pre-trend-baseline.svg)
+
 One caution. Series like brand search volume are **strongly linked week to week**. Ignoring that and fitting an ordinary regression produces intervals far narrower than reality, which makes a weak result look certain. Use an interval that accounts for autocorrelation.
 
 ## What this number can and cannot say

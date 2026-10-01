@@ -1,0 +1,21 @@
+<svg viewBox="0 0 760 372" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="372" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">광고를 끄자 사라진 100건 중 70건은 오가닉으로 돌아왔습니다</text>
+  <rect x="150" y="146" width="150" height="124" rx="0" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="225" y="213" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">오가닉 200</text>
+  <rect x="150" y="84" width="150" height="62" rx="0" fill="#2563eb"/>
+  <text x="225" y="120" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">유료 100</text>
+  <text x="225" y="74" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">합계 300</text>
+  <text x="225" y="292" fill="#334155" font-size="13" text-anchor="middle">캠페인 켰을 때</text>
+  <rect x="460" y="146" width="150" height="124" rx="0" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="535" y="213" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">오가닉 200</text>
+  <rect x="460" y="103" width="150" height="43" rx="0" fill="#fde68a" stroke="#d97706"/>
+  <text x="535" y="129" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">오가닉으로 대체 70</text>
+  <rect x="460" y="84" width="150" height="19" rx="0" fill="#fff" stroke="#dc2626" stroke-dasharray="5 4"/>
+  <text x="535" y="98" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">사라진 30</text>
+  <text x="535" y="74" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">합계 270</text>
+  <text x="535" y="292" fill="#334155" font-size="13" text-anchor="middle">캠페인 끈 뒤</text>
+  <line x1="120" y1="270" x2="660" y2="270" stroke="#94a3b8" stroke-width="2"/>
+  <text x="380" y="318" fill="#334155" font-size="13" font-weight="700" text-anchor="middle">잠식률 70 ÷ 100 = 70% · 순증분 30건</text>
+  <text x="380" y="358" fill="#475569" font-size="13" text-anchor="middle">산술 예시입니다. 다른 조건이 같다고 가정했고, 원인 확인은 실험으로 합니다</text>
+</svg>

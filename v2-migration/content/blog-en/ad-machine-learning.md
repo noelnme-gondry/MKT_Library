@@ -57,6 +57,8 @@ Layer a structural problem on top of this, and the vicious cycle completes itsel
 
 Splitting ad sets can leave sparse signals per set. For illustration, a seven-day budget of ₩1M at CPA ₩10K implies 100 conversions: 10 each across ten equal sets, or 50 each across two. This assumes unchanged CPA and does not guarantee learning completion or improved performance.
 
+![Expected 100 conversions split into 2 ad sets of 50 or 10 ad sets of 10](/blog-assets-en/ad-machine-learning/signal-split.svg)
+
 Targeting too narrow. Too-narrow targeting gets in the way of learning. Fewer people to reach means conversions don't pile up, and signals may be sparse. The intuition that "narrower targeting = more precise" backfires here. This connects directly to what we covered in [broad vs. narrow targeting](/en/blog/audience-broad-vs-narrow).
 
 Target conversion too rare. If purchases only happen twice a day, and you set "purchase" as the optimization goal, that's 14 in 7 days; check whether this is sufficient for the current strategy. One fix here is stepping the goal back one stage (add-to-cart instead of purchase) to gather enough data.

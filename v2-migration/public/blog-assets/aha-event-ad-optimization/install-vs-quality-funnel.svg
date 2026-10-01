@@ -1,5 +1,5 @@
-<svg viewBox="0 0 720 390" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
-  <rect width="720" height="390" fill="#fff"/>
+<svg viewBox="0 0 720 450" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="720" height="450" fill="#fff"/>
   <text x="360" y="31" fill="#334155" font-size="15" font-weight="700" text-anchor="middle">설치 수가 아니라, 핵심 가치를 경험한 유저가 얼마나 남는지 봐야 합니다.</text>
   <g transform="translate(66 62)">
     <text x="116" y="0" fill="#475569" font-size="14" font-weight="700" text-anchor="middle">설치 CPA만 낮춘 경우</text>
@@ -20,5 +20,5 @@
     <g fill="#1D4ED8"><circle cx="87" cy="308" r="9"/><circle cx="116" cy="308" r="9"/><circle cx="145" cy="308" r="9"/></g>
     <text x="116" y="335" fill="#1D4ED8" font-size="12.5" font-weight="700" text-anchor="middle">남은 유저를 더 잘 가름</text>
   </g>
-  <text x="360" y="378" fill="#64748B" font-size="12.5" text-anchor="middle">낮은 설치 CPA가 곧 높은 사업 가치를 뜻하지는 않습니다.</text>
+  <text x="360" y="434" fill="#64748B" font-size="12.5" text-anchor="middle">낮은 설치 CPA가 곧 높은 사업 가치를 뜻하지는 않습니다.</text>
 </svg>

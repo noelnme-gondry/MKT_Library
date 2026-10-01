@@ -25,7 +25,7 @@
   <circle cx="640" cy="95" r="7" fill="#dc2626"/>
   <text x="628" y="100" fill="#b91c1c" font-size="13" font-weight="700" text-anchor="end">오늘 11,400원</text>
   <text x="634" y="129" fill="#1e3a8a" font-size="12" text-anchor="end">평소 범위 약 9,220~10,780원</text>
-  <text x="96" y="139" fill="#1e3a8a" font-size="12">점선: 최근 14일 평균 10,000원</text>
+  <text x="96" y="250" fill="#1e3a8a" font-size="12">점선: 최근 14일 평균 10,000원</text>
   <text x="365" y="282" fill="#475569" font-size="12" text-anchor="middle">최근 14일 → 오늘</text>
   <text x="380" y="322" fill="#475569" font-size="13" text-anchor="middle">예시 숫자입니다. 범위 안의 출렁임에는 손대지 않습니다</text>
 </svg>

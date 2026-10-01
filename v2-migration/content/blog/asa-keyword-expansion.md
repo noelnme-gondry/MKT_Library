@@ -43,6 +43,8 @@ Discovery에서 성과가 확인된 검색어를 Exact로 옮기고, 옮긴 검�
 Discovery에는 탐색 예산과 검토 주기를 정하세요. 새 후보가 필요하면 이어가되, 탐색 가치가 낮거나 예산이 부족하면 축소·중단할 수 있습니다.
 
 
+![Discovery 캠페인에서 조건을 만족한 검색어를 Exact로 승격하고, 옮긴 검색어는 Discovery에 네거티브로 추가하는 구조](/blog-assets/asa-keyword-expansion/two-campaigns.svg)
+
 ## 승격 기준은 두 개를 같이 봅니다
 
 검색어 리포트 보실 때 이 둘을 같이 보세요.

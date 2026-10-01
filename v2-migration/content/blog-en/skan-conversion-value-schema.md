@@ -28,6 +28,8 @@ Then you list what you want to encode. Signup (2) × tutorial complete (2) × fi
 
 But the real constraint is not slot count, it is **volume per slot**. Split into 64 and a campaign doing 500 installs a day averages eight per slot. Actual distribution and missingness differ, so that average alone does not establish whether the schema is useful.
 
+![500 daily installs across 64 slots averages about 8 per slot; across 8 decision slots it averages 62.5](/blog-assets-en/skan-conversion-value-schema/cell-volume.svg)
+
 ## The design rule: split only where decisions differ
 
 Ask one question per split: "if this value changes, do I do something different?"

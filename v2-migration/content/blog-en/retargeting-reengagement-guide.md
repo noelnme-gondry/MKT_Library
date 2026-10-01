@@ -32,6 +32,8 @@ Read the two together in one report and this happens (numbers are illustrative).
 
 That $18 is not the reality of either campaign. Decide "we're under target, let's scale" on that number and you are really pouring budget into $30 acquisition. Worse, growing the retargeting budget lowers the blended average, so the dashboard improves while new-user counts do not. Growth stalls while the metric looks healthier — a very common pattern.
 
+![Bars for acquisition CPA $30 and retargeting CPA $6, with the blended $18 line matching neither](/blog-assets-en/retargeting-reengagement-guide/blended-cpa.svg)
+
 Separate goals, separate reports, separate budgets.
 
 ## Segment the audience first

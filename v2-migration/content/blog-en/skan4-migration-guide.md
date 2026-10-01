@@ -34,6 +34,8 @@ SKAN 4 supports up to three conditional postbacks for periods after install. The
 
 One conclusion follows immediately: precise design only means anything in the first window. Detailed LTV bands in windows 2 and 3 collapse into three buckets.
 
+![The three SKAN 4 windows: days 0–2 can return fine or coarse values, days 3–7 and 8–35 return coarse values only](/blog-assets-en/ios-att-skan-guide/skan4-windows.svg)
+
 ## Step 1 — Lock the first window's schema
 
 Start [conversion value](/glossary/conversion-value) design at window one, because of reversal cost.

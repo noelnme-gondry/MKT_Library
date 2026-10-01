@@ -87,6 +87,8 @@ The operational ratios are:
 
 With 100,000 impressions, 12,000 product page views, and 3,600 installs, browse conversion is 12% and page conversion is 30%. If installs drop next month while this ratio stays at 30%, check view volume and source mix first. That alone does not rule out screenshot effects or identify the icon or ranking as the cause. Reading the two layers as a single 3.6% erases that distinction entirely.
 
+![Two-layer store funnel: 100,000 impressions to 12,000 page views (12% browse conversion) to 3,600 installs (30% page conversion)](/blog-assets-en/aso-basics-guide/store-funnel.svg)
+
 ### Conversion dropped — did it get worse, or did the mix change?
 
 This is the mistake ASO work repeats most often. Store traffic converts very differently by source. Someone who searched your exact app name almost always installs; someone who drifted in from a chart or a featured list installs far less often.

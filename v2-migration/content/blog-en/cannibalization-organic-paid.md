@@ -45,6 +45,8 @@ Before pausing the brand campaign: 100 paid conversions, 200 organic, 300 total.
 
 The cannibalization rate is 70 ÷ 100 = 70%. The report attributes 100 conversions; the assumed design implies 30 incremental conversions. At the same spend, iCPA is 100 ÷ 30 ≈ 3.33 times the attributed CPA.
 
+![Stacked bars: with the campaign on, paid 100 plus organic 200; off, organic 270, so 70 of the 100 paid conversions shifted and 30 were lost](/blog-assets-en/cannibalization-organic-paid/before-after.svg)
+
 The key point: finding cannibalization is not an argument for switching the campaign off. If the CPA of those 30 net conversions still clears your target, there is a reason to keep running. Cannibalization is a signal to re-judge with corrected numbers, not an on/off verdict.
 
 This arithmetic example assumes stable conditions and measurement definitions. Actual before/after totals alone do not identify 30 conversions as causal lift. Regional assignment requires regional inference; do not treat regional totals as independent person/device binomial samples.

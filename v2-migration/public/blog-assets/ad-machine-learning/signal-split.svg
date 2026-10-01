@@ -1,0 +1,40 @@
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="300" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">같은 예산도 세트를 잘게 나누면 세트마다 신호가 얇아집니다</text>
+  <rect x="280" y="56" width="200" height="44" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="380" y="76" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">7일 예산 100만 원</text>
+  <text x="380" y="93" fill="#475569" font-size="12" text-anchor="middle">CPA 1만 원 → 기대 전환 100건</text>
+  <line x1="330" y1="102" x2="190" y2="136" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="190,136 201,138 199,129" fill="#94a3b8"/>
+  <line x1="430" y1="102" x2="570" y2="136" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="570,136 561,129 559,138" fill="#94a3b8"/>
+  <text x="190" y="156" fill="#1e3a8a" font-size="14" font-weight="700" text-anchor="middle">2개 세트</text>
+  <rect x="110" y="170" width="75" height="60" rx="6" fill="#2563eb"/>
+  <text x="147" y="206" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">50건</text>
+  <rect x="195" y="170" width="75" height="60" rx="6" fill="#2563eb"/>
+  <text x="232" y="206" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">50건</text>
+  <text x="190" y="252" fill="#475569" font-size="12" text-anchor="middle">세트당 50건</text>
+  <text x="570" y="156" fill="#7f1d1d" font-size="14" font-weight="700" text-anchor="middle">10개 세트</text>
+  <rect x="470" y="170" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="487" y="188" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="511" y="170" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="528" y="188" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="552" y="170" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="569" y="188" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="593" y="170" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="610" y="188" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="634" y="170" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="651" y="188" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="470" y="202" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="487" y="220" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="511" y="202" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="528" y="220" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="552" y="202" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="569" y="220" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="593" y="202" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="610" y="220" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <rect x="634" y="202" width="35" height="26" rx="4" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="651" y="220" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">10</text>
+  <text x="570" y="252" fill="#475569" font-size="12" text-anchor="middle">세트당 10건</text>
+  <text x="380" y="286" fill="#475569" font-size="13" text-anchor="middle">산술 예시입니다. CPA가 유지된다고 가정했고 학습 완료를 보장하지 않습니다</text>
+</svg>

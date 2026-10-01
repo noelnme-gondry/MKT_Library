@@ -1,0 +1,19 @@
+<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="330" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">스토어 전환은 두 층으로 나눠 봐야 원인이 보입니다</text>
+  <rect x="50" y="62" width="560" height="44" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+  <text x="330" y="90" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">노출 100,000</text>
+  <rect x="180" y="142" width="300" height="44" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="330" y="170" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">페이지 조회 12,000</text>
+  <rect x="245" y="222" width="170" height="44" rx="6" fill="#2563eb"/>
+  <text x="330" y="250" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">설치 3,600</text>
+  <line x1="330" y1="108" x2="330" y2="136" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="330,136 335,126 325,126" fill="#94a3b8"/>
+  <text x="350" y="122" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="start">목록 전환율 12%</text>
+  <text x="350" y="139" fill="#475569" font-size="12" text-anchor="start">아이콘·제목·순위가 좌우</text>
+  <line x1="330" y1="188" x2="330" y2="216" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="330,216 335,206 325,206" fill="#94a3b8"/>
+  <text x="350" y="202" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="start">페이지 전환율 30%</text>
+  <text x="350" y="219" fill="#475569" font-size="12" text-anchor="start">스크린샷·설명·평점이 좌우</text>
+  <text x="380" y="316" fill="#475569" font-size="13" text-anchor="middle">예시 숫자입니다. 둘을 합친 3.6%만 보면 어느 층이 문제인지 사라집니다</text>
+</svg>
