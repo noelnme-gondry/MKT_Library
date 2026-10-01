@@ -1304,7 +1304,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             const buckets = { strong: [], maybe: [], weak: [] };
             sortedResults.forEach((r) => buckets[ahaBucketOf(r, minSupport)].push(r));
             const nS = buckets.strong.length;
-            const headTone = nS > 0 ? "strong" : buckets.maybe.length > 0 ? "maybe" : "weak";
             const headline = nS > 0
               ? C.kanbanHeadStrong(sortedResults.length, nS)
               : buckets.maybe.length > 0
@@ -1314,7 +1313,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const list = buckets[key];
               const c = AHA_TONE[key];
               return (
-                <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
+                <div data-design-exempt="nested: one signal category groups comparable action candidates (product-ssot purpose grouping)" style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                   {list.length ? list.map((r) => (
                     <button type="button" key={r.action} onClick={() => setDrilldownAction(r.action)} aria-pressed={r.action === drillTarget}
@@ -1332,7 +1331,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             return (
               <section className="block" id="s-aha-kanban">
                 <h2 className="section-title">{C.kanbanTitle}</h2>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", background: AHA_TONE[headTone].bg, border: `1px solid ${AHA_TONE[headTone].border}`, borderRadius: "10px", padding: "10px 14px", marginBottom: "10px" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", padding: "10px 0", marginBottom: "10px" }}>
                   <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px" }}>
@@ -1365,7 +1364,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const P = drillResult.holdout.P, R = drillResult.holdout.R;
               const overfit = drillResult.train.F1 - drillResult.holdout.F1 > 0.2;
               const metric = (q, ans, help, tech) => (
-                <div style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px" }}>
+                <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px" }}>
                   <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
                   <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
                   <div style={{ fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>{help}</div>
@@ -1374,7 +1373,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               );
               return (
                 <>
-                  <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "12px 14px", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ padding: "12px 0", borderBottom: "1px solid var(--border)", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", color: c.color, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
                     <div style={{ flex: 1, minWidth: "240px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)", lineHeight: 1.6 }}

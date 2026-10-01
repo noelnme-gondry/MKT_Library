@@ -391,7 +391,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     {result?.ok && <section className="block brand-its-result" id="brand-its-result">
       <ResultActionCard
         coreFigure={<div className="brand-its-chart">
-          <div className="brand-cost-inline" data-currency-scope="declare">
+          <div className="brand-cost-inline" data-currency-scope="declare" data-design-exempt="nested: cost source and currency form one compact editable input group (product-ssot purpose grouping)">
             <label className="brand-cost-inline__column">
               <span>{tx(locale, "브랜드 비용 열", "Brand cost column")}</span>
               <select aria-label={tx(locale, "브랜드 캠페인 비용 열", "Brand campaign cost column")} value={costColumn} onChange={event => setCostOption("column", event.target.value)}>

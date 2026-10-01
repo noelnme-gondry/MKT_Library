@@ -165,6 +165,16 @@ describe("Incrementality render smoke", () => {
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
+  it("preserves article sample data and provenance on entry", () => {
+    const articleSample = { ...buildIncrSuppressionDemo(), fileName: "article-holdout.csv", importSource: "demo" };
+    seed(articleSample);
+    render(<Incrementality />);
+    expect(useAppStore.getState().csvData).toBe(articleSample);
+    fireEvent.click(screen.getByRole("tab", { name: /통제군/ }));
+    expect(useAppStore.getState().csvData).toBe(articleSample);
+    expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
+  });
+
   it("mounts with pre/post demos (on & off) → 탭 전환 후 결론 카드", () => {
     // method 기본값이 suppression이라 prepost 카드를 보려면 탭을 눌러 전환한다.
     seed(buildIncrPrepostDemo("on"));

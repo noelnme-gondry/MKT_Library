@@ -175,7 +175,7 @@ function SurvivalFollowupSummary({ result, locale }) {
     { key: "earlyCensored", label: tx(locale, "그 전에 관측 종료", "Earlier follow-up ended"), note: tx(locale, "이후 유지·이탈 여부는 모름 (중도절단)", "Later outcome unknown (censored)"), tone: "censored" },
     { key: "notEntered", label: tx(locale, "아직 관측 진입 전", "Not yet entered"), note: tx(locale, "설정한 기간 이후에 관측 시작", "Observation starts after this horizon"), tone: "pending" },
   ];
-  return <section className="survival-followup" aria-label={tx(locale, "관측 현황", "Follow-up status")}>
+  return <section className="survival-followup" aria-label={tx(locale, "관측 현황", "Follow-up status")} data-design-exempt="nested: follow-up counts, visual distribution and censoring interpretation form one evidence group (product-ssot purpose grouping)">
     <header><h3>{tx(locale, `${horizon}${survivalUnit(timeUnit, locale)}까지 무엇을 확인했나요?`, `What was observed through ${horizon} ${survivalUnit(timeUnit, locale)}?`)}</h3><span>{tx(locale, `전체 ${followup.total}건 · 전체 관측 중 이탈 ${prepared.eventCount}건 / 중도절단 ${prepared.censoredCount}건`, `${followup.total} episodes · all observed events: ${prepared.eventCount} / censored: ${prepared.censoredCount}`)}</span></header>
     <div className="survival-followup__bar" aria-hidden="true">{groups.map(group => <span key={group.key} data-tone={group.tone} style={{ width: `${followup.total ? followup[group.key] / followup.total * 100 : 0}%` }} />)}</div>
     <dl className="survival-followup__legend">{groups.map(group => <div key={group.key} data-followup={group.key} data-tone={group.tone}><dt>{group.label}</dt><dd>{fmtNum(followup[group.key])}<small>{group.note}</small></dd></div>)}</dl>

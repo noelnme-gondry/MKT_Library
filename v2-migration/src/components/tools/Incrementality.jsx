@@ -142,6 +142,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
   const selectMethod = useCallback((nextMethod) => {
+    if (nextMethod === method) return;
     setMethod(nextMethod);
     // 방법별 샘플의 열 계약이 다르다. 탭만 바꾸고 이전 샘플을 남기면 다른
     // 방법의 데이터가 그럴듯한 숫자로 해석될 수 있어, 샘플만 안전하게 교체한다.
@@ -149,13 +150,17 @@ export default function Incrementality({ locale = "ko" } = {}) {
       const nextDemo = nextMethod === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(nextMethod);
       if (nextDemo.fileName !== csvData.fileName) setCsvData(nextDemo);
     }
-  }, [csvData, setCsvData, setMethod]);
+  }, [csvData, method, setCsvData, setMethod]);
   // Recipe/project restoration also changes the method; keep sample contracts
   // aligned without touching a user's uploaded CSV or confirming study design.
   useEffect(() => {
     if (!isDemoData(csvData)) return;
     const demo = method === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(method);
-    if (demo.fileName !== csvData.fileName) setCsvData(demo);
+    if (demo.fileName === csvData.fileName) return;
+    // Blog examples also carry demo provenance, but their filename and declared
+    // window belong to that article. Only switch this tool's own managed samples.
+    const managedSamples = [buildIncrSuppressionDemo(), buildIncrPrepostDemo("on"), buildIncrPrepostDemo("off")];
+    if (managedSamples.some(sample => sample.fileName === csvData.fileName)) setCsvData(demo);
   }, [method, csvData, setCsvData]);
   const onMethodKeyDown = useCallback((event, methodKey) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;

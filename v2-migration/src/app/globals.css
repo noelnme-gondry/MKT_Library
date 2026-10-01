@@ -12394,10 +12394,15 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 
 /* Follow-up tools: visible analytical surfaces and adjacent, aligned conditions.
    Evidence tables and model gates remain in the existing reading order. */
+/* A chart/table shares its section's white surface; inner explanations use dividers.
+   Purposeful entity/form groups retain their own surfaces and local rationale. */
+.app .content .tool-autonomy .block :is(.chart-container, .table-wrap, .result-action-card, .alloc-card) { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.app .content .tool-autonomy .block :is(.callout, .analysis-local-controls, .ab-stat, .required-banner, .period-compare, .event-log__form, .trend-chart-explainer, .trend-change-ledger, .creative-model-router__profile, .creative-model-router__explanation, .aha-scatter-toolbar, .analysis-design-check) { border-width: 1px 0 0; border-style: solid; border-color: var(--border); border-radius: 0; background: transparent; box-shadow: none; }
 @layer app {
   .tool-autonomy { min-width: 0; }
   .tool-autonomy .block:not(.mmm-stage-nav) { background: var(--surface-container-lowest) !important; padding: 24px !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; margin-block: 20px !important; min-width: 0; }
   .tool-autonomy .block .block { padding: 16px !important; margin-block: 16px !important; }
+  .tool-autonomy #s-prep:has(.csv-dropzone) { background: transparent !important; border: 0 !important; border-radius: 0 !important; padding-inline: 0 !important; }
   .tool-autonomy .section-title { line-height: 1.4; }
   .tool-autonomy .section-head { align-items: center; gap: 12px; flex-wrap: wrap; }
   .tool-autonomy .chart-container { min-width: 0; }
@@ -12405,7 +12410,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .tool-instrument-header--surface { background: var(--surface-container-lowest) !important; padding: 24px !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; margin-bottom: 20px; }
   .tool-recipe-controls { position: relative; z-index: 11; padding: 20px 24px; margin-block: 20px; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-xl); }
   .tool-recipe-controls__hint { margin: 10px 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.6; }
-  .tool-autonomy .page-sticky-bar { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface-container-lowest); padding: 16px 24px; margin-block: 20px; position: static; }
+  .tool-autonomy .page-sticky-bar { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface-container-lowest); padding: 16px 24px; margin-block: 20px; position: static; box-shadow: none; }
   .tool-autonomy .analysis-design-check { background: var(--surface-container-lowest); padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-xl); margin-block: 20px; }
   .analysis-design-check--comparison h3 { margin: 0 0 8px; }
   .analysis-design-check--comparison p { line-height: 1.65; }
@@ -12643,8 +12648,9 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .analysis-design-check.experiment-design-check .experiment-design-check__field label { display: grid; grid-template-columns: minmax(0, 1fr) 104px; align-items: center; margin: 0; gap: 16px; font-size: var(--fs-sm); line-height: 1.5; }
   .experiment-design-check__field input { width: 100%; }
   .analysis-design-check.experiment-design-check .experiment-design-check__confirmation { flex-wrap: nowrap; margin: 16px 0 0; padding: 12px 0 0; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
-  .experiment-design-check__notice { margin: 0 0 16px; padding: 12px 16px; border-left: 3px solid var(--warning); background: var(--surface-container-low); }
+  .experiment-design-check__notice { margin: 0 0 16px; padding: 12px 0; border-top: 1px solid var(--border); }
   .analysis-evidence-strip { display: flex; justify-content: space-between; align-items: center; gap: 12px 24px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .result-action-card > .analysis-evidence-strip { margin-left: 47px; }
   .analysis-evidence-strip > p { margin: 0; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.65; }
   .info-popover-trigger.analysis-evidence-button { flex: none; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: 400 var(--fs-xs) var(--font-sans); cursor: pointer; color: var(--text-secondary); }
   .survival-settings { display: grid; gap: 24px; }
@@ -12663,7 +12669,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   #subscription-survival-result .result-action-card > :is(.result-action-card__stats, .survival-followup, .survival-result-action, .decision-review-preview, .decision-review, .result-action-card__utilities) { margin-inline: 0; }
   .survival-followup { margin: 24px 0 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-container-lowest); }
   .survival-followup header { display: grid; gap: 6px; }
-  .survival-followup h3 { margin: 0; font-size: var(--fs-sm); }
+  .survival-followup h3 { margin: 0; font-size: var(--fs-md); }
   .survival-followup header > span, .survival-followup > p { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
   .survival-followup > p { margin: 16px 0 0; }
   .survival-followup__bar { display: flex; height: 16px; margin: 20px 0; overflow: hidden; border-radius: var(--radius-sm); background: var(--bg-2); }
@@ -12689,5 +12695,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
     .analysis-evidence-strip { align-items: stretch; flex-direction: column; }
     .survival-followup { padding: 16px; }
     .analysis-design-check.experiment-design-check .experiment-design-check__field label { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .result-action-card > .analysis-evidence-strip { margin-left: 0; }
   }
 }

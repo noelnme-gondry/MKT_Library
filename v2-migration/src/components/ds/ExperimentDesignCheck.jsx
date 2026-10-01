@@ -19,11 +19,11 @@ export default function ExperimentDesignCheck({ locale, share, setShare, confirm
     </header>
     {!hasTwoArms && <p className="experiment-design-check__notice">{en ? "SRM and equivalence here require two arms. Check multi-arm allocation against each arm's planned share separately." : "SRM·동등성 패널은 두 집단 전용입니다. 다중 arm은 개별 배정 계획으로 따로 점검하세요."}</p>}
     <div className="experiment-design-check__grid">
-      <div className="experiment-design-check__field">
+      <div className="experiment-design-check__field" data-design-exempt="nested: planned allocation and its SRM check form one design group (product-ssot purpose grouping)">
         <label>{en ? "Planned Control share (%)" : "계획 Control 배정 비율 (%)"}<input type="number" min="1" max="99" value={share} onChange={(e) => setShare(e.target.value)} /></label>
         <p role="status">{labels[srm.status]}{srm.pValue != null ? ` · p=${srm.pValue.toPrecision(4)} · α=0.001` : ""}</p>
       </div>
-      <div className="experiment-design-check__field">
+      <div className="experiment-design-check__field" data-design-exempt="nested: predeclared equivalence margin and its interval form one design group (product-ssot purpose grouping)">
         <label>{en ? "Optional, predeclared negligible difference (± percentage points)" : "선택: 사전 선언한 무시 가능한 차이 (± %p)"}<input type="number" min="0" max="99" step="0.1" value={margin} onChange={(e) => setMargin(e.target.value)} /></label>
         <p>{equivalence?.lowerPp != null ? `${en ? "90% interval" : "90% 구간"}: ${equivalence.lowerPp.toFixed(3)} ~ ${equivalence.upperPp.toFixed(3)} %p. ` : ""}{equivalence?.status === "within_margin"
           ? (en ? "Within the declared margin under the large-sample approximation; not proof of zero effect." : "대표본 근사에서 선언한 범위 안입니다. 효과가 0이라는 증명은 아닙니다.")
