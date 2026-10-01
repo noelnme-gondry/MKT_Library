@@ -69,11 +69,11 @@ faq:
 
 [예산 배분 시뮬레이터](/tools/budget-allocation)는 한계효율 기반이라 '어디에 더하고 어디서 뺄지'를 한 화면에서 비교합니다. 예시 데이터는 화면 구조를 익히는 용도이고, 실제 증액·재배분 판단은 내 CSV의 관측 범위와 제약으로 실행하세요.
 
-![예산 배분 시뮬레이터 — 추세선 검증. 채널별 ROAS·지출 산점도와 반응곡선으로 다음 1원의 한계효율을 확인한다.](/blog-assets/budget-marginal-efficiency/trendline.png)
+![한 채널의 날짜별 지출·ROAS 관측점에 반응곡선을 맞추고, 현재 지출 지점에서 다음 1원의 효율을 기울기로 읽는 예시. 관측 범위 밖은 추정하지 않습니다](/blog-assets/budget-marginal-efficiency/trendline.svg)
 
 > ⚠️ **한 가지는 정직하게 짚습니다.** 이 시뮬레이터는 과거 관측 구간의 관계로 예산 이동을 추정합니다. 이동 뒤 경매·소재·수요가 바뀌는 과정과 과거 성과의 복원 여부는 계산하지 않습니다. 삭감의 인과적 영향을 중요하게 판단해야 한다면 재배분 결과만 믿지 말고, [증분 분석](/tools/incrementality)으로 "이 채널을 빼면 실제로 얼마가 사라지나"를 함께 검증하세요.
 
-![증분 분석 — 적절히 설계된 홀드아웃에서 광고 차단 그룹과 노출 그룹의 날짜별 전환율 차이로 증분을 추정한다.](/blog-assets/budget-marginal-efficiency/incrementality.png)
+![홀드아웃 기간에 광고 차단 그룹의 전환율이 노출 그룹보다 낮아지고, 그 차이를 증분으로 읽는 예시. 기간 밖에서는 두 선이 겹칩니다](/blog-assets/budget-marginal-efficiency/incrementality.svg)
 
 한 채널을 얼마나 더 올려도 되는지가 궁금하면 [광고 예산 증액 기준](/blog/budget-scaling-limit)에서 한계 CPA로 상한을 잡는 법을, 그 예산을 애초에 감당할 수 있는지는 [LTV:CAC 비율 계산법](/blog/ltv-cac-ratio)에서 확인하세요.
 

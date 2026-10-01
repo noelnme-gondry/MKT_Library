@@ -6,7 +6,6 @@ slug: "cohort-analysis-guide"
 keywords: "retention cohort analysis, D1 D7 D30 retention, retention cohort, retention heatmap, incomplete cohort, cohort retention analysis"
 tags: ["Analysis", "Retention"]
 draft: false
-ogImage: "/blog-assets/cohort-analysis-guide/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["cohort", "retention", "ltv"]
 sources:

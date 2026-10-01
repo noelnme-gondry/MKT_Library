@@ -7,7 +7,6 @@ keywords: "postback integration, MMP postback, zero installs, missing events, re
 tags: ["Measurement", "Fundamentals"]
 draft: false
 primaryTool: "5-20"
-ogImage: "/blog-assets/postback-integration-guide/og-en.svg"
 sources:
   - title: "Apple Developer — Receiving ad attributions and postbacks"
     url: "https://developer.apple.com/documentation/adattributionkit/receiving-ad-attributions-and-postbacks"

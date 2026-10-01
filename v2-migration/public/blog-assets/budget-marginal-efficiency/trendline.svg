@@ -1,0 +1,43 @@
+<svg viewBox="0 0 760 350" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="350" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">채널 하나의 지출·ROAS 관측점에 반응곡선을 맞춥니다</text>
+  <line x1="100" y1="280" x2="560" y2="280" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="100" y1="280" x2="100" y2="64" stroke="#94a3b8" stroke-width="2"/>
+  <text x="92" y="261" fill="#475569" font-size="11" text-anchor="end">200%</text>
+  <line x1="100" y1="257" x2="560" y2="257" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="92" y="167" fill="#475569" font-size="11" text-anchor="end">400%</text>
+  <line x1="100" y1="163" x2="560" y2="163" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="92" y="74" fill="#475569" font-size="11" text-anchor="end">600%</text>
+  <line x1="100" y1="70" x2="560" y2="70" stroke="#e2e8f0" stroke-width="1"/>
+  <rect x="422" y="64" width="138" height="216" rx="0" fill="#f1f5f9"/>
+  <text x="491" y="82" fill="#475569" font-size="11" text-anchor="middle">관측 범위 밖은</text>
+  <text x="491" y="97" fill="#475569" font-size="11" text-anchor="middle">추정하지 않음</text>
+  <circle cx="158" cy="107" r="4.5" fill="#94a3b8"/>
+  <circle cx="174" cy="131" r="4.5" fill="#94a3b8"/>
+  <circle cx="192" cy="138" r="4.5" fill="#94a3b8"/>
+  <circle cx="210" cy="149" r="4.5" fill="#94a3b8"/>
+  <circle cx="226" cy="163" r="4.5" fill="#94a3b8"/>
+  <circle cx="245" cy="166" r="4.5" fill="#94a3b8"/>
+  <circle cx="261" cy="176" r="4.5" fill="#94a3b8"/>
+  <circle cx="279" cy="187" r="4.5" fill="#94a3b8"/>
+  <circle cx="298" cy="190" r="4.5" fill="#94a3b8"/>
+  <circle cx="318" cy="201" r="4.5" fill="#94a3b8"/>
+  <circle cx="339" cy="208" r="4.5" fill="#94a3b8"/>
+  <circle cx="358" cy="210" r="4.5" fill="#94a3b8"/>
+  <circle cx="376" cy="218" r="4.5" fill="#94a3b8"/>
+  <circle cx="399" cy="224" r="4.5" fill="#94a3b8"/>
+  <circle cx="422" cy="228" r="4.5" fill="#94a3b8"/>
+  <polyline points="151,101 160,117 169,130 178,140 187,149 197,156 206,162 215,167 224,172 233,176 243,179 252,183 261,186 270,188 279,191 289,193 298,195 307,197 316,199 325,201 335,202 344,204 353,205 362,207 371,208 381,209 390,210 399,211 408,212 417,213" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <circle cx="353" cy="205" r="6" fill="#0f172a"/>
+  <text x="363" y="193" fill="#0f172a" font-size="12" font-weight="700" text-anchor="start">현재 지출</text>
+  <line x1="272" y1="193" x2="422" y2="216" stroke="#dc2626" stroke-width="2"/>
+  <text x="330" y="304" fill="#475569" font-size="12" text-anchor="middle">일 광고비</text>
+  <text x="52" y="175" fill="#475569" font-size="12" text-anchor="middle" transform="rotate(-90 52 175)">ROAS</text>
+  <circle cx="590" cy="96" r="4.5" fill="#94a3b8"/>
+  <text x="602" y="100" fill="#334155" font-size="12" text-anchor="start">날짜별 관측</text>
+  <line x1="582" y1="126" x2="598" y2="126" stroke="#2563eb" stroke-width="3"/>
+  <text x="602" y="130" fill="#334155" font-size="12" text-anchor="start">반응곡선</text>
+  <line x1="582" y1="156" x2="598" y2="156" stroke="#dc2626" stroke-width="2"/>
+  <text x="602" y="160" fill="#b91c1c" font-size="12" font-weight="700" text-anchor="start">다음 1원의 효율</text>
+  <text x="380" y="336" fill="#475569" font-size="13" text-anchor="middle">예시 데이터입니다. 지출이 늘수록 다음 1원의 효율(빨간 기울기)은 평균보다 낮아집니다</text>
+</svg>

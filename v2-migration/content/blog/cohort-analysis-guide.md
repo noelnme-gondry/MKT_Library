@@ -6,7 +6,6 @@ slug: "cohort-analysis-guide"
 keywords: "리텐션 코호트 분석, D1 D7 D30 리텐션, 리텐션율 계산, 코호트 분석 방법, 리텐션 히트맵, 미완성 코호트"
 tags: ["분석", "리텐션"]
 draft: false
-ogImage: "/blog-assets/cohort-analysis-guide/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["cohort", "retention", "ltv"]
 sources:

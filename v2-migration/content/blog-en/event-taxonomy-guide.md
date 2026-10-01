@@ -6,7 +6,6 @@ slug: "event-taxonomy-guide"
 keywords: "event taxonomy, marketing taxonomy, SDK events, event naming convention, in-app event design, GA4 events, MMP events, event parameters, event QA"
 tags: ["Measurement", "Metrics Basics"]
 draft: false
-ogImage: "/blog-assets/event-taxonomy-guide/og.svg"
 relatedGlossary: ["mmp", "retention", "ltv"]
 sources:
   - title: "Google Analytics — GA4 event reference"

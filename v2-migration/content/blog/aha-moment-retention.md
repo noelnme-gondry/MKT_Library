@@ -6,7 +6,6 @@ slug: "aha-moment-retention"
 keywords: "Aha Moment 찾는 법, 아하 모먼트, Aha Event, 리텐션 선행지표, 활성화 지표, 온보딩 최적화, 초기 행동 리텐션"
 tags: ["그로스", "리텐션"]
 draft: false
-ogImage: "/blog-assets/aha-moment-retention/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["retention", "cohort", "ltv"]
 faq:
