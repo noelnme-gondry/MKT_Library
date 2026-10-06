@@ -2,6 +2,7 @@ import { CREATIVE_MATH, CREATIVE_STATS } from "./creativeMath.js";
 import { CANNIBAL_STATS } from "./responseMath.js";
 import { mmmOls, REG_STATS, REG_TRANSFORMS } from "./regMath.js";
 import { _Z975, mmmNormCdf, chi2Cdf, studentTp, studentTcrit } from "./statPrimitives.js";
+import { lunarFutureDummies, lunarKindAtWeekFromPanel } from "./krLunarHolidays.js";
 import { _mmmFmtDate } from "./regForecastMath.js";
 import {
   buildObservedYearShapes,
@@ -1878,21 +1879,28 @@ export function mmmDataQualityAudit(panel) {
               return { absorbed, notices };
             }
 
-            // 모델-독립 매크로 사실 — YoY 2024 vs 2025 (spend·target). dates: 주별 정렬 Date 배열.
-            // index mmmMacroFacts 이식(순수). 24/25 둘 다 없으면 {} 반환.
+            // 모델-독립 매크로 사실 — 최근 52주 vs 직전 52주 YoY (spend·target). dates: 주별 정렬 Date 배열.
+            // index mmmMacroFacts 이식(순수). 최근 52주·직전 52주가 모두 꽉 차야 계산한다.
+            // YoY는 "최근 52주 vs 직전 52주"다. 예전에는 2024·2025 연도가 하드코딩돼
+            // 2026 데이터에서는 나오지 않았고, 연도 합계를 그대로 비교해 2025년이 27주뿐인
+            // 예시 데이터에서 성과 −47%·Meta −100% 같은 거짓 YoY가 표시됐다(2026-10 감사).
+            // 두 창이 각각 52주로 꽉 차고 사이에 빠진 주가 없을 때만 계산한다.
             export function mmmMacroFacts(panel, cfg, dates, locale = "ko") {
               const isEn = locale === "en";
               const out = {};
-              if (!dates || !dates.length) return out;
-              const years = dates.map((d) => d.getUTCFullYear());
-              const has24 = years.includes(2024),
-                has25 = years.includes(2025);
-              if (!has24 || !has25) return out;
-              const sumWhere = (arr, yr) =>
-                arr.reduce((s, v, i) => (years[i] === yr ? s + (v || 0) : s), 0);
+              const n = panel?.week?.length || 0;
+              if (!dates || dates.length !== n || n < 104 || !dates.every((d) => d instanceof Date && !Number.isNaN(d.getTime()))) return out;
+              const spanDays = (dates[n - 1] - dates[n - 104]) / 86400000;
+              if (Math.abs(spanDays - 103 * 7) > 3) return out;
+              const recentStart = n - 52, priorStart = n - 104;
+              const sumRange = (arr, from, to) => {
+                let sum = 0;
+                for (let i = from; i < to; i++) sum += Number(arr?.[i]) || 0;
+                return sum;
+              };
               const yoy = (arr) => {
-                const a = sumWhere(arr, 2024),
-                  b = sumWhere(arr, 2025);
+                const a = sumRange(arr, priorStart, recentStart),
+                  b = sumRange(arr, recentStart, n);
                 return a > 0 ? +((b / a - 1) * 100).toFixed(1) : null;
               };
               const chKeys = _mmmChans(panel)
@@ -2010,10 +2018,15 @@ export function mmmDataQualityAudit(panel) {
                 dx = ux;
               const M = dy.length,
                 maxLag = Math.max(1, Math.min(maxLagCap || 6, Math.floor(M / 12)));
+              // 시차는 고르지 않고 허용 최대 시차까지 모두 넣은 같은 표본에서 한 번 검정한다.
+              // 예전 AIC 선택은 시차마다 표본 수가 달라 비교가 성립하지 않았고, 성과 단위가
+              // 크면(분산 ≫ 1) 표본이 줄수록 AIC가 내려가 사실상 항상 최대 시차를 골랐다
+              // (2026-10 감사에서 확인 — 결과는 이 고정 시차 검정과 같다). 선택을 고치면
+              // 오히려 순수 시차 효과(예: 2주 뒤)를 놓쳐, 실제 동작을 명시적으로 고정한다.
               const fit = (tgt, causes, p) => {
                 const rows = [],
                   yv = [];
-                for (let t = p; t < M; t++) {
+                for (let t = maxLag; t < M; t++) {
                   const row = [1];
                   for (const s of causes)
                     for (let l = 1; l <= p; l++) row.push(s[t - l]);
@@ -2028,18 +2041,10 @@ export function mmmDataQualityAudit(panel) {
               };
               const test = (tgt, cause) => {
                 // does cause Granger-cause tgt?
-                let best = null;
-                for (let p = 1; p <= maxLag; p++) {
-                  const fu = fit(tgt, [tgt, cause], p);
-                  if (!fu) continue;
-                  const aic = fu.n * Math.log(fu.RSS / fu.n + 1e-12) + 2 * fu.k;
-                  if (!best || aic < best.aic) best = { p, aic, fu };
-                }
-                if (!best) return { lag: 0, F: 0, p: 1, coefSum: 0 };
-                const p = best.p,
-                  fu = best.fu,
-                  fr = fit(tgt, [tgt], p);
-                if (!fr) return { lag: p, F: 0, p: 1, coefSum: 0 };
+                const p = maxLag,
+                  fr = fit(tgt, [tgt], p),
+                  fu = fit(tgt, [tgt, cause], p);
+                if (!fr || !fu) return { lag: p, F: 0, p: 1, coefSum: 0 };
                 const q = p,
                   dfd = fu.n - fu.k;
                 const F =
@@ -2099,10 +2104,18 @@ export function mmmDataQualityAudit(panel) {
               return y.map((v, i) => +(v - (sh[i] - meanSh)).toFixed(1));
             }
 
+            // 지출 충격에 대한 오가닉 반응(재귀 VAR, 지출을 먼저 둔 순서).
+            // 2026-10 감사 전에는 (1) 같은 주 반응을 0으로 고정해 검색·브랜드처럼 같은 주에
+            // 일어나는 잠식을 구조적으로 못 봤고, (2) 구간 없이 점 하나로 그려 귀무 데이터의
+            // 우연한 누적 반응(±250)과 실제 신호를 화면에서 가를 수 없었다(§8.4).
+            // 지금은 오가닉 식에 같은 주 지출을 넣고(지출이 같은 주 오가닉에 반응하지
+            // 않는다는 가정 — 주간 예산은 보통 주 시작 전에 정해진다), 잔차 부트스트랩으로
+            // 95% 구간을 함께 돌려준다. 결정론: 시드는 입력에서 만든다.
             export function mmmIRF(y, x, opts) {
               opts = opts || {};
               const H = opts.horizon || 12,
-                cap = opts.maxLag || 6;
+                cap = opts.maxLag || 6,
+                draws = Math.max(0, Math.round(opts.bootstrap ?? 200));
               const N = y.length;
               if (N < 24) return null;
               const ws = N >= 60;
@@ -2119,13 +2132,15 @@ export function mmmDataQualityAudit(panel) {
                 );
               if (!(sdx > 0)) return null;
               const maxLag = Math.max(1, Math.min(cap, Math.floor(M / 12)));
-              const fitEq = (tgt, p) => {
+              // 모든 시차 후보가 같은 표본(t ≥ maxLag)을 써야 AIC를 비교할 수 있다.
+              const fitEq = (seriesY, seriesX, tgt, p, contemporaneous) => {
                 const rows = [],
                   yv = [];
-                for (let t = p; t < M; t++) {
+                for (let t = maxLag; t < seriesY.length; t++) {
                   const r = [1];
-                  for (let l = 1; l <= p; l++) r.push(uy[t - l]);
-                  for (let l = 1; l <= p; l++) r.push(ux[t - l]);
+                  for (let l = 1; l <= p; l++) r.push(seriesY[t - l]);
+                  for (let l = 1; l <= p; l++) r.push(seriesX[t - l]);
+                  if (contemporaneous) r.push(seriesX[t]);
                   rows.push(r);
                   yv.push(tgt[t]);
                 }
@@ -2138,7 +2153,7 @@ export function mmmDataQualityAudit(panel) {
               let p = 1,
                 best = null;
               for (let pp = 1; pp <= maxLag; pp++) {
-                const f = fitEq(uy, pp);
+                const f = fitEq(uy, ux, uy, pp, true);
                 if (!f) continue;
                 const aic = f.n * Math.log(f.RSS / f.n + 1e-12) + 2 * f.k;
                 if (!best || aic < best.aic) {
@@ -2146,42 +2161,78 @@ export function mmmDataQualityAudit(panel) {
                   p = pp;
                 }
               }
-              const fy = fitEq(uy, p),
-                fx = fitEq(ux, p);
-              if (!fy || !fx) return null;
-              const ay = fy.beta.slice(1, 1 + p),
-                bx = fy.beta.slice(1 + p, 1 + 2 * p); // y eq: 자기lag, x lag
-              const cy = fx.beta.slice(1, 1 + p),
-                dx = fx.beta.slice(1 + p, 1 + 2 * p); // x eq
-              const yH = [],
-                xH = [],
-                irf = [];
-              for (let h = 0; h <= H; h++) {
-                let yh, xh;
-                if (h === 0) {
-                  yh = 0;
-                  xh = sdx;
-                } // spend-first: 충격은 x에 sdx, organic은 다음 주부터 반응
-                else {
-                  yh = 0;
-                  xh = 0;
+              const responseOf = (fy, fx) => {
+                const ay = fy.beta.slice(1, 1 + p),
+                  bx = fy.beta.slice(1 + p, 1 + 2 * p),
+                  b0 = fy.beta[1 + 2 * p]; // y eq: 자기lag, x lag, 같은 주 x
+                const cy = fx.beta.slice(1, 1 + p),
+                  dx = fx.beta.slice(1 + p, 1 + 2 * p); // x eq (같은 주 y 없음)
+                const yH = [],
+                  xH = [],
+                  out = [];
+                for (let h = 0; h <= H; h++) {
+                  let xh = h === 0 ? sdx : 0;
+                  let yh = 0;
                   for (let l = 1; l <= p; l++) {
-                    const yv = h - l >= 0 ? yH[h - l] || 0 : 0,
-                      xv = h - l >= 0 ? xH[h - l] || 0 : 0;
-                    yh += ay[l - 1] * yv + bx[l - 1] * xv;
-                    xh += cy[l - 1] * yv + dx[l - 1] * xv;
+                    if (h - l < 0) continue;
+                    xh += cy[l - 1] * yH[h - l] + dx[l - 1] * xH[h - l];
+                    yh += ay[l - 1] * yH[h - l] + bx[l - 1] * xH[h - l];
                   }
+                  yh += b0 * xh;
+                  yH[h] = yh;
+                  xH[h] = xh;
+                  out.push(yh);
                 }
-                yH[h] = yh;
-                xH[h] = xh;
-                irf.push(+yh.toFixed(4));
+                return out;
+              };
+              const fy = fitEq(uy, ux, uy, p, true),
+                fx = fitEq(uy, ux, ux, p, false);
+              if (!fy || !fx) return null;
+              const irfRaw = responseOf(fy, fx);
+              const cumulative = (values) => {
+                let total = 0;
+                return values.map((value) => (total += value));
+              };
+              // 잔차 부트스트랩: 두 식의 잔차를 같은 주 단위로 함께 뽑아(동시 상관 보존)
+              // 적합 계수로 시계열을 다시 만들고, 같은 시차로 재적합해 반응을 다시 잰다.
+              let lo = null, hi = null, cumLo = null, cumHi = null;
+              if (draws >= 50) {
+                const residY = fy.resid, residX = fx.resid;
+                const rng = _mmmSeededRng(_mmmHashSeed(`irf|${N}|${p}|${uy.slice(0, 8).join(",")}|${ux.slice(0, 8).join(",")}`));
+                const samples = [];
+                const cumSamples = [];
+                for (let draw = 0; draw < draws; draw++) {
+                  const sy = uy.slice(0, maxLag), sx = ux.slice(0, maxLag);
+                  for (let t = maxLag; t < M; t++) {
+                    const pick = Math.min(residY.length - 1, Math.floor(rng() * residY.length));
+                    let xv = fx.beta[0], yv = fy.beta[0];
+                    for (let l = 1; l <= p; l++) {
+                      xv += fx.beta[l] * sy[t - l] + fx.beta[p + l] * sx[t - l];
+                      yv += fy.beta[l] * sy[t - l] + fy.beta[p + l] * sx[t - l];
+                    }
+                    xv += residX[pick];
+                    yv += fy.beta[1 + 2 * p] * xv + residY[pick];
+                    sx.push(xv);
+                    sy.push(yv);
+                  }
+                  const by = fitEq(sy, sx, sy, p, true), bx = fitEq(sy, sx, sx, p, false);
+                  if (!by || !bx) continue;
+                  const response = responseOf(by, bx);
+                  samples.push(response);
+                  cumSamples.push(cumulative(response));
+                }
+                if (samples.length >= 50) {
+                  const band = (rows, q) => Array.from({ length: H + 1 }, (_, h) =>
+                    _mmmQuantileSorted(rows.map((row) => row[h]).sort((a, b) => a - b), q));
+                  lo = band(samples, 0.025);
+                  hi = band(samples, 0.975);
+                  cumLo = band(cumSamples, 0.025);
+                  cumHi = band(cumSamples, 0.975);
+                }
               }
-              const cum = [];
-              let s = 0;
-              irf.forEach((v) => {
-                s += v;
-                cum.push(+s.toFixed(4));
-              });
+              const round4 = (values) => values?.map((value) => +value.toFixed(4)) ?? null;
+              const irf = round4(irfRaw);
+              const cum = round4(cumulative(irfRaw));
               let peak = 0,
                 peakWk = 0;
               irf.forEach((v, i) => {
@@ -2190,15 +2241,28 @@ export function mmmDataQualityAudit(panel) {
                   peakWk = i;
                 }
               });
+              const cumTotal = cum.at(-1);
+              const cumLower = cumLo?.at(-1);
+              const cumUpper = cumHi?.at(-1);
               return {
                 lag: p,
                 horizon: H,
                 shockSd: +sdx.toFixed(4),
                 irf,
                 cum,
+                lo: round4(lo),
+                hi: round4(hi),
+                cumLo: round4(cumLo),
+                cumHi: round4(cumHi),
+                ci: lo ? "95% residual bootstrap" : null,
+                // 누적 반응 구간이 0을 포함하면 시차 신호로 읽지 않는다.
+                cumulativeSignal: Number.isFinite(cumLower) && Number.isFinite(cumUpper)
+                  ? cumUpper < 0 ? "negative" : cumLower > 0 ? "positive" : "inconclusive"
+                  : "unavailable",
+                contemporaneous: true,
                 peak: +peak.toFixed(4),
                 peakWeek: peakWk,
-                cumTotal: +s.toFixed(4),
+                cumTotal: +Number(cumTotal).toFixed(4),
               };
             }
 
@@ -2425,23 +2489,44 @@ export function mmmDataQualityAudit(panel) {
               if (spendCV < (R.minSpendCV || 0.1)) identificationReasons.push(`spend CV ${spendCV.toFixed(2)} < ${R.minSpendCV || 0.1}`);
               if (flighted && flightRuns.filter((run) => run >= (R.minFlightWeeks || 4)).length < (R.minFlightCount || 2)) identificationReasons.push("insufficient sustained flights");
               const identificationBlocked = identificationReasons.length > 0;
+              // ① 저지출 주 안의 시간 기울기만 보면 그건 잠식이 아니라 오가닉 추세다.
+              // 성장 중인 앱이면 잠식이 없어도 ~93%의 채널이 "잠식 쪽" 표를 받았다
+              // (2026-10 감사, 귀무 시뮬레이션). 그래서 같은 회귀에 고지출 주 표시(H)와
+              // 기울기 차이(t·H)를 함께 넣어, 저지출 주의 추세(β_t)와 고지출 주에서
+              // 추세가 얼마나 달라졌는지(β_tH)를 갈라 본다.
+              //   FOR     = 저지출 주에서 이미 유의하게 줄고 있었고, 고지출 주에서 더
+              //             가팔라지지 않았다(광고 이전부터의 하락).
+              //   AGAINST = 고지출 주에서 오가닉 기울기가 저지출 주보다 유의하게 낮다.
               let slope = 0,
                 slopeP = 1,
-                changePct = 0;
+                changePct = 0,
+                slopeDiff = 0,
+                slopeDiffP = 1,
+                diffChangePct = 0;
               const lowN = lowIdx.length;
-              if (lowN >= R.precMinN) {
-                const lx = lowIdx.map((i) => t[i]),
-                  ly = lowIdx.map((i) => y[i]);
-                const fit = mmmOls(
-                  lx.map((w) => [1, w]),
-                  ly,
-                );
-                if (fit) {
-                  slope = fit.beta[1];
-                  slopeP = studentTp(fit.tvalues[1], fit.n - fit.k);
+              const highN = n - lowN;
+              if (lowN >= R.precMinN && highN >= R.precMinN) {
+                const meanWeek = _mean(t);
+                const design = t.map((week, i) => {
+                  const centered = week - meanWeek;
+                  const high = spend[i] > p25 ? 1 : 0;
+                  return [1, centered, high, centered * high];
+                });
+                // 주간 오가닉은 AR(1) 잔차가 기본값이라 고전 OLS·소표본 Newey-West 모두
+                // p를 과소평가했다(귀무 기각 8~11%). Cochrane-Orcutt GLS로 계수·SE를 낸다.
+                const gls = fitAR1(design, y);
+                if (gls && gls.beta.every(Number.isFinite)) {
+                  slope = gls.beta[1];
+                  slopeP = gls.pval[1];
+                  slopeDiff = gls.beta[3];
+                  slopeDiffP = gls.pval[3];
+                  const lx = lowIdx.map((i) => t[i]);
                   const span = Math.max(...lx) - Math.min(...lx),
-                    lyM = _mean(ly) || 1;
+                    lyM = _mean(lowIdx.map((i) => y[i])) || 1;
+                  const fullSpan = Math.max(...t) - Math.min(...t),
+                    yM = _mean(y) || 1;
                   changePct = ((slope * span) / lyM) * 100;
+                  diffChangePct = ((slopeDiff * fullSpan) / yM) * 100;
                 }
               }
               let precVote;
@@ -2452,17 +2537,18 @@ export function mmmDataQualityAudit(panel) {
               else if (flighted && lowDegenerate)
                 precVote = "ABSTAIN"; // 산발 집행·저지출창=0지출 시점혼재 → 선행성 신뢰 불가(degenerate P25)
               else if (
-                slope < 0 &&
-                slopeP < R.precSlopeP &&
-                changePct <= -R.precDeclinePct
-              )
-                precVote = "FOR";
-              else if (
-                slope > 0 &&
-                slopeP < R.precSlopeP &&
-                changePct >= R.precDeclinePct
+                slopeDiff < 0 &&
+                slopeDiffP < R.precSlopeP &&
+                diffChangePct <= -R.precDeclinePct
               )
                 precVote = "AGAINST";
+              else if (
+                slope < 0 &&
+                slopeP < R.precSlopeP &&
+                changePct <= -R.precDeclinePct &&
+                !(slopeDiff < 0 && slopeDiffP < R.precSlopeP)
+              )
+                precVote = "FOR";
               else precVote = "ABSTAIN";
               const precedence = {
                 window: "low-spend(≤p25)",
@@ -2472,6 +2558,10 @@ export function mmmDataQualityAudit(panel) {
                 kpi_slope_per_wk: +slope.toFixed(1),
                 slope_p: +slopeP.toFixed(4),
                 kpi_change_over_window_pct: +changePct.toFixed(1),
+                high_spend_slope_diff_per_wk: +slopeDiff.toFixed(1),
+                high_spend_slope_diff_p: +slopeDiffP.toFixed(4),
+                high_spend_slope_diff_pct: +diffChangePct.toFixed(1),
+                method: "low-vs-high-spend-slope-hac",
                 vote: precVote,
                 declining_pre_ramp: precVote === "FOR",
                 flighted,
@@ -2573,10 +2663,40 @@ export function mmmDataQualityAudit(panel) {
                   wilsonLower(sameN, directionN) > 0.5
                 ) directionVote = "FOR";
               }
+              // r ≤ −0.2 임계만으로 표를 주면 짧은 이력에서 귀무(잠식 없음)인데도
+              // 40주 기준 1/3이 "잠식 신호"가 됐다(2026-10 감사). 두 시계열이 각각
+              // 자기상관을 가지면 상관계수의 실제 표본 수는 n보다 작다(Bartlett:
+              // n_eff = n·(1−ρ₁ρ₂)/(1+ρ₁ρ₂)). 그 유효 표본으로 유의해야 표를 준다.
+              const lag1 = (values) => {
+                const finite = values.filter(Number.isFinite);
+                if (finite.length < 3) return 0;
+                const m = _mean(finite);
+                let num = 0, den = 0;
+                for (let i = 0; i < finite.length; i++) {
+                  den += (finite[i] - m) ** 2;
+                  if (i > 0) num += (finite[i] - m) * (finite[i - 1] - m);
+                }
+                return den > 0 ? Math.max(-0.99, Math.min(0.99, num / den)) : 0;
+              };
+              const effectiveN = (a, b, count) => {
+                const rho = lag1(a) * lag1(b);
+                return Math.max(4, Math.min(count, (count * (1 - rho)) / (1 + rho)));
+              };
+              const correlationP = (r, nEff) => {
+                if (!Number.isFinite(r) || Math.abs(r) >= 1 || nEff <= 3) return 1;
+                const z = Math.atanh(r) * Math.sqrt(nEff - 3);
+                return 2 * (1 - mmmNormCdf(Math.abs(z)));
+              };
+              const detNEff = gFit && yFit ? effectiveN(gFit.resid, yFit.resid, n) : n;
+              const fdNEff = effectiveN(dlnG, dy, Math.max(0, n - 1));
+              const detP = correlationP(det, detNEff);
+              const fdP = correlationP(fd, fdNEff);
+              const detAgainst = det <= R.detrendAgainst && detP < R.netP;
+              const fdAgainst = fd <= R.detrendAgainst && fdP < R.netP;
               let detVote;
               if (
-                det <= R.detrendAgainst ||
-                fd <= R.detrendAgainst ||
+                detAgainst ||
+                fdAgainst ||
                 directionVote === "AGAINST"
               )
                 detVote = "AGAINST";
@@ -2590,6 +2710,10 @@ export function mmmDataQualityAudit(panel) {
                 raw: +raw.toFixed(3),
                 detrended: +det.toFixed(3),
                 first_diff: +fd.toFixed(3),
+                n_eff_detrended: +detNEff.toFixed(1),
+                n_eff_first_diff: +fdNEff.toFixed(1),
+                p_detrended: +detP.toFixed(4),
+                p_first_diff: +fdP.toFixed(4),
                 directional: {
                   ...directionCounts,
                   informative_n: directionN,
@@ -2702,7 +2826,7 @@ export function mmmDataQualityAudit(panel) {
               // ④ 단독·결합 승격 모두 금지한다.
               if (grangerCannibal && verdictClass !== "cannibal" && !flighted && votes.AGAINST >= Math.max(1, (R.minAgainstVotes || 2) - 1) && !identificationBlocked) {
                 verdictClass = "cannibal";
-                verdict = isEn ? `LEAN CANNIBAL — lagged Granger signal (spend→organic↓, lag ${gr.spend_to_organic.lag}); holdout is first priority` : `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`;
+                verdict = isEn ? `LEAN CANNIBAL — lagged Granger signal (spend→organic↓, lags 1–${gr.spend_to_organic.lag}); holdout is first priority` : `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, 1~${gr.spend_to_organic.lag}주 시차), holdout 1순위`;
               }
 
               return {
@@ -4266,19 +4390,51 @@ export function mmmDataQualityAudit(panel) {
                 && list.findIndex((other) => JSON.stringify(other) === JSON.stringify(knots)) === index,
               );
               const scale = _pstd(weeks) || 1;
-              const candidates = knotSets.map((knots) => {
+              // 꺾임 위치 후보는 저주파 곡선에서 제안하되, 꺾임 개수 선택(BIC)과 방향은
+              // **원 KPI**에서 판정한다. 매끄럽게 만든 곡선에 BIC를 걸면 잔차가 거의 0이라
+              // 벌점이 무력해져 완전한 직선에도 꺾임을 0개 고른 적이 없었고(0/60),
+              // 연간 계절 파형의 끝자락을 "하락"으로 고정했다(평탄+계절 56/60, 실제
+              // 성장 중인 예시 데이터도 마지막 구간을 하락으로 잠갔다 — 2026-10 감사).
+              // 연간 1차 조화파를 함께 넣어 계절 모양이 추세 꺾임으로 읽히지 않게 한다.
+              const seasonPeriod = panel.granularity?.unit === "monthly" ? 12 : 52.18;
+              const withSeason = n >= Math.round(seasonPeriod * 1.5);
+              const rawY = y.slice(0, n);
+              // 주간 KPI 잔차는 자기상관이 있어 n개의 독립 관측이 아니다. 0-꺾임 적합의
+              // 1차 자기상관으로 유효 표본 수를 줄여 BIC의 자료항과 벌점을 함께 맞춘다.
+              let effectiveRows = n;
+              const segmentDesign = (knots) => {
                 const boundaries = [weeks[0], ...knots, weeks[n - 1]];
-                const X = weeks.slice(0, n).map((week) => boundaries.slice(0, -1).map((start, index) =>
-                  Math.max(0, Math.min(week, boundaries[index + 1]) - start) / scale,
-                ));
-                const fit = mmmOls(_designConst(X), smoothed.slice(0, n));
+                return { boundaries, X: weeks.slice(0, n).map((week) => [
+                  ...boundaries.slice(0, -1).map((start, index) =>
+                    Math.max(0, Math.min(week, boundaries[index + 1]) - start) / scale,
+                  ),
+                  ...(withSeason
+                    ? [Math.sin((2 * Math.PI * week) / seasonPeriod), Math.cos((2 * Math.PI * week) / seasonPeriod)]
+                    : []),
+                ]) };
+              };
+              const baseFit = mmmOls(_designConst(segmentDesign([]).X), rawY);
+              if (baseFit?.resid?.length > 2) {
+                const resid = baseFit.resid;
+                let num = 0, den = 0;
+                for (let i = 0; i < resid.length; i++) {
+                  den += resid[i] ** 2;
+                  if (i > 0) num += resid[i] * resid[i - 1];
+                }
+                const rho = den > 0 ? Math.max(0, Math.min(0.95, num / den)) : 0;
+                effectiveRows = Math.max(10, Math.min(n, (n * (1 - rho)) / (1 + rho)));
+              }
+              const candidates = knotSets.map((knots) => {
+                const { boundaries, X } = segmentDesign(knots);
+                const fit = mmmOls(_designConst(X), rawY);
                 if (!fit) return null;
                 const sse = fit.resid.reduce((sum, value) => sum + value ** 2, 0);
-                const slopes = fit.beta.slice(1).map((value) => value / scale);
+                const segmentCount = boundaries.length - 1;
+                const slopes = fit.beta.slice(1, 1 + segmentCount).map((value) => value / scale);
                 return {
                   knots: knots.slice(),
-                  bic: n * Math.log(Math.max(sse / Math.max(1, n), 1e-12))
-                    + (slopes.length + 1) * Math.log(Math.max(2, n)),
+                  bic: effectiveRows * Math.log(Math.max(sse / Math.max(1, n), 1e-12))
+                    + (fit.beta.length) * Math.log(Math.max(2, effectiveRows)),
                   slopes,
                   segments: slopes.map((slope, index) => ({
                     start: boundaries[index],
@@ -6640,9 +6796,11 @@ export function mmmDataQualityAudit(panel) {
                 const vif = Number(vifByVariable.get("media_" + item.channel.key));
                 const width = posterior.q95 - posterior.q05;
                 const relativeWidth = width / Math.max(1e-12, Math.abs(posterior.mean));
+                // MAP이 0 경계에 붙었으면 "0 이상 효과를 식별했다"가 아니다. 예전에는
+                // q95까지 0이면(강한 음의 근거로 전부 0에 눌림) 구간 폭이 0이라
+                // IDENTIFIED로 표시됐다 — 실제 잠식 채널이 "식별됨 0%"로 나갔다.
                 const isBoundary = run.mediaCoefficientConstraint !== "signed"
-                  && posterior.map <= 1e-12
-                  && posterior.q95 > 1e-12;
+                  && posterior.map <= 1e-12;
                 const verdict = Number.isFinite(vif) && vif >= 10
                   ? "ABSTAIN"
                   : isBoundary
@@ -6652,6 +6810,7 @@ export function mmmDataQualityAudit(panel) {
                       : "IDENTIFIED";
                 return [item.channel.key, {
                   mean: posterior.mean,
+                  map: posterior.map,
                   ci90: [posterior.q05, posterior.q95],
                   vif: Number.isFinite(vif) ? vif : null,
                   relativeWidth,
@@ -6662,7 +6821,11 @@ export function mmmDataQualityAudit(panel) {
                 const coefficient = coefficientPosterior[item.channel.key];
                 const identification = channelIdentification[item.channel.key];
                 const feature = run.rawFeatureHistory.map((row) => Math.max(0, Number(row[item.featureIndex]) || 0));
-                const weeklyMean = feature.map((value) => value * coefficient.mean);
+                // 점추정은 MAP이다(§7 "절단 사후분포의 평균을 점예측으로 쓰지 말 것").
+                // 0으로 눌러 붙인 draw의 평균은 효과 0인 채널도 0.4σ만큼 띄워, 채널 기여표의
+                // 합이 같은 결과의 주별 분해(MAP) Performance 합과 최대 2배까지 갈렸다
+                // (2026-10 감사). draw는 구간(q05·q95)과 양(+) 확률에만 쓴다.
+                const weeklyMean = feature.map((value) => value * coefficient.map);
                 const weeklyLow = feature.map((value) => value * coefficient.q05);
                 const weeklyHigh = feature.map((value) => value * coefficient.q95);
                 const featureTotal = feature.reduce((sum, value) => sum + value, 0);
@@ -6673,7 +6836,7 @@ export function mmmDataQualityAudit(panel) {
                   weeklyMean,
                   weeklyLow,
                   weeklyHigh,
-                  totalMean: featureTotal * coefficient.mean,
+                  totalMean: featureTotal * coefficient.map,
                   totalLow: featureTotal * coefficient.q05,
                   totalHigh: featureTotal * coefficient.q95,
                   posteriorPositive: coefficient.q95 > 0 ? 1 : 0,
@@ -6867,8 +7030,9 @@ export function mmmDataQualityAudit(panel) {
                 resid: approximation.weeks.map((week) => week.residual),
                 r2: 1 - residualSse / Math.max(1e-12, totalSse),
               };
-              const absoluteBeta = approximation.posteriorMeanCoefficients.slice(1);
-              const absoluteIntercept = approximation.posteriorMeanCoefficients[0];
+              // 계수·반응곡선도 MAP 기준이다 — 주별 분해·예측(run.posterior.beta)과 같은 값.
+              const absoluteBeta = mapRun.absoluteBeta;
+              const absoluteIntercept = mapRun.absoluteIntercept;
               const saturationByChannel = Object.fromEntries(mapRun.channelMeta.map((channel) => {
                 const previous = mapRun.saturationByChannel[channel.key] || {};
                 const coefficient = approximation.coefficientPosterior[channel.key];
@@ -6877,7 +7041,7 @@ export function mmmDataQualityAudit(panel) {
                 const responseAt = (spend) => {
                   const steadyAdstock = Math.max(0, Number(spend) || 0)
                     / Math.max(0.05, 1 - Math.min(0.95, params.alpha));
-                  return coefficient.mean * _mmmMediaResponseTransform(steadyAdstock, params);
+                  return coefficient.map * _mmmMediaResponseTransform(steadyAdstock, params);
                 };
                 const marginalAt = (spend) => {
                   const safeSpend = Math.max(0, Number(spend) || 0);
@@ -6892,7 +7056,7 @@ export function mmmDataQualityAudit(panel) {
                   const factor = _mmmMediaResponseTransform((safeSpend + safeStep) / denominator, params)
                     - _mmmMediaResponseTransform(safeSpend / denominator, params);
                   return {
-                    mean: coefficient.mean * factor,
+                    mean: coefficient.map * factor,
                     ci: [coefficient.q05 * factor, coefficient.q95 * factor],
                     positiveProbability: coefficient.positiveProbability,
                     step: safeStep,
@@ -6900,7 +7064,7 @@ export function mmmDataQualityAudit(panel) {
                 };
                 return [channel.key, {
                   ...previous,
-                  ln_coef: coefficient.mean,
+                  ln_coef: coefficient.map,
                   ci: [coefficient.q05, coefficient.q95],
                   posteriorPositive: coefficient.positiveProbability,
                   responseAt,
@@ -6919,7 +7083,7 @@ export function mmmDataQualityAudit(panel) {
                 backtest,
                 modelVariant: "bayesian-like",
                 methodLabel: "Bayesian-like MMM (Gaussian/Laplace posterior, non-negative media)",
-                estimand: "additive-posterior-mean-component",
+                estimand: "additive-map-component",
                 mapWeeks: mapRun.weeks,
                 weeks: approximation.weeks,
                 channelContributions: approximation.channelContributions,
@@ -8129,6 +8293,7 @@ export function mmmDataQualityAudit(panel) {
               const seasonalTolerance = Number.isFinite(options.seasonalTolerance)
                 ? Math.max(0, options.seasonalTolerance)
                 : 0.75;
+              const kindAtWeek = lunarKindAtWeekFromPanel(train);
               const seasonal = values.length >= seasonalMinHistory
                 ? horizonWeeks.map((futureWeek) => {
                 const targetWeek = futureWeek - seasonalPeriod;
@@ -8141,9 +8306,21 @@ export function mmmDataQualityAudit(panel) {
                     bestIndex = index;
                   }
                 });
-                return bestIndex >= 0 && bestDistance <= seasonalTolerance
-                  ? floor(values[bestIndex])
-                  : null;
+                if (!(bestIndex >= 0 && bestDistance <= seasonalTolerance)) return null;
+                // 설·추석은 해마다 1~3주 움직인다. 52주 전 주와 목표 주의 명절 여부가
+                // 다르면 ±3주 안에서 같은 상태의 관측 주를 쓴다(달력이 모르면 그대로).
+                if (kindAtWeek) {
+                  const targetKind = kindAtWeek(futureWeek);
+                  const analogKind = kindAtWeek(weeks[bestIndex]);
+                  if (targetKind !== undefined && analogKind !== undefined && targetKind !== analogKind) {
+                    for (let distance = 1; distance <= 3; distance++) {
+                      const match = [bestIndex - distance, bestIndex + distance].find((index) =>
+                        index >= 0 && index < weeks.length && kindAtWeek(weeks[index]) === targetKind);
+                      if (match != null) return floor(values[match]);
+                    }
+                  }
+                }
+                return floor(values[bestIndex]);
                 })
                 : [];
               if (seasonal.length === horizonWeeks.length && seasonal.every(Number.isFinite)) {
@@ -8804,7 +8981,11 @@ export function mmmDataQualityAudit(panel) {
                       trendDamping,
                     });
                     const fit = mmmBayesianRun(train, fitContract.cfg, targetName, false, fitContract.options);
-                    const liveDummy = Object.fromEntries(Object.keys(train.dummy || {}).map((key) => [key, Array(horizon).fill(0)]));
+                    // 미래 이벤트는 모르는 값이라 0이지만, 설·추석 달력과 맞는 더미는
+                    // 배포 예측과 똑같이 달력으로 채운다(mmmBayesianForecast가 처리) —
+                    // 검증과 배포가 같은 추정기를 쓰게 한다.
+                    const liveCalendar = lunarFutureDummies(train, horizon).futureDummy;
+                    const liveDummy = Object.fromEntries(Object.keys(train.dummy || {}).map((key) => [key, liveCalendar[key] || Array(horizon).fill(0)]));
                     const liveSteps = Object.fromEntries(Object.entries(train.steps || {}).map(([key, values]) => [key, Array(horizon).fill(values.at(-1) || 0)]));
                     const heldRf = _mmmForecastRfFutureInputs(held);
                     const forecast = fit && mmmBayesianForecast(fit, train, held.ch, horizon, {
@@ -9712,6 +9893,10 @@ export function mmmDataQualityAudit(panel) {
                 }
               });
               const clampScenario = options.clampScenario !== false;
+              // 미래 이벤트 더미는 알 수 없어 0이 기본이지만, 과거 더미가 설·추석 달력과
+              // 맞으면(krLunarHolidays) 다가오는 명절 주를 달력으로 채운다. 명시적으로
+              // 넘긴 futureDummy가 항상 우선한다.
+              const calendarDummy = lunarFutureDummies(panel, H);
               const lastWeek = Number(panel.week?.[n - 1]);
               const futureWeeks = Array.from({ length: H }, (_, h) =>
                 (Number.isFinite(lastWeek) ? lastWeek : n) + h + 1,
@@ -9777,7 +9962,7 @@ export function mmmDataQualityAudit(panel) {
                   // step은 마지막 상태가 지속된다고 가정한다.
                   if (name.startsWith("d_")) {
                     const key = name.slice(2);
-                    return options.futureDummy?.[key]?.[h] ?? 0;
+                    return options.futureDummy?.[key]?.[h] ?? calendarDummy.futureDummy[key]?.[h] ?? 0;
                   }
                   // lny/chuseok are lunar-holiday dummies, not lagged outcomes.
                   // Unknown future holiday dates must default to OFF.
@@ -9897,6 +10082,9 @@ export function mmmDataQualityAudit(panel) {
                   ? "90% predictive reference interval (conditional Gaussian + time-ordered holdout residual calibration)"
                   : "90% conditional Gaussian predictive reference interval (representative transform)",
                 intervalCalibration: run.intervalCalibration || null,
+                calendarDummies: calendarDummy.matches
+                  .filter((match) => run.names.includes("d_" + match.key) && !options.futureDummy?.[match.key])
+                  .map((match) => ({ ...match, uncoveredFutureWeeks: calendarDummy.uncoveredFutureWeeks })),
                 spendRanges,
                 scenarioWarnings,
                 baselineFut,

@@ -212,3 +212,29 @@ describe("임계 상수", () => {
     expect(CAUSAL_THRESHOLDS.minClusters).toBe(6);
   });
 });
+
+describe("이벤트 스터디 — 한쪽 군만 있는 기간", () => {
+  // 대조군 집계가 한 주 늦게 들어오면 마지막 주의 처리×상대기간 더미가 기간 고정효과와
+  // 완전 공선이다. 예전에는 특이행렬을 릿지로 풀어 식별되지 않는 계수(rel +2)를 SE 0.002와
+  // 함께 내보냈다(2026-10 감사). 그런 기간은 추정에서 빠져야 한다.
+  const periods = ["2025-01-06", "2025-01-13", "2025-01-20", "2025-01-27", "2025-02-03", "2025-02-10", "2025-02-17"];
+  const cutoff = "2025-02-03";
+  const rows = [];
+  [["A", 1], ["B", 1], ["C", 1], ["D", 0], ["E", 0], ["F", 0]].forEach(([unit, treated], ui) => periods.forEach((period, pi) => {
+    if (!treated && period === "2025-02-17") return;
+    rows.push({ unitKey: unit, period, share: 0.3 + 0.01 * ui + 0.005 * pi + (treated && pi >= 4 ? 0.03 : 0) + ((ui * 7 + pi * 3) % 5) * 0.002, population: 100, treated, scopeValue: treated ? "T" : "C" });
+  }));
+
+  it("빠진 기간의 계수를 만들지 않는다", () => {
+    const result = eventStudy({ cutoff, eligibility: { status: CAUSAL_STATUS.CAUTION, reasons: ["UNBALANCED_PANEL"], rows, periods, clusters: 6 } });
+    expect(result.available).toBe(true);
+    expect(result.coefficients.map((c) => c.relative)).toEqual([-4, -3, -2, 0, 1]);
+  });
+
+  it("기준 기간(cutoff 직전)이 빠지면 추정하지 않는다", () => {
+    const withoutReference = rows.filter((row) => !(row.treated === 0 && row.period === "2025-01-27"));
+    const result = eventStudy({ cutoff, eligibility: { status: CAUSAL_STATUS.CAUTION, reasons: [], rows: withoutReference, periods, clusters: 6 } });
+    expect(result.available).toBe(false);
+    expect(result.reasons).toContain(CAUSAL_REASON.NOT_ESTIMABLE);
+  });
+});

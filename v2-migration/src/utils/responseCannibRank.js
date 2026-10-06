@@ -151,8 +151,12 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
       const gated = !!(cn.power_gate && cn.power_gate.blocked);
       const rDet = cn.detrend_corr.detrended,
         rDiff = cn.detrend_corr.first_diff;
-      const z2 = CANNIBAL_RANK.zFromR(rDet, n),
-        z2d = CANNIBAL_RANK.zFromR(rDiff, n - 1);
+      // 주간 시계열은 자기상관이 있어 상관계수의 실제 표본 수가 n보다 작다.
+      // 엔진이 계산한 유효 표본 수(Bartlett)를 쓰고, 없을 때만 n으로 돌아간다.
+      const nDet = Number.isFinite(cn.detrend_corr.n_eff_detrended) ? cn.detrend_corr.n_eff_detrended : n,
+        nDiff = Number.isFinite(cn.detrend_corr.n_eff_first_diff) ? cn.detrend_corr.n_eff_first_diff : n - 1;
+      const z2 = CANNIBAL_RANK.zFromR(rDet, nDet),
+        z2d = CANNIBAL_RANK.zFromR(rDiff, nDiff);
       const ni = cn.net_incrementality;
       let z3 = 0,
         netSe = null;
@@ -253,37 +257,53 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
   return rows;
 }
 
-// 권고 짧은 라벨(표 셀) + 전체 문구(title 툴팁)
+// 권고 짧은 라벨(표 셀) + 전체 문구(title 툴팁).
+// 칸반 칸(mmmCannibBucket)과 같은 판정 단계(mmmCannibLevel)에서 파생한다. 예전에는
+// 칸은 판정 단계로, 문구는 "표 하나라도 잠식 쪽이면 '중'"인 badge로 정해서 "문제없음"
+// 칸에 "holdout 1순위/후보"가 함께 뜨는 모순이 있었다(2026-10 감사).
+function cannibActionKey(r) {
+  if (!r.eligible) return "insufficient";
+  const lv = mmmCannibLevel(r).lv;
+  if (lv >= 5) return r.flighted ? "confirm-flighted" : "priority";
+  if (lv === 4) return "lean-negative";
+  if (r.gated) return "collinear";
+  if (r.flighted) return "confirm-flighted";
+  if ((r.againstCount || 0) === 1) return "single-signal";
+  return "deprioritize";
+}
 export function mmmCannibAction(r, locale = "ko") {
   const en = locale === "en";
-  if (!r.eligible)
+  const key = cannibActionKey(r);
+  if (key === "insufficient")
     return en
       ? "Insufficient data or mixed trends — withhold the verdict; use sustained delivery or a holdout"
       : "데이터 부족·추세 혼재 — 잠식 판정 보류. 연속 집행 또는 holdout 필요";
-  if (r.flighted)
+  if (key === "confirm-flighted")
     return en
       ? "Flighted delivery — lag and precedence evidence is weaker; confirm with a matched on/off comparison or holdout"
       : "산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
-  if (r.badge === "강") return en ? "High-priority holdout" : "holdout 우선순위 높음";
-  if (r.badge === "중") return en ? "Holdout candidate (medium priority)" : "holdout 후보 (우선순위 중)";
-  if (r.gated) return en
-    ? "Not identified due to collinearity — do not call it safe; confirm with a holdout"
-    : "공선으로 관측 식별 불가 — '안전' 단정 말고 holdout으로 확인";
-  if (r.leanNeg) return en
+  if (key === "priority") return en ? "High-priority holdout" : "holdout 우선순위 높음";
+  if (key === "lean-negative") return en
     ? "Weak negative signal with low power — monitor or consider a holdout"
     : "약한 음의 기미·검정력 부족 — 모니터 / holdout 고려";
+  if (key === "collinear") return en
+    ? "Not identified due to collinearity — do not call it safe; confirm with a holdout"
+    : "공선으로 관측 식별 불가 — '안전' 단정 말고 holdout으로 확인";
+  if (key === "single-signal") return en
+    ? "One check leaned toward cannibalization, but one signal alone is not a verdict — monitor"
+    : "검정 하나만 잠식 쪽 — 하나만으로는 판정하지 않음. 모니터";
   return en
     ? "No observed red flag after detrending — reasonable to deprioritize"
     : "관측상 이상 無 (비공선·탈추세 무해) — deprioritize 가능";
 }
 export function mmmCannibActionShort(r, locale = "ko") {
   const en = locale === "en";
-  if (!r.eligible) return en ? "Insufficient · withheld" : "데이터 부족·보류";
-  if (r.flighted) return en ? "Confirm by holdout" : "holdout 확인";
-  if (r.badge === "강") return en ? "Holdout priority 1" : "holdout 1순위";
-  if (r.badge === "중") return en ? "Holdout candidate" : "holdout 후보";
-  if (r.gated) return en ? "Confirm by holdout" : "holdout 확인";
-  if (r.leanNeg) return en ? "Monitor / holdout" : "모니터/holdout";
+  const key = cannibActionKey(r);
+  if (key === "insufficient") return en ? "Insufficient · withheld" : "데이터 부족·보류";
+  if (key === "confirm-flighted" || key === "collinear") return en ? "Confirm by holdout" : "holdout 확인";
+  if (key === "priority") return en ? "Holdout priority 1" : "holdout 1순위";
+  if (key === "lean-negative") return en ? "Monitor / holdout" : "모니터/holdout";
+  if (key === "single-signal") return en ? "One signal · monitor" : "신호 1개 · 모니터";
   return en ? "Can deprioritize" : "deprioritize 가능";
 }
 

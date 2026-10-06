@@ -1,3 +1,5 @@
+import { lunarAlignedAnalogIndex, lunarKindAtFromPanel } from "./krLunarHolidays.js";
+
 const DEFAULT_HORIZON = 12;
 const DEFAULT_SELECTION_FOLDS = 6;
 const MIN_INITIAL_TRAINING_WEEKS = 26;
@@ -118,7 +120,7 @@ function wmape(actual, predicted) {
 
 function annualAt(series, trainEnd, horizon, spec = ANNUAL_ANALOG_SPECS.find((item) =>
   item.anchorWeeks === 4 && item.seasonWeight === 1 && item.ratioPower === 1,
-)) {
+), kindAt = null) {
   const anchorWeeks = spec?.anchorWeeks || 4;
   if (!Array.isArray(series) || trainEnd < 52 + anchorWeeks || trainEnd - 52 + horizon > trainEnd) return null;
   const recent = mean(series.slice(trainEnd - anchorWeeks, trainEnd));
@@ -130,9 +132,12 @@ function annualAt(series, trainEnd, horizon, spec = ANNUAL_ANALOG_SPECS.find((it
   const seasonWeight = Math.max(0, Math.min(1, spec?.seasonWeight ?? 1));
   return {
     ratio,
-    predicted: series.slice(trainEnd - 52, trainEnd - 52 + horizon).map((value) =>
-      Math.max(0, local * (1 - seasonWeight) + value * ratio * seasonWeight),
-    ),
+    // 설·추석은 해마다 1~3주 움직인다. 52주 전 주와 목표 주의 명절 여부가 다르면
+    // 같은 상태인 가까운 주(±3주)를 대신 쓴다(krLunarHolidays, 달력이 모르면 그대로).
+    predicted: Array.from({ length: horizon }, (_, index) => {
+      const source = lunarAlignedAnalogIndex(trainEnd + index, trainEnd - 52 + index, kindAt, trainEnd);
+      return Math.max(0, local * (1 - seasonWeight) + series[source] * ratio * seasonWeight);
+    }),
   };
 }
 
@@ -181,8 +186,8 @@ export function similarSeasonAt(series, trainEnd, horizon, spec) {
   };
 }
 
-function localSeriesAt(series, trainEnd, horizon, spec) {
-  if (spec?.kind === "annual") return annualAt(series, trainEnd, horizon, spec)?.predicted || null;
+function localSeriesAt(series, trainEnd, horizon, spec, kindAt = null) {
+  if (spec?.kind === "annual") return annualAt(series, trainEnd, horizon, spec, kindAt)?.predicted || null;
   if (spec?.kind === "similar-season") return similarSeasonAt(series, trainEnd, horizon, spec)?.predicted || null;
   const window = Math.min(MAX_TRAINING_WEEKS, Math.max(2, spec?.window || 8));
   const start = trainEnd - window;
@@ -231,8 +236,8 @@ function localSeriesAt(series, trainEnd, horizon, spec) {
 // Public test/provenance seam for the bounded univariate candidates. The
 // selector and tests call the exact same implementation, so a displayed
 // window cannot silently differ from the values the model actually used.
-export function forecastBoundedSeriesAt(series, trainEnd, horizon, spec) {
-  return localSeriesAt(series, trainEnd, horizon, spec);
+export function forecastBoundedSeriesAt(series, trainEnd, horizon, spec, kindAt = null) {
+  return localSeriesAt(series, trainEnd, horizon, spec, kindAt);
 }
 
 function seriesComplexityPenalty(spec) {
@@ -310,12 +315,13 @@ function selectionIdentity(route, spec, {
 }
 
 function routeAt(seriesByPlatform, route, trainEnd, horizon, spec) {
+  const kindAt = seriesByPlatform.kindAt || null;
   if (route === "direct-total") {
-    const predicted = localSeriesAt(seriesByPlatform.total, trainEnd, horizon, spec);
+    const predicted = localSeriesAt(seriesByPlatform.total, trainEnd, horizon, spec, kindAt);
     return predicted ? { predicted, ratio: null } : null;
   }
-  const android = localSeriesAt(seriesByPlatform.android, trainEnd, horizon, spec);
-  const ios = localSeriesAt(seriesByPlatform.ios, trainEnd, horizon, spec);
+  const android = localSeriesAt(seriesByPlatform.android, trainEnd, horizon, spec, kindAt);
+  const ios = localSeriesAt(seriesByPlatform.ios, trainEnd, horizon, spec, kindAt);
   if (!android || !ios) return null;
   return {
     ratio: null,
@@ -822,6 +828,7 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
   const normalized = normalizePaidByCost(panel, total, observedPaid);
   if (!normalized) return null;
   const paid = normalized.paid;
+  const kindAt = lunarKindAtFromPanel(panel);
   const organic = total.map((value, index) => value - paid[index]);
   const organicCandidates = BOUNDED_SERIES_SPECS.map((spec) => componentCandidate(
     organic,
@@ -829,7 +836,7 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
     starts,
     n,
     horizon,
-    (trainEnd, useHorizon, useSpec) => localSeriesAt(organic, trainEnd, useHorizon, useSpec),
+    (trainEnd, useHorizon, useSpec) => localSeriesAt(organic, trainEnd, useHorizon, useSpec, kindAt),
     "organic",
   ));
   const productionCosts = panelCostRows(panel, horizon);
@@ -839,7 +846,7 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
     n,
     horizon,
     selectionFolds,
-    (spec) => localSeriesAt(organic, n, horizon, spec),
+    (spec) => localSeriesAt(organic, n, horizon, spec, kindAt),
   );
   const paidCandidates = PAID_RESPONSE_SPECS.map((spec) => componentCandidate(
     paid,
@@ -864,7 +871,7 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
     starts,
     n,
     horizon,
-    (trainEnd, useHorizon, useSpec) => localSeriesAt(total, trainEnd, useHorizon, useSpec),
+    (trainEnd, useHorizon, useSpec) => localSeriesAt(total, trainEnd, useHorizon, useSpec, kindAt),
     "bounded-total",
   ));
   const totalTournament = runComponentTournament(
@@ -873,7 +880,7 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
     n,
     horizon,
     selectionFolds,
-    (spec) => localSeriesAt(total, n, horizon, spec),
+    (spec) => localSeriesAt(total, n, horizon, spec, kindAt),
   );
   if (!organicTournament || !paidTournament || !totalTournament
     || !organicTournament.future || !paidTournament.future || !totalTournament.future) return null;
@@ -1112,7 +1119,7 @@ export function runAnnualAnalogRouter({
   const ios = iosPanel?.targets?.[target];
   const n = total?.length || 0;
   if (!n || android?.length !== n || ios?.length !== n) return null;
-  const seriesByPlatform = { total, android, ios };
+  const seriesByPlatform = { total, android, ios, kindAt: lunarKindAtFromPanel(totalPanel) };
   const originStride = Math.max(horizon, Number(foldStep) || horizon);
   const latestStart = n - horizon;
   const starts = [];
