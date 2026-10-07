@@ -1793,7 +1793,7 @@ export function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvD
   ] : [[tx("주별 기여", "Weekly contribution")], [tx("기여 분해 결과가 없습니다.", "Contribution result unavailable.")]]);
   const channelPerformance = buildMmmWeeklyPerformance(mmm.panel, run.channelContributions);
   add("05b_ChannelAttribution", [
-    ["channel", "group", `avg_cost_per_week_${sourceCurrency}`, `avg_${mmm.target}_per_week`, `total_spend_${sourceCurrency}`, `total_${mmm.target}`, mmm.target === "Revenue" ? "ROAS" : "CPA", "source", "identification", "by_construction"],
+    ["channel", "group", `avg_cost_per_week_${sourceCurrency}`, `avg_${mmm.target}_per_week`, `total_spend_${sourceCurrency}`, `total_${mmm.target}`, mmm.target === "Revenue" ? "ROAS" : "CPA", "source", "identification", "by_construction", "selection_check", "selection_z", "selection_threshold"],
     ...channelPerformance.map((row) => {
       const contribution = run.channelContributions?.[row.key] || {};
       const channel = (mmm.panel.channels || []).find((item) => item.key === row.key);
@@ -1810,6 +1810,9 @@ export function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvD
         contribution.source,
         contribution.identificationVerdict,
         Boolean(contribution.identification?.byConstruction),
+        contribution.identification?.selectionCheck?.method || null,
+        contribution.identification?.selectionCheck?.z ?? null,
+        contribution.identification?.selectionCheck?.threshold ?? null,
       ];
     }),
   ]);

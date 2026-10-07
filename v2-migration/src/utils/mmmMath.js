@@ -3783,28 +3783,249 @@ export function mmmDataQualityAudit(panel) {
               for (const ch of _mmmChans(panel)) {
                 const raw = _mmmChannelInput(panel, ch.key);
                 if (!raw) continue;
-                let best = null;
-                for (const candidate of _mmmBayesTransformCandidates(raw, cfg)) {
-                  const score = CANNIBAL_STATS.pearson(candidate.values, residual);
-                  // Direct paid-response models select a positive association.
-                  // Organic halo models may explicitly opt into signed media, in
-                  // which case the transform shape is selected by absolute signal
-                  // and the joint coefficient keeps its observed direction.
-                  const selectionScore = cfg.allowSignedMedia === true
-                    ? Math.abs(score)
-                    : Math.max(0, score);
-                  if (!best || selectionScore > best.selectionScore) best = {
-                    family: candidate.family,
-                    alpha: candidate.alpha,
-                    ec: candidate.ec,
-                    slope: candidate.slope,
-                    score,
-                    selectionScore,
-                  };
-                }
-                params[ch.key] = best || { family: "hill", alpha: 0, ec: 1, slope: 0.8, score: 0, selectionScore: 0 };
+                const best = _mmmSelectBestCandidate(_mmmBayesTransformCandidates(raw, cfg), residual, cfg.allowSignedMedia === true);
+                params[ch.key] = best ? {
+                  family: best.family,
+                  alpha: best.alpha,
+                  ec: best.ec,
+                  slope: best.slope,
+                  score: best.score,
+                  selectionScore: best.selectionScore,
+                } : { family: "hill", alpha: 0, ec: 1, slope: 0.8, score: 0, selectionScore: 0 };
               }
               return params;
+            }
+
+            // 후보 중 잔차와의 상관이 가장 큰 모양. 동점이면 격자 순서의 앞이 이긴다.
+            // Direct paid-response models select a positive association.
+            // Organic halo models may explicitly opt into signed media, in
+            // which case the transform shape is selected by absolute signal
+            // and the joint coefficient keeps its observed direction.
+            function _mmmSelectBestCandidate(candidates, residual, signed) {
+              let best = null;
+              for (const candidate of candidates) {
+                const score = CANNIBAL_STATS.pearson(candidate.values, residual);
+                const selectionScore = signed ? Math.abs(score) : Math.max(0, score);
+                if (!best || selectionScore > best.selectionScore) best = { candidate, score, selectionScore };
+              }
+              return best ? { ...best.candidate, score: best.score, selectionScore: best.selectionScore } : null;
+            }
+
+            /* ── 변환 선택 편향 검사 (docs/mmm-transform-selection-crossfit-spec.md) ──
+             * 반응 모양을 전체 기간 잔차 상관으로 고른 뒤 그 모양을 고정된 것처럼 구간을
+             * 계산하면, 효과 없는 채널도 수십 개 후보 중 우연히 맞는 하나 덕에 0을 벗어난다
+             * (합성 잡음 채널 11~33%가 IDENTIFIED, 2026-10 감사). 판정만 이 검사를 통과해야
+             * 준다 — 계수·기여·예측 숫자는 건드리지 않는다.
+             *   n ≥ 78주: 블록마다 그 블록과 앞뒤 4주를 뺀 기간에서 고른 모양으로 그 블록의
+             *             신호를 만들어 결합 회귀 HAC z(교차 적합).
+             *   그 밖:    선택된 모양 그대로의 HAC z를 후보 유효 개수(M_eff)만큼 올린 임계와 비교.
+             */
+            const MMM_SELECTION_CHECK = Object.freeze({
+              minCrossFitWeeks: 78,
+              blockWeeks: 13,
+              maxBlocks: 8,
+              buffer: 4,
+              minTrainingActiveWeeks: 8,
+              // 교차 적합은 단측 2.5%(= 95% 구간이 0을 벗어남). 선택을 없앤 고정 모양에서도
+              // 소표본 GLS 귀무 z의 표준편차가 1.1~1.2라 5%에서는 잡음 채널 11%가 통과했다
+              // (104주·60시드×3채널). 다중성 보정은 Bonferroni 자체가 보수적이라 5%/M_eff.
+              crossFitAlpha: 0.025,
+              alpha: 0.05,
+            });
+
+            function _mmmCrossFitBlocks(n) {
+              const count = Math.min(MMM_SELECTION_CHECK.maxBlocks, Math.floor(n / MMM_SELECTION_CHECK.blockWeeks));
+              const base = Math.floor(n / count);
+              const extra = n - base * count;
+              const blocks = [];
+              let start = 0;
+              for (let k = 0; k < count; k++) {
+                const length = base + (k < extra ? 1 : 0);
+                blocks.push([start, start + length]);
+                start += length;
+              }
+              return blocks;
+            }
+
+            // 학습 행만으로 통제변수를 회귀한 잔차(행 순서는 rows). 학습 행에서 상수인 열은
+            // 뺀다(그 블록에만 있는 이벤트 더미가 특이행렬을 만든다).
+            function _mmmMaskedControlResidual(controlX, y, rows) {
+              const ys = rows.map((t) => y[t]);
+              const p = controlX[0]?.length || 0;
+              const keep = [];
+              for (let j = 0; j < p; j++) {
+                let low = Infinity, high = -Infinity;
+                for (const t of rows) {
+                  const value = controlX[t][j];
+                  if (value < low) low = value;
+                  if (value > high) high = value;
+                }
+                if (high - low > 1e-12) keep.push(j);
+              }
+              const fit = mmmOls(_designConst(rows.map((t) => keep.map((j) => controlX[t][j]))), ys);
+              const mean = _mean(ys);
+              return fit ? fit.resid : ys.map((value) => value - mean);
+            }
+
+            function _mmmStandardizeSeries(values) {
+              const mean = _mean(values);
+              const sd = Math.sqrt(_mean(values.map((value) => (value - mean) ** 2)));
+              return values.map((value) => (sd > 1e-12 ? (value - mean) / sd : 0));
+            }
+
+            // 대칭행렬 고윳값(순환 Jacobi). 결정론: 회전 순서 고정, 최대 100 sweep.
+            function _mmmSymmetricEigenvalues(matrix) {
+              const m = matrix.length;
+              const a = matrix.map((row) => row.slice());
+              for (let sweep = 0; sweep < 100; sweep++) {
+                let off = 0;
+                for (let i = 0; i < m; i++) for (let j = i + 1; j < m; j++) off += a[i][j] * a[i][j];
+                if (off < 1e-20) break;
+                for (let p = 0; p < m - 1; p++) {
+                  for (let q = p + 1; q < m; q++) {
+                    if (Math.abs(a[p][q]) < 1e-15) continue;
+                    const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+                    const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+                    const c = 1 / Math.sqrt(t * t + 1);
+                    const s = t * c;
+                    for (let k = 0; k < m; k++) {
+                      const akp = a[k][p], akq = a[k][q];
+                      a[k][p] = c * akp - s * akq;
+                      a[k][q] = s * akp + c * akq;
+                    }
+                    for (let k = 0; k < m; k++) {
+                      const apk = a[p][k], aqk = a[q][k];
+                      a[p][k] = c * apk - s * aqk;
+                      a[q][k] = s * apk + c * aqk;
+                    }
+                  }
+                }
+              }
+              return a.map((row, i) => row[i]);
+            }
+
+            // 후보 모양들의 유효 개수(Li & Ji 2005). 상관행렬의 0이 아닌 고윳값은 표준화
+            // 자료 Z의 ZᵀZ/n과 ZZᵀ/n이 같으므로 작은 쪽으로 계산한다.
+            function _mmmEffectiveCandidateCount(candidates) {
+              const columns = candidates.map((candidate) => _mmmStandardizeSeries(candidate.values))
+                .filter((column) => column.some((value) => value !== 0));
+              const m = columns.length;
+              if (m <= 1) return 1;
+              const n = columns[0].length;
+              const size = Math.min(m, n);
+              const gram = Array.from({ length: size }, () => new Array(size).fill(0));
+              for (let i = 0; i < size; i++) {
+                for (let j = i; j < size; j++) {
+                  let sum = 0;
+                  if (m <= n) for (let t = 0; t < n; t++) sum += columns[i][t] * columns[j][t];
+                  else for (let k = 0; k < m; k++) sum += columns[k][i] * columns[k][j];
+                  gram[i][j] = gram[j][i] = sum / n;
+                }
+              }
+              const effective = _mmmSymmetricEigenvalues(gram).reduce((sum, value) => {
+                const magnitude = Math.abs(value);
+                return sum + (magnitude >= 1 ? 1 : 0) + (magnitude - Math.floor(magnitude));
+              }, 0);
+              return Math.max(1, effective);
+            }
+
+            // 표준정규 상위 분위수(이분법 — 결정론, 1e-10까지).
+            function _mmmNormalUpperQuantile(tail) {
+              let low = 0, high = 10;
+              for (let iteration = 0; iteration < 80; iteration++) {
+                const mid = (low + high) / 2;
+                if (1 - mmmNormCdf(mid) > tail) low = mid; else high = mid;
+              }
+              return (low + high) / 2;
+            }
+
+            // 결합 회귀 z. 주간 성과 잔차는 AR(1)이 기본값이고 지출 신호도 adstock으로
+            // 지속성이 높아, 소표본 Newey-West(L=3)는 귀무 z의 표준편차를 1.45로 과소평가했다
+            // (잡음 채널 15%가 z>1.645). Cochrane-Orcutt GLS로 계수·SE를 낸다.
+            function _mmmJointGlsZ(controlX, y, columns) {
+              const X = _designConst(controlX.map((row, t) => [...row, ...columns.map((column) => column[t])]));
+              const fit = fitAR1(X, y);
+              if (!fit) return null;
+              const offset = 1 + (controlX[0]?.length || 0);
+              return columns.map((_, index) => {
+                const se = fit.se[offset + index];
+                return se > 0 && Number.isFinite(fit.beta[offset + index]) ? fit.beta[offset + index] / se : null;
+              });
+            }
+
+            export function mmmSelectionCheck(panel, cfg, targetName, controls, params, options = {}) {
+              const y = panel.targets?.[targetName];
+              const n = y?.length || 0;
+              const channels = _mmmChans(panel).filter((channel) => panel.ch[channel.key] && params[channel.key] && !params[channel.key].fixedFromTarget);
+              if (!n || !channels.length || !controls?.X?.length) return { enabled: false, reason: "no-selected-channels", channels: {} };
+              const signed = options.allowSignedMedia === true;
+              const config = MMM_SELECTION_CHECK;
+              const inputs = Object.fromEntries(channels.map((channel) => [channel.key, _mmmChannelInput(panel, channel.key)]));
+              const candidates = Object.fromEntries(channels.map((channel) => [channel.key, _mmmBayesTransformCandidates(inputs[channel.key], cfg)]));
+              // 모양마다 단위가 달라 블록별 모양을 이어 붙이면 계단이 생긴다. 각 모양을 전체
+              // 기간 기준으로 표준화한 값을 쓰면 단위는 맞추면서 블록 사이 지출 수준 차이는 남는다.
+              const fullColumns = channels.map((channel) => _mmmStandardizeSeries(_mmmBayesMediaTransform(inputs[channel.key], params[channel.key], cfg)));
+              const result = { enabled: true, n, channels: {} };
+              const fullZ = _mmmJointGlsZ(controls.X, y, fullColumns);
+              let crossZ = null;
+              const crossStatus = {};
+              if (n >= config.minCrossFitWeeks) {
+                const blocks = _mmmCrossFitBlocks(n);
+                result.blocks = blocks.length;
+                result.buffer = config.buffer;
+                const crossColumns = channels.map(() => new Array(n).fill(0));
+                channels.forEach((channel) => { crossStatus[channel.key] = { thinBlocks: 0, sameShape: 0 }; });
+                for (const [start, end] of blocks) {
+                  const rows = [];
+                  for (let t = 0; t < n; t++) if (t < start - config.buffer || t >= end + config.buffer) rows.push(t);
+                  const residual = _mmmMaskedControlResidual(controls.X, y, rows);
+                  channels.forEach((channel, index) => {
+                    const spend = panel.ch[channel.key];
+                    const active = rows.reduce((count, t) => count + ((Number(spend[t]) || 0) > 0 ? 1 : 0), 0);
+                    if (active < config.minTrainingActiveWeeks) crossStatus[channel.key].thinBlocks += 1;
+                    const masked = candidates[channel.key].map((candidate) => ({ ...candidate, values: rows.map((t) => candidate.values[t]), full: candidate.values }));
+                    const best = _mmmSelectBestCandidate(masked, residual, signed);
+                    const values = _mmmStandardizeSeries(best ? best.full : _mmmBayesMediaTransform(inputs[channel.key], params[channel.key], cfg));
+                    if (best && best.family === params[channel.key].family && best.alpha === params[channel.key].alpha) crossStatus[channel.key].sameShape += 1;
+                    for (let t = start; t < end; t++) crossColumns[index][t] = values[t];
+                  });
+                }
+                crossZ = _mmmJointGlsZ(controls.X, y, crossColumns);
+              }
+              channels.forEach((channel, index) => {
+                const status = crossStatus[channel.key];
+                const crossFitUsable = Boolean(crossZ && status && status.thinBlocks <= result.blocks - 2 && Number.isFinite(crossZ[index]));
+                let check;
+                if (crossFitUsable) {
+                  const threshold = _mmmNormalUpperQuantile(signed ? config.crossFitAlpha / 2 : config.crossFitAlpha);
+                  const z = crossZ[index];
+                  check = {
+                    method: "block-cross-fit",
+                    z,
+                    threshold,
+                    passed: signed ? Math.abs(z) > threshold : z > threshold,
+                    blocks: result.blocks,
+                    buffer: config.buffer,
+                    shapeAgreement: status.sameShape / result.blocks,
+                    status: "ok",
+                  };
+                } else {
+                  const effectiveCandidates = _mmmEffectiveCandidateCount(candidates[channel.key]);
+                  const tail = (signed ? config.alpha / 2 : config.alpha) / effectiveCandidates;
+                  const threshold = _mmmNormalUpperQuantile(tail);
+                  const z = fullZ ? fullZ[index] : null;
+                  check = {
+                    method: "multiplicity-adjusted",
+                    z: Number.isFinite(z) ? z : null,
+                    threshold,
+                    passed: Number.isFinite(z) && (signed ? Math.abs(z) > threshold : z > threshold),
+                    effectiveCandidates,
+                    status: n >= config.minCrossFitWeeks ? "insufficient" : "ok",
+                  };
+                }
+                result.channels[channel.key] = check;
+              });
+              return result;
             }
 
             // Gaussian-prior posterior. 기본 penalty는 약한 regularization이고, 외부
@@ -5412,6 +5633,10 @@ export function mmmDataQualityAudit(panel) {
             }
 
             export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true, options = {}) {
+              // 선택 편향 검사는 이 호출 하나에만 — 안에서 options를 펼쳐 넘기는 하위 적합
+              // (구조·계절·penalty 선택, 백테스트 폴드)은 다시 계산하지 않는다.
+              const selectionCheckRequested = options.selectionCheck === true;
+              if (selectionCheckRequested) options = { ...options, selectionCheck: false };
               const targetSeries = panel.targets?.[targetName];
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
@@ -5571,6 +5796,9 @@ export function mmmDataQualityAudit(panel) {
                   ? { ...fixed, fixedFromTarget: true }
                   : value];
               }));
+              const selectionCheck = selectionCheckRequested
+                ? mmmSelectionCheck(panel, effectiveCfg, targetName, controls, params, { allowSignedMedia: fitOptions.allowSignedMedia === true })
+                : null;
               const names = controls.names.slice();
               const cols = controls.X.length ? controls.X[0].map((_, j) => controls.X.map((r) => r[j])) : [];
               const channelMeta = _mmmChans(panel).filter((ch) => panel.ch[ch.key] && params[ch.key]);
@@ -6036,6 +6264,7 @@ export function mmmDataQualityAudit(panel) {
               return {
                 engine: "bayesian",
                 mediaCoefficientConstraint: fitOptions.allowSignedMedia ? "signed" : "nonnegative",
+                ...(selectionCheck ? { selectionCheck } : {}),
                 methodLabel: trendDirectionPlan?.enabled
                   ? "Direction-constrained empirical-Bayes MMM (joint allocation)"
                   : "Browser empirical-Bayes MMM (conditional Gaussian approximation)",
@@ -6801,20 +7030,26 @@ export function mmmDataQualityAudit(panel) {
                 // IDENTIFIED로 표시됐다 — 실제 잠식 채널이 "식별됨 0%"로 나갔다.
                 const isBoundary = run.mediaCoefficientConstraint !== "signed"
                   && posterior.map <= 1e-12;
-                const verdict = Number.isFinite(vif) && vif >= 10
+                const intervalVerdict = Number.isFinite(vif) && vif >= 10
                   ? "ABSTAIN"
                   : isBoundary
                     ? "BOUNDARY/UNIDENTIFIED"
                     : posterior.q05 <= 1e-12 && relativeWidth >= 2
                       ? "ABSTAIN"
                       : "IDENTIFIED";
+                // 구간은 고른 모양을 고정된 것처럼 계산한 값이다. 모양 선택을 다른 기간에서
+                // 해도(또는 후보 수만큼 임계를 올려도) 남는 채널만 식별됨으로 둔다.
+                const selectionCheck = run.selectionCheck?.channels?.[item.channel.key] || null;
+                const demoted = intervalVerdict === "IDENTIFIED" && selectionCheck && !selectionCheck.passed;
                 return [item.channel.key, {
                   mean: posterior.mean,
                   map: posterior.map,
                   ci90: [posterior.q05, posterior.q95],
                   vif: Number.isFinite(vif) ? vif : null,
                   relativeWidth,
-                  verdict,
+                  verdict: demoted ? "ABSTAIN" : intervalVerdict,
+                  ...(selectionCheck ? { selectionCheck } : {}),
+                  ...(demoted ? { reason: "selection-not-replicated" } : {}),
                 }];
               }));
               const channelContributions = Object.fromEntries(media.map((item) => {
@@ -6999,6 +7234,7 @@ export function mmmDataQualityAudit(panel) {
               const mapRun = mmmBayesianRun(panel, modelCfg, targetName, false, {
                 ...options,
                 enableBusinessContributionPrior: enableBusinessPrior,
+                selectionCheck: options.selectionCheck !== false,
               });
               if (!mapRun) return null;
               const rollingBacktest = withBacktest
@@ -7090,6 +7326,9 @@ export function mmmDataQualityAudit(panel) {
                 posteriorApproximation: {
                   enabled: true,
                   conditionalOnSelectedTransforms: true,
+                  selectionCheck: mapRun.selectionCheck?.enabled
+                    ? { enabled: true, blocks: mapRun.selectionCheck.blocks || null, buffer: mapRun.selectionCheck.buffer || null, method: mapRun.selectionCheck.blocks ? "block-cross-fit" : "multiplicity-adjusted" }
+                    : { enabled: false },
                   groupPosterior: approximation.groupPosterior,
                   coefficientPosterior: approximation.coefficientPosterior,
                   channelIdentification: approximation.channelIdentification,
