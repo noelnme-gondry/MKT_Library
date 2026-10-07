@@ -2359,9 +2359,16 @@ describe("runMmmMethTests (golden port)", () => {
 
     // T6e granger(prewhiten) null가드·시차탐지·결정론
     const gNull = mmmGranger(target.slice(0, 20), spend.slice(0, 20), 6);
-    const gx = week.map((w) => 6000 + 2500 * Math.sin(w / 4));
+    // 지출은 확률적 변동이어야 한다. 순수 사인파 지출에서는 성과(사인파의 시차)가 자기
+    // 시차만으로 완전히 설명돼 그랜저 인과가 정의되지 않는다(2026-10 감사에서 픽스처 교체).
+    let gxLevel = 0;
+    const gx = week.map(() => {
+      gxLevel = 0.6 * gxLevel + (rng() - 0.5) * 0.8;
+      return 6000 * Math.exp(gxLevel);
+    });
     const lgx = gx.map((v) => Math.log1p(v));
-    const gy = lgx.map((_, i) => 20000 + 5000 * lgx[Math.max(0, i - 2)] + 0.5 * rng());
+    // 잡음이 0에 가까우면 성과 시차와 지출 시차가 완전 공선이라 회귀 자체가 성립하지 않는다.
+    const gy = lgx.map((_, i) => 20000 + 5000 * lgx[Math.max(0, i - 2)] + 400 * rng());
     const gG = mmmGranger(gy, gx, 6);
     const gG2 = mmmGranger(gy, gx, 6);
     expect(
@@ -2493,31 +2500,32 @@ describe("runMmmMethTests (golden port)", () => {
   });
 
   // ── macro facts / collinear-absorb (deterministic, no RNG) ──
-  it("mmmMacroFacts: YoY 2024→2025 for spend & target", () => {
+  it("mmmMacroFacts: latest 52 weeks vs the prior 52 weeks", () => {
     const cfg = MMM_METH_CONFIG;
-    // 2 years, 4 weeks each; ch spend 2024=100/wk → 2025=200/wk (+100%), target 10→15 (+50%)
-    const week = Array.from({ length: 8 }, (_, i) => i + 1);
-    const dates = week.map((_, i) =>
-      i < 4
-        ? new Date(Date.UTC(2024, 0, 1 + i * 7))
-        : new Date(Date.UTC(2025, 0, 1 + (i - 4) * 7)),
-    );
+    // 104 연속 주: 앞 52주 spend 100/wk·target 10, 뒤 52주 spend 200/wk(+100%)·target 15(+50%)
+    const week = Array.from({ length: 104 }, (_, i) => i + 1);
+    const dates = week.map((_, i) => new Date(Date.UTC(2024, 6, 1) + i * 7 * 86400000));
     const panel = {
       week,
-      ch: { g: week.map((_, i) => (i < 4 ? 100 : 200)) },
+      ch: { g: week.map((_, i) => (i < 52 ? 100 : 200)) },
       dummy: {},
-      targets: { Regs: week.map((_, i) => (i < 4 ? 10 : 15)) },
+      targets: { Regs: week.map((_, i) => (i < 52 ? 10 : 15)) },
       channels: [{ key: "g", label: "Google", kind: "perf" }],
     };
     const mf = mmmMacroFacts(panel, cfg, dates);
     expect(mf["전체유료 spend YoY %"]).toBe(100);
     expect(mf["Google spend YoY %"]).toBe(100);
     expect(mf["Regs YoY %"]).toBe(50);
-    // 단일 연도면 빈 객체
-    const oneYr = dates.slice(0, 4);
-    expect(
-      Object.keys(mmmMacroFacts(panel, cfg, oneYr)).length,
-    ).toBe(0);
+    // 연도 경계와 무관하다: 2026년에 끝나는 데이터도 계산된다(예전에는 2024·2025 하드코딩).
+    const later = week.map((_, i) => new Date(Date.UTC(2024, 9, 7) + i * 7 * 86400000));
+    expect(later.at(-1).getUTCFullYear()).toBe(2026);
+    expect(mmmMacroFacts(panel, cfg, later)["Regs YoY %"]).toBe(50);
+    // 104주 미만이면 빈 객체 — 연도 합계로 부분 연도를 비교하던 거짓 YoY를 내지 않는다.
+    const short = { ...panel, week: week.slice(0, 80), ch: { g: panel.ch.g.slice(0, 80) }, targets: { Regs: panel.targets.Regs.slice(0, 80) } };
+    expect(Object.keys(mmmMacroFacts(short, cfg, dates.slice(0, 80))).length).toBe(0);
+    // 중간에 빠진 주가 있으면(104행이지만 104주를 넘는 기간) 계산하지 않는다.
+    const gapped = dates.map((date, i) => (i >= 60 ? new Date(date.getTime() + 14 * 86400000) : date));
+    expect(Object.keys(mmmMacroFacts(panel, cfg, gapped)).length).toBe(0);
   });
 
   it("mmmDetectCollinear + mmmResolveAbsorb: perfectly correlated ch~step", () => {

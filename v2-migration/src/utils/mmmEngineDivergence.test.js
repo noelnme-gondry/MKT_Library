@@ -37,6 +37,10 @@ const INTENTIONALLY_FORKED = Object.freeze(new Set([
   "_mmmBayesTransformUncertainty", "_mmmBayesBaselineSelection", "_mmmBayesSlicePanel",
   "_mmmBayesSeasonalityCandidateFit", "_mmmBayesJointTransformCheck",
   "_mmmBuildChannelContributions", "_mmmSliceWindowPanel",
+  // 2026-10 감사 수정은 기본(Bayesian) 경로에만 반영했다. classic·prism은 화면에서 고를 수
+  // 없는 동결 스냅샷(mmmMode 상수)이고, 그 재현성을 깨지 않으려 일부러 옛 판정을 둔다:
+  // 매크로 YoY(최근 52주 기준) · 그랜저(사전 시차 선택 제거) · IRF(같은 주 반응 + 구간).
+  "mmmMacroFacts", "mmmGranger", "mmmIRF",
 ]));
 
 function declarations(source) {

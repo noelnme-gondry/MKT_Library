@@ -2771,6 +2771,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 활성 채널의 카니발 검정 결과(§4 상세용)
   const activeCn =
     cannib && activeCannibCh ? cannib.cannibByChannel[activeCannibCh] : null;
+  // ④ 시차 반응은 차트와 그 아래 구간 문장이 같은 계산을 읽어야 한다(부트스트랩 포함).
+  const activeIrf = useMemo(() => {
+    if (stage !== "diagnose" || cannibQuestion !== "lag" || !mmm || mmm.empty || !activeCannibCh) return null;
+    try {
+      return mmmIRF(mmm.panel.targets[mmm.target] || [], mmm.panel.ch[activeCannibCh] || [], { horizon: 12 });
+    } catch {
+      return null;
+    }
+  }, [stage, cannibQuestion, mmm, activeCannibCh]);
 
   /* ------------------------------ CHARTS ------------------------------ */
   // Stage ② charts: CV, RMS contribution share, saturation, fit, decomp
@@ -3364,14 +3373,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         } else if (cannibQuestion === "net") {
           // JSX NetEffectEvidence가 0 기준·신뢰구간·판정을 더 명확하게 표시한다.
         } else {
-          const irf = mmmIRF(y, spend, { horizon: 12 });
+          const irf = activeIrf;
+          const bandDatasets = irf?.cumLo && irf?.cumHi ? [
+            { label: tx("누적 반응 95% 구간 하한", "Cumulative 95% lower"), data: irf.cumLo, borderColor: "transparent", backgroundColor: "transparent", pointRadius: 0, tension: 0.2, legendHidden: true },
+            { label: tx("누적 반응 95% 구간", "Cumulative 95% interval"), data: irf.cumHi, borderColor: "transparent", backgroundColor: CHART_THEME.tertiary + "26", fill: "-1", pointRadius: 0, tension: 0.2 },
+          ] : [];
           if (irf) inst.push(new Chart(irfRef.current.getContext("2d"), {
-            type: "line", data: { labels: irf.irf.map((_, i) => (i === 0 ? tx("충격", "Shock") : tx(`+${i}주`, `+${i}wk`))), datasets: [
+            type: "line", data: { labels: irf.irf.map((_, i) => (i === 0 ? tx("같은 주", "Same week") : tx(`+${i}주`, `+${i}wk`))), datasets: [
               { label: tx("주별 반응", "Weekly response"), data: irf.irf, borderColor: CHART_THEME.primary, pointRadius: 0, tension: 0.25 },
               { label: tx("누적 반응", "Cumulative response"), data: irf.cum, borderColor: CHART_THEME.tertiary, borderDash: [5, 4], pointRadius: 0, tension: 0.2 },
+              ...bandDatasets,
             ] }, options: {
               ...chartBase(),
-              plugins: { ...chartBase().plugins, tooltip: { ...chartBase().plugins.tooltip, callbacks: { label: (context) => `${context.dataset.label}: ${targetValueLabel(context.parsed.y)}` } } },
+              plugins: { ...chartBase().plugins, legend: { ...chartBase().plugins.legend, labels: { ...chartBase().plugins.legend?.labels, filter: (item, data) => !data.datasets[item.datasetIndex]?.legendHidden } }, tooltip: { ...chartBase().plugins.tooltip, callbacks: { label: (context) => `${context.dataset.label}: ${targetValueLabel(context.parsed.y)}` } } },
               scales: { ...chartBase().scales, y: { ...chartBase().scales.y, ticks: { ...chartBase().scales.y.ticks, callback: (value) => targetValueLabel(value) } } },
             },
           }));
@@ -3381,7 +3395,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       }
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, mmm, cannib, activeCannibCh, activeCn, cannibQuestion, tx, targetValueLabel, spendValueLabel]);
+  }, [stage, mmm, cannib, activeCannibCh, activeCn, activeIrf, cannibQuestion, tx, targetValueLabel, spendValueLabel]);
 
   // Stage ① simple-cannib chart 없음 (통계 카드만) — 잔차 산점도는 디퍼
 
@@ -4507,7 +4521,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           </div>
                           <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "2px" }}>
                             {key === "unclear"
-                              ? (r.eligible ? tx("채널끼리 지출이 겹침(공선)", "Channels' spend overlaps (collinear)") : tx(`데이터 부족 (${r.nActive}/${r.total}주)`, `Insufficient data (${r.nActive}/${r.total} wk)`))
+                              ? (r.eligible
+                                ? (r.leanNeg && !r.gated
+                                  ? tx("약한 음(-) 신호 · 검정력 부족", "Weak negative signal · low power")
+                                  : tx("채널끼리 지출이 겹침(공선)", "Channels' spend overlaps (collinear)"))
+                                : tx(`데이터 부족 (${r.nActive}/${r.total}주)`, `Insufficient data (${r.nActive}/${r.total} wk)`))
                               : mmmCannibActionShort(r, locale)}
                           </div>
                         </button>
@@ -4560,7 +4578,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       : tx("광고가 늘 때 오가닉이 줄어드는 신호가 나왔어요.", "A signal showed organic falling as ad spend rose."))
                   : bucket === "ok"
                     ? tx("네 방향으로 따져봐도 뚜렷한 잠식 신호가 없어요.", "Checking all four angles, there's no clear cannibalization signal.")
-                    : tx("데이터가 부족하거나 채널끼리 지출이 겹쳐(공선) 판정하기 어려워요.", "Data is insufficient, or channels' spend overlaps (collinear), making a verdict hard.");
+                    : rr?.eligible && rr.leanNeg && !rr.gated
+                      ? tx("광고가 늘 때 오가닉이 조금 줄어드는 기미는 있지만, 검정력이 부족해 잠식으로 판정하지 않았어요.", "There is a slight sign of organic falling as spend rises, but power is too low to call it cannibalization.")
+                      : tx("데이터가 부족하거나 채널끼리 지출이 겹쳐(공선) 판정하기 어려워요.", "Data is insufficient, or channels' spend overlaps (collinear), making a verdict hard.");
                 const voteView = (v) => v === "FOR" ? { t: tx("괜찮음", "OK"), c: "var(--success)" } : v === "AGAINST" ? { t: tx("잠식 신호", "Cannibalization signal"), c: "var(--danger)" } : { t: tx("판단 보류", "Withheld"), c: MUTED };
                 const signal = (key, num, q, help, v, tech) => {
                   const vv = voteView(v);
@@ -4607,16 +4627,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <p>{tx("② 차트는 각 시계열의 선형 시간 추세를 걷어낸 뒤의 관계입니다. 기울기 하나만으로 확정하지 않고, 아래 4가지 신호를 함께 봅니다.", "Chart ② removes each series' linear time trend first. One slope never decides the verdict; we combine all four signals below.")}</p>
                     </div>
                     <div className="cannibal-signal-grid">
-                      {signal("precedence", "①", tx("광고를 늘리기 전에 성과가 이미 줄고 있었나?", "Was outcome already declining before ad spend rose?"), tx("저지출 주의 시간 흐름을 봅니다. 이미 줄었다면 광고 탓으로 단정 못 해요.", "Checks the time path in low-spend weeks. A prior decline cannot be blamed on ads."), p.vote, tx(`저지출 기울기 ${p.kpi_slope_per_wk}/주 · ${p.kpi_change_over_window_pct}%`, `Low-spend slope ${p.kpi_slope_per_wk}/wk · ${p.kpi_change_over_window_pct}%`))}
-                      {signal("detrend", "②", tx("시간 추세를 걷어내도 광고와 성과가 반대로 움직이나?", "After removing the time trend, do spend and outcome still move opposite?"), tx("시간 착시를 제거한 잔차와 전주 대비 변화 방향을 함께 봅니다.", "Compares detrended residuals and the direction of week-over-week changes."), d.vote, tx(`잔차 ${d.detrended} · 차분 ${d.first_diff} · 역행 ${d.directional?.opposite_n ?? 0}/${d.directional?.informative_n ?? 0}주`, `Residual ${d.detrended} · diff ${d.first_diff} · opposite ${d.directional?.opposite_n ?? 0}/${d.directional?.informative_n ?? 0} wk`))}
+                      {signal("precedence", "①", tx("광고를 늘리기 전에 성과가 이미 줄고 있었나?", "Was outcome already declining before ad spend rose?"), tx("지출이 적은 주의 성과 추세와, 지출이 많은 주에서 그 추세가 꺾였는지를 함께 봅니다. 성장 추세 자체는 잠식 신호로 세지 않아요.", "Compares the outcome trend in low-spend weeks with whether that trend bends in high-spend weeks. Growth on its own is not counted as cannibalization."), p.vote, tx(`저지출 기울기 ${p.kpi_slope_per_wk}/주 · 고지출 주 기울기 차이 ${p.high_spend_slope_diff_per_wk ?? "—"}/주 (p=${p.high_spend_slope_diff_p ?? "—"})`, `Low-spend slope ${p.kpi_slope_per_wk}/wk · high-spend slope difference ${p.high_spend_slope_diff_per_wk ?? "—"}/wk (p=${p.high_spend_slope_diff_p ?? "—"})`))}
+                      {signal("detrend", "②", tx("시간 추세를 걷어내도 광고와 성과가 반대로 움직이나?", "After removing the time trend, do spend and outcome still move opposite?"), tx("시간 착시를 제거한 잔차와 전주 대비 변화 방향을 함께 봅니다.", "Compares detrended residuals and the direction of week-over-week changes."), d.vote, tx(`잔차 ${d.detrended} (p=${d.p_detrended ?? "—"}) · 차분 ${d.first_diff} (p=${d.p_first_diff ?? "—"}) · 역행 ${d.directional?.opposite_n ?? 0}/${d.directional?.informative_n ?? 0}주`, `Residual ${d.detrended} (p=${d.p_detrended ?? "—"}) · diff ${d.first_diff} (p=${d.p_first_diff ?? "—"}) · opposite ${d.directional?.opposite_n ?? 0}/${d.directional?.informative_n ?? 0} wk`))}
                       {signal("net", "③", tx("광고를 늘리면 전체 성과는 순증가하나?", "Does more spend net-increase total outcome?"), tx("점추정과 신뢰구간이 0보다 어느 쪽에 있는지 봅니다.", "Checks point estimate and confidence interval against zero."), ni.vote, tx(`순증분 ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · CI[${ni.ci_lo ?? "—"}, ${ni.ci_hi ?? "—"}]`, `Net effect ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · CI[${ni.ci_lo ?? "—"}, ${ni.ci_hi ?? "—"}]`))}
-                      {signal("lag", "④", tx("광고비가 몇 주 뒤 성과를 끌어내리나?", "Does spend pull outcome down weeks later?"), tx("광고 충격 뒤의 주별·누적 반응을 봅니다.", "Shows weekly and cumulative response after a spend shock."), cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN", g ? tx(`시차 ${g.spend_to_organic.lag}주 · p=${g.spend_to_organic.p}`, `Lag ${g.spend_to_organic.lag}wk · p=${g.spend_to_organic.p}`) : tx("데이터 부족", "Insufficient data"))}
+                      {signal("lag", "④", tx("광고비가 몇 주 뒤 성과를 끌어내리나?", "Does spend pull outcome down weeks later?"), tx("광고 충격 뒤의 주별·누적 반응을 봅니다.", "Shows weekly and cumulative response after a spend shock."), cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN", g ? tx(`1~${g.spend_to_organic.lag}주 시차 함께 검정 · p=${g.spend_to_organic.p}`, `Lags 1–${g.spend_to_organic.lag}wk tested jointly · p=${g.spend_to_organic.p}`) : tx("데이터 부족", "Insufficient data"))}
                     </div>
                     <div style={{ marginTop: "12px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)", marginBottom: "3px" }}>
                         {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
                       </div>
-                      <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : cannibQuestion === "detrend" ? tx(`굵은 0축을 기준으로 오른쪽 아래(지출↑·성과↓)와 왼쪽 위(지출↓·성과↑)를 모두 역행으로 셉니다. 점 위의 관계선으로 전체 방향을 확인하세요. 현재 유효 ${d.directional?.informative_n ?? 0}주 중 ${d.directional?.opposite_n ?? 0}주가 반대로 움직였습니다.`, `Using the bold zero axes, both lower-right (spend↑/outcome↓) and upper-left (spend↓/outcome↑) count as opposite movement. Use the fitted lines to read the overall direction. Currently ${d.directional?.opposite_n ?? 0} of ${d.directional?.informative_n ?? 0} informative weeks move opposite.`) : cannibQuestion === "precedence" ? tx(`이 차트는 상관관계 차트가 아닙니다. 주황 점은 지출이 하위 25% 기준(${spendValueLabel(p.p25)}) 이하였던 주의 성과만 표시합니다. 비용과 성과의 직접 관계는 ②에서 확인하세요.`, `This is not a correlation chart. Orange points mark outcome only in weeks where spend was at or below the bottom-quartile threshold (${spendValueLabel(p.p25)}). Use ② for the direct spend–outcome relationship.`) : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
+                      <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? (activeIrf?.cumLo
+                        ? (activeIrf.cumulativeSignal === "negative"
+                          ? tx(`12주 누적 반응의 95% 구간(${targetValueLabel(activeIrf.cumLo.at(-1))} ~ ${targetValueLabel(activeIrf.cumHi.at(-1))})이 0 아래에 있어 시차 잠식 쪽 신호입니다. 같은 주 반응을 포함합니다.`, `The 95% interval of the 12-week cumulative response (${targetValueLabel(activeIrf.cumLo.at(-1))} to ${targetValueLabel(activeIrf.cumHi.at(-1))}) is below zero — a lagged cannibalization signal. Same-week response is included.`)
+                          : activeIrf.cumulativeSignal === "positive"
+                            ? tx(`12주 누적 반응의 95% 구간(${targetValueLabel(activeIrf.cumLo.at(-1))} ~ ${targetValueLabel(activeIrf.cumHi.at(-1))})이 0 위에 있어 시차 증분 쪽 신호입니다. 같은 주 반응을 포함합니다.`, `The 95% interval of the 12-week cumulative response (${targetValueLabel(activeIrf.cumLo.at(-1))} to ${targetValueLabel(activeIrf.cumHi.at(-1))}) is above zero — a lagged incremental signal. Same-week response is included.`)
+                            : tx(`12주 누적 반응의 95% 구간(${targetValueLabel(activeIrf.cumLo.at(-1))} ~ ${targetValueLabel(activeIrf.cumHi.at(-1))})이 0을 포함해 방향을 판정하지 않습니다. 음영이 그 구간입니다.`, `The 95% interval of the 12-week cumulative response (${targetValueLabel(activeIrf.cumLo.at(-1))} to ${targetValueLabel(activeIrf.cumHi.at(-1))}) includes zero, so no direction is called. The shaded band is that interval.`))
+                        : tx("아래면 시차 잠식, 위면 시차 증분 신호입니다. 구간을 계산할 만큼 데이터가 없어 방향을 단정하지 않습니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response. There is not enough data for an interval, so no direction is asserted.")) : cannibQuestion === "detrend" ? tx(`굵은 0축을 기준으로 오른쪽 아래(지출↑·성과↓)와 왼쪽 위(지출↓·성과↑)를 모두 역행으로 셉니다. 점 위의 관계선으로 전체 방향을 확인하세요. 현재 유효 ${d.directional?.informative_n ?? 0}주 중 ${d.directional?.opposite_n ?? 0}주가 반대로 움직였습니다.`, `Using the bold zero axes, both lower-right (spend↑/outcome↓) and upper-left (spend↓/outcome↑) count as opposite movement. Use the fitted lines to read the overall direction. Currently ${d.directional?.opposite_n ?? 0} of ${d.directional?.informative_n ?? 0} informative weeks move opposite.`) : cannibQuestion === "precedence" ? tx(`이 차트는 상관관계 차트가 아닙니다. 주황 점은 지출이 하위 25% 기준(${spendValueLabel(p.p25)}) 이하였던 주의 성과만 표시합니다. 비용과 성과의 직접 관계는 ②에서 확인하세요.`, `This is not a correlation chart. Orange points mark outcome only in weeks where spend was at or below the bottom-quartile threshold (${spendValueLabel(p.p25)}). Use ② for the direct spend–outcome relationship.`) : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
                       {cannibQuestion === "net" ? <NetEffectEvidence net={ni} locale={locale} /> : <><FigureHead exportTitle={locale === "en" ? "Relationship between spend and outcomes" : "지출과 성과의 관계"} target={irfRef} fileName={`cannibalization_${cannibQuestion}`} locale={locale} /><div className="chart-container" style={{ height: cannibQuestion === "detrend" ? "360px" : "280px" }}><canvas ref={irfRef}></canvas></div></>}
                     </div>
                   </section>
@@ -4703,7 +4729,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 {diag && Object.keys(diag.macro).length ? (
                   <div className="table-wrap" style={{ maxWidth: "420px", marginTop: "8px" }}>
                     <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
-                      <thead><tr><th>{tx("매크로 사실", "Macro fact")}</th><th>{tx("값", "Value")}</th></tr></thead>
+                      <thead><tr><th>{tx("매크로 사실 · 최근 52주 vs 직전 52주", "Macro fact · latest 52 wk vs prior 52 wk")}</th><th>{tx("값", "Value")}</th></tr></thead>
                       <tbody>
                         {Object.entries(diag.macro).map(([k, v]) => (
                           <tr key={k}><td>{k}</td><td className="tnum" style={{ color: v < 0 ? POS_TEXT : NEG_TEXT }}>{v > 0 ? "+" : ""}{v}%</td></tr>
@@ -4713,7 +4739,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
                 ) : (
                   <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
-                    {tx(`ⓘ 매크로 YoY(2024 vs 2025)는 날짜가 매핑된 데이터에서만 계산됩니다${diag && !diag.validDates ? " — 현재 데이터엔 유효 날짜 라벨이 없습니다." : " — 2024·2025 두 해가 모두 있어야 표시됩니다."}`, `ⓘ Macro YoY (2024 vs 2025) is only computed for data with a mapped date${diag && !diag.validDates ? " — the current data has no valid date labels." : " — both 2024 and 2025 must be present."}`)}
+                    {tx(`ⓘ 매크로 YoY(최근 52주 vs 직전 52주)는 날짜가 매핑된 데이터에서만 계산됩니다${diag && !diag.validDates ? " — 현재 데이터엔 유효 날짜 라벨이 없습니다." : " — 빠진 주 없이 104주 이상이 있어야 표시됩니다."}`, `ⓘ Macro YoY (latest 52 weeks vs the prior 52 weeks) is only computed for data with a mapped date${diag && !diag.validDates ? " — the current data has no valid date labels." : " — at least 104 consecutive weeks are required."}`)}
                   </p>
                 )}
                 {mmm.validate?.warnings?.length ? (
@@ -6356,6 +6382,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                     </div>
                   )}
+                  {forecast.calendarDummies?.length > 0 && (() => {
+                    const names = [...new Set(forecast.calendarDummies.map((item) => item.key))].join(", ");
+                    const uncovered = Math.max(...forecast.calendarDummies.map((item) => item.uncoveredFutureWeeks || 0));
+                    return (
+                      <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 12px" }}>
+                        {tx(
+                          `이벤트 열 ${names}이 과거 설·추석 주와 일치해, 예측 기간의 명절 주를 달력으로 표시했습니다.${uncovered ? ` 달력 범위(2027년) 밖 ${uncovered}주는 명절이 없다고 가정했습니다.` : ""}`,
+                          `Event column ${names} matched past Seollal/Chuseok weeks, so holiday weeks in the forecast window were set from the calendar.${uncovered ? ` ${uncovered} week(s) beyond the calendar range (2027) are assumed to have no holiday.` : ""}`,
+                        )}
+                      </p>
+                    );
+                  })()}
                   {forecast.baselineFut?.length > 0 && forecastScenario.eligible && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                       <strong>{forecastScenario.eligible

@@ -201,10 +201,25 @@ export function eventStudy({
   return estimateEventStudy({ rows: gate.rows, periods: gate.periods, cutoff, reasons: gate.reasons, status: gate.status });
 }
 
-function estimateEventStudy({ rows, periods, cutoff, reasons = [], status = CAUSAL_STATUS.READY }) {
-  const cutoffIndex = periods.indexOf(cutoff);
+function estimateEventStudy({ rows: inputRows, periods: inputPeriods, cutoff, reasons = [], status = CAUSAL_STATUS.READY }) {
+  // 처리군·대조군 중 한쪽만 있는 기간은 그 기간의 처리×상대기간 더미가 기간 고정효과와
+  // 완전 공선이다. 예전에는 회귀가 특이행렬을 대각 1e-8로 풀어(regularized) 식별되지
+  // 않는 계수를 작은 SE와 함께 내보냈다 — 대조군 집계가 한 주 늦게 들어오는 흔한
+  // 경우에 마지막 주 효과가 "확정 숫자"로 나갔다(2026-10 감사). 그런 기간은 추정에서 뺀다.
+  const groupsByPeriod = new Map();
+  inputRows.forEach((row) => {
+    if (!groupsByPeriod.has(row.period)) groupsByPeriod.set(row.period, new Set());
+    groupsByPeriod.get(row.period).add(row.treated);
+  });
+  const periods = inputPeriods.filter((period) => groupsByPeriod.get(period)?.size === 2);
+  const rows = inputRows.filter((row) => periods.includes(row.period));
+  const notEstimable = () => ({ available: false, reasons: [...new Set([...reasons, CAUSAL_REASON.NOT_ESTIMABLE])].sort(), status: CAUSAL_STATUS.BLOCKED, coefficients: [] });
+  // 상대기간은 원래 기간 순서로 센다 — 빠진 기간 때문에 번호가 당겨지면 안 된다.
+  const cutoffIndex = inputPeriods.indexOf(cutoff);
+  // cutoff나 기준 기간(cutoff 직전)이 빠지면 상대기간 계수의 기준이 사라진다.
+  if (cutoffIndex < 1 || !periods.includes(cutoff) || !periods.includes(inputPeriods[cutoffIndex - 1])) return notEstimable();
   const units = [...new Set(rows.map((row) => row.unitKey))].sort();
-  const relOf = (period) => periods.indexOf(period) - cutoffIndex;
+  const relOf = (period) => inputPeriods.indexOf(period) - cutoffIndex;
   const relativeLevels = [...new Set(rows.map((row) => relOf(row.period)))].sort((a, b) => a - b).filter((rel) => rel !== -1);
 
   // 설계행렬: 절편 + 단위 더미(첫 단위 제외) + 기간 더미(첫 기간 제외) + 처리×상대기간
@@ -225,10 +240,14 @@ function estimateEventStudy({ rows, periods, cutoff, reasons = [], status = CAUS
     return { available: false, reasons: [...new Set([...reasons, CAUSAL_REASON.NOT_ESTIMABLE])].sort(), status: CAUSAL_STATUS.BLOCKED, coefficients: [] };
   }
 
-  const fit = REG_STATS.ols(X, y);
-  if (!fit || !fit.estimable) {
-    return { available: false, reasons: [...new Set([...reasons, CAUSAL_REASON.NOT_ESTIMABLE])].sort(), status: CAUSAL_STATUS.BLOCKED, coefficients: [] };
+  let fit;
+  try {
+    fit = REG_STATS.ols(X, y);
+  } catch {
+    return notEstimable();
   }
+  // regularized = 특이행렬을 릿지로 풀어낸 적합이다. 계수가 식별되지 않았다는 뜻이므로 숫자를 내지 않는다.
+  if (!fit || !fit.estimable || fit.regularized) return notEstimable();
 
   const robust = clusterRobustSe({ X, resid: fit.resid, XtXi: fit.XtXi, clusterIds });
   if (!robust) {
