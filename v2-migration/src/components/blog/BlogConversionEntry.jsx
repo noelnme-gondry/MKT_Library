@@ -2,6 +2,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { blogConversionFor, blogExampleFormId } from "@/lib/blogConversion";
+import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
+import { blogSelfCheckNext } from "@/lib/blogSelfCheckNext";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
 export function useBlogCtaView(slug, locale, placement, toolId) {
@@ -40,14 +42,20 @@ export function BlogSampleButton({ slug, locale = "ko", placement = "article_ent
 }
 export default function BlogConversionEntry({ slug, locale = "ko", sample, toolId }) {
   const en = locale === "en";
+  const copy = blogConversionFor(slug, locale);
+  const check = sample ? null : blogSelfCheckFor(slug, locale);
+  const next = sample ? null : blogSelfCheckNext(slug, locale);
   const ref = useBlogCtaView(slug, locale, "article_entry", toolId);
   return <div ref={ref} className="blog-conversion-entry">
     {sample ? <>
+      <p className="blog-conversion-entry__preview">{copy?.preview}</p>
+      {copy?.note && <p>{copy.note}</p>}
       <BlogSampleButton slug={slug} locale={locale} />
       <p>{en ? "Try the analysis with sample data. Free, with no sign-in or file needed." : "가입 없이, 파일 없이. 샘플 결과부터 확인하세요."}</p>
     </> : <>
+      <p className="blog-conversion-entry__preview">{check?.title}</p>
       <a className="btn primary" href="#blog-self-check" onClick={() => trackProductEvent("blog_section_opened", { content_slug: slug, content_type: "blog", placement: "article_entry", state: "self_check", locale })}>{en ? "Check with two questions" : "두 질문으로 점검하기"}</a>
-      <p>{en ? "Answer two questions to find what to check next." : "두 질문에 답하면 다음에 확인할 항목을 알려드립니다."}</p>
+      <p>{en ? `Answer two questions, then continue to: ${next?.label}.` : `두 질문에 답하면 점검 결과와 ‘${next?.label}’ 경로를 보여드립니다.`}</p>
     </>}
   </div>;
 }

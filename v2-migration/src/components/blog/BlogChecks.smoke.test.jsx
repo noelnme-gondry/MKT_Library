@@ -7,6 +7,9 @@ import { shouldShowReadingBar, READING_BAR_MIN_DEPTH } from "./BlogReadingBar";
 import BlogArrivalStrip, { blogArrivalState } from "./BlogArrivalStrip";
 import { useAppStore } from "@/store/useDataStore";
 import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
+import { BLOG_SELF_CHECKS } from "@/lib/blogSelfCheck";
+import BlogConversionEntry from "./BlogConversionEntry";
+import { BLOG_CONVERSION, blogConversionFor, blogExampleFormId } from "@/lib/blogConversion";
 import { blogSelfCheckNext } from "@/lib/blogSelfCheckNext";
 import { blogSituationCheckFor } from "@/lib/blogSituationCheck";
 import { idToSlug } from "@/lib/routeMap";
@@ -14,6 +17,34 @@ vi.mock("next/link", () => ({ default: ({ href, children, ...rest }) => <a href=
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn(), trackProductEventOnce: vi.fn(), productEventKey: (...a) => a.join(":") }));
 
 afterEach(cleanup);
+
+describe("topic-specific article entry", () => {
+  it.each(["ko", "en"])("shows scope before the native sample action in every %s entry", locale => {
+    for (const slug of Object.keys(BLOG_CONVERSION)) {
+      const copy = blogConversionFor(slug, locale);
+      const { container, unmount } = render(<BlogConversionEntry slug={slug} locale={locale} sample />);
+      const preview = screen.getByText(copy.preview);
+      const button = screen.getByRole("button", { name: copy.action });
+      expect(preview.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(button.getAttribute("form")).toBe(blogExampleFormId(slug));
+      if (copy.note) {
+        const note = screen.getByText(copy.note);
+        expect(note.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(container.querySelector("details")).toBeNull();
+      }
+      unmount();
+    }
+  });
+  it.each(["ko", "en"])("names each %s self-check and its follow-up resource before answering", locale => {
+    for (const slug of Object.keys(BLOG_SELF_CHECKS)) {
+      const { unmount } = render(<BlogConversionEntry slug={slug} locale={locale} sample={false} />);
+      expect(screen.getByText(blogSelfCheckFor(slug, locale).title)).toBeTruthy();
+      expect(screen.getByText(text => text.includes(blogSelfCheckNext(slug, locale).label))).toBeTruthy();
+      expect(screen.getByRole("link").getAttribute("href")).toBe("#blog-self-check");
+      unmount();
+    }
+  });
+});
 
 describe("plan D — 30-second self-check", () => {
   it.each(["ko", "en"])("shows the %s verdict only after both questions are answered", (locale) => {

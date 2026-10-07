@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { blogConversionFor } from "../src/lib/blogConversion";
+import { blogSelfCheckFor } from "../src/lib/blogSelfCheck";
 
 // 시안 C: 도치 브리지(가운데 팝업) 대신 아래에 붙는 한 줄 바. 글의 35%를 넘기면 뜨고,
 // 이어 줄 대상이 화면에 보이는 동안은 숨고, 닫으면 그 방문에서는 어느 글에서도 다시 뜨지 않는다.
@@ -52,7 +53,7 @@ for (const locale of ["ko", "en"]) {
     await expect(bar).toBeVisible();
     expect((await bar.boundingBox()).height).toBeLessThan(100);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await bar.getByRole("button", { name: en ? "Check with two questions" : "두 질문으로 점검하기", exact: true }).click();
+    await bar.getByRole("button", { name: blogSelfCheckFor("ios-att-skan-guide", locale).title, exact: true }).click();
     await expect(page.locator("#blog-self-check")).toBeInViewport();
     await expect(bar).toHaveCount(0);
   });
