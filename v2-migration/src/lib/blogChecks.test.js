@@ -24,13 +24,27 @@ describe("blog nudges cover every published post", () => {
     expect(Object.keys(BLOG_CONVERSION).sort()).toEqual(Object.keys(BLOG_INSIGHT_PLACEMENTS).sort());
     for (const slug of published) for (const locale of ["ko", "en"]) {
       if (BLOG_INSIGHT_PLACEMENTS[slug]) {
-        expect(blogConversionFor(slug, locale).action.length).toBeGreaterThan(8);
+        const copy = blogConversionFor(slug, locale);
+        expect(copy.action.length).toBeGreaterThan(8);
+        expect(copy.preview, `${slug} ${locale}`).toMatch(/\S/);
       } else {
         const next = blogSelfCheckNext(slug, locale);
         expect(next.label).toBeTruthy();
         const id = slugToId[next.href.replace(/^\/en/, "").replace(/^\//, "")];
         expect(id).toBeTruthy();
         expect(hasEnVersion(id)).toBe(true);
+      }
+    }
+  });
+
+  it.each(["ko", "en"])("covers the actual published %s set with a topic-specific entry", locale => {
+    for (const post of getAllPosts(locale)) {
+      const copy = blogConversionFor(post.slug, locale);
+      if (BLOG_INSIGHT_PLACEMENTS[post.slug]) {
+        expect(copy?.preview, post.slug).toBeTruthy();
+      } else {
+        expect(blogSelfCheckFor(post.slug, locale)?.title, post.slug).toBeTruthy();
+        expect(blogSelfCheckNext(post.slug, locale)?.label, post.slug).toBeTruthy();
       }
     }
   });

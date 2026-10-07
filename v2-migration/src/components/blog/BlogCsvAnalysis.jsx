@@ -168,6 +168,7 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
   return <aside ref={ref} className={`blog-inline-insight${practice ? " blog-practice" : ""}${ex ? " blog-example" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
     {ex ? <>
       <h2 id={id} className="blog-example__headline">{conversion?.action || ex.headline}</h2>
+      {conversion?.preview && <p>{conversion.preview}</p>}
       {conversion?.note && <p>{conversion.note}</p>}
       <p className="blog-example__finding">{ex.headline}</p>
       <BlogExampleChart example={example} locale={locale} />

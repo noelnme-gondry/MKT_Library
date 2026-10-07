@@ -6,6 +6,8 @@ import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
 import { PUBLISHED_BLOG_TOOL_MAP } from "../src/lib/contentToolRegistry";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
+import { blogSelfCheckFor } from "../src/lib/blogSelfCheck";
+import { blogSelfCheckNext } from "../src/lib/blogSelfCheckNext";
 import { getPostBySlug } from "../src/lib/blog";
 import { buildBlogPracticeDownload } from "../src/lib/blogPracticeData";
 
@@ -24,6 +26,16 @@ for (const locale of ["ko", "en"]) {
       const html = await response.text();
       const dom = new JSDOM(html);
       const doc = dom.window.document;
+      const entry = doc.querySelector(".blog-conversion-entry");
+      const copy = blogConversionFor(slug, locale);
+      if (BLOG_INSIGHT_PLACEMENTS[slug]) {
+        expect(entry.textContent, slug).toContain(copy.preview);
+        if (copy.note) expect(entry.textContent, slug).toContain(copy.note);
+        expect(doc.querySelector("#blog-practice").textContent, slug).toContain(copy.preview);
+      } else {
+        expect(entry.textContent, slug).toContain(blogSelfCheckFor(slug, locale).title);
+        expect(entry.textContent, slug).toContain(blogSelfCheckNext(slug, locale).label);
+      }
       const links = new Set([...doc.querySelectorAll("main a[href]")].map(link => link.getAttribute("href")));
       for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
         const data = JSON.parse(script.textContent);

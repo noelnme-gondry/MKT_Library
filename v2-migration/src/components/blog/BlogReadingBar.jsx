@@ -5,6 +5,7 @@ import { BlogSampleButton } from "./BlogConversionEntry";
 import { X } from "lucide-react";
 import { readDepthPercent } from "@/components/blog/BlogReadTracker";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
 
 // 시안 C — 읽는 중에만 뜨는 한 줄 바. 도치 브리지(화면 가운데 팝업)를 대신한다.
 // 글의 35%를 넘기면 화면 아래에 붙고, 이어 줄 대상(예시 결과·30초 점검)이 화면에
@@ -24,6 +25,7 @@ function readDismissed() {
 
 export default function BlogReadingBar({ slug, locale = "ko", targetId, sample = false, articleSelector = ".blog-prose" }) {
   const en = locale === "en";
+  const check = sample ? null : blogSelfCheckFor(slug, locale);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -67,7 +69,7 @@ export default function BlogReadingBar({ slug, locale = "ko", targetId, sample =
     setDismissed(true);
   };
   return <div className="blog-reading-bar" role="region" aria-label={en ? "Try this article's example or check" : "이 글의 예시·점검"}>
-    {sample ? <BlogSampleButton slug={slug} locale={locale} placement="reading_bar" /> : <button type="button" className="btn primary" onClick={go}>{en ? "Check with two questions" : "두 질문으로 점검하기"}</button>}
+    {sample ? <BlogSampleButton slug={slug} locale={locale} placement="reading_bar" /> : <button type="button" className="btn primary" onClick={go}>{check?.title || (en ? "Check with two questions" : "두 질문으로 점검하기")}</button>}
     <button type="button" className="blog-reading-bar__close" aria-label={en ? "Close" : "닫기"} onClick={dismiss}><X size={18} aria-hidden="true" /></button>
   </div>;
 }
