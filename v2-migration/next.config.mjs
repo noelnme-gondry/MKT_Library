@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { legacyBlogTagRedirects } from "./src/lib/blogTags.mjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -36,6 +37,20 @@ const nextConfig = {
       { source: `/en/blog/${sourceSlug}`, destination: `/en/blog/${destinationSlug}`, permanent: true },
     ]);
     return [
+      ...legacyBlogTagRedirects(),
+      ...[
+        ["/tools/experiment", "/tools/experiment-analysis"],
+        ["/tools/vif-diagnosis", "/tools/vif-multicollinearity"],
+      ].flatMap(([source, destination]) => [
+        { source, destination, permanent: true },
+        { source: `/en${source}`, destination: `/en${destination}`, permanent: true },
+      ]),
+      // 예전 OG 생성 경로도 현재 메타데이터와 같은 공개 이미지로 연결한다.
+      ...[
+        "/og/tool/:toolId",
+        "/blog/:slug/:image(opengraph-image[-a-zA-Z0-9]*)",
+        "/en/blog/:slug/:image(opengraph-image[-a-zA-Z0-9]*)",
+      ].map(source => ({ source, destination: "/og-card.png", permanent: true })),
       {
         source: "/tools/creative-analysis",
         destination: "/content/freshness",

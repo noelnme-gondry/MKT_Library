@@ -81,7 +81,7 @@ v2-migration/
 | `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·유효 Pro·프로젝트 선택; 첫 체험은 선택한 초안 메모의 계정 보관 동의 후 시작) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |
 | `/weekly-report` · `/diagnose` · `/calculator[/slug]` | — | WeeklyReport · DiagnoseRouter · calculators/* |
 | `/growth-funnel` | — | GrowthFunnelReport (noindex — sitemap 제외) |
-| `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |
+| `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖). `lib/blogTags.mjs` → 태그 분류·구 태그 이동(`next.config.mjs`); EN 태그는 블로그 목록으로 |
 | `/templates` · `/templates/[slug]` | — | TemplateDownloadCard · 템플릿 상세(`lib/templateCatalog.js`) · 플랫폼 파일 그대로 올리기(`PlatformExportGuide` ← `lib/platformExports.js`) |
 | `/compare` · `/compare/[slug]` | — | ComparePage.jsx · 방법 비교 SSOT(`lib/compareContent.js`) |
 | `/manuals` · `/share` | — | 방법론 PDF 공개 · 결론 공유 수신(`SharedDecision`, noindex) |

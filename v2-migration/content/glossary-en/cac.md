@@ -3,18 +3,22 @@ term: "CAC (Customer Acquisition Cost)"
 seoTitle: "Customer Acquisition Cost (CAC): Meaning and Formula"
 searchTitleTerms: ["CAC", "Customer Acquisition Cost"]
 shortDef: "Cost of acquiring one customer — total acquisition spend divided by customers acquired"
-description: "CAC is the total cost of acquiring one customer. Why your definition of a customer changes the number, plus an LTV:CAC ratio calculator."
+description: "Customer acquisition is the process; CAC is the cost per new customer. Compare the two, follow the funnel, and calculate CAC with a consistent denominator."
 date: "2026-07-18"
-updated: "2026-09-14"
+updated: "2026-10-08"
 sources:
+  - title: "Shopify: What is customer acquisition?"
+    url: "https://www.shopify.com/blog/customer-acquisition"
   - title: "Stripe: Customer acquisition cost in SaaS"
     url: "https://stripe.com/resources/more/cac-in-saas"
 slug: "cac"
-keywords: "CAC, CAC meaning, Customer Acquisition Cost, CAC calculation"
+keywords: "CAC, CAC meaning, Customer Acquisition Cost, customer acquisition, customer acquisition meaning, CAC calculation"
 category: "Basic Metrics"
 relatedPosts: ["ltv-cac-ratio"]
 draft: false
 faq:
+  - q: "What does customer acquisition mean, and how is it different from CAC?"
+    a: "Customer acquisition is the process of finding prospects and converting them into new customers. It can include discovery through search, content, ads or referrals and the journey to a first purchase. CAC (Customer Acquisition Cost) divides the cost of that process by new customers acquired; it is a metric, rather than the acquisition activity itself."
   - q: "How do you calculate CAC?"
     a: "Divide customer acquisition cost by new customers acquired. $10,000 in ad spend producing 500 new paying customers is a $20 media CAC. Label cost per install as CPI and cost per signup as signup CPA. CAC counts deduplicated new customers under the business's stated definition."
   - q: "What besides ad spend goes into CAC?"
@@ -27,9 +31,18 @@ faq:
 
 Total acquisition spend ÷ customers acquired. CAC (Customer Acquisition Cost) is what one customer cost you, and what you count as a "customer" in the denominator changes the number a lot.
 
-## Why it matters
+## Customer acquisition versus customer acquisition cost
 
-Customer acquisition is the process of turning prospects into new customers; CAC measures its cost. For a paid service, count new paying customers and separate repeat purchases and duplicate accounts. Installs and signups may be stages in acquisition, but they do not automatically represent new customers.
+Customer acquisition is the process of finding prospects and converting them into new customers. Someone discovering a product through search, content, ads or referrals, considering it and making a first purchase is one example. Acquisition includes more than running ads.
+
+| Term | Meaning | Question |
+| --- | --- | --- |
+| Customer acquisition | The process of acquiring new customers | Which channels and steps lead to a first customer? |
+| Customer Acquisition Cost (CAC) | The cost of acquiring one new customer | How much did it cost to acquire one? |
+
+For a paid service, count new paying customers and separate repeat purchases and duplicate accounts. Installs and signups may be stages in acquisition, but they do not automatically represent new customers. Continued use after acquisition is a separate question for [retention](/glossary/retention).
+
+To improve acquisition, look beyond incoming traffic to the steps leading to signup and first payment. [Funnel Drop-off Analysis](/blog/funnel-dropoff-analysis) explains how to locate the losses. To judge whether CAC fell, keep the cost scope and denominator consistent as described below.
 
 ## The denominator decides the number
 

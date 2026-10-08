@@ -3,18 +3,22 @@ term: "Uplift"
 searchTitleTerms: ["Uplift"]
 seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The outcome difference between treatment and control; interpreting it as incremental ad impact requires a valid design"
-description: "If the exposed group converts at 8% and the holdout at 5%, uplift is 3pp. How to run the split, and why ROAS can look fine when uplift is near zero."
+description: "Uplift means an increase. In an ad experiment, 8% versus 5% is 3 percentage points of absolute lift or 60% relative lift. See formulas and design limits."
 date: "2026-08-09"
-updated: "2026-09-14"
+updated: "2026-10-08"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement", "uplift-holdout-guide"]
 sources:
+  - title: "Cambridge Dictionary: Uplift"
+    url: "https://dictionary.cambridge.org/dictionary/english/uplift"
   - title: "Google Ads: About lift studies"
     url: "https://support.google.com/google-ads/answer/16104408?hl=en"
 draft: false
 faq:
+  - q: "What does uplift mean, and how is it used in advertising?"
+    a: "Uplift generally means an increase. In an advertising experiment, it refers to the outcome difference between treatment and control. Conversion rates of 8% and 5% give a 3 percentage point absolute gap or 60% relative lift. To distinguish a simple sales increase from incremental ad impact, check the experiment design and uncertainty."
   - q: "How is uplift different from ROAS?"
     a: "ROAS divides attributed ad revenue by cost under a stated attribution rule. Uplift compares treatment and control outcomes and estimates what advertising added under a valid design. Attributed and incremental performance are different quantities."
   - q: "How do you calculate uplift?"
@@ -23,9 +27,11 @@ faq:
     a: "Yes. Sampling variation, measurement or design problems, and a real negative effect are all possible. Do not choose an explanation from the point estimate alone. An interval crossing zero does not establish no effect; its direction remains unresolved."
 ---
 
-## In one line
+## Uplift meaning in advertising
 
-Compare outcomes in a group assigned to advertising with a control assigned to have that advertising withheld. Interpreting this uplift as incremental impact requires checking random assignment, aligned observation windows and interference between groups.
+Uplift generally means an increase. In an advertising experiment, uplift is the outcome difference between a group assigned to advertising and a control assigned to have that advertising withheld.
+
+Interpreting this difference as incremental ad impact requires checking random assignment, aligned observation windows and interference between groups. A sales increase after launching ads alone does not establish incremental ad impact.
 
 ```
 Absolute uplift = exposed conversion rate − holdout conversion rate
@@ -33,9 +39,9 @@ Relative uplift = absolute uplift ÷ holdout conversion rate
 Incremental conversions = absolute uplift × addressable audience
 ```
 
-Absolute is in percentage points, relative in percent. Reporting the same test in both units is how 3pp gets read as 60%.
+At 8% for treatment and 5% for the holdout, absolute uplift is 3 percentage points and relative uplift is 3pp ÷ 5% = 60%. Absolute uses `pp`, relative uses `%`, so the same test produces different numbers. The examples below are hypothetical calculations, not benchmarks or observed campaign results.
 
-[Incrementality](/glossary/incrementality) sits one layer above. Uplift is the difference itself; incrementality asks whether that difference may be credited to advertising at all. Without random assignment uplift still computes — it just cannot be called incremental.
+[Incrementality](/glossary/incrementality) sits one layer above. Uplift is the difference itself; incrementality asks whether that difference may be credited to advertising at all. Without random assignment or an appropriate quasi-experimental design, the difference alone does not establish incremental ad impact.
 
 ![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
 
