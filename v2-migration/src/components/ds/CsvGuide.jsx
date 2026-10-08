@@ -59,7 +59,7 @@ const GUIDE_COPY = {
   },
 };
 
-export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = null, locale = "ko", helpAction = null }) {
+export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = null, locale = "ko", helpAction = null, compact = false }) {
   const [open, setOpen] = useState(false);
   const T = GUIDE_COPY[locale] || GUIDE_COPY.ko;
   const guide = getToolGuide(toolId, locale);
@@ -89,9 +89,9 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
   ];
 
   return (
-    <div className="csv-guide">
+    <div className={`csv-guide${compact ? " csv-guide--compact" : ""}`}>
       <div className="csv-guide-summary">
-        <div className="csv-guide-line">
+        {!compact && <div className="csv-guide-line">
           {guide.when && <span className="csv-guide-when">{guide.when}</span>}
           {guide.outcomes?.length > 0 && (
             <ol className="csv-guide-outcomes" aria-label={locale === "en" ? "What happens after upload" : "업로드 후 진행 순서"}>
@@ -101,11 +101,11 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
           {reqCols && <span className="csv-guide-need">{T.need}{reqCols}</span>}
           {/* 필수 컬럼이 없으면(자동 판정 입구) 이 줄은 아무것도 알려 주지 않는다 — 뜻 없는 굵은 한 줄을 남기지 않는다(2026-09-29). */}
           {requiredNeeds.length > 0 && <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>}
-        </div>
+        </div>}
         <div className="csv-guide-actions">
           {/* 파일 없이 온 사람의 첫 행동이라 줄의 맨 앞·버튼 크기로 둔다(체험과 데모를 나란히 두는 분석 SaaS
               랜딩과 같은 위계, 2026-09-29). 읽는 순서와 보이는 순서를 맞추려고 CSS order가 아니라 DOM 순서로. */}
-          {onTryExample && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={() => runExample()}>{T.tryExample}<span aria-hidden>→</span></button>}
+          {onTryExample && !compact && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={() => runExample()}>{T.tryExample}<span aria-hidden>→</span></button>}
           {helpAction}
           <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
             {T.openBtn}

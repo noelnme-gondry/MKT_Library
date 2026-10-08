@@ -1,5 +1,6 @@
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { CANONICAL_FIELDS } from "./canonicalFields";
+import { MULTITOUCH_FIELDS } from "../../attributionReports/fields";
 
 const exact = (canonicalKey, options = {}) => ({ policy: "canonical", canonicalKey, ...options });
 const windowed = (canonicalKey, value) => ({
@@ -18,6 +19,8 @@ export function canonicalKeysForToolLegacyField(toolId, legacyKey) {
 // V1 키 중 V2에서 같은 의미로 합쳐지는 것만 명시한다. 나머지는 이번 기준선에서
 // 억지로 역할을 만들지 않고 legacy_passthrough로 보존한다.
 export const LEGACY_FIELD_MIGRATIONS = Object.freeze({
+  count: exact("observed_outcome_count", { requiresConfirmation: true }),
+  ...Object.fromEntries(Object.keys(MULTITOUCH_FIELDS).filter(key => key.startsWith("af_")).map(key => [key, exact(key)])),
   date: exact("date"),
   week: exact("week"),
   snapshot_date: exact("snapshot_date"),

@@ -19,6 +19,7 @@ export const ANALYSIS_EXECUTION_COSTS = Object.freeze({
 // routeMap과 data contract로부터 파생할 수 없는 제품 판단만 여기에 둔다. 이 표는
 // "모든 도구를 실행"하는 목록이 아니라, 자동 실행 경계와 확인 질문의 정본이다.
 const DECLARATIONS = Object.freeze({
+  "5-30": { runMode: "manual", executionCost: "heavy", priority: 50, grains: ["appsflyer_install"], decisionQuestion: "관측된 클릭 contributor와 설치 귀속 매체는 어디서 겹치는가" },
   "5-2": { runMode: "baseline", executionCost: "light", priority: 10, grains: ["campaign_daily"], decisionQuestion: "현재 성과·페이싱·이상 신호는 무엇인가" },
   "5-21": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["campaign_daily"], decisionQuestion: "최근 성과 변화는 무엇이 만들었는가" },
   "5-22": { runMode: "baseline", executionCost: "light", priority: 30, grains: ["campaign_daily"], decisionQuestion: "한계 효율에 가까운 채널·캠페인은 어디인가" },

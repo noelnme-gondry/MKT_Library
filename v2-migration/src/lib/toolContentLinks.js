@@ -20,6 +20,7 @@ function reverseIndex(map) {
 // 5-24·9-1·5-18-paid-organic·5-18-forecast는 전용 발행 글이 아직 없어(콘텐츠 공백)
 // 방법론이 겹치는 글로 연결한다. 없는 글을 지어내는 대신 공백을 공백으로 둔다.
 const SUPPLEMENTARY_BLOG_BY_TOOL = {
+  "5-30": ["cannibalization-organic-paid", "correlation-vs-causation"],
   "5-24": ["incrementality-measurement", "uplift-holdout-guide", "correlation-vs-causation"],
   "9-1": ["ad-creative-testing", "hook-3-seconds-framework"],
   "5-18-paid-organic": ["cannibalization-organic-paid", "offline-ad-online-impact"],

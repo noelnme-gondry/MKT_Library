@@ -49,15 +49,46 @@ for (const locale of ['ko', 'en']) {
     await expect(page.locator('.result-action-card__stats')).not.toContainText(installs);
     await command.getByRole('button', { name: en ? 'Remove Channel: Meta AAP' : '채널: Meta AAP 빼기' }).click();
     await expect(page.locator('.result-action-card__stats')).toContainText(installs);
+    const appliedPeriod = await period.textContent();
+    const appliedStats = await page.locator('.result-action-card__stats').textContent();
     await period.click();
     await dialog.getByLabel(en ? 'Start date' : '시작일').fill('2023-12-01');
     await dialog.getByLabel(en ? 'End date' : '종료일').fill('2023-12-07');
     await dialog.getByRole('button', { name: en ? 'Apply' : '적용', exact: true }).click();
+    // Out-of-file dates are drafts, not an empty analysis to apply. Preserve
+    // the current result and period until the user chooses a valid range.
+    const dataStart = await dialog.getByLabel(en ? 'Start date' : '시작일').getAttribute('min');
+    expect(dataStart).toBeTruthy();
+    await expect(dialog.getByRole('alert')).toContainText(dataStart);
+    await expect(period).toHaveText(appliedPeriod);
+    await expect(page.locator('.result-action-card__stats')).toHaveText(appliedStats);
+    await dialog.press('Escape');
+    await page.locator('.dashboard-period-presets').getByRole('button').first().click();
+    await expect(page.locator('.result-action-card')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
+
+  test(`dashboard keeps a genuine in-file empty comparison explicit (${locale})`, async ({ page }) => {
+    const en = locale === 'en';
+    await page.goto(`${en ? '/en' : ''}/dashboard`);
+    const lines = ['Date,Channel,Cost,Installs'];
+    for (const start of [1, 20]) {
+      for (let n = 0; n < 7; n++) lines.push(`2026-01-${String(start + n).padStart(2, '0')},Meta,200,100`);
+    }
+    const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
+    await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: 'gap-periods.csv', mimeType: 'text/csv', buffer: Buffer.from(lines.join('\r\n')) });
+    await uploader.getByRole('button', { name: en ? 'Analyze data' : '데이터 분석하기', exact: true }).click();
+    await expect(page.locator('.result-action-card')).toBeVisible();
+    await page.getByRole('button', { name: en ? /^Comparison period/ : /^비교 기간/ }).click();
+    const dialog = page.getByRole('dialog', { name: en ? 'Comparison period' : '비교 기간', exact: true });
+    await dialog.getByLabel(en ? 'Start date' : '시작일').fill('2026-01-08');
+    await dialog.getByLabel(en ? 'End date' : '종료일').fill('2026-01-14');
+    await dialog.getByRole('button', { name: en ? 'Apply' : '적용', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(page.locator('.dashboard-content')).toContainText(en ? 'Not enough data to compare' : '비교할 데이터가 부족합니다');
     await expect(page.locator('.result-action-card')).toHaveCount(0);
     await page.locator('.dashboard-period-presets').getByRole('button').first().click();
     await expect(page.locator('.result-action-card')).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 
   test(`dashboard recipe restores blocks and exports actual dates (${locale})`, async ({ page }) => {

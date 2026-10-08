@@ -2865,7 +2865,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     <div className="allocation-context-controls">
       <RecipeCommandInput vocabulary={recipeControl.vocabulary} context={{ toolId: "5-3", toolSpec: recipeControl.spec, mappedFields: mappedKeys, currentLevels: [] }} steps={recipeControl.steps} onStepsChange={recipeControl.setSteps} onApplyPreset={recipeControl.applyPreset} isStepVisible={step => !step.id.startsWith("allocation.")} presets={{ ...accountRecipes, save: (name, steps) => accountRecipes.save(name, allocationAccountSteps(recipe, steps)) }} rejected={recipeControl.fold.rejected} locale={locale} label={tr("보기·다운로드 설정", "View & download settings")} />
       <div className="allocation-context-controls__scope">
-        {observationDates.length > 0 && <ResultPeriodPicker label={tr("분석 기간", "Analysis period")} range={activeRange} locale={locale} onApply={range => {
+        {observationDates.length > 0 && <ResultPeriodPicker label={tr("분석 기간", "Analysis period")} minDate={observationDates[0]} maxDate={lastPeriodEnd} range={activeRange} locale={locale} onApply={range => {
           setAnalysisRange(range); setGroupModels({}); setGroupVerification({}); setAppliedSig(null); setVerifiedSig(null);
         }} />}
         <AllocationScopeControl

@@ -25,6 +25,7 @@ const NEEDS = {
   "5-24": { ko: "캠페인 전후 28일 이상의 날짜별 브랜드 검색량", en: "Daily brand search volume covering at least 28 days around the campaign" },
   "5-28": { ko: "사용자별 시작일과 이탈(종료)일", en: "Start date and churn (end) date for each user" },
   "5-29": { ko: "두 기간의 사용자 구분값(연령·국가 등)별 인원과 성과", en: "Users and results by segment (age, country…) for two periods" },
+  "5-30": { ko: "AppsFlyer 설치 raw와 contributor 1–3", en: "AppsFlyer install raw data and contributors 1–3" },
 };
 
 export function toolDataNeed(toolId, locale = "ko") {

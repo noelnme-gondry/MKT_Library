@@ -97,6 +97,8 @@ const ANALYSIS_TYPE_BY_TOOL = {
   "5-27": "aso_store",
   "5-28": "subscription_survival",
   "5-29": "segment_composition",
+  "5-30": "multitouch",
+  "5-18-cannibal-detail": "cannibal_detail",
   "9-1": "content_elements",
   "9-2": "content_aha",
   "9-3": "pvm",

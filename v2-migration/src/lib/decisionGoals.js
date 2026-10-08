@@ -217,6 +217,10 @@ export const TOOL_DECISION_GOALS = Object.freeze({
     ],
     guardrails: [RAIL_CPA, RAIL_VOLUME],
   },
+  "5-30": {
+    goals: [g(`${RERUN_GOAL_PREFIX}ctit_valid_share`, "유효 CTIT 관측 비율", "Valid CTIT observation rate", "up")],
+    guardrails: [RAIL_VOLUME],
+  },
   "9-1": {
     goals: [
       g("ctr", "클릭률 (CTR)", "Click-through rate (CTR)", "up"),

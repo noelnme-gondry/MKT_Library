@@ -1,4 +1,5 @@
 "use client";
+import CannibalViews from "./attribution/CannibalViews";
 import { forecastValidationSummary, forecastPathSummary } from "@/lib/analysis-results/forecastAccuracy";
 import RecipeBlock from "@/components/ds/RecipeBlock";
 import { FigureHead } from "@/components/ds/FigurePngButton";
@@ -3407,6 +3408,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // index.html MMM_STAGE_DEFS(3단계) + renderMmmStageTabs 카드형 탭 이식. 구 "시뮬레이션"(TF)은
   // §12.15대로 회귀·미래예측(lab)에 흡수. 카드: no·아이콘·제목·설명 + active 하이라이트.
   const renderTabs = () => {
+    if (isolated && stage === "diagnose") return <CannibalViews locale={locale} />;
     if (isolated || stage === "hub") return null;
     const defs = mmmStageDefs(locale);
     const onStageKeyDown = (event, stageId) => {

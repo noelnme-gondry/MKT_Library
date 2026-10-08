@@ -42,6 +42,8 @@ const AsoStoreConversion = dyn(() => import("@/components/tools/AsoStoreConversi
 const AsaKeywordFinder = dyn(() => import("@/components/tools/AsaKeywordFinder"));
 const SubscriptionSurvivalAnalysis = dyn(() => import("@/components/tools/SubscriptionSurvivalAnalysis"));
 const SegmentCompositionChange = dyn(() => import("@/components/tools/SegmentCompositionChange"));
+const MultitouchMap = dyn(() => import("@/components/tools/MultitouchMap"));
+const CannibalDetail = dyn(() => import("@/components/tools/CannibalDetail"));
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 // EN 가이드(1-x~4-x, EN_READY_GUIDE_IDS) — {id}.en.json 기반 SopContent EN 경로.
 // 1-1·8-1은 리터럴 라우트가 우선이라 여기로 안 오지만, 방어적으로 함께 커버.
@@ -103,6 +105,8 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "5-18-paid-organic" && <ToolRecipeWorkspace toolId="5-18-paid-organic" locale="en"><PaidOrganicTrend locale="en" /></ToolRecipeWorkspace>}
             {routeId === "5-18-trend" && <ToolRecipeWorkspace toolId="5-18-trend" locale="en"><MarketingResponse locale="en" initialStage="trend" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-18-cannibal" && <ToolRecipeWorkspace toolId="5-18-cannibal" locale="en"><MarketingResponse locale="en" initialStage="diagnose" isolated /></ToolRecipeWorkspace>}
+            {routeId === "5-18-cannibal-detail" && <ToolRecipeWorkspace toolId="5-18-cannibal-detail" locale="en"><CannibalDetail locale="en" /></ToolRecipeWorkspace>}
+            {routeId === "5-30" && <ToolRecipeWorkspace toolId="5-30" locale="en"><MultitouchMap locale="en" /></ToolRecipeWorkspace>}
             {routeId === "5-18-mmm" && <ToolRecipeWorkspace toolId="5-18-mmm" locale="en"><MarketingResponse locale="en" initialStage="mmm" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-18-forecast" && <ToolRecipeWorkspace toolId="5-18-forecast" locale="en"><MarketingResponse locale="en" initialStage="lab" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-20" && <ToolRecipeWorkspace toolId="5-20" locale="en"><AhaMomentFinder locale="en" /></ToolRecipeWorkspace>}

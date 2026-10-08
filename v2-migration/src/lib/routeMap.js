@@ -46,6 +46,8 @@ export const ROUTES = [
   { id: "5-27", slug: "/tools/aso-store-conversion", component: "AsoStoreConversion" },
   { id: "5-28", slug: "/tools/subscription-survival", component: "SubscriptionSurvivalAnalysis" },
   { id: "5-29", slug: "/tools/segment-composition-change", component: "SegmentCompositionChange" },
+  { id: "5-30", slug: "/tools/multitouch-map", component: "MultitouchMap" },
+  { id: "5-18-cannibal-detail", slug: "/tools/cannibalization-diagnosis/detail", component: "CannibalDetail", publication: "subtool" },
   // ── Content Analytics (콘텐츠 도메인 — 엔진 재사용) ──
   { id: "9-1", slug: "/content/element-analysis", component: "ContentElementAnalyzer" },
   { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder", publication: "preview" },
@@ -156,15 +158,15 @@ export function isRouteIndexable(routeOrId) {
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
-  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29",
+  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-30",
   // 구 5-18 안에 있던 다섯 분석. 각각 독립 도구다.
   "5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast",
 ]);
 
-// 목록·사이드바에는 없지만 독립 URL과 검색 색인을 갖는 라우트. 지금은 5-18
-// (다섯 분석이 공유하는 CSV·매핑 허브) 하나다. EN은 같은 컴포넌트의 locale
+// 목록·사이드바에는 없지만 독립 URL과 검색 색인을 갖는 라우트: 공유 CSV 허브와
+// 잠식 상세 보기. EN은 같은 컴포넌트의 locale
 // 분기를 쓰므로 이 별도 게이트로 허용한다.
-export const EN_READY_UNLISTED_IDS = new Set(["5-18"]);
+export const EN_READY_UNLISTED_IDS = new Set(["5-18", "5-18-cannibal-detail"]);
 
 // EN 번역 완료된 SOP 가이드({id}.en.json 존재 + SopContent DATA_BASED_PAGES 등록).
 // 1-1·8-1은 리터럴 라우트(/en/guide/dev-collaboration 등)가 우선 서빙하지만, 사이드바·

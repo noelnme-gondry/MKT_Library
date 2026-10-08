@@ -1,8 +1,10 @@
 import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+import { MULTITOUCH_FIELDS, WEEKLY_MOVEMENT_FIELDS } from "@/lib/attributionReports/fields";
 
 export const SATURATION_AXIS_FIELDS = Object.freeze(["channel", "campaign_name", "platform", "country"]);
 
 export const STANDARD_FIELDS = {
+              ...Object.fromEntries(Object.entries({ ...WEEKLY_MOVEMENT_FIELDS, ...MULTITOUCH_FIELDS }).filter(([key]) => !["date", "country", "platform", "channel", "campaign_name"].includes(key)).map(([key, field]) => [key, key === "count" ? { ...field, aliases: ["cnt", "count"] } : field])),
               date: {
                 label: "날짜",
                 labelEn: "Date",
@@ -32,7 +34,7 @@ export const STANDARD_FIELDS = {
               channel: {
                 label: "채널/매체",
                 labelEn: "Channel",
-                aliases: ["network", "source", "media", "매체", "채널"],
+                aliases: ["network", "source", "media", "media_source", "매체", "채널"],
                 type: "string",
                 required: false,
                 group: "디멘션",
@@ -1210,6 +1212,8 @@ export const STANDARD_FIELDS = {
             };
 
 export const TOOL_REQUIRED_FIELDS = {
+              "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => field.required).map(([key]) => key),
+              "5-18-cannibal-detail": ["channel", "count"],
               // /start는 첫 업로드에서 효율 CSV의 기본 역할만 판별한다. 필드 스코프가
               // 비어 있으면 전체 STANDARD_FIELDS(브랜드 on/off 포함)로 폴백해 숫자열을
               // 잘못 잡을 수 있으므로, 시작 화면도 명시적인 계약을 가진다.
@@ -1363,6 +1367,8 @@ export const TOOL_REQUIRED_FIELDS = {
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
+              "5-18-cannibal-detail": Object.entries(WEEKLY_MOVEMENT_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
               // /start의 매핑은 효율 슬라이스에 그대로 저장돼 사이드바로 진입한
               // 도구가 이어 쓴다(추천 카드로 들어갈 때만 prepareDatasetForTool이
               // 재매핑). 그래서 스코프는 "효율 패밀리(5-2·5-21·5-22·5-3)가 쓰는

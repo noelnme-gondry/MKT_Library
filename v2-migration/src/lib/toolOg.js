@@ -2,6 +2,8 @@ import { OG_CARD_PATH } from "./routeMap";
 
 // 도구별 기능 목록(JSON-LD featureList) SSOT. 카드 그림에는 더 이상 쓰지 않는다.
 export const TOOL_OG_CONFIG = {
+  "5-30": { metrics: { ko: ["멀티터치 비율", "클릭 경로", "CTIT"], en: ["MULTI-TOUCH RATE", "CLICK PATHS", "CTIT"] } },
+  "5-18-cannibal-detail": { metrics: { ko: ["주간 반대 움직임", "캠페인", "고객 구성"], en: ["WEEKLY MOVES", "CAMPAIGNS", "AUDIENCE MIX"] } },
   "5-2": { metrics: { ko: ["비용", "설치", "CPI", "ROAS"], en: ["SPEND", "INSTALLS", "CPI", "ROAS"] } },
   "5-21": { metrics: { ko: ["물량", "효율", "믹스"], en: ["VOLUME", "RATE", "MIX"] } },
   "5-22": { metrics: { ko: ["한계 CPA", "포화", "여유"], en: ["MARGINAL CPA", "SATURATED", "HEADROOM"] } },

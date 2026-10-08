@@ -19,7 +19,7 @@ import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import ComparisonPeriods from "@/components/ds/ComparisonPeriods";
 import ResultPeriodPicker from "@/components/ds/ResultPeriodPicker";
-import { comparisonWarnings, previousPeriod, dateOrdinal } from "@/lib/analysisPeriod";
+import { comparisonWarnings, previousPeriod, dateOrdinal, dateBounds } from "@/lib/analysisPeriod";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { mixRateFigure } from "@/lib/assistant/coreFigures";
 import { downloadElementAsPNG } from "@/utils/figureImage";
@@ -667,10 +667,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   }, [columnRefsKey, csvData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "지난달과 비교"는 데이터의 최신 날짜에서 기간을 만든다.
-  const maxDate = useMemo(() => getMappedRows(csvData).reduce((max, row) => {
-    const date = String(row.date || "").slice(0, 10);
-    return dateOrdinal(date) != null && date > max ? date : max;
-  }, ""), [csvData]);
+  const observationBounds = useMemo(() => dateBounds(getMappedRows(csvData).map(row => row.date)), [csvData]);
+  const maxDate = observationBounds.maxDate || "";
   const recipePeriodOverride = recipe.data.period?.kind === "monthOverMonth" ? monthOverMonthRanges(maxDate) : null;
   const hasLookbackStep = appliedIds.some((id) => id.startsWith("period.lookback.") || id.startsWith("period.basis."));
   const dashboardPeriodOverride = useMemo(() => {
@@ -1273,8 +1271,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
         {recipeEnabled && <div className="pvm-result-controls">
           <div className="analysis-period-controls">
-            <ResultPeriodPicker locale={locale} label={tr("분석 기간", "Analysis period")} range={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodB", range)} />
-            <ResultPeriodPicker locale={locale} label={tr("비교 기간", "Comparison period")} range={displayedPeriods.periodA} previousOf={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodA", range)} />
+            <ResultPeriodPicker {...observationBounds} locale={locale} label={tr("분석 기간", "Analysis period")} range={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodB", range)} />
+            <ResultPeriodPicker {...observationBounds} locale={locale} label={tr("비교 기간", "Comparison period")} range={displayedPeriods.periodA} previousOf={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodA", range)} />
             {bothMetricsMapped !== false && <PillGroup label={tr("지표", "Metric")} value={metric} onChange={setMetric} options={[{ value: "cpa", label: "CPA" }, { value: "cpi", label: "CPI" }]} />}
           </div>
           {periodNotes.length > 0 && <ul className="analysis-period-notes">{periodNotes.map((note) => <li key={note}>{note}</li>)}</ul>}

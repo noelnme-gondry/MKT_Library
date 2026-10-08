@@ -18,6 +18,20 @@ for (const locale of ["ko", "en"]) {
     await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "weekly-planner.csv", mimeType: "text/csv", buffer: Buffer.from(lines.join("\n")) });
     await uploader.getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
     await expect(page.locator(".allocation-observation-note")).toContainText(en ? "Weekly totals" : "주간 합계");
+    // A week-start row covers the full seven-day observation. The boundary is
+    // Sunday, not the last Monday; selecting partial weeks still uses the
+    // planner's existing exclusion rule.
+    await page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ }).click();
+    const period = page.getByRole("dialog", { name: en ? "Analysis period" : "분석 기간", exact: true });
+    const start = period.getByLabel(en ? "Start date" : "시작일"), end = period.getByLabel(en ? "End date" : "종료일");
+    await expect(start).toHaveAttribute("min", "2026-05-04");
+    await expect(end).toHaveAttribute("max", "2026-08-23");
+    await end.fill("2026-08-24");
+    await period.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+    await expect(period.getByRole("alert")).toContainText("2026-08-23");
+    await end.fill("2026-08-23");
+    await period.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+    await expect(period).toHaveCount(0);
     const settings = page.getByRole("button", { name: en ? "Data and curve settings" : "자료·곡선 설정", exact: true });
     await settings.click();
     const dialog = page.getByRole("dialog", { name: en ? "Data and curve settings" : "자료·곡선 설정", exact: true });

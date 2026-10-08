@@ -27,6 +27,9 @@ export const TOOL_GROUP = {
   // 세그먼트 breakdown 행은 멤버 수만큼 비용·모수가 반복된다. 효율 슬라이스에
   // 섞이면 5-2·5-21·5-3의 합계가 배수로 부푼다 → 독립 그룹.
   "5-29": "segment_composition",
+  "5-30": "multitouch",
+  // 상세 등록 grain은 response의 wide 지출 패널과 분리한다.
+  "5-18-cannibal-detail": "cannibal_detail",
   "9-1": "content_attr",
   "9-2": "content_aha",
   "9-3": "content_traffic",
