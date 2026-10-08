@@ -1177,7 +1177,7 @@ export const useAppStore = create(persist((set, get) => ({
       : null;
     return {
       ...(comparison
-        ? { analysisHandoff: { ...comparison, source: "dochi", targetToolId: routeId, dataGroup: g, sourceRows: data.raw } }
+        ? { analysisHandoff: { ...comparison, source: comparison.source === "blog" ? "blog" : "dochi", targetToolId: routeId, dataGroup: g, sourceRows: data.raw } }
         : { analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff }),
       ...(scopedFilter ? {
         dashboardFilterGroups: { ...state.dashboardFilterGroups, [g]: scopedFilter },

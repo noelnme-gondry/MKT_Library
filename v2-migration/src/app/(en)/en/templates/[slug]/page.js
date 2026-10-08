@@ -16,13 +16,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const page = getTemplatePage(slug);
+  const page = getTemplatePage(slug, "en");
   if (!page) return {};
   const seo = getRouteSeo(page.toolId, "en");
   const toolName = seo?.title || page.toolId;
   const title = `${toolName} CSV template download`;
   const platforms = platformExportNames(page.toolId, "en");
-  const description = `A ready-to-upload CSV template for ${toolName}. Review the ${page.fields.length} columns it reads (${page.requiredCount} required) and download the blank file.${platforms.length ? ` ${platforms.join(" and ")} exports can also be uploaded as is.` : ""}`;
+  const description = `A ready-to-upload CSV template for ${toolName}. Review the ${page.fields.length} columns it reads (${page.requiredCount} required roles) and download the blank file.${platforms.length ? ` ${platforms.join(" and ")} exports can also be uploaded as is.` : ""}`;
   const canonical = `${SITE_URL}/en/templates/${slug}`;
   return {
     title,
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }) {
 
 export default async function Page({ params }) {
   const { slug } = await params;
-  const page = getTemplatePage(slug);
+  const page = getTemplatePage(slug, "en");
   if (!page) notFound();
   const seo = getRouteSeo(page.toolId, "en");
   const toolName = seo?.title || page.toolId;
@@ -50,12 +50,12 @@ export default async function Page({ params }) {
     <section className="template-detail">
       <span className="template-detail__eyebrow">CSV template</span>
       <h1>{toolName} input template</h1>
-      <p className="template-detail__lead">A blank CSV containing only the columns this tool reads. Keep the header names and the upload maps them automatically. Data is processed in your browser and never sent to a server.</p>
+      <p className="template-detail__lead">A blank CSV containing only the columns this tool reads. Keep these headers for automatic matching where supported; tools with role selection ask you to choose the outcome and features. Data is processed in your browser and never sent to a server.</p>
 
       <TemplateDownloadCard
         toolId={page.toolId}
         title={`${toolName} template`}
-        desc={`${page.fields.length} columns · ${page.requiredCount} required`}
+        desc={`${page.fields.length} columns · ${page.requiredCount} required roles`}
         href={`/en${page.toolPath}`}
         unified={page.hasUnified}
         locale="en"
@@ -78,12 +78,15 @@ export default async function Page({ params }) {
                 <td><code>{field.key}</code></td>
                 <td>{field.label || "—"}</td>
                 <td>{field.type}</td>
-                <td>{field.required ? "Required" : "Optional"}</td>
+                <td>{field.required ? "Required" : field.alternatives ? `One of: ${field.alternatives.join(" / ")}` : "Optional"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {page.roleMapping && <p>Choose a numeric outcome and at least one numeric feature after uploading. Feature names here are examples; your own columns can fill these roles. Aha outcomes must be 0/1. Missing values, sample size and variation are checked separately before estimation.</p>}
+      {page.toolId === "5-23" && <p>This template is for the holdout method: include both exposed and holdout groups. For switch-on or switch-off analysis, use a date column and a numeric outcome, select the cutoff, and provide observations on both sides. Confirm the study design in the tool.</p>}
 
       <PlatformExportGuide toolId={page.toolId} locale="en" />
 
@@ -91,7 +94,7 @@ export default async function Page({ params }) {
       <ul className="template-detail__rules">
         <li>Use <code>YYYY-MM-DD</code> for every date. Mixed formats break period comparisons.</li>
         <li>Numeric columns may use thousands separators and common currency wrappers such as <code>₩</code>, <code>$</code>, <code>KRW</code>, <code>USD</code>, or <code>원</code>. Arbitrary text is rejected, so plain numbers remain the safest format.</li>
-        <li>Rows missing a required column are excluded. Zero and blank are treated differently.</li>
+        <li>Missing or invalid required values may exclude a row or stop the analysis, depending on the tool. Check its row and column diagnostics. Zero and blank are treated differently.</li>
         <li>Extra columns are fine—anything this tool does not use is ignored.</li>
       </ul>
 

@@ -1,4 +1,5 @@
 "use client";
+import AllocationPreviewNotice from "@/components/ds/AllocationPreviewNotice";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import { allocationAccountSteps } from "@/lib/recipe/allocationRecipe";
 import { useAllocationRecipe } from "@/lib/recipe/useAllocationRecipe";
@@ -2926,6 +2927,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         toc={step3Toc.filter(item => !hiddenBlocks.includes(item.id))}
         stickyFilter={step3StickyFilter}
       >
+      <AllocationPreviewNotice csvData={csvData} locale={locale} recentDays={recentDays} allocMode={allocMode} holdLowConfidence={holdLowConfidence} range={activeRange} excluded={observations.excluded.length} currency={currency} />
       <section className="allocation-data" aria-label={tr("데이터·매핑", "Data & mapping")}><CsvUploader toolId="5-3" locale={locale} /></section>
       <section className="block prism-driver" id="s-controls" aria-labelledby="prism-driver-title">
         <p className="allocation-observation-note">

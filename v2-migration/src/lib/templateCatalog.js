@@ -1,4 +1,4 @@
-import { getToolTemplateFields, hasToolTemplate, ROLE_MAPPING_TEMPLATE_FIELD_META, ROLE_MAPPING_TEMPLATE_REQUIRED, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
+import { getToolTemplateFields, hasToolTemplate, ROLE_MAPPING_TEMPLATE_FIELD_META, ROLE_MAPPING_TEMPLATE_REQUIRED, ROLE_MAPPING_TEMPLATE_ONE_OF, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
 import { idToSlug, isRoutePublished, ROUTES } from "@/lib/routeMap";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 
@@ -11,7 +11,6 @@ function requiredKeySet(toolId) {
   const keys = new Set();
   for (const field of TOOL_REQUIRED_FIELDS[toolId] || []) {
     if (typeof field === "string") keys.add(field);
-    else if (field?.oneOf) for (const key of field.oneOf) keys.add(key);
   }
   for (const key of ROLE_MAPPING_TEMPLATE_REQUIRED[toolId] || []) keys.add(key);
   return keys;
@@ -33,24 +32,31 @@ export const TEMPLATE_PAGES = ROUTES
 
 export const TEMPLATE_PAGE_SLUGS = TEMPLATE_PAGES.map((page) => page.slug);
 
-export function getTemplatePage(slug) {
+export function getTemplatePage(slug, locale = "ko") {
   const page = TEMPLATE_PAGES.find((item) => item.slug === slug);
   if (!page) return null;
   const required = requiredKeySet(page.toolId);
+  const alternatives = [
+    ...(TOOL_REQUIRED_FIELDS[page.toolId] || []).filter(field => field?.oneOf).map(field => field.oneOf),
+    ...(ROLE_MAPPING_TEMPLATE_ONE_OF[page.toolId] || []),
+  ];
   const fields = getToolTemplateFields(page.toolId).map((key) => {
-    const field = STANDARD_FIELDS[key] || ROLE_MAPPING_TEMPLATE_FIELD_META[key] || {};
+    const field = ROLE_MAPPING_TEMPLATE_FIELD_META[key] || STANDARD_FIELDS[key] || {};
     return {
       key: CANON_HEADER(key),
-      label: field.label || "",
+      label: (locale === "en" ? field.labelEn : field.label) || field.label || "",
       type: field.type || "text",
       group: field.group || "",
       required: required.has(key),
+      alternatives: alternatives.find(group => group.includes(key))?.map(CANON_HEADER) || null,
     };
   });
   return {
     ...page,
     fields,
-    requiredCount: fields.filter((field) => field.required).length,
+    requiredCount: required.size + alternatives.length,
+    alternatives: alternatives.map(group => group.map(CANON_HEADER)),
+    roleMapping: ["5-20", "9-1"].includes(page.toolId),
     hasUnified: TEMPLATE_FAMILY.includes(page.toolId),
   };
 }

@@ -9697,6 +9697,10 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   background: transparent !important;
 }
 .dashboard-supporting-chart__canvas { height: 300px; }
+.dashboard-supporting-chart__head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
+.dashboard-supporting-chart__head > div { flex: 1 1 180px; min-width: 0; }
+.dashboard-supporting-chart__head .figure-png-download { margin-left: auto; }
+.dashboard-supporting-chart__head .chart-sub { margin-bottom: 0; }
 .dashboard-sticky-context { flex-wrap: wrap; }
 .dashboard-sticky-context__data { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .dashboard-sticky-context__file {
@@ -12338,7 +12342,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .dashboard-layout-block .ab-stat { background: var(--surface-container-low) !important; border: 0 !important; padding: 16px !important; border-radius: var(--radius-md); }
   .dashboard-layout-block .ab-stat-value { font-size: var(--fs-xl); font-variant-numeric: tabular-nums; }
   .dashboard-layout-block .callout { margin: 16px 0; padding: 14px 16px; background: var(--surface-container-low); border-radius: var(--radius-md); }
-  .dashboard-layout-block .chart-container, .dashboard-layout-block .chart-canvas-wrap { height: var(--dashboard-chart-height, revert-layer); }
+  /* 기본 높이는 각 차트가 소유한다. revert-layer는 같은 app 레이어의 300/360px도
+     지워 canvas를 기본 150px로 축소한다. 저장된 높이가 있을 때만 덮어쓴다. */
   .dashboard-layout-block[style] :is(.chart-container, .chart-canvas-wrap) { height: var(--dashboard-chart-height) !important; }
   .dashboard-layout-block :is(.chart-container, .chart-canvas-wrap) { min-width: 0; max-width: 100%; }
   .dashboard-layout-block .seasonality-note { background: var(--surface-container-low); border-radius: var(--radius-md); padding: 20px; margin-top: 24px; }
@@ -12718,3 +12723,18 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
     .result-action-card > .analysis-evidence-strip { margin-left: 0; }
   }
 }
+
+/* UX audit: destination clear of the fixed header; close remains visible while scrolling. */
+#weekly-performance { scroll-margin-top: 90px; }
+.review-save-dialog__close { position: sticky; top: 0; float: right; z-index: 1; min-width: 44px; min-height: 44px; background: var(--bg-1); }
+
+/* Numeric values remain intact; comparisons may wrap only between their values. */
+.metric-value-atom { display: inline-block; white-space: nowrap; overflow-wrap: normal; word-break: normal; font-variant-numeric: tabular-nums; }
+body .result-action-card__stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+body .result-action-card__stats strong { display: flex; flex-wrap: wrap; gap: 4px; overflow-wrap: normal; }
+.dochi-workspace__result > .dochi-workspace__result-evidence dl { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.figure-png-button__condition { font-size: var(--fs-xs); color: var(--text-muted); }
+.allocation-preview-notice { padding-block: 16px; border-block: 1px solid var(--border); }
+.allocation-preview-notice h2 { font-size: var(--fs-lg); }
+
+.figure-png-download { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 100%; }

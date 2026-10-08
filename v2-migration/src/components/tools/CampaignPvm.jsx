@@ -566,7 +566,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
     setRecipeSteps(next);
   };
-  const incomingComparison = analysisHandoff?.source === "dochi" && analysisHandoff.targetToolId === "5-21"
+  const incomingComparison = ["dochi", "blog"].includes(analysisHandoff?.source) && analysisHandoff.targetToolId === "5-21"
     && analysisHandoff.sourceRows === csvData.raw ? analysisHandoff : null;
   const [appliedComparison, setAppliedComparison] = useState(null);
   // Same-data drill-down uses the result's exact periods and metric, including when a saved setup exists.
@@ -1231,7 +1231,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           />
         ) : null} />}
       >
-      {analysisHandoff?.source !== "dochi" && analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
+      {!["dochi", "blog"].includes(analysisHandoff?.source) && analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
         <div className="callout info" style={{ marginBottom: "12px" }}>
           <div className="body">
             <strong>{tr("이상탐지에서 비교 맥락을 가져왔습니다.", "Comparison context received from Anomaly Detection.")}</strong>

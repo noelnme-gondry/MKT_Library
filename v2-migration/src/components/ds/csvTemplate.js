@@ -30,10 +30,31 @@ const ROLE_MAPPING_TEMPLATE_FIELDS = {
 // 자유 역할 매핑 템플릿은 STANDARD_FIELDS의 고정 필드 계약 밖에 있으므로,
 // 공개 템플릿 페이지가 실제 최소 계약과 라벨을 잃지 않게 같은 SSOT에서 제공한다.
 export const ROLE_MAPPING_TEMPLATE_REQUIRED = {
+  "5-20": ["target"],
+  "9-1": ["outcome"],
+  "5-23": ["date", "holdout_group", "numerator", "denominator"],
   "5-18-mmm": ["date", "revenue", "google_spend"],
 };
 
+export const ROLE_MAPPING_TEMPLATE_ONE_OF = {
+  "5-20": [["invite_d1", "invite_d7", "share_d7"]],
+  "9-1": [["has_hook", "text_overlay", "video_length"]],
+};
+
 export const ROLE_MAPPING_TEMPLATE_FIELD_META = {
+  user_id: { label: "사용자 식별자 (선택)", labelEn: "User identifier (optional)", type: "text" },
+  target: { label: "목표 달성 여부 (0/1)", labelEn: "Binary outcome (0/1)", type: "number" },
+  invite_d1: { label: "첫날 초대 횟수 (행동 예시)", labelEn: "Day 1 invitations (example feature)", type: "number" },
+  invite_d7: { label: "7일 초대 횟수 (행동 예시)", labelEn: "Day 7 invitations (example feature)", type: "number" },
+  share_d7: { label: "7일 공유 횟수 (행동 예시)", labelEn: "Day 7 shares (example feature)", type: "number" },
+  content_id: { label: "콘텐츠 식별자 (선택)", labelEn: "Content identifier (optional)", type: "text" },
+  outcome: { label: "분석할 숫자 성과", labelEn: "Numeric outcome", type: "number" },
+  has_hook: { label: "훅 유무 0/1 (요소 예시)", labelEn: "Hook present 0/1 (example feature)", type: "number" },
+  text_overlay: { label: "자막 유무 0/1 (요소 예시)", labelEn: "Text overlay 0/1 (example feature)", type: "number" },
+  video_length: { label: "영상 길이 (요소 예시)", labelEn: "Video length (example feature)", type: "number" },
+  holdout_group: { label: "실험 그룹: exposed 또는 holdout", labelEn: "Experiment group: exposed or holdout", type: "text" },
+  numerator: { label: "전환 수 (0 이상, 분모 이하)", labelEn: "Conversions (0 to denominator)", type: "number" },
+  denominator: { label: "비교 분모 (0보다 큼)", labelEn: "Population (greater than zero)", type: "number" },
   google_spend: { label: "Google spend", type: "number", group: "media" },
   meta_spend: { label: "Meta spend", type: "number", group: "media" },
   market_index: { label: "Market index", type: "number", group: "control" },

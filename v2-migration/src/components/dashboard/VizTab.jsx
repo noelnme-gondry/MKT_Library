@@ -21,7 +21,7 @@ import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
 import { alignEventsToAxis } from "@/utils/storeEvents";
-import FigurePngButton, { FigureHead } from "@/components/ds/FigurePngButton";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
@@ -1030,8 +1030,10 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           <div className="chart-grid cols-2">
             {orderedCharts.map((c) => (
               <div key={c.k} className="chart-card" data-design-exempt="nested: independent chart title, plot and export action grouped inside the supporting-chart surface (design.md §2)" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
-                <div className="chart-title">{c.title}</div>
-                <div className="chart-sub">{c.sub}</div>
+                <div className="dashboard-supporting-chart__head">
+                  <div><div className="chart-title">{c.title}</div><div className="chart-sub">{c.sub}</div></div>
+                  {!customScorecardFor(c.k) && <FigurePngButton title={c.title} target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} />}
+                </div>
                 {customScorecardFor(c.k) ? (
                   <div className="custom-scorecard">
                     <span>{customScorecardFor(c.k).label}</span>
@@ -1039,7 +1041,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
                     <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
                   </div>
                 ) : (
-                  <><FigureHead exportTitle={c.title} target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} /><div className="chart-canvas-wrap dashboard-supporting-chart__canvas"><canvas ref={setCanvasRef(c.k)} role="img" aria-label={c.title}></canvas></div></>
+                  <div className="chart-canvas-wrap dashboard-supporting-chart__canvas"><canvas ref={setCanvasRef(c.k)} role="img" aria-label={c.title}></canvas></div>
                 )}
               </div>
             ))}

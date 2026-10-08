@@ -7,7 +7,8 @@ import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
 import { figureExportContext } from "@/utils/figureExportContext";
 import { figureHeaderFor, figureSourceLine } from "@/lib/analysis-export/exportOptions";
 
-import { requirePaidExport } from "@/lib/subscription/paidExport";
+import { runGatedDownload } from "@/lib/subscription/downloadTelemetry";
+import { useAppStore } from "@/store/useDataStore";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import { downloadElementAsPNG } from "@/utils/figureImage";
 
@@ -63,20 +64,26 @@ export default function FigurePngButton({ target, fileName, locale = "ko", title
   const [failed, setFailed] = useState(false);
   const analysis = useAnalysisExport();
   const download = async () => {
-    if (!requirePaidExport({ format: "png" })) return;
-    const element = resolveTarget(target);
-    const base = figureExportContext({ ...analysis?.figureContext, ...context, title: title || element?.getAttribute("aria-label") || analysis?.figureContext?.toolTitle, locale });
-    // 다운로드 설정(제목·기간·출처 / 제목만 / 없음)을 넘긴 도구만 따른다. 없으면 기존 머리글 그대로.
-    const metadata = analysis?.exportOptions
-      ? figureHeaderFor(base, analysis.exportOptions, { sourceLine: figureSourceLine(analysis?.figureContext?.source?.fileName, locale) })
-      : { title: base.title, details: base.details };
-    const ok = await downloadFigureTarget(element, analysis?.fileNameFor?.(fileName) || fileName, metadata);
-    setFailed(!ok);
+    setFailed(false);
+    try {
+      await runGatedDownload({ toolId: analysis?.toolId || useAppStore.getState().currentRouteId, locale, format: "png", source: "core_figure", run: async () => {
+        const element = resolveTarget(target);
+        const base = figureExportContext({ ...analysis?.figureContext, ...context, title: title || element?.getAttribute("aria-label") || analysis?.figureContext?.toolTitle, locale });
+        // 제목·기간 설정을 따르되 예시·판단 보류 고지는 항상 남긴다.
+        const metadata = analysis?.exportOptions
+          ? figureHeaderFor(base, analysis.exportOptions, { sourceLine: figureSourceLine(analysis?.figureContext?.source?.fileName, locale) })
+          : { title: base.title, details: base.details };
+        const ok = await downloadFigureTarget(element, analysis?.fileNameFor?.(fileName) || fileName, metadata);
+        if (!ok) throw new TypeError("Figure rendering failed");
+        return true;
+      } });
+    } catch { setFailed(true); }
   };
-  return <>
+  return <span className="figure-png-download">
     <button type="button" className="btn secondary figure-png-button" onClick={download}>{tr(locale, "PNG 받기", "Download PNG")}</button>
+    <span className="figure-png-button__condition">{tr(locale, "구매 이용권 필요 · 체험 제외", "Purchased pass required · excludes trial")}</span>
     {failed && <span className="figure-png-button__error" role="alert">{tr(locale, "이 브라우저에서는 그림을 이미지로 만들지 못했습니다. 화면 캡처를 이용해 주세요.", "This browser could not turn the figure into an image. Please use a screenshot instead.")}</span>}
-  </>;
+  </span>;
 }
 
 /** 제목 + PNG 받기 한 줄. 제목이 없는 그림은 `title` 없이 쓰면 버튼만 오른쪽에 선다. */

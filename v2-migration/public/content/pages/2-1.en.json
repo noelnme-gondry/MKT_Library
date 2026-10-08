@@ -23,7 +23,7 @@
       "ix": "§1",
       "title": "Campaign structure (OS × country × stage)",
       "content": [
-        { "type": "paragraph", "html": "UAC learns per campaign, so splitting = splitting the learning. Too granular starves learning volume; too merged adds optimization noise. Baseline split: always separate <strong>iOS / Android</strong> and <strong>country</strong>, but <strong>bundle similar countries</strong> (US+CA, JP+TW, etc.)." },
+        { "type": "paragraph", "html": "Create app campaigns for a selected platform and app. Run <strong>iOS and Android apps in separate campaigns</strong>. Countries need not always be separate: locations with <strong>similar goals, languages and conversion values</strong> can share targeting. Consider separate campaigns for country-level budget control or materially different performance, while checking the loss of learning data from excessive segmentation." },
         {
           "type": "table",
           "headers": [
@@ -101,7 +101,7 @@
           "type": "callout",
           "variant": "danger",
           "title": "The campaign never exits the learning phase",
-          "html": "Under 10 conversions/day, learning can't converge. 1) Move the conversion definition one funnel step up (purchase → add_to_cart). 2) Temporarily raise the bid +30%. 3) Merge countries/OS into one campaign — you can re-split after learning completes."
+          "html": "With low conversion volume, first check tracking gaps, conversion delays, budget and target bids. Consider an upstream event that still relates to the business goal. Countries with similar goals, languages and conversion values may be consolidated, but iOS and Android apps remain separate campaigns. Do not treat a fixed conversion count or bid increase as a guarantee of learning success."
         },
         {
           "type": "callout",

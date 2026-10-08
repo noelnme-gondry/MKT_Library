@@ -7,6 +7,7 @@ import ToolIndex from "@/components/ds/ToolIndex";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
 import { isDemoData } from "@/lib/dataOrigin";
+import { rememberAllocationPreview, allocationPreviewExplanation } from "@/lib/assistant/allocationPreview";
 import { resultScope } from "@/lib/assistant/resultScope";
 import { buildToolDemo } from "@/lib/toolDemo";
 import { TOOL_GROUP } from "@/lib/toolGroups";
@@ -542,9 +543,10 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
       <h3>{result.verdict.headline}</h3>
     </section>
     {(evidenceStats.length > 0 || visualizations.length > 0) && <section className="dochi-workspace__result-evidence" aria-label={C.availableEvidence}>
-      {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale, sourceCurrencyOf(csvData))}</dd></div>)}</dl>}
+      {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd><span className="metric-value-atom">{formatResultStat(stat, locale, sourceCurrencyOf(csvData))}</span></dd></div>)}</dl>}
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} currency={sourceCurrencyOf(csvData)} /></section>)}
     </section>}
+    {result.toolId === "5-3" && <p className="allocation-preview-explanation">{allocationPreviewExplanation(locale)}</p>}
     <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><p>{result.verdict.action || C.noAction}</p>{renderNextStep?.(result)}</section>
     {source !== "demo" && reviewProposal?.reviewPlan && <p className="muted">{locale === "en" ? "The project draft includes an editable operating benchmark from the observed periods. It does not determine statistical significance or causal effects." : "프로젝트 초안에는 관측 기간에서 가져온 운영 목표가 제안됩니다. 수정할 수 있으며, 통계적 유의성이나 인과효과의 판정 기준은 아닙니다."}</p>}
     {reviewProposal && source !== "demo" && <><button type="button" className="btn primary" onClick={() => requestDecisionReviewOpen(result.toolId, "analysis_next_step")}>{locale === "en" ? "Track this action in a project" : "이 행동을 프로젝트로 추적하기"}</button><DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={reviewProposal} decisionPrefillKey={eventKey} /></>}
@@ -767,6 +769,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     const scope = isCurrentSuccess ? resultScope(result, toolId, drillDown) : null;
     deferHandoff(() => {
       const prepared = needsOwnExample ? buildToolDemo(toolId, locale) : prepareHandoffForTool(toolId);
+      if (isCurrentSuccess && toolId === "5-3") rememberAllocationPreview(prepared, result);
       if (comparison || scope) onOpenTool(toolId, prepared, { comparison, scope });
       else onOpenTool(toolId, prepared);
     });
@@ -980,6 +983,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         버튼(renderNextStep)은 그대로 둔다 — 조건부로 부르면 react-hooks/refs가 오탐한다. */}
     {!trace && <p className="workspace-next-action__instruction">{focusResult.verdict.action}</p>}
     {renderNextStep(focusResult)}
+    {focusResult.toolId === "5-3" && <p className="allocation-preview-explanation">{allocationPreviewExplanation(locale)}</p>}
     <button type="button" className="workspace-next-action__open" onClick={() => openTool(focusResult.toolId)}>{locale === "en" ? "See details in the tool" : "도구에서 자세히 보기"}<span aria-hidden="true"> →</span></button>
   </section>;
   const hasSheet = Boolean(summaryHead || summaryFoot);

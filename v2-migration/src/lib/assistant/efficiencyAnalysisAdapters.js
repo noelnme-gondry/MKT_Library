@@ -454,6 +454,7 @@ function allocationAdapter(input) {
       resultField: metric,
       budgetSource: inferredBudget ? "observed_daily_total" : "user_input",
       scenarioBudget: allocation.totalAllocated,
+      previewBasis: { start: rows.map(row => row.date).filter(Boolean).sort()[0], end: rows.map(row => row.date).filter(Boolean).sort().at(-1), method: "b", holdLowConfidence: false },
       observedBudgetCap: limits.maxBudget,
       entityCount: allocation.items.length,
       evidenceState: "estimated",

@@ -1366,11 +1366,11 @@
   "source": "weekly-report-campaigns.csv",
   "ko": {
    "headline": "최근 7일 설치당 비용이 20% 올랐습니다. 지출은 20% 늘었는데 설치는 그대로였습니다.",
-   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교. 비교 기간: 2026-08-31–2026-09-06 / 2026-09-07–2026-09-13."
   },
   "en": {
    "headline": "Cost per install rose 20% in the last 7 days. Spend grew 20%, while installs stayed flat.",
-   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before. Comparison periods: 2026-08-31–2026-09-06 / 2026-09-07–2026-09-13."
   },
   "bars": [
    {
@@ -2028,80 +2028,28 @@
  },
  "weekly-marketing-report-template": {
   "toolId": "5-21",
-  "source": "demo",
+  "source": "weekly-report-three-weeks.csv",
   "ko": {
-   "headline": "설치당 비용이 208원 올랐고, 그중 197원이 Meta AAP에서 나왔습니다.",
-   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,475원 → 1,682원."
+   "headline": "설치당 비용이 200원 올랐고, 그중 200원이 Example channel에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,000원 → 1,200원. 비교 기간: 2026-08-31–2026-09-06 / 2026-09-07–2026-09-13."
   },
   "en": {
-   "headline": "Cost per install rose by ₩208, and ₩197 of it came from Meta AAP.",
-   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,475 → ₩1,682."
+   "headline": "Cost per install rose by ₩200, and ₩200 of it came from Example channel.",
+   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,000 → ₩1,200. Comparison periods: 2026-08-31–2026-09-06 / 2026-09-07–2026-09-13."
   },
   "bars": [
    {
     "label": {
-     "ko": "Meta AAP",
-     "en": "Meta AAP"
+     "ko": "Example channel",
+     "en": "Example channel"
     },
-    "value": 196.8155278,
+    "value": 200,
     "display": {
-     "ko": "+197원",
-     "en": "+₩197"
+     "ko": "+200원",
+     "en": "+₩200"
     },
     "highlight": true,
-    "suffix": "95%"
-   },
-   {
-    "label": {
-     "ko": "Apple Search Ads",
-     "en": "Apple Search Ads"
-    },
-    "value": 10.56746736,
-    "display": {
-     "ko": "+11원",
-     "en": "+₩11"
-    },
-    "highlight": false,
-    "suffix": null
-   },
-   {
-    "label": {
-     "ko": "Google UAC",
-     "en": "Google UAC"
-    },
-    "value": 3.272299399,
-    "display": {
-     "ko": "+3원",
-     "en": "+₩3"
-    },
-    "highlight": false,
-    "suffix": null
-   },
-   {
-    "label": {
-     "ko": "Organic Search",
-     "en": "Organic Search"
-    },
-    "value": 0.6873141596,
-    "display": {
-     "ko": "+1원",
-     "en": "+₩1"
-    },
-    "highlight": false,
-    "suffix": null
-   },
-   {
-    "label": {
-     "ko": "TikTok",
-     "en": "TikTok"
-    },
-    "value": -3.766572037,
-    "display": {
-     "ko": "−4원",
-     "en": "+₩-4"
-    },
-    "highlight": false,
-    "suffix": null
+    "suffix": "100%"
    }
   ],
   "spark": null,

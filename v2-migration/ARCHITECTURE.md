@@ -224,3 +224,11 @@ v2-migration/
 5-3 설정 레시피: `lib/recipe/allocationRecipe.js`(옵션·블록·구 입력 이관) → `vocabulary/tools/allocationWords.js` → `recipe/toolVocabulary.js` 등록. `recipe/useAllocationRecipe.js`가 단계에서 직접 조작값을 파생하고 값 참조를 보존한다. `BudgetAllocation`은 공용 `RecipeCommandInput`·계정 저장·내보내기 context를 연결한다. 이름/날짜/금액 단계는 `carriesUserValues` + `params.values`로 클라이언트 동기화 제외·서버 거절. 검증 승인 상태는 저장하지 않는다.
 
 5-2 설정·기간: `recipe/dashboardRecipe.js`는 공유 Zustand 탭/관측일/코호트를 저장·적용 경계에서만 스냅샷으로 만든다. `useDashboardRecipe`의 값 필터는 기존 `dashboardFilter`에 쓰며 별도 필터 상태를 만들지 않는다. 프로젝트 직렬화는 현재 컨트롤을 포함하고 다른 도구의 저장 설정 적용은 과거 대시보드 컨트롤을 재생하지 않는다. `analysis-results/dashboardPeriods.js`가 명시한 두 날짜 또는 기존 최근 N개 관측일을 선택하며 주간 결론·PVM 요약·스코어카드가 함께 사용한다. 수학 엔진은 그대로다. 탭 밖 그림 내보내기는 실제 표시 날짜를 쓰고, 결론 내보내기는 실제 두 비교 기간을 쓴다.
+
+
+### Dots UX 감사 연결 (2026-10-08)
+
+- `lib/assistant/allocationPreview.js`: 원본·매핑 참조에 한정한 세션 메모리(WeakMap). 결과 허브→예산 상세에서 이전 실제 요약과 계산 조건을 비교하며, 계산식·기본 제약·영속 저장은 바꾸지 않는다.
+- `lib/blogPractice.js`의 선택적 `comparison` → `BlogCsvAnalysis` → store `analysisHandoff` → `CampaignPvm`; 편집 예시 그림도 같은 기간을 사용한다. 사용자 업로드와 다른 원본 참조에는 적용하지 않는다.
+- `lib/templateCatalog.js`는 필수 역할과 대체 열을 `csvTemplate`·`TOOL_REQUIRED_FIELDS`에서 파생한다. KR/EN 템플릿 상세 layout은 공용 셸과 `main-content`를 제공한다.
+- `lib/sopHighlight.js`는 원본 코드를 한 번 토큰화한 뒤 escape한다. 생성된 span을 다시 치환하지 않아 코드 복사 내용이 유지된다.

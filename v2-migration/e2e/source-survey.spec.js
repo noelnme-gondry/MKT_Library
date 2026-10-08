@@ -22,6 +22,7 @@ const clearSeed = async (page) => {
 };
 
 test("유입 설문은 결과 확인 후 모서리에 뜨고 뒤를 잠그지 않는다", async ({ page }) => {
+  await page.clock.install();
   await clearSeed(page);
   await page.goto("/");
 
@@ -31,6 +32,8 @@ test("유입 설문은 결과 확인 후 모서리에 뜨고 뒤를 잠그지 �
   await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
   await page.locator(".tool-index__stage--ready .tool-index__chip").first().click();
   await page.locator(".dochi-workspace__result").scrollIntoViewIfNeeded();
+  await expect(card).toHaveCount(0);
+  await page.clock.fastForward(60_001);
   await expect(card).toBeVisible();
   // 보이기 시작한 순간은 등장 모션 도중이다. 허용 오차를 늘리지 않고 정착을 기다린다.
   await card.evaluate(async node => {

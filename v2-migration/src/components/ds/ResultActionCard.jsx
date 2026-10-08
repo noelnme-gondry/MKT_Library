@@ -346,7 +346,9 @@ export default function ResultActionCard({
           {stats.map((s, i) => (
             <div className={s.emphasis === "primary" ? "is-primary" : ""} key={i}>
               <span>{s.label}</span>
-              <strong>{s.value}</strong>
+              <strong>{typeof s.value === "string" ? s.value.split(/(\s*→\s*)/).map((part, index) => (
+                <span key={index} className={/^[+\-−]?[₩$]?[+\-−]?\d[\d,.]*(?:\s*(?:%|원|건|회|일|주|배))?$/.test(part.trim()) ? "metric-value-atom" : undefined}>{part}</span>
+              )) : typeof s.value === "number" ? <span className="metric-value-atom">{s.value}</span> : s.value}</strong>
               {s.detail && <small>{s.detail}</small>}
             </div>
           ))}

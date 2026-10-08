@@ -29,6 +29,18 @@ describe("blog CSV to full analysis", () => {
     useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectSwitching: false, decisionPersistenceEnabled: false });
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  it.each(["ko", "en"])("carries the article's first two weeks into the %s detailed result", async locale => {
+    const slug = "weekly-marketing-report-template", practice = blogPracticeFor(slug, locale);
+    const text = readFileSync(`public/examples/${practice.file}`, "utf8");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => text }));
+    render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);
+    fireEvent.click(screen.getByRole("button", { name: blogConversionFor(slug, locale).action }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`${locale === "en" ? "/en" : ""}${idToSlug["5-21"]}`));
+    const state = useAppStore.getState();
+    expect(state.analysisHandoff).toMatchObject({ source: "blog", targetToolId: "5-21", periodA: { start: "2026-08-31", end: "2026-09-06" }, periodB: { start: "2026-09-07", end: "2026-09-13" } });
+    expect(state.analysisHandoff.sourceRows).toBe(state.csvGroups.efficiency.raw);
+    expect(state.isGroupAnalyzed("5-21")).toBe(true);
+  });
   it.each(["ko", "en"])("preserves fixture dates and renders the actual %s incrementality result without declaring a causal design", async locale => {
     const slug = "incrementality-measurement", practice = blogPracticeFor(slug, locale);
     const demo = buildBlogPracticeDownload(practice).demo;

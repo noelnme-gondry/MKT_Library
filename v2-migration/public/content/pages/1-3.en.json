@@ -49,7 +49,7 @@
             { "label": "Notes", "type": "string" }
           ],
           "rows": [
-            ["Meta Ads", { "pill": "tier-1", "text": "SAN" }, "1d click / 1d view", "Automatic", "AEM priority list of 8 events required"],
+            ["Meta Ads", { "pill": "tier-1", "text": "SAN" }, "1d click / 1d view", "Automatic", "Check app AEM eligibility and optimization events"],
             ["Google Ads (UAC)", { "pill": "tier-1", "text": "SAN" }, "30d click / 1d engaged-view", "Automatic", "Firebase link required; gbraid/wbraid auto-collected"],
             ["TikTok", { "pill": "tier-1", "text": "SAN" }, "7d click / 1d view", "Automatic", "Separate SKAN postback channel for iOS"],
             ["Apple Search Ads", { "pill": "tier-2", "text": "S2S" }, "30d click", "Automatic (ASA API)", "Map ASA campaign IDs to the App Token"],
@@ -79,13 +79,8 @@
           ]
         },
         { "type": "subheading", "title": "3.1 Meta · Aggregated Event Measurement (AEM)" },
-        { "type": "paragraph", "html": "On iOS 14.5+, AEM allows at most 8 events. Place the highest business-value events at the top. Enable value optimization only on revenue-bearing events." },
-        {
-          "type": "code",
-          "lang": "json",
-          "label": "Meta AEM Priority Map",
-          "code": "{\n  \"app_id\": \"fb_app_1234567890\",\n  \"events\": [\n    { \"priority\": 1, \"event_name\": \"purchase\",          \"value_optimization\": true  },\n    { \"priority\": 2, \"event_name\": \"subscribe\",         \"value_optimization\": true  },\n    { \"priority\": 3, \"event_name\": \"begin_checkout\",    \"value_optimization\": false },\n    { \"priority\": 4, \"event_name\": \"add_to_cart\",       \"value_optimization\": false },\n    { \"priority\": 5, \"event_name\": \"complete_tutorial\", \"value_optimization\": false },\n    { \"priority\": 6, \"event_name\": \"sign_up\",           \"value_optimization\": false },\n    { \"priority\": 7, \"event_name\": \"level_achieved\",    \"value_optimization\": false },\n    { \"priority\": 8, \"event_name\": \"session_start\",     \"value_optimization\": false }\n  ]\n}"
-        },
+        { "type": "paragraph", "html": "Distinguish app AEM from web event configuration. Do not apply the historical web eight-event priority limit as a universal iOS app sending limit. Check app and event eligibility in Events Manager and the current ad-set measurement and optimization settings." },
+        {"type": "paragraph", "html": "Check the MMP Meta integration and event mapping, event receipt in Events Manager, optimization-event eligibility, and the ad-set AEM and SKAN settings. Test against the options supported for the account."},
         { "type": "subheading", "title": "3.2 Google Ads · Firebase link" },
         { "type": "paragraph", "html": "UAC requires a Firebase connection. Either mirror Adjust events into GA4, or send Adjust → Google Ads directly. Direct sending loses less data and is the primary recommendation." },
         {

@@ -16,6 +16,13 @@ describe("ResultActionCard decision-first hierarchy", () => {
     });
   });
 
+  it("keeps signs, currency, decimals and each comparison value in one numeric span", () => {
+    const values = ["₩38,571,268", "₩-12,345,678", "−$12,345.67", "$-12,345.67 → $9,876.54", "-12.5%", "1,234 건"];
+    const { container } = render(<ResultActionCard headline="Numeric wrapping" analysisBasis={false} decisionReview={false} stats={values.map(value => ({ label: "Value", value }))} />);
+    expect([...container.querySelectorAll(".result-action-card__stats strong")].map(node => node.textContent)).toEqual(values);
+    expect([...container.querySelectorAll(".metric-value-atom")].map(node => node.textContent)).toEqual(["₩38,571,268", "₩-12,345,678", "−$12,345.67", "$-12,345.67", "$9,876.54", "-12.5%", "1,234 건"]);
+  });
+
   // 결과 아래에 늘 펼쳐 두던 '실제 분석 범위·분모 확인' 블록은 없앴다(2026-09-24 사용자 결정).
   // 문제가 없으면 아무것도 그리지 않고, 결측·비정상 칸이 있으면 결론 옆 "!" 하나가 어느 기간의 몇 칸인지 말한다.
   it.each(["ko", "en"])("shows scope only as a red mark when a period has missing input (%s)", (locale) => {
