@@ -43,7 +43,9 @@ function typeWarnings({ mapping = {}, profiles = [] } = {}) {
  */
 export function buildMappingContract({ toolId, headers = [], rows = [], source = "csv" } = {}) {
   const allowedKeys = fieldKeysForTool(toolId);
-  const scored = scoreMappingCandidates({ headers, rows, allowedKeys, fields: STANDARD_FIELDS });
+  // Week-start aliases are scoped to the allocator that understands weekly aggregates.
+  const fields = toolId === "5-3" ? { ...STANDARD_FIELDS, date: { ...STANDARD_FIELDS.date, aliases: [...STANDARD_FIELDS.date.aliases, "week_start", "iso_week_start", "주시작"] } } : STANDARD_FIELDS;
+  const scored = scoreMappingCandidates({ headers, rows, allowedKeys, fields });
   const mapping = scored.selections;
   const requiredMissing = missingRequiredFields(TOOL_REQUIRED_FIELDS[toolId] || [], mapping);
   const typeWarningList = typeWarnings({ mapping, profiles: scored.profiles });

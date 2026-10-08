@@ -1,12 +1,13 @@
 import { buildCsvToolInventory } from "./toolDataInventory";
-import { canonicalFieldForLegacyKey } from "./legacyFieldMigration";
+import { canonicalFieldForLegacyKey, canonicalKeysForToolLegacyField } from "./legacyFieldMigration";
 
-function canonicalRequirement(requirement) {
-  const fields = requirement.fields.map(({ legacyKey }) => {
+function canonicalRequirement(requirement, toolId) {
+  const fields = requirement.fields.flatMap(({ legacyKey }) => {
     const migration = canonicalFieldForLegacyKey(legacyKey);
-    return { legacyKey, canonicalKey: migration?.canonicalKey || null, window: migration?.window || null };
+    const keys = canonicalKeysForToolLegacyField(toolId, legacyKey);
+    return (keys.length ? keys : [null]).map(canonicalKey => ({ legacyKey, canonicalKey, window: migration?.window || null }));
   });
-  return { ...requirement, fields };
+  return { ...requirement, ...(fields.length > requirement.fields.length ? { kind: "any" } : {}), fields };
 }
 
 // V2 tool requirements are derived from the currently-running V1 input
@@ -17,7 +18,7 @@ export function buildToolDataRequirements() {
     toolId: tool.toolId,
     dataGroup: tool.dataGroup,
     grain: tool.grain,
-    requires: tool.requirements.map(canonicalRequirement),
+    requires: tool.requirements.map(requirement => canonicalRequirement(requirement, tool.toolId)),
     unmigratedLegacyKeys: tool.requirements.flatMap((requirement) => requirement.fields)
       .map((field) => field.legacyKey)
       .filter((legacyKey) => !canonicalFieldForLegacyKey(legacyKey)),
