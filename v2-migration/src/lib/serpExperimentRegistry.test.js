@@ -18,6 +18,7 @@ describe("SERP title experiment registry", () => {
         expect(experiment.candidateTitle.toLowerCase()).toContain(concept.toLowerCase());
       }
       expect(experiment.status).toBe("collecting_baseline");
+      expect(Date.parse(experiment.lastMaterialChange)).toBeGreaterThanOrEqual(Date.parse(term.updated || term.date));
     }
   });
 
@@ -47,17 +48,32 @@ describe("SERP title experiment registry", () => {
   });
 
   it("콘텐츠 변경 뒤의 28일·충분한 노출·4~10위에서 제목 하나만 바꿀 때 열린다", () => {
-    const decision = evaluateSerpExperiment(SERP_TITLE_EXPERIMENTS[1], {
-      // lastMaterialChange(2026-09-21) 다음 날 시작하는 28일 창.
-      // 날짜를 여기 적는 이유는 "변경 이후"라는 성질을 고정하기 위해서다 —
-      // 레지스트리의 변경일을 옮기면 이 창도 함께 옮겨야 한다.
-      start: "2026-09-22",
-      end: "2026-10-19",
+    const experiment = SERP_TITLE_EXPERIMENTS[1];
+    const start = new Date(`${experiment.lastMaterialChange}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() + 1);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + SERP_EXPERIMENT_POLICY.minimumBaselineDays - 1);
+    const decision = evaluateSerpExperiment(experiment, {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
       impressions: SERP_EXPERIMENT_POLICY.minimumImpressions,
       averagePosition: 8.2,
     });
 
     expect(decision).toEqual({ eligible: true, reasons: [], baselineDays: 28 });
+  });
+
+  it("이전 본문을 포함한 28일 창은 새 기준선으로 쓰지 않는다", () => {
+    for (const experiment of SERP_TITLE_EXPERIMENTS) {
+      const decision = evaluateSerpExperiment(experiment, {
+        start: "2026-09-22",
+        end: "2026-10-19",
+        impressions: 500,
+        averagePosition: 7,
+      });
+      expect(decision.eligible).toBe(false);
+      expect(decision.reasons).toContain("BASELINE_PREDATES_CONTENT_CHANGE");
+    }
   });
 
   it("변경 이전 표본이나 둘 이상의 변수 변경은 차단한다", () => {

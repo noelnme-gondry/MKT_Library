@@ -3,18 +3,22 @@ term: "CAC (Customer Acquisition Cost)"
 seoTitle: "CAC 뜻과 계산 | Customer Acquisition Cost"
 searchTitleTerms: ["CAC", "Customer Acquisition Cost"]
 shortDef: "고객 한 명을 획득하는 데 든 비용 — 획득 비용 ÷ 획득 고객 수"
-description: "고객 한 명을 데려오는 데 든 총비용. 무엇을 '고객'으로 잡느냐로 값이 갈리는 이유와 LTV:CAC 기준 계산까지."
+description: "Customer acquisition은 고객 획득 과정, CAC는 고객 한 명의 획득 비용입니다. 둘의 차이와 비용 범위·분모별 예시를 봅니다."
 date: "2026-07-18"
-updated: "2026-09-14"
+updated: "2026-10-08"
 sources:
+  - title: "Shopify: What is customer acquisition?"
+    url: "https://www.shopify.com/blog/customer-acquisition"
   - title: "Stripe: Customer acquisition cost in SaaS"
     url: "https://stripe.com/resources/more/cac-in-saas"
 slug: "cac"
-keywords: "CAC, CAC 뜻, CAC란, Customer Acquisition Cost, 고객 획득 비용, CAC 계산"
+keywords: "CAC, CAC 뜻, CAC란, Customer Acquisition Cost, customer acquisition, 고객 획득, 고객 획득 비용, CAC 계산"
 category: "기초 지표"
 relatedPosts: ["ltv-cac-ratio"]
 draft: false
 faq:
+  - q: "Customer acquisition 뜻은 무엇이고 CAC와 어떻게 다른가요?"
+    a: "Customer acquisition은 잠재 고객을 찾아 신규 고객으로 전환하는 고객 획득 과정입니다. 검색·콘텐츠·광고·추천 등을 통한 유입과 첫 구매까지 포함할 수 있습니다. CAC(Customer Acquisition Cost)는 이 과정의 비용을 신규 고객 수로 나눈 지표이며, 고객 획득 활동 자체와는 구분합니다."
   - q: "CAC는 어떻게 계산하나요?"
     a: "고객 획득에 쓴 비용을 신규 고객 수로 나눕니다. 광고비 1,000만 원으로 신규 결제 고객 500명을 얻었다면 미디어 CAC는 20,000원입니다. 설치당 비용은 CPI, 가입당 비용은 가입 CPA로 구분하고, CAC에는 사업에서 정의한 신규 고객을 중복 없이 셉니다."
   - q: "CAC에 광고비 말고 무엇까지 넣나요?"
@@ -27,9 +31,18 @@ faq:
 
 획득에 쓴 총비용 ÷ 획득한 고객 수 — CAC(Customer Acquisition Cost, 고객 획득 비용)는 고객 한 명을 데려오는 데 든 돈입니다. 분모를 뭘로 잡느냐에 따라 값이 크게 달라져요.
 
-## 왜 중요한가
+## Customer acquisition 뜻과 CAC의 차이
 
-Customer acquisition은 잠재 고객을 신규 고객으로 전환하는 활동이고, CAC는 그 활동의 비용 지표입니다. 유료 서비스라면 신규 결제 고객을 분모로 삼고, 기존 고객의 재구매와 중복 계정은 구분하세요. 설치·가입은 고객 획득 과정의 단계일 수 있지만, 자동으로 신규 고객과 같은 뜻이 되지는 않습니다.
+Customer acquisition(고객 획득)은 잠재 고객을 찾아 신규 고객으로 전환하는 과정입니다. 검색·콘텐츠·광고·추천으로 처음 찾아온 사람이 상품을 검토하고 첫 구매를 하는 흐름이 한 예입니다. 광고 집행만을 뜻하지는 않습니다.
+
+| 용어 | 의미 | 확인할 질문 |
+| --- | --- | --- |
+| Customer acquisition | 신규 고객을 얻는 과정 | 어떤 경로와 단계로 첫 고객이 되는가? |
+| Customer Acquisition Cost(CAC) | 신규 고객 한 명의 획득 비용 | 한 명을 얻는 데 얼마를 썼는가? |
+
+유료 서비스라면 신규 결제 고객을 분모로 삼고, 기존 고객의 재구매와 중복 계정은 구분하세요. 설치·가입은 고객 획득 과정의 단계일 수 있지만, 자동으로 신규 고객과 같은 뜻이 되지는 않습니다. 획득 이후 고객이 계속 이용하는지는 [리텐션](/glossary/retention)으로 따로 봅니다.
+
+고객 획득을 개선하려면 유입량뿐 아니라 가입·첫 결제로 넘어가는 단계도 확인하세요. 어느 단계에서 줄어드는지 보는 방법은 [퍼널 이탈 분석 글](/blog/funnel-dropoff-analysis)에서 다룹니다. CAC가 낮아졌는지 판단할 때는 아래 비용 범위와 분모를 같은 기준으로 맞춰야 합니다.
 
 ## 숫자로 보면
 

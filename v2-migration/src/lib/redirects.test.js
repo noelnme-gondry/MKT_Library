@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
 
 import nextConfig from "../../next.config.mjs";
 import sitemap from "@/app/sitemap";
-import { getAllPosts } from "@/lib/blog";
-import { SITE_URL, resolveSlugToId, isRouteIndexable } from "@/lib/routeMap";
+import { getAllPosts, getPostsByTag } from "@/lib/blog";
+import { SITE_URL, OG_CARD_URL, resolveSlugToId, isRouteIndexable } from "@/lib/routeMap";
 
 const redirects = await nextConfig.redirects();
 
@@ -25,6 +26,19 @@ describe("redirects", () => {
   // 301 목적지가 사라지면 링크주스가 404로 흘러간다. 통합·이관 때 가장 흔한 사고다.
   it("points every destination at a page that still exists", () => {
     for (const rule of redirects) {
+      if (rule.destination === new URL(OG_CARD_URL).pathname) {
+        expect(existsSync(new URL(`../../public${rule.destination}`, import.meta.url))).toBe(true);
+        continue;
+      }
+      const tag = /^\/blog\/tag\/(.+)$/.exec(rule.destination);
+      if (tag) {
+        expect(getPostsByTag(tag[1]).length, rule.destination).toBeGreaterThan(0);
+        continue;
+      }
+      if (["/blog", "/en/blog"].includes(rule.destination)) {
+        expect(publishedBlogSlugs[rule.destination.startsWith("/en/") ? "en" : "ko"].size).toBeGreaterThan(0);
+        continue;
+      }
       const slug = blogSlug(rule.destination);
       if (slug) {
         const locale = rule.destination.startsWith("/en/") ? "en" : "ko";

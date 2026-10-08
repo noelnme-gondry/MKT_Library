@@ -3,18 +3,22 @@ term: "Incrementality"
 searchTitleTerms: ["Incrementality"]
 seoTitle: "Incrementality Meaning: How to Measure Ad Lift"
 shortDef: "The pure additional performance an ad actually caused"
-description: "Incrementality is the extra outcome that would not exist without the ad. See a worked example where a $10 CPA becomes a $50 iCPA, plus design limits."
+description: "Incremental means increasing in steps. In ads, incrementality asks what would not happen without advertising. See the difference, conversion lift and iCPA."
 date: "2026-07-18"
-updated: "2026-09-14"
+updated: "2026-10-08"
 slug: "incrementality"
-keywords: "incrementality, incrementality meaning, incrementality measurement, incrementality testing"
+keywords: "incrementality, incrementality meaning, incremental meaning, incremental conversions, incrementality measurement, incrementality testing"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement"]
 sources:
+  - title: "Oxford Learner's Dictionaries: Incremental"
+    url: "https://www.oxfordlearnersdictionaries.com/definition/english/incremental"
   - title: "Google Ads: Incremental conversions and attributed conversions"
     url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 draft: false
 faq:
+  - q: "What does incremental mean, and how is it different from incrementality?"
+    a: "Incremental generally means increasing in steps or increments. In advertising, incremental conversions are additional conversions caused by the ads. Incrementality asks what advertising added compared with its absence. An increase over the previous month alone does not establish incremental ad impact."
   - q: "How is incrementality different from attribution?"
     a: "Attribution allocates credit for observable, attributable conversions under a rule. Incrementality asks what advertising added relative to its absence. Missingness, duplication and reporting scope vary, so do not assume every report allocates 100% of all conversions."
   - q: "How do you measure incrementality?"
@@ -23,15 +27,19 @@ faq:
     a: "Check sample size and window before cutting. Incremental estimates often carry wide intervals, and campaign types whose effect arrives late — brand campaigns especially — are understated over short observation periods."
 ---
 
-## In one line
+## Incremental meaning versus incrementality
 
-A hundred conversions does not mean advertising caused a hundred conversions. Subtract the people who would have arrived anyway and what remains is incrementality.
+Incremental generally means increasing in steps or increments. In advertising, incremental conversions are additional conversions that would not have happened without the ads. More conversions than last month alone do not establish incremental ad impact.
+
+Incrementality asks what advertising added compared with its absence. A hundred conversions does not mean advertising caused a hundred conversions. The aim is to estimate the additional outcomes after allowing for those who would have converted anyway.
 
 ```
 Incremental conversions = observed conversions with ads − expected conversions without ads
 ```
 
-The right-hand term is never observed. So measuring incrementality is really about deciding what stands in for "without ads" — holdouts, geo splits and pre/post comparisons are competing ways to choose that stand-in.
+For the same population and period, 100 conversions with ads and an estimated 80 without ads give an estimate of 20 incremental conversions. This is a hypothetical arithmetic example; the baseline of 80 must come from a control or an appropriate model.
+
+You cannot observe the same person both with and without advertising at the same time. Measuring incrementality therefore requires a baseline for "without ads". Holdouts, geo splits and pre/post comparisons are different ways to construct it.
 
 | Concept | Question it answers | Typical output |
 | --- | --- | --- |
