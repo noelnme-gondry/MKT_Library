@@ -40,6 +40,30 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(useAppStore.getState().findingsByGroup.efficiency[0].scope).toMatchObject({ dateStart: "2026-08-08", dateEnd: "2026-08-14", channels: ["Actual"] });
   });
 
+  it.each(["ko", "en"])("merges supplied and scope notes into one counted entry (%s)", locale => {
+    const { container } = render(<ResultActionCard headline="Result" locale={locale} analysisBasis={false} decisionReview={false}
+      issues={["Observed-cost ceiling", "No spend pins", "Observed-cost ceiling"]}
+      scopeEvidence={{ periods: [{ id: "after", start: "2026-08-08", end: "2026-08-14", quality: { missing: 3, checked: 84, ratio: 3 / 84 } }] }} />);
+    const marks = container.querySelectorAll(".result-action-card__evidence .issue-mark");
+    expect(marks).toHaveLength(1);
+    expect(marks[0].getAttribute("aria-label")).toBe(locale === "en" ? "3 things to check" : "확인할 점 3개");
+    fireEvent.click(marks[0]);
+    expect(document.querySelectorAll(".issue-mark__list li")).toHaveLength(3);
+    expect(document.body.textContent).toContain("Observed-cost ceiling");
+    expect(document.body.textContent).toContain("2026-08-08 ~ 2026-08-14");
+  });
+
+  it("places the analysis workspace before decision and share actions", () => {
+    const { container } = render(<ResultActionCard toolId="5-3" headline="Result" analysisBasis={false}
+      analysisContent={<section data-testid="analysis-workspace">Analysis and checks</section>} />);
+    const workspace = screen.getByTestId("analysis-workspace");
+    for (const selector of [".decision-review", ".result-action-card__utilities"]) {
+      const action = container.querySelector(selector);
+      expect(action).toBeTruthy();
+      expect(workspace.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
   it("renders key figures before supporting prose", () => {
     const { container } = render(
       <ResultActionCard

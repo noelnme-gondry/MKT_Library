@@ -106,23 +106,21 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(barSection).toBeTruthy();
   });
 
-  it("진단과 총 합계 비교를 요약 헤드라인과 내부 카드로 구분한다", () => {
+  it("진단은 확인 탭에서 읽고 총합 수치는 결론에 한 번만 표시한다", () => {
     render(<BudgetAllocation />);
     const diagnosis = document.querySelector(".alloc-diag-card");
-    const comparison = document.querySelector(".alloc-total-card");
     expect(diagnosis).toBeTruthy();
-    expect(comparison).toBeTruthy();
-    expect(diagnosis.querySelector(".alloc-insight-summary")?.textContent).toMatch(/감액|증액|효율 점검/);
-    expect(comparison.querySelector(".alloc-insight-summary")?.textContent).toMatch(/CPI|CPA|ROAS/);
-
-    fireEvent.click(diagnosis.querySelector("[data-information-heading], .decision-review-launch"));
-    fireEvent.click(comparison.querySelector("[data-information-heading], .decision-review-launch"));
+    expect(document.querySelector(".alloc-total-card")).toBeNull();
+    expect(document.querySelectorAll(".result-action-card__stats")).toHaveLength(1);
+    expect(diagnosis.querySelector(".alloc-insight-summary").textContent).toMatch(/감액|증액|효율 점검/);
+    expect(diagnosis.closest('[role="tabpanel"]').hidden).toBe(true);
+    fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
+    expect(diagnosis.closest('[role="tabpanel"]').hidden).toBe(false);
+    expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeGreaterThan(0);
     expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeLessThanOrEqual(3);
-    expect(comparison.querySelectorAll(".alloc-total-block")).toHaveLength(2);
-    expect(comparison.querySelector(".alloc-total-block.is-recommended")).toBeTruthy();
   });
 
-  it("shows named current/plan distribution before the detailed allocation table", () => {
+  it("switches between named current/plan distribution and the full allocation table", () => {
     // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
     render(<BudgetAllocation />);
     const budgetSlider = document.getElementById("prism-total-budget");
@@ -135,7 +133,12 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(distribution).toBeTruthy();
     expect(distribution.querySelectorAll("li").length).toBeGreaterThan(0);
     expect(distribution.textContent).toContain("변경안");
-    expect(document.getElementById("s-scatter").compareDocumentPosition(document.getElementById("s-table")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "비중", exact: true }));
+    expect(distribution.closest("[hidden]")).toBeNull();
+    expect(document.getElementById("s-table").closest("[hidden]")).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "전체 배분표", exact: true }));
+    expect(document.getElementById("s-table").closest("[hidden]")).toBeNull();
+    expect(distribution.closest("[hidden]")).toBeTruthy();
     // Legacy flexbox segments must be gone from this section.
     expect(document.querySelector(".alloc-bar-seg")).toBeNull();
   });

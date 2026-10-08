@@ -32,7 +32,12 @@ import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
-import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import AllocationResultWorkspace from "@/components/tools/AllocationResultWorkspace";
+import DataTable from "@/components/ds/DataTable";
+import { allocationCadence, prepareAllocationObservations, allocationHistory } from "@/utils/allocationObservations";
+import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
+import { allocationDeltaPlan } from "@/utils/allocationDeltaPlan";
+import { allocationCostWorkbook } from "@/lib/analysis-export/allocationCostWorkbook";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { getCssVar } from "@/utils/chartUtils";
@@ -42,7 +47,6 @@ import {
   getRowGroupKey,
   allocParseNum,
   allocFmtNum,
-  calcChannelHistorySummary,
   calculateAllocationModeC,
   calculateAllocationModeB,
   computeAllocSummary,
@@ -92,15 +96,6 @@ const ALLOC_OBJECTIVES_EN = {
 };
 
 /* 이상치 제거 강도 → numeric 임계값 (index.html OUTLIER_STRENGTH 이식) */
-const OUTLIER_STRENGTH = {
-  iqr: { standard: 1.5, strong: 1.0, very_strong: 0.5 },
-  modz: { standard: 3.5, strong: 2.5, very_strong: 2.0 },
-};
-function getOutlierOpts(method, strength) {
-  if (method === "iqr") return { iqrMult: OUTLIER_STRENGTH.iqr[strength] ?? 1.5 };
-  if (method === "modz") return { modzThreshold: OUTLIER_STRENGTH.modz[strength] ?? 3.5 };
-  return {};
-}
 
 /* index.html fmtCurrency 이식 — 통화 토글은 기호/소수 자리수만 바꿈(FX 변환 없음:
    CSV 값은 이미 특정 통화 기준이라 relabel만이 정직). USD는 전역 slider의 센트와
@@ -219,30 +214,7 @@ function allocMarginalCpr(wrapper, cost) {
    이 도구는 creative/adgroup 분해를 하지 않으므로, CSV가 하위 grain이면 사용 grain(unit)×날짜로
    먼저 sum 후 점 1개 생성 (per-row 점 = creative 단위로 찍히는 버그 방지). */
 function buildByChannel(rows, unit, metric) {
-  const agg = new Map(); // ch -> Map(dateKey -> {cost, res, date})
-  for (const r of rows) {
-    const ch = getRowGroupKey(r, unit);
-    if (!ch) continue;
-    const cost = Number(r.cost) || 0;
-    const res = Number(r[metric]) || 0;
-    const dateKey = r.date != null && r.date !== "" ? String(r.date) : "__nodate__";
-    if (!agg.has(ch)) agg.set(ch, new Map());
-    const byDate = agg.get(ch);
-    if (!byDate.has(dateKey)) byDate.set(dateKey, { cost: 0, res: 0, date: r.date });
-    const e = byDate.get(dateKey);
-    e.cost += cost;
-    e.res += res;
-  }
-  const m = new Map();
-  for (const [ch, byDate] of agg) {
-    const pts = [];
-    for (const e of byDate.values()) {
-      if (e.cost <= 0 || e.res <= 0) continue; // 합산 후 필터
-      pts.push({ x: e.cost, y: e.cost / e.res, date: e.date });
-    }
-    if (pts.length) m.set(ch, pts);
-  }
-  return m;
+  return allocationPointMap(rows, unit, metric);
 }
 
 // 보기 전용 집계. 국가·채널 보기에서는 OS를 합산한 일별 비용/성과로 다시 적합한다.
@@ -271,41 +243,8 @@ export function buildAllocationChartCountries(rows, chartUnit, allocationUnit, a
 /* 채널 포인트 → outlier 제거 + (최근 가중치) → fitBest → wrapper.
    index.html getCachedModels 이식. adv = {trendType, outlierMethod, outlierStrength, weightMode, halfLifeDays}.
    trendType="auto"면 R² 최적, 아니면 지정 타입 강제 적합. */
-const TREND_TYPE_LABEL = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
 function fitChannel(pts, adv) {
-  const method = adv?.outlierMethod ?? "iqr";
-  const outOpts = getOutlierOpts(method, adv?.outlierStrength ?? "standard");
-  const { kept } = ALLOC_MATH.removeOutliers(pts, method, outOpts);
-  if (!kept || kept.length < 2) return null;
-  const trainData = kept.map((p) => [p.x, p.y]);
-  const dates = kept.map((p) => p.date);
-  const datesParsed = dates.map((d) => (d ? Date.parse(d) : NaN)).filter((t) => !isNaN(t));
-  const maxDate = datesParsed.length ? Math.max(...datesParsed) : null;
-  const weights =
-    adv && adv.weightMode && adv.weightMode !== "none" && maxDate
-      ? ALLOC_MATH.calcDateWeights(dates, adv.weightMode, maxDate, adv.halfLifeDays ?? 30)
-      : null;
-  const wt = adv?.trendType && adv.trendType !== "auto" ? adv.trendType : "auto";
-  let model = null;
-  if (wt === "auto") {
-    model = ALLOC_MATH.fitBest(trainData, weights);
-  } else {
-    // 지정 타입 강제: fitBest는 auto라 개별 fit 후 wrapper 필요 → fitBest로 뽑고 type 검사
-    const best = ALLOC_MATH.fitBest(trainData, weights);
-    model = best && best.type === TREND_TYPE_LABEL[wt] ? best : (ALLOC_MATH[`fit${TREND_TYPE_LABEL[wt]}`] ? ALLOC_MATH[`fit${TREND_TYPE_LABEL[wt]}`](trainData, weights) : best);
-  }
-  if (!model) return null;
-  const xs = kept.map((p) => p.x);
-  return {
-    model,
-    kept,
-    xMin: Math.min(...xs),
-    xMax: Math.max(...xs),
-    poly2Shape: ALLOC_MATH.detectPoly2Shape(model),
-    // 적합도 R² — fitBest는 이미 model.r2를 붙이지만, 단일 trendType 오버라이드 경로의
-    // fit*는 r2가 없으므로 kept로 보강(신뢰 칩·P3용). 순수엔진 불변, wrapper에만 노출.
-    r2: model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(kept, model),
-  };
+  return fitAllocationChannel(pts, adv);
 }
 /* 저신뢰 채널을 현재 지출에 고정할 대상 선택(§8.6 · product-ssot D-14).
    엔진의 잠금 경로(overrides)에 그대로 넣는 값이라, 무엇을 고르는지가 계약이다 —
@@ -346,7 +285,7 @@ export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, 
   const results = periods.map((period) => {
     const byChannel = buildByChannel(period.rows, unitField, effectiveMetric);
     const modelsMap = buildAllocationModels(byChannel, adv, groupModels);
-    const historyByCh = Object.fromEntries([...byChannel.keys()].map((name) => [name, calcChannelHistorySummary(period.rows, unitField, name, effectiveMetric, { recentDays })]));
+    const historyByCh = Object.fromEntries([...byChannel.keys()].map((name) => [name, allocationHistory(period.rows, unitField, name, effectiveMetric, { recentDays })]));
     const limits = getAllocationEvidenceLimits({ modelsMap });
     const common = { modelsMap, totalBudget: plannedDailyBudget, maxSpends: limits.maxSpends, overrides: holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {}, currency };
     const currentSpends = Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0]));
@@ -487,6 +426,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   // allocation이 즉시 계산된다. 상세 설정(step 1)·곡선 검증(step 2)은 컨트롤 바·링크로 여전히 접근.
   const [step, setStep] = useState(3);
   const [methodOpen, setMethodOpen] = useState(false);
+  const [plannerSettingsOpen, setPlannerSettingsOpen] = useState(false);
+  const [resultView, setResultView] = useState("allocation");
+  const [allocationView, setAllocationView] = useState("changes");
+  const [curveView, setCurveView] = useState("efficiency");
   const methodTrigger = useRef(null);
   const { analysisRange: analysisRange } = recipeControl.controls;
   const { analysisRange: setAnalysisRange } = recipeControl.setters;
@@ -539,6 +482,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const { outlierMethod: setOutlierMethod } = recipeControl.setters; // none|iqr|modz
   const { outlierStrength: outlierStrength } = recipeControl.controls;
   const { outlierStrength: setOutlierStrength } = recipeControl.setters; // standard|strong|very_strong
+  const { observationCadence, asOfDate, maturityMode, groupByPlatform, regimeMode, regimeStart } = recipeControl.controls;
+  const { observationCadence: setObservationCadence, asOfDate: setAsOfDate, maturityMode: setMaturityMode, groupByPlatform: setGroupByPlatform, regimeMode: setRegimeMode, regimeStart: setRegimeStart } = recipeControl.setters;
+  const cadence = allocationCadence(csvData, observationCadence);
+  const matureRevenue = maturityMode === "mature" || (maturityMode === "auto" && cadence === "weekly");
   const { normalizeMode: normalizeMode } = recipeControl.controls;
   const { normalizeMode: setNormalizeMode } = recipeControl.setters; // raw|log|minmax|robust (차트 표시 전용)
   const { hidePoints: hidePoints } = recipeControl.controls;
@@ -574,6 +521,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const scenarioChartInstance = useRef(null);
   const curveChartRef = useRef(null);
   const curveChartInstance = useRef(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      for (const chart of [chartInstance, scenarioChartInstance, curveChartInstance]) chart.current?.resize();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [resultView, allocationView, curveView, step]);
+
   const { curveChannel: curveChannel } = recipeControl.controls;
   const { curveChannel: setCurveChannel } = recipeControl.setters; // §6 반응 곡선 선택 채널
 
@@ -639,7 +593,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   );
 
   const observationDates = useMemo(() => [...new Set(allRows.map(row => row.date).filter(date => /^\d{4}-\d{2}-\d{2}$/.test(date || "")))].sort(), [allRows]);
-  const activeRange = !periodProblem(analysisRange) ? analysisRange : { start: observationDates[0] || "", end: observationDates.at(-1) || "" };
+  const lastPeriodEnd = observationDates.length && cadence === "weekly" ? new Date(Date.parse(`${observationDates.at(-1)}T00:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10) : observationDates.at(-1) || "";
+  const activeRange = !periodProblem(analysisRange) ? analysisRange : { start: observationDates[0] || "", end: lastPeriodEnd };
 
   // 필터 옵션 자동 감지 (국가/채널/OS + cascading). index.html detectAllocFilterOptions 이식.
   const filterOptions = useMemo(() => {
@@ -676,7 +631,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const isSingleCountryUnit = unitField === "channel" || unitField === "campaign_name";
 
   // 필터 적용된 rows. index.html getMappedRowsForAlloc 이식.
-  const rows = useMemo(() => {
+  const scopedRows = useMemo(() => {
     let out = periodProblem(analysisRange) ? allRows : allRows.filter(row => row.date >= analysisRange.start && row.date <= analysisRange.end);
     if (selectedCountries && selectedCountries.size > 0)
       out = out.filter((r) => selectedCountries.has(String(r.country || "").trim()));
@@ -692,10 +647,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return out;
   }, [allRows, analysisRange, selectedCountries, selectedChannelsFilter, platformFilter]);
 
+  const observations = useMemo(() => prepareAllocationObservations(scopedRows, { cadence, asOfDate, matureRevenue, groupByPlatform, metric: effectiveMetric, unit: unitField, range: analysisRange }), [scopedRows, cadence, asOfDate, matureRevenue, groupByPlatform, effectiveMetric, unitField, analysisRange]);
+  const rows = observations.rows;
+  const excludedCounts = useMemo(() => observations.excluded.reduce((counts, item) => { counts[item.reason] = (counts[item.reason] || 0) + 1; return counts; }, {}), [observations]);
+
   // 고급 컨트롤 묶음 (모델 재적합 트리거)
   const adv = useMemo(
-    () => ({ trendType, outlierMethod, outlierStrength, weightMode, halfLifeDays: 30 }),
-    [trendType, outlierMethod, outlierStrength, weightMode],
+    () => ({ trendType, outlierMethod, outlierStrength, weightMode, halfLifeDays: 30, regimeMode, regimeStart, periodDays: observations.periodDays }),
+    [trendType, outlierMethod, outlierStrength, weightMode, regimeMode, regimeStart, observations.periodDays],
   );
 
   // 채널별 포인트 → 모델 → 히스토리(avgCPR) — 매핑/단위/지표/윈도우/고급 변화 시 재계산
@@ -725,7 +684,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const historyByCh = useMemo(() => {
     const out = {};
     for (const ch of byChannel.keys()) {
-      out[ch] = calcChannelHistorySummary(rows, unitField, ch, effectiveMetric, {
+      out[ch] = allocationHistory(rows, unitField, ch, effectiveMetric, {
         recentDays,
       });
     }
@@ -744,6 +703,18 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     () => (holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {}),
     [holdLowConfidence, modelsMap, historyByCh],
   );
+
+  const predictionGroupings = useMemo(() => {
+    const dimension = unitField === "country" ? tr("국가", "Country") : unitField === "campaign_name" ? tr("캠페인", "Campaign") : tr("채널", "Channel");
+    const grouped = [{ label: groupByPlatform ? `OS × ${dimension}` : dimension, data: rows, overrides: groupModels }];
+    if (groupByPlatform) grouped.push({ label: `${dimension} (${tr("OS 합산", "all OS")})`, data: rows.map(row => ({ ...row, platform: "" })), overrides: {} });
+    return grouped.map(group => {
+      const models = Object.fromEntries(ALLOCATION_PREDICTION_METRICS.map(field => [field, allocationModelMap(allocationPointMap(group.data, unitField, field), adv, group.overrides)]));
+      const names = new Set(Object.values(models).flatMap(map => [...map.keys()]));
+      const history = Object.fromEntries([...names].map(name => [name, allocationHistory(group.data, unitField, name, effectiveMetric, { recentDays })]));
+      return { label: group.label, models, history };
+    });
+  }, [rows, groupByPlatform, groupModels, unitField, adv, effectiveMetric, recentDays, tr]);
 
   // 채널/캠페인별이면 국가를 단일로 강제(0·복수·무효 → 최고지출 국가). index.html normalizeAllocCountryFilter 이식.
   // 이벤트 기반: 단위 변경 시 호출(effect 내 setState 회피).
@@ -1043,6 +1014,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     lowConfidenceHolds,
     currentSpends,
   ]);
+
+  const deltaAllocation = useMemo(() => allocationDeltaPlan({ modelsMap, currentSpends: [...modelsMap.keys()].some(name => !historyByCh[name]) ? {} : currentSpends, totalBudget: plannedDailyBudget, maxSpends: evidenceLimits.maxSpends, overrides: lowConfidenceHolds, currency }), [modelsMap, currentSpends, plannedDailyBudget, evidenceLimits.maxSpends, lowConfidenceHolds, currency, historyByCh]);
+  const strategyRows = useMemo(() => [
+    { name: tr("기존 유지 + 증감분", "Keep current + budget delta"), plan: deltaAllocation },
+    { name: tr("전체 재배분", "Reallocate full budget"), plan: allocation },
+  ].map(({ name, plan }) => {
+    const known = !plan.blocked && plan.items.length > 0;
+    const results = known ? plan.items.reduce((sum, item) => sum + item.results, 0) : null;
+    return { name, cost: known ? plan.totalAllocated : null, results, cpr: known && results > 0 ? plan.totalAllocated / results : null, unallocated: known ? plan.unallocated : null, state: !known ? tr("제약·곡선 확인 필요", "Check constraints and curves") : plan.overspent ? tr("목표 예산 초과", "Over target budget") : plan.unallocated > 1e-8 ? tr("미배분 있음", "Unallocated budget") : tr("관측 범위 시나리오", "Observed-range scenario") };
+  }), [deltaAllocation, allocation, tr]);
   const isAllocationFullyFundedPlan = isAllocationFullyFunded({
     allocation,
     budget: plannedDailyBudget,
@@ -1080,10 +1061,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     if (!wrapper || !wrapper.model) return null;
     const it = allocation.items.find((x) => x.channel === curveCh);
     const h = historyByCh[curveCh];
-    const now = h && isFinite(h.windowCost) && recentDays > 0 ? h.windowCost / recentDays : 0;
+    const now = h && isFinite(h.totalCost) ? h.totalCost : 0;
     const plan = it ? it.cost || 0 : 0;
     return { curve: allocResponseCurve(wrapper, { now, plan }), now, plan, channel: curveCh };
-  }, [curveCh, modelsMap, allocation.items, historyByCh, recentDays]);
+  }, [curveCh, modelsMap, allocation.items, historyByCh]);
 
   // §0 진단 — "지금 어디가 문제인가" (관측 최근 N일 효율 기준). index.html renderAllocDiagnosis 이식.
   const diagnosis = useMemo(() => {
@@ -1916,7 +1897,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     // 데이터 부족(<3) → 낮은 R²(<0.2) → Poly2 꼭짓점(Vertex)이 관측 구간 내부(±10%)에 있으면 주의.
     const verifyRows = verifyGroups.map((ch) => {
       const pts = byChannel.get(ch) || [];
-      const { kept, removed } = ALLOC_MATH.removeOutliers(pts, outlierMethod, outOpts);
+      const selectedFit = modelsMap.get(ch);
+      const kept = selectedFit?.kept || [];
+      const removed = ALLOC_MATH.removeOutliers(pts, outlierMethod, outOpts).removed;
       const ov = groupModels[ch];
       const model = ov ? fitChannel(pts, { ...adv, trendType: ov })?.model : modelsMap.get(ch)?.model;
       const isVerified = groupVerification[ch] === "verified";
@@ -2338,45 +2321,551 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return { tone, text, acts, S };
   })();
 
-  const comparisonHeadline = (() => {
-    if (!summary) return "";
-    const previousMetric = displayMetricValue(summary.prevAvgCPR, effectiveMetric);
-    const nextMetric = displayMetricValue(summary.nextAvgCPR, effectiveMetric);
-    const metricChange = previousMetric != null && nextMetric != null && previousMetric !== 0
-      ? ((nextMetric - previousMetric) / Math.abs(previousMetric)) * 100
-      : null;
-    const budgetChange = summary.prev.cost > 0
-      ? ((summary.next.cost - summary.prev.cost) / summary.prev.cost) * 100
-      : null;
-    const metricSummary = metricChange == null
-      ? tr(`${metricLabel} 비교 불가`, `${metricLabel} not comparable`)
-      : Math.abs(metricChange) < 0.05
-        ? tr(`${metricLabel} 유지`, `${metricLabel} unchanged`)
-        : tr(
-          `${metricLabel} ${Math.abs(metricChange).toFixed(1)}% ${roas ? (metricChange > 0 ? "개선" : "악화") : (metricChange < 0 ? "개선" : "악화")}`,
-          `${metricLabel} ${Math.abs(metricChange).toFixed(1)}% ${roas ? (metricChange > 0 ? "better" : "worse") : (metricChange < 0 ? "better" : "worse")}`,
+  const activeAllocationView = allocationView === "share" && hiddenBlocks.includes("s-bar") ? "changes" : allocationView;
+  const activeCurveView = hiddenBlocks.includes(curveView === "efficiency" ? "s-scatter" : "s-response")
+    ? (hiddenBlocks.includes("s-scatter") ? "response" : "efficiency") : curveView;
+  const resultWorkspace = <AllocationResultWorkspace value={resultView} onChange={setResultView} locale={locale} panels={{
+    allocation: <>
+      <PillGroup className="allocation-result-subview" ariaLabel={tr("배분안 표시", "Allocation display")} value={activeAllocationView} onChange={setAllocationView} options={[
+        { value: "changes", label: tr("변경 요약", "Changes") },
+        { value: "table", label: tr("전체 배분표", "Full table") },
+        { value: "share", label: tr("비중", "Share"), disabled: hiddenBlocks.includes("s-bar") },
+      ]} />
+      <div hidden={activeAllocationView !== "changes"}>
+        {canStorePlan ? <ToolCoreFigure embedded
+            figure={budgetShiftFigure({
+              metric: effectiveMetric,
+              rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost, currentOutcomes: historyByCh[item.channel]?.totalResults ?? null, expectedOutcomes: item.results })),
+              locale,
+            })}
+            locale={locale}
+            currency={currency}
+            downloadName="budget_shift"
+          /> : <p>{tr("현재 입력으로 실행 가능한 배분안이 없습니다. 예산 범위와 확인 항목을 검토하세요.", "No actionable allocation is available for these inputs. Review the budget range and checks.")}</p>}
+      </div>
+      <div hidden={activeAllocationView !== "table"}>
+      {showTable && (() => {
+        // #3 이전(과거) 평균 컬럼 — 최근 N일 평균 일예산/결과/CPR + 전체 비중
+        const prevByCh = {};
+        let prevTotalDaily = 0;
+        items.forEach((it) => {
+          const h = historyByCh[it.channel];
+          const daily = h?.totalCost ?? 0;
+          const resDaily = h?.totalResults ?? 0;
+          prevByCh[it.channel] = { daily, resDaily, cpr: h ? h.avgCPR : null };
+          prevTotalDaily += daily;
+        });
+
+        // ★3 롤업 — 유닛 키("국가 · 채널 · [캠페인] · OS")를 prefix로 그룹핑.
+        // 분배는 finest 그대로, 여기선 표시용 합산 + 레이트 Σcost/Σresults 재계산(§8 함정).
+        const rollupLevels = unitField === "campaign_name"
+          ? [["detail", tr("상세", "Detail")], ["country_channel", tr("국가×채널", "Country×channel")], ["country", tr("국가", "Country")], ["all", tr("전체", "All")]]
+          : unitField === "channel"
+            ? [["detail", tr("상세", "Detail")], ["country", tr("국가", "Country")], ["all", tr("전체", "All")]]
+            : [["detail", tr("상세", "Detail")], ["all", tr("전체", "All")]];
+        const rollupKeyOf = (chKey) => {
+          const parts = String(chKey).split(" · ");
+          if (rollupLevel === "country") return parts[0] || chKey;
+          if (rollupLevel === "country_channel") return parts.slice(0, 2).join(" · ") || chKey;
+          if (rollupLevel === "all") return tr("전체", "All");
+          return chKey;
+        };
+        const rollupRows = (() => {
+          if (rollupLevel === "detail") return null;
+          const m = new Map();
+          items.forEach((it) => {
+            const k = rollupKeyOf(it.channel);
+            if (!m.has(k)) m.set(k, { channel: k, cost: 0, results: 0, prevDaily: 0, prevRes: 0 });
+            const g = m.get(k);
+            g.cost += it.cost; g.results += it.results;
+            const p = prevByCh[it.channel] || { daily: 0, resDaily: 0 };
+            g.prevDaily += p.daily; g.prevRes += p.resDaily;
+          });
+          const arr = [...m.values()];
+          arr.forEach((g) => {
+            g.cpr = g.results > 0 ? g.cost / g.results : null;       // Σcost/Σresults 재계산
+            g.prevCpr = g.prevRes > 0 ? g.prevDaily / g.prevRes : null;
+            g.weight = totalCost > 0 ? g.cost / totalCost : 0;
+            g.prevShare = prevTotalDaily > 0 ? (g.prevDaily / prevTotalDaily) * 100 : 0;
+          });
+          return arr.sort((a, b) => b.cost - a.cost);
+        })();
+
+        return (
+        <section className="block" id="s-table">
+          <div className="section-head">
+            <h2 className="section-title">{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
+            {rollupLevels.length > 1 && (
+              <PillGroup
+                style={{ margin: 0 }}
+                label={tr("묶어 보기", "Group view")}
+                labelTitle={tr("분배는 항상 최소 단위에서 계산되고, 여기 뷰만 합쳐서 봅니다(효율은 합계 기준 재계산).", "Allocation is always calculated at the finest unit — this view just merges it for display (efficiency is recalculated from the totals).")}
+                value={rollupLevel}
+                onChange={setRollupLevel}
+                options={rollupLevels.map(([k, l]) => ({ value: k, label: l }))}
+              />
+            )}
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 0.5rem" }}>
+            {rollupLevel === "detail"
+              ? tr(
+                  <>각 행은 PRISM이 계산한 <strong>권장 배분 Cost</strong>와 그에 따른 <strong>예상 {unitLabel}·효율</strong>을 읽기 전용으로 표시합니다. 조정은 위의 전역 예산 또는 목표 슬라이더에서 합니다.</>,
+                  <>Each row is a read-only result: PRISM&apos;s <strong>recommended allocated cost</strong> and its <strong>projected {unitLabel}s · efficiency</strong>. Adjust the global budget or target slider above, not a channel row.</>
+                )
+              : tr(
+                  <>최소 단위 분배 결과를 <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> 기준으로 합쳐 봅니다(읽기 전용). 효율은 합계에서 재계산합니다(Σ비용÷Σ{unitLabel}).</>,
+                  <>This groups the finest-grain allocation results by <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> (read-only). Efficiency is recalculated from the totals (Σcost ÷ Σ{unitLabel}s).</>
+                )}
+          </p>
+          {rollupLevel !== "detail" && rollupRows ? (
+            <div className="table-wrap">
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: "150px" }}>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</th>
+                    <th style={{ textAlign: "right" }}>{tr("배분 Cost", "Allocated cost")}</th>
+                    <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
+                    <th style={{ textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
+                    <th style={{ textAlign: "right" }}>{tr("비중", "Share")}</th>
+                    <th style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
+                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
+                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${roas ? "ROAS" : "CPR"}`, `Prior ${roas ? "ROAS" : "CPR"}`)}</th>
+                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr("이전 비중", "Prior share")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rollupRows.map((g) => (
+                    <tr key={g.channel}>
+                      <td>{g.channel}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(Math.round(g.cost), currency)}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong></td>
+                      <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{g.prevDaily > 0 ? fmtCurrency(Math.round(g.prevDaily), currency) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevRes > 0 ? formatNumberK(g.prevRes, 0) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevCpr != null ? fmtCostMetric(g.prevCpr, effectiveMetric, currency) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevShare > 0 ? g.prevShare.toFixed(1) + "%" : "—"}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
+                    <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
+                    <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(Math.round(prevTotalDaily), currency) : "—"}</td>
+                    <td></td><td></td>
+                    <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+          <div className="table-wrap">
+            <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
+              <thead>
+                <tr>
+                  <th style={{ minWidth: "150px" }}>{tr("채널 (검증 통과)", "Channel (verified)")}</th>
+                  <th style={{ minWidth: "120px", textAlign: "right" }}>{tr("배분 Cost", "Allocated cost")}</th>
+                  <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
+                  <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
+                  <th style={{ minWidth: "96px", textAlign: "right" }} title={tr("현 지출점에서 지출을 조금 늘렸을 때 추가 1건당 비용(한계효율). 평균보다 나쁘면 증액을 신중히.", "Cost per additional conversion when spending a bit more at the current point (marginal efficiency). Worse than average → scale up cautiously.")}>{tr(`한계 ${roas ? "ROAS" : "CPR"}`, `Marginal ${roas ? "ROAS" : "CPR"}`)}</th>
+                  <th style={{ minWidth: "60px", textAlign: "right" }}>{tr("비중", "Share")}</th>
+                  <th style={{ minWidth: "90px", textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
+                  <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
+                  <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${roas ? "ROAS" : "CPR"}`, `Prior ${roas ? "ROAS" : "CPR"}`)}</th>
+                  <th style={{ minWidth: "60px", textAlign: "right", color: "var(--text-muted)" }}>{tr("이전 비중", "Prior share")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!(plannedDailyBudget > 0) ? (
+                  <tr>
+                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
+                      {tr("전역 예산 또는 효율 목표를 정하면 채널별 분배 결과가 계산됩니다.", "Set a global budget or efficiency target to calculate the channel allocation.")}
+                    </td>
+                  </tr>
+                ) : items.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
+                      {tr("배분 가능한 채널이 없습니다. 검증 단계에서 추세선 적합에 성공한 채널이 있는지 확인하세요.", "No channels are available for allocation. Check whether any channels have a successful trendline fit in the verification step.")}
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {items.map((it, i) => {
+                      const isZero = it.cost === 0;
+                      const prev = prevByCh[it.channel] || { daily: 0, resDaily: 0, cpr: null };
+                      const prevShare = prevTotalDaily > 0 ? (prev.daily / prevTotalDaily) * 100 : 0;
+                      const wrap = modelsMap.get(it.channel);
+                      const mCpr = allocMarginalCpr(wrap, it.cost);
+                      const conf = allocConfidence(wrap);
+                      return (
+                        <tr key={it.channel} className={isZero ? "alloc-row-zero" : ""}>
+                          <td>
+                            <div className="alloc-ch-name" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              <span className="sw" style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", background: CHART_THEME.series[i % CHART_THEME.series.length] }}></span>
+                              {it.channel}
+                              {conf && (
+                                <span
+                                  title={tr(`적합 신뢰도 ${conf.ko} · R²=${(conf.r2 || 0).toFixed(2)} · 점 ${conf.n}개 (적합 품질·데이터 기반, 확률 아님)`, `Fit confidence ${conf.en} · R²=${(conf.r2 || 0).toFixed(2)} · ${conf.n} pts (fit quality/data, not probability)`)}
+                                  style={{ fontSize: "var(--fs-xs)", lineHeight: 1.5, whiteSpace: "nowrap", color: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--text-muted)" }}
+                                >{tr(conf.ko, conf.en)}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="tnum" style={{ textAlign: "right" }}><strong>{fmtCurrency(it.cost, currency)}</strong></td>
+                          <td className="tnum" style={{ textAlign: "right" }}>
+                            {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : formatNumberK(it.results, 0)}
+                          </td>
+                          <td className="tnum" style={{ textAlign: "right" }}>
+                            {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : fmtCostMetric(it.cpr, effectiveMetric, currency)}
+                          </td>
+                          <td className="tnum" style={{ textAlign: "right" }}>
+                            {isZero || mCpr == null ? <span style={{ color: "var(--text-muted)" }}>—</span> : !isFinite(mCpr) ? <span style={{ color: "var(--text-muted)" }} title={tr("한계효용 ≤ 0 — 더 투입해도 효율↑ 없음", "marginal utility ≤ 0 — no gain from more spend")}>∞</span> : fmtCostMetric(mCpr, effectiveMetric, currency)}
+                          </td>
+                          <td className="tnum" style={{ textAlign: "right" }}><strong>{(it.weight * 100).toFixed(1)}%</strong></td>
+                          <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prev.daily > 0 ? fmtCurrency(prev.daily, currency) : "—"}</td>
+                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.resDaily > 0 ? formatNumberK(prev.resDaily, 0) : "—"}</td>
+                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.cpr != null ? fmtCostMetric(prev.cpr, effectiveMetric, currency) : "—"}</td>
+                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevShare > 0 ? prevShare.toFixed(1) + "%" : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
+                      <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
+                      <td></td>
+                      <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
+                      <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(prevTotalDaily, currency) : "—"}</td>
+                      <td></td>
+                      <td></td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+          )}
+          {allocation.unallocated > 0 && (
+            <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "8px" }}>
+              · {tr(
+                `미배분 ${fmtCurrency(allocation.unallocated, currency)} (채널별 관측 최대 지출 상한 또는 한계효용 때문에 자동 집행하지 않음)`,
+                `${fmtCurrency(allocation.unallocated, currency)} unallocated (PRISM will not spend beyond a channel's observed-spend ceiling or positive marginal utility)`
+              )}
+            </p>
+          )}
+        </section>
         );
-    const budgetSummary = budgetChange == null
-      ? ""
-      : tr(`일예산 ${budgetChange >= 0 ? "+" : "−"}${Math.abs(budgetChange).toFixed(1)}%`, `Daily budget ${budgetChange >= 0 ? "+" : "−"}${Math.abs(budgetChange).toFixed(1)}%`);
-    return [metricSummary, budgetSummary].filter(Boolean).join(" · ");
-  })();
+      })()}
+
+      </div>
+      <div hidden={activeAllocationView !== "share"}>
+      {canStorePlan && <>
+          <AllocationDistribution hidden={hiddenBlocks.includes("s-bar")} locale={locale} scopeLabel={lowerScopeLabel} controls={<AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />} rows={(() => {
+            const channelsByEntity = new Map();
+            for (const row of rows) {
+              const key = getRowGroupKey(row, unitField);
+              if (!channelsByEntity.has(key)) channelsByEntity.set(key, new Set());
+              if (row.channel) channelsByEntity.get(key).add(String(row.channel).trim());
+            }
+            return visibleAllocationItems.map(item => {
+              const names = channelsByEntity.get(item.channel);
+              return { entity: item.channel, group: names?.size === 1 ? [...names][0] : item.channel, current: historyByCh[item.channel]?.totalCost ?? 0, next: item.cost };
+            });
+          })()} />
+      </>}
+
+      </div>
+    </>,
+    comparison: <>
+      {plannedDailyBudget > 0 && (
+        <section className="block" id="s-strategies" aria-labelledby="allocation-strategies-title">
+          <h2 id="allocation-strategies-title">{tr("같은 예산의 두 실행안", "Two strategies at the same budget")}</h2>
+          <p>{tr("기존 유지안은 현재 채널 지출을 출발점으로 증감분만 조정합니다. 전체 재배분은 선택한 배분 방식으로 다시 나눕니다. 두 안 모두 같은 관측 상한·저신뢰 유지 조건을 적용합니다.", "The keep-current plan starts from current channel spend and changes only the budget delta. Full reallocation uses the selected allocation method. Both apply the same observed ceilings and low-confidence holds.")}</p>
+          <DataTable ariaLabel={tr("예산 실행안 비교", "Budget strategy comparison")} rows={strategyRows} columns={[
+            { key: "name", label: tr("실행안", "Strategy") },
+            { key: "cost", label: tr("일 비용", "Daily cost"), align: "right", fmt: value => fmtCurrency(value, currency) },
+            { key: "results", label: tr("예상 성과", "Expected outcomes"), align: "right", fmt: value => formatNumberK(value) },
+            { key: "cpr", label: metricLabel, align: "right", fmt: value => fmtCostMetric(value, effectiveMetric, currency) },
+            { key: "unallocated", label: tr("미배분", "Unallocated"), align: "right", fmt: value => fmtCurrency(value, currency) },
+            { key: "state", label: tr("확인 상태", "Status") },
+          ]} />
+        </section>
+      )}
+
+      {/* §5 What-if 시나리오 */}
+      <section className="block" id="s-scenario" hidden={hiddenBlocks.includes("s-scenario")}>
+          <h2 className="section-title">{tr("예산을 바꾸면 결과가 어떻게 달라지나?", "How would results change at another budget?")}</h2>
+        <AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />
+          {!lowerChartEntities.size ? <p className="allocation-chart-empty">{tr("표시할 국가를 선택하세요.", "Select a country to display.")}</p> : !(plannedDailyBudget > 0) || scenarios.length === 0 ? (
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
+              {tr("전역 입력을 정하면 해당 계획 예산의 0.5×~2× 구간을 같은 알고리즘으로 비교합니다.", "Set a global input to compare the 0.5×–2× range around that planned budget with the same algorithm.")}
+            </p>
+          ) : (
+            <div className="alloc-card">
+              <p className="allocation-chart-scope">{tr(`${lowerScopeLabel}의 예상 결과입니다. 예산 배수는 전체 계획 기준이며, 아래 금액은 선택 국가에 실제 배분된 일예산입니다.`, `Projected results for ${lowerScopeLabel}. Multipliers apply to the full plan; daily spend below is the amount allocated to the selected countries.`)}</p>
+              <FigureHead exportTitle={locale === "en" ? "Budget scenario comparison" : "예산 시나리오 비교"} target={scenarioChartRef} fileName="budget_scenarios" locale={locale} />
+              <div className="chart-container" style={{ height: "280px" }}>
+                <canvas id="alloc-scenario-chart" ref={scenarioChartRef}></canvas>
+              </div>
+              <div className="table-wrap" style={{ marginTop: "12px" }}>
+                <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
+                  <thead>
+                    <tr>
+                      <th>{tr("시나리오", "Scenario")}</th>
+                      <th style={{ textAlign: "right" }}>{tr("선택 국가 배분액(일)", "Selected spend (daily)")}</th>
+                      <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</th>
+                      <th style={{ textAlign: "right" }}>{tr(`예상 평균 ${metricLabel}`, `Projected avg. ${metricLabel}`)}</th>
+                      <th style={{ textAlign: "right" }}>Δ{unitLabel} {tr("vs 기준안", "vs base plan")}</th>
+                      <th style={{ textAlign: "right" }}>ΔCost</th>
+                      <th style={{ textAlign: "right" }}>{tr(`증분 ${roas ? "ROAS" : metricLabel}`, `Incremental ${roas ? "ROAS" : metricLabel}`)}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const base = scenarios.find((s) => s.m === 1.0);
+                      return scenarios.map((s) => {
+                        const dResults = base ? s.totResults - base.totResults : 0;
+                        const dCost = base ? s.totCost - base.totCost : 0;
+                        const marginal = dCost !== 0 ? dResults / dCost : null;
+                        const isBase = s.m === 1.0;
+                        return (
+                          <tr key={s.m} style={{ background: isBase ? "rgba(173,198,255,0.10)" : "transparent" }}>
+                            <td className="tnum">{s.m}× {isBase && <span style={{ color: "var(--primary, #adc6ff)", fontSize: "var(--fs-xs)" }}>{tr("기준안", "base plan")}</span>}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(s.totCost, currency)}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}><strong>{formatNumberK(s.totResults, 0)}</strong> {unitLabel}{locale === "en" ? "s" : ""}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(s.avgCpr, effectiveMetric, currency)}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{isBase ? "—" : (dResults >= 0 ? "+" : "") + formatNumberK(dResults, 0)}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{isBase ? "—" : (dCost >= 0 ? "+" : "") + fmtCurrency(dCost, currency)}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{isBase || marginal == null ? "—" : roas ? marginal.toFixed(2) + "×" : fmtCurrency(1 / marginal, currency, { metric: true })}</td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+              <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
+                {tr(
+                  <>증분 {roas ? "ROAS" : metricLabel} = 기준안 대비 <strong>{roas ? "매출 변화 ÷ 비용 변화" : `${unitLabel} 1건 변화당 비용 변화`}</strong>입니다. 관측 비용·성과 관계에 따른 예측이며 실제 증분 효과를 뜻하지 않습니다.</>,
+                  <>Incremental {roas ? "ROAS" : metricLabel} = <strong>{roas ? "revenue change ÷ spend change" : `spend change per additional ${unitLabel}`}</strong> vs. the base plan. This is a prediction from observed spend and outcomes, not a causal incremental effect.</>
+                )}
+              </p>
+            </div>
+          )}
+        </section>
+
+    </>,
+    curves: <>
+      <PillGroup className="allocation-result-subview" ariaLabel={tr("곡선 표시", "Curve display")} value={activeCurveView} onChange={setCurveView} options={[
+        { value: "efficiency", label: tr("효율·관측점", "Efficiency & observations"), disabled: hiddenBlocks.includes("s-scatter") },
+        { value: "response", label: tr("지출·성과", "Spend & outcomes"), disabled: hiddenBlocks.includes("s-response") },
+      ]} />
+      <div hidden={activeCurveView !== "efficiency"}>
+      {/* 효율·추세선: 배분안 다음에 국가·채널 관측 분포를 바로 비교한다. */}
+      <section data-information-section=""
+        className="block alloc-fold"
+        id="s-scatter"
+        hidden={hiddenBlocks.includes("s-scatter")}
+      >
+        <header data-information-heading="" className="section-title alloc-fold-summary" style={{ }}>
+          {tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
+          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("분석 기간의 관측점과 적합 곡선을 비교합니다.", "Compare observed points with fitted curves over the analysis period.")}</span>
+        </header>
+        <div className="alloc-card" style={{ marginTop: "12px" }}>
+          <div className="prism-driver__mode" role="group" aria-label={tr("산점도 보기 단위", "Scatterplot grouping")}>
+            {[["country_channel", tr("국가·채널별", "Country · channel")], ["allocation", tr("배분 단위별", "Allocation detail")]].map(([value, label]) => <button key={value} type="button" aria-pressed={chartUnit === value} className={chartUnit === value ? "active" : ""} onClick={() => { setChartUnit(value); setChartChannels(null); }}>{label}</button>)}
+          </div>
+          <p className="muted">{chartUnit === "country_channel" ? tr("같은 국가·채널의 OS별 비용과 성과를 관측 기간별로 합쳐 비교합니다. 점은 관측값, 선은 적합 곡선입니다.", "Spend and outcomes are combined per observation period across OS within each country and channel. Points show observations; lines show fitted curves.") : tr("예산 배분과 같은 단위로 관측값과 곡선을 비교합니다.", "Compare observations and curves at the allocation level.")}</p>
+          {advancedPanel}
+          {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
+          {rankedChannels.length > 0 && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <strong style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{tr("차트 표시 대상 선택", "Select chart display targets")}</strong>
+              <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "4px 0 8px" }}>{tr("아래에서 선택한 대상만 차트에 표시됩니다. (예산 분배와는 무관)", "Only the targets selected below are shown on the chart. (Unrelated to budget allocation)")}</p>
+              <div className="allocation-chart-countries" role="group" aria-label={tr("차트 국가 선택", "Chart countries")}>
+                {[[null, new Set(rankedChannels)], ...chartCountryGroups].map(([country, targets]) => {
+                  const keys = [...targets];
+                  const selected = keys.filter(ch => !chartChannels || chartChannels.has(ch)).length;
+                  const pressed = selected === keys.length ? true : selected === 0 ? false : "mixed";
+                  const label = country === null ? tr("전체", "All") : country || tr("국가 미지정", "Unspecified country");
+                  return <button key={country === null ? "all" : `country:${country}`} type="button" aria-pressed={pressed} aria-label={label} onClick={() => toggleChartTargets(keys)}>
+                    <span aria-hidden="true">{pressed === true ? "✓" : pressed === "mixed" ? "−" : "+"}</span>
+                    <strong>{label}</strong><span className="tnum" aria-hidden="true">{selected}/{keys.length}</span>
+                  </button>;
+                })}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                {rankedChannels.map((ch) => {
+                  const active = chartChannels ? chartChannels.has(ch) : rankedChannels.includes(ch);
+                  return (
+                    <button
+                      key={ch}
+                      className={`ab-pill ${active ? "active" : ""}`}
+                      aria-pressed={active}
+                      style={{ fontSize: "var(--fs-xs)" }}
+                      onClick={() =>
+                        setChartChannels((prev) => {
+                          const base = prev || new Set(rankedChannels);
+                          const next = new Set(base);
+                          if (next.has(ch)) next.delete(ch);
+                          else next.add(ch);
+                          return next;
+                        })
+                      }
+                    >{ch}</button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {chartSelectionCount > 0
+            ? <FigureHead exportTitle={locale === "en" ? "Budget and cost curves" : "예산과 비용 곡선"} target={chartRef} fileName="budget_cost_curve" locale={locale} />
+            : <p className="allocation-chart-empty" role="status">{tr("표시 중인 대상이 없습니다. 국가 또는 채널을 켜서 비교하세요.", "No targets are displayed. Turn on a country or channel to compare.")}</p>}
+          <div className="chart-canvas-wrap" style={{ height: "400px", display: chartSelectionCount > 0 ? "block" : "none" }}>
+            <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
+          </div>
+        </div>
+      </section>
+
+      </div>
+      <div hidden={activeCurveView !== "response"}>
+      {/* §6 채널 반응 곡선 (PRISM P4) — 지출→결과 곡선 + now/plan/knee/onset 마커 */}
+      <section className="block" id="s-response" hidden={hiddenBlocks.includes("s-response")}>
+        <h2 className="section-title">{tr("채널별 추가 지출 효과는?", "What does additional spend produce by channel?")}</h2>
+        <AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />
+        {!lowerChartEntities.size ? <p className="allocation-chart-empty">{tr("표시할 국가를 선택하세요.", "Select a country to display.")}</p> : !responseCurve || !responseCurve.curve || !responseCurve.curve.points.length ? (
+          <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
+            {tr("총 예산을 입력하고 채널을 선택하면 지출을 늘릴 때 결과가 어떻게 늘어나는지(현재·계획 지점 포함) 곡선으로 보여줍니다.", "Enter a total budget and pick a channel to see how results grow as you increase spend — including current and planned spend.")}
+          </p>
+        ) : (
+          <div className="alloc-card">
+            <div className="allocation-curve-select"><label htmlFor="allocation-response-entity">{tr("확인할 배분 대상", "Allocation to inspect")}</label><select id="allocation-response-entity" value={curveCh} onChange={event => setCurveChannel(event.target.value)}>{visibleAllocationItems.map(item => <option key={item.channel} value={item.channel}>{item.channel}</option>)}</select></div>
+            <FigureHead exportTitle={locale === "en" ? "Response by budget" : "예산별 응답곡선"} target={curveChartRef} fileName="budget_response_curve" locale={locale} />
+            <div className="chart-container" style={{ height: "300px" }}>
+              <canvas id="alloc-response-curve" ref={curveChartRef}></canvas>
+            </div>
+            {/* 마커 평어 해석 (§8 정직: 없는 지점은 없다고 명시) */}
+            {(() => {
+              const c = responseCurve.curve;
+              const m = c.markers;
+              const resAt = (pt) => (pt ? `${formatNumberK(pt.y, 0)} ${unitLabel}${locale === "en" ? "s" : ""}` : "—");
+              return (
+                <div style={{ fontSize: "var(--fs-xs)", marginTop: "10px", lineHeight: 1.6, color: "var(--text-1)" }}>
+                  <div>
+                    <strong>{tr("현재", "Now")}</strong> {fmtCurrency(responseCurve.now, currency)} → {resAt(m.now)}
+                    {" · "}
+                    <strong>{tr("계획", "Plan")}</strong> {fmtCurrency(responseCurve.plan, currency)} → {resAt(m.plan)}
+                  </div>
+                  <div style={{ color: "var(--text-muted)", marginTop: "2px" }}>
+                    {m.knee
+                      ? tr(`한계효율 ${Math.round(c.kneeFraction * 100)}% 지점 ≈ ${fmtCurrency(m.knee.x, currency)} — 관측 범위의 최대 한계효율 대비 감소한 지점이며 최적 예산을 뜻하지 않습니다.`, `${Math.round(c.kneeFraction * 100)}% marginal efficiency ≈ ${fmtCurrency(m.knee.x, currency)} — relative to the observed-range peak, not an optimal budget.`)
+                      : tr("관측 범위에서 한계효율이 최대치의 50% 아래로 내려간 지점은 확인되지 않습니다.", "No point below 50% of peak marginal efficiency was identified in the observed range.")}
+                  </div>
+                  <div className="allocation-response-status" data-status={c.saturation.status}>
+                    <strong>{tr(`한계비용 판단 · 평균비용의 ${c.saturation.threshold}배 기준`, `Marginal-cost assessment · ${c.saturation.threshold}× average cost`)}</strong>
+                    <span>{c.saturation.status === "above_at_start"
+                      ? tr("관측 범위 처음부터 주의 기준을 초과합니다. 기준을 넘기 시작한 지출액은 이 데이터로 식별할 수 없습니다.", "The threshold is already exceeded at the start of the observed range. These data cannot identify where the crossing began.")
+                      : m.onset
+                        ? tr(`약 ${fmtCurrency(m.onset.x, currency)}에서 한계비용이 평균비용의 ${c.saturation.threshold}배를 넘는 것으로 추정됩니다. 매출·설치가 더 이상 늘지 않는 지점이라는 뜻은 아닙니다.`, `Marginal cost is estimated to cross ${c.saturation.threshold}× average cost near ${fmtCurrency(m.onset.x, currency)}. This does not mean outcomes stop increasing.`)
+                        : c.saturation.status === "below_threshold"
+                          ? tr(`관측 범위에서 한계비용이 평균비용의 ${c.saturation.threshold}배를 넘는 구간은 확인되지 않습니다.`, `No segment above ${c.saturation.threshold}× average cost was identified in the observed range.`)
+                          : tr("한계비용 기준을 판단할 관측 범위가 부족합니다.", "Insufficient observed range to assess marginal cost.")}</span>
+                  </div>
+                  <div style={{ color: "var(--text-muted)", marginTop: "4px", fontSize: "var(--fs-xs)" }}>
+                    {tr(`관측 범위 ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · 점선 구간은 데이터 밖 추정(신뢰 낮음).`, `Observed range ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · the dashed segment is an out-of-data estimate (low confidence).`)}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </section>
+
+      </div>
+      {hiddenBlocks.includes("s-scatter") && hiddenBlocks.includes("s-response") && <p>{tr("곡선이 숨겨져 있습니다. 보기 설정에서 다시 표시할 수 있습니다.", "The curves are hidden. Show them again in the view settings.")}</p>}
+    </>,
+    checks: <>
+      {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
+      {verify && plannedDailyBudget > 0 && items.length >= 2 && (
+        <section data-information-section="" className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
+          <header data-information-heading="" className="alloc-insight-summary">
+            <span className="alloc-insight-summary__title">{tr("배분 점검", "Allocation check")}</span>
+            <strong>{verify.head}</strong>
+
+          </header>
+          <div className="alloc-verify-detail">
+            <span>{verify.body}</span>
+            {verify.note && <small>{verify.note}</small>}
+          </div>
+        </section>
+      )}
+
+      {canStorePlan && <PeriodSensitivityPanel
+        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
+        locale={locale}
+        variant="allocation"
+        baselineDays={recentDays}
+        periods={splitObservationPeriods(rows)}
+        budgetLabel={fmtCurrency(plannedDailyBudget, currency)}
+        formatMoney={number => fmtCurrency(number, currency)}
+        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency })}
+      />}
+
+      {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
+      {diagnosis && (
+        <section data-information-section="" className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
+          <header data-information-heading="" className="alloc-insight-summary">
+            <span className="alloc-insight-summary__title">{tr("진단", "Diagnosis")}</span>
+            <strong>{diagnosis.summary}</strong>
+
+          </header>
+          <div className="alloc-diag-grid">
+          {diagnosis.insufficient ? (
+            <article className="alloc-diag-item muted">
+              <span>{tr("진단 대기", "Waiting for data")}</span>
+              <strong>{tr("최근 집행 데이터가 부족합니다", "Not enough recent spend data")}</strong>
+              <p>
+              {tr(
+                `최근 ${recentDays}일 데이터를 더 확보하세요.`,
+                `Add more data from the last ${recentDays} days.`
+              )}
+              </p>
+            </article>
+          ) : (
+            diagnosis.lines.map((l, i) => (
+              <article key={`${l.label}-${i}`} className={`alloc-diag-item ${l.cls}`}>
+                <span>{l.label}</span>
+                <strong>{l.title}</strong>
+                <p>{l.text}</p>
+              </article>
+            ))
+          )}
+          </div>
+        </section>
+      )}
+
+      {/* §7 알고리즘 노트 (index.html s-algo 이식) */}
+      <section className="block allocation-method-entry" id="s-algo">
+        <div><h2 className="section-title">{tr("계산 기준", "Calculation details")}</h2><p>{tr("배분 방식의 수식과 적용 조건을 확인하세요.", "Review the allocation formulas and conditions.")}</p></div>
+        <button type="button" className="btn secondary" ref={methodTrigger} onClick={() => setMethodOpen(true)}>{tr("계산 방법 보기", "View calculation method")}</button>
+      </section>
+      <button type="button" className="btn secondary" onClick={() => setStep(2)}>{tr("곡선 검증·보정", "Verify / adjust curves")}</button>
+    </>,
+  }} />;
 
   const step3Toc = [
     { id: "s-controls", title: tr("계획 설정", "Plan settings") },
-    { id: "s-result", title: tr("현재·변경안", "Current vs. plan") },
-    { id: "s-scatter", title: tr("효율·추세선", "Efficiency & trends") },
-    { id: "s-table", title: tr("채널별 배분", "Channel allocation") },
-    { id: "s-bar", title: tr("배분 비중", "Allocation share") },
-    { id: "s-scenario", title: tr("예산 시나리오", "Budget scenarios") },
-    { id: "s-response", title: tr("채널 응답곡선", "Channel response") },
-    { id: "s-algo", title: tr("계산 기준", "Calculation details") },
+    { id: "s-result", title: tr("배분 분석", "Allocation analysis") },
   ];
   const step3StickyFilter = (
     <div className="allocation-context-controls">
       <RecipeCommandInput vocabulary={recipeControl.vocabulary} context={{ toolId: "5-3", toolSpec: recipeControl.spec, mappedFields: mappedKeys, currentLevels: [] }} steps={recipeControl.steps} onStepsChange={recipeControl.setSteps} onApplyPreset={recipeControl.applyPreset} isStepVisible={step => !step.id.startsWith("allocation.")} presets={{ ...accountRecipes, save: (name, steps) => accountRecipes.save(name, allocationAccountSteps(recipe, steps)) }} rejected={recipeControl.fold.rejected} locale={locale} label={tr("보기·다운로드 설정", "View & download settings")} />
       <div className="allocation-context-controls__scope">
-        {observationDates.length > 0 && <ResultPeriodPicker label={tr("분석 기간", "Analysis period")} minDate={observationDates[0]} maxDate={observationDates.at(-1)} range={activeRange} locale={locale} onApply={range => {
+        {observationDates.length > 0 && <ResultPeriodPicker label={tr("분석 기간", "Analysis period")} minDate={observationDates[0]} maxDate={lastPeriodEnd} range={activeRange} locale={locale} onApply={range => {
           setAnalysisRange(range); setGroupModels({}); setGroupVerification({}); setAppliedSig(null); setVerifiedSig(null);
         }} />}
         <AllocationScopeControl
@@ -2386,6 +2875,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         />
       </div>
       <div className="allocation-context-controls__display"><BasisCurrencyToggleBar locale={locale} showBasis={false} /></div>
+      <button type="button" className="btn secondary" onClick={() => setPlannerSettingsOpen(true)}>{tr("자료·곡선 설정", "Data and curve settings")}</button>
     </div>
   );
   const planningObjectiveKeys = ["install", "action", "roas"];
@@ -2438,6 +2928,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       >
       <section className="allocation-data" aria-label={tr("데이터·매핑", "Data & mapping")}><CsvUploader toolId="5-3" locale={locale} /></section>
       <section className="block prism-driver" id="s-controls" aria-labelledby="prism-driver-title">
+        <p className="allocation-observation-note">
+          {cadence === "weekly" ? tr("주간 합계를 7일로 나눈 일평균으로 계산합니다. 주별 관측은 1개씩 유지합니다.", "Weekly totals are divided by seven for daily-average planning. Each week remains one observation.") : tr("일별 비용·성과를 기준으로 계산합니다.", "Planning uses daily spend and outcomes.")}
+          {observations.excluded.length > 0 && ` ${tr(`기간·성숙도·자료 확인이 필요한 ${observations.excluded.length}행 제외.`, `${observations.excluded.length} rows excluded for period, maturity or data checks.`)}`}
+          {matureRevenue && !observations.maturityKnown && ` ${tr("D7 성숙 여부는 미확인입니다. 자료·곡선 설정에서 추출 기준일을 입력하세요.", "D7 maturity is unverified. Enter the data as-of date in Data and curve settings.")}`}
+        </p>
         <div className="prism-driver__head">
           <div>
             <h2 className="section-title" id="prism-driver-title">{tr("무엇을 정할까요?", "What do you want to set?")}</h2>
@@ -2666,66 +3161,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         </section>
       </section>
 
-      {/* 전역 driver 뒤에만 결과를 노출한다. */}
-      {summary && (() => {
-        const s = summary;
-        const spendPct = s.prev.cost > 0 ? Math.round(((s.next.cost - s.prev.cost) / s.prev.cost) * 100) : null;
-        const resDelta = Math.round(s.next.results - s.prev.results);
-        const improved = s.nextAvgCPR != null && s.prevAvgCPR != null && s.nextAvgCPR < s.prevAvgCPR;
-        const moved = Math.abs(s.next.cost - s.prev.cost);
-        const word = getMetricUnitLabel(effectiveMetric, locale);
-        const card = (label, value, sub, subColor) => (
-          <div className="prism-result-card">
-            <div style={{ fontSize: "var(--fs-base)", color: "var(--text-secondary)" }}>{label}</div>
-            <div style={{ fontSize: "var(--fs-lg)", fontWeight: 700, lineHeight: 1.25 }}>{value}</div>
-            <div style={{ fontSize: "var(--fs-base)", color: subColor || "var(--text-muted)" }}>{sub}</div>
-          </div>
-        );
-        return (
-          <div className="prism-result-grid" id="s-result">
-            {card(
-              tr("계획 지출", "Planned spend"),
-              fmtCurrency(s.next.cost, currency),
-              spendPct != null ? tr(`현재 대비 ${spendPct > 0 ? "+" : ""}${spendPct}%`, `${spendPct > 0 ? "+" : ""}${spendPct}% vs now`) : tr("현재 대비", "vs now"),
-            )}
-            {card(
-              tr(`예상 ${word}`, `Projected ${word}`),
-              formatNumberK(s.next.results),
-              `${resDelta >= 0 ? "+" : ""}${formatNumberK(resDelta)}${tr(" 건", "")}`,
-              resDelta >= 0 ? "var(--success)" : "var(--danger)",
-            )}
-            {card(
-              tr(`평균 ${metricLabel}`, `Avg ${metricLabel}`),
-              fmtCostMetric(s.nextAvgCPR, effectiveMetric, currency),
-              tr(`현재 ${fmtCostMetric(s.prevAvgCPR, effectiveMetric, currency)}`, `now ${fmtCostMetric(s.prevAvgCPR, effectiveMetric, currency)}`),
-              improved ? "var(--success)" : "var(--danger)",
-            )}
-            {card(
-              tr("총지출 변화", "Total spend change"),
-              fmtCurrency(moved, currency),
-              tr("현재 대비 증감의 절댓값", "absolute change from current"),
-            )}
-          </div>
-        );
-      })()}
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "0.5rem" }}>
-        <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "var(--fs-xs)" }}>{tr("곡선 검증·보정", "Verify / adjust curves")}</button>
-      </div>
-
-      {/* 결론·액션 카드 */}
-      {verdict && canStorePlan && (
+      {/* 결론부터 분석·점검을 거친 뒤 저장·다음 기간 검토로 이어진다. */}
+      <div id="s-result">
+      {verdict && canStorePlan ? (
         <ResultActionCard
-          coreFigure={canStorePlan && <><ToolCoreFigure embedded
-            figure={budgetShiftFigure({
-              metric: effectiveMetric,
-              rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost, currentOutcomes: historyByCh[item.channel]?.totalResults ?? null, expectedOutcomes: item.results })),
-              locale,
-            })}
-            locale={locale}
-            currency={currency}
-            downloadName="budget_shift"
-          />
-          </>}
+          analysisContent={resultWorkspace}
           toolId="5-3"
           exportOptions={recipe.export}
           scopeEvidence={{ periods: [{ id: "after", start: activeRange.start, end: activeRange.end }], filters: { countries: [...(selectedCountries || [])], channels: [...(selectedChannelsFilter || [])], platform: platformFilter }, currency }}
@@ -2775,10 +3215,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           stats={[
             {
               label: tr(planBudgetPeriod === "monthly" ? "총 월예산" : "총 일예산", planBudgetPeriod === "monthly" ? "Total monthly budget" : "Total daily budget"),
-              value: fmtCurrency(planBudgetPeriod === "monthly" ? plannedDailyBudget * 30 : plannedDailyBudget, currency),
+              value: `${fmtCurrency((summary?.prev.cost ?? 0) * (planBudgetPeriod === "monthly" ? 30 : 1), currency)} → ${fmtCurrency(planBudgetPeriod === "monthly" ? plannedDailyBudget * 30 : plannedDailyBudget, currency)}`,
             },
             { label: tr("증액 / 감액", "Increase / decrease"), value: `${allocationMoveCounts.increase} / ${allocationMoveCounts.decrease}`, detail: tr(`유지 ${allocationMoveCounts.hold}`, `${allocationMoveCounts.hold} unchanged`) },
-            { label: tr("조정 기준", "Planning basis"), value: planningBasis === "target" ? `${getCostMetricLabel(effectiveMetric)} ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}` : tr("총 예산", "Total budget") },
+            { label: tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`), value: `${formatNumberK(verdict.S.prev.results)} → ${formatNumberK(verdict.S.next.results)}` },
             { label: tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`), value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}` },
           ]}
           workbookExport={() => {
@@ -2811,565 +3251,44 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                     ];
                   }),
                 ],
+              }, ...allocationCostWorkbook({ groupings: predictionGroupings, metric: effectiveMetric, periodDays: observations.periodDays, locale }), {
+                name: "BUDGET_STRATEGIES", title: tr("같은 예산의 두 실행안", "Two strategies at the same budget"),
+                rows: [["strategy", "daily_cost", "predicted_results", "cost_per_result", "unallocated", "state"], ...strategyRows.map(row => [row.name, row.cost, row.results, row.cpr, row.unallocated, row.state])],
               }],
               method: {
                 name: allocMode === "c" ? "absolute-cpr-weighting" : "marginal-utility-greedy",
                 version: "budget-allocation-v1",
                 assumptions: [tr("채널별 현재값은 선택한 최근 기간의 일평균입니다.", "Current channel values are daily averages over the selected recent window.")],
-                limitations: exportLimitations([tr("추천 비용·성과를 바꾸려면 사이트에서 곡선을 다시 적합하고 배분해야 합니다. 관측 연관 시뮬레이션이며 인과 증분이 아닙니다.", "Changing recommended spend and results requires refitting curves and reallocating on the site. This is an observational simulation, not causal incrementality.")], recipe.export.includeCaveats, locale),
+                limitations: exportLimitations([tr("COST_INPUT의 Cost만 바꾸면 현재 곡선으로 예측합니다. 곡선 재적합과 자동 예산 배분은 사이트에서 실행해야 합니다. 관측 연관 시뮬레이션이며 인과 증분이 아닙니다.", "Changing Cost in COST_INPUT predicts from the current fitted curves. Refit curves and rerun budget allocation on the site. This is an observational simulation, not causal incrementality.")], recipe.export.includeCaveats, locale),
               },
             };
           }}
-          analysisDetails={(
-            <AnalysisDetails
-              locale={locale}
-              statusLabel={tr("시나리오 참고", "Scenario reference")}
-              statusTone={verdict.tone === "bad" ? "warning" : "neutral"}
-              metric={metricLabel}
-              unit={unitLabel}
-              meaning={tr("관측된 비용·성과 관계를 이용한 예산 시뮬레이션이며 인과 증분 효과가 아닙니다.", "A budget simulation from observed cost-performance relationships; it is not causal incrementality.")}
-              sampleSize={{ value: rows.length, label: tr("입력 행", "Input rows") }}
-              scope={tr(`최근 ${summary?.recentDays || recentDays}일`, `Recent ${summary?.recentDays || recentDays} days`)}
-              method={allocMode === "c" ? "absolute-cpr-weighting" : "marginal-utility-greedy"}
-              version="budget-allocation-v1"
-              metricDefinition={tr("목표 지표·분모는 상단 설정과 현재 매핑을 따릅니다.", "The objective metric and denominator follow the current settings and mapping.")}
-              warnings={[
-                tr(
-                  "자동 배분과 목표 예산은 채널별 관측 최대 Cost 안에서만 계산합니다. 관측 범위 밖 성과를 마지막 효율로 연장하지 않습니다.",
-                  "Automatic allocation and target budgets do not exceed each channel's observed maximum cost. PRISM does not extend the last efficiency above observed spend."
-                ),
-                tr("채널별 수동 금액 고정은 하지 않습니다. 각 채널의 관측 지출 상한 안에서 전역 입력에 맞춰 자동 배분합니다.", "There are no manual per-channel spend pins. PRISM auto-allocates from the global input within each channel's observed-spend ceiling."),
-              ]}
-            />
-          )}
+          issues={[
+            tr("자동 배분과 목표 예산은 채널별 관측 최대 Cost 안에서만 계산합니다. 관측 범위 밖 성과를 마지막 효율로 연장하지 않습니다.", "Automatic allocation and target budgets do not exceed each channel's observed maximum cost. PRISM does not extend the last efficiency above observed spend."),
+            tr("채널별 수동 금액 고정은 하지 않습니다. 각 채널의 관측 지출 상한 안에서 전역 입력에 맞춰 자동 배분합니다.", "There are no manual per-channel spend pins. PRISM auto-allocates from the global input within each channel's observed-spend ceiling."),
+          ]}
         />
-      )}
+      ) : resultWorkspace}
+      </div>
 
-      {/* 효율·추세선: 배분안 다음에 국가·채널 관측 분포를 바로 비교한다. */}
-      <section data-information-section=""
-        className="block alloc-fold"
-        id="s-scatter"
-        hidden={hiddenBlocks.includes("s-scatter")}
-      >
-        <header data-information-heading="" className="section-title alloc-fold-summary" style={{ }}>
-          {tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
-          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("분석 기간의 관측점과 적합 곡선을 비교합니다.", "Compare observed points with fitted curves over the analysis period.")}</span>
-        </header>
-        <div className="alloc-card" style={{ marginTop: "12px" }}>
-          <div className="prism-driver__mode" role="group" aria-label={tr("산점도 보기 단위", "Scatterplot grouping")}>
-            {[["country_channel", tr("국가·채널별", "Country · channel")], ["allocation", tr("배분 단위별", "Allocation detail")]].map(([value, label]) => <button key={value} type="button" aria-pressed={chartUnit === value} className={chartUnit === value ? "active" : ""} onClick={() => { setChartUnit(value); setChartChannels(null); }}>{label}</button>)}
-          </div>
-          <p className="muted">{chartUnit === "country_channel" ? tr("같은 국가·채널의 OS별 비용과 성과를 일별로 합쳐 비교합니다. 점은 관측값, 선은 적합 곡선입니다.", "Daily spend and outcomes are combined across OS within each country and channel. Points show observations; lines show fitted curves.") : tr("예산 배분과 같은 단위로 관측값과 곡선을 비교합니다.", "Compare observations and curves at the allocation level.")}</p>
-          {advancedPanel}
-          {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
-          {rankedChannels.length > 0 && (
-            <div style={{ marginBottom: "0.75rem" }}>
-              <strong style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{tr("차트 표시 대상 선택", "Select chart display targets")}</strong>
-              <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "4px 0 8px" }}>{tr("아래에서 선택한 대상만 차트에 표시됩니다. (예산 분배와는 무관)", "Only the targets selected below are shown on the chart. (Unrelated to budget allocation)")}</p>
-              <div className="allocation-chart-countries" role="group" aria-label={tr("차트 국가 선택", "Chart countries")}>
-                {[[null, new Set(rankedChannels)], ...chartCountryGroups].map(([country, targets]) => {
-                  const keys = [...targets];
-                  const selected = keys.filter(ch => !chartChannels || chartChannels.has(ch)).length;
-                  const pressed = selected === keys.length ? true : selected === 0 ? false : "mixed";
-                  const label = country === null ? tr("전체", "All") : country || tr("국가 미지정", "Unspecified country");
-                  return <button key={country === null ? "all" : `country:${country}`} type="button" aria-pressed={pressed} aria-label={label} onClick={() => toggleChartTargets(keys)}>
-                    <span aria-hidden="true">{pressed === true ? "✓" : pressed === "mixed" ? "−" : "+"}</span>
-                    <strong>{label}</strong><span className="tnum" aria-hidden="true">{selected}/{keys.length}</span>
-                  </button>;
-                })}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                {rankedChannels.map((ch) => {
-                  const active = chartChannels ? chartChannels.has(ch) : rankedChannels.includes(ch);
-                  return (
-                    <button
-                      key={ch}
-                      className={`ab-pill ${active ? "active" : ""}`}
-                      aria-pressed={active}
-                      style={{ fontSize: "var(--fs-xs)" }}
-                      onClick={() =>
-                        setChartChannels((prev) => {
-                          const base = prev || new Set(rankedChannels);
-                          const next = new Set(base);
-                          if (next.has(ch)) next.delete(ch);
-                          else next.add(ch);
-                          return next;
-                        })
-                      }
-                    >{ch}</button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {chartSelectionCount > 0
-            ? <FigureHead exportTitle={locale === "en" ? "Budget and cost curves" : "예산과 비용 곡선"} target={chartRef} fileName="budget_cost_curve" locale={locale} />
-            : <p className="allocation-chart-empty" role="status">{tr("표시 중인 대상이 없습니다. 국가 또는 채널을 켜서 비교하세요.", "No targets are displayed. Turn on a country or channel to compare.")}</p>}
-          <div className="chart-canvas-wrap" style={{ height: "400px", display: chartSelectionCount > 0 ? "block" : "none" }}>
-            <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
-          </div>
+      <ModalDialog open={plannerSettingsOpen} onClose={() => setPlannerSettingsOpen(false)} ariaLabel={tr("자료·곡선 설정", "Data and curve settings")} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel">
+        <header className="tool-reference-panel__head"><h2>{tr("자료·곡선 설정", "Data and curve settings")}</h2><button type="button" className="btn ghost" onClick={() => setPlannerSettingsOpen(false)}>{tr("닫기", "Close")}</button></header>
+        <div style={{ display: "grid", gap: "1rem", padding: "1rem" }}>
+          <label>{tr("자료 단위", "Observation period")}<select value={observationCadence} onChange={event => setObservationCadence(event.target.value)} aria-label={tr("자료 단위", "Observation period")}><option value="auto">{tr("열 이름에서 자동 확인", "Auto from date column")}</option><option value="daily">{tr("일별", "Daily")}</option><option value="weekly">{tr("주간 합계", "Weekly totals")}</option></select></label>
+          <label>{tr("분배 단위", "Grouping")}<select value={groupByPlatform ? "os" : "channel"} onChange={event => setGroupByPlatform(event.target.value === "os")} aria-label={tr("분배 단위", "Grouping")}><option value="os">{tr("OS별로 분리", "Separate operating systems")}</option><option value="channel">{tr("OS를 합산", "Combine operating systems")}</option></select></label>
+          <label>{tr("추출 기준일", "Data as-of date")}<input type="date" value={asOfDate || observations.asOfDate} onChange={event => setAsOfDate(event.target.value)} aria-label={tr("추출 기준일", "Data as-of date")} /></label>
+          <label>{tr("D7 성숙도", "D7 maturity")}<select value={maturityMode} onChange={event => setMaturityMode(event.target.value)} aria-label={tr("D7 성숙도", "D7 maturity")}><option value="auto">{tr("주간 자료는 성숙 매출만", "Mature revenue for weekly data")}</option><option value="mature">{tr("성숙 매출만", "Mature revenue only")}</option><option value="all">{tr("성숙도 필터 해제", "Do not filter by maturity")}</option></select></label>
+          <p>{tr("완료 주는 주 마지막 날이 추출 기준일보다 앞선 경우입니다. D7은 그 마지막 날에서 7일이 더 지난 기간만 사용합니다. 기준일을 모르면 성숙 여부를 판정하지 않습니다.", "A complete week ends before the data as-of date. D7 uses periods whose final day plus seven days is also before that date. Without an as-of date, maturity is unverified.")}</p>
+          {Object.entries(excludedCounts).map(([reason, count]) => {
+            const labels = { INCOMPLETE_PERIOD: ["진행 중 기간", "Incomplete periods"], IMMATURE_D7: ["D7 관찰 기간 미완료", "Incomplete D7 windows"], D7_AS_OF_MISSING: ["추출 기준일 미확인", "Unverified as-of date"], INVALID_PERIOD_DATE: ["날짜 형식 확인", "Invalid dates"], OVERLAPPING_PERIODS: ["겹치는 주간 관측", "Overlapping weekly observations"], PARTIAL_SELECTED_PERIOD: ["선택 기간에 일부만 포함된 주", "Weeks partly outside the selected dates"], INVALID_MEASUREMENT: ["비용·성과 값 확인", "Invalid cost or outcomes"] };
+            return <p key={reason}>{tr(...labels[reason])}: {count}</p>;
+          })}
+          <label>{tr("곡선 사용 구간", "Curve fitting period")}<select value={regimeMode} onChange={event => setRegimeMode(event.target.value)} aria-label={tr("곡선 사용 구간", "Curve fitting period")}><option value="all">{tr("전체 분석 기간", "Full analysis period")}</option><option value="auto">{tr("변화 후보 이후 자동 선택", "Auto after a change candidate")}</option><option value="manual">{tr("시작일 직접 지정", "Choose start date")}</option></select></label>
+          {regimeMode === "manual" && <label>{tr("구간 시작일", "Period start")}<input type="date" value={regimeStart} onChange={event => setRegimeStart(event.target.value)} aria-label={tr("구간 시작일", "Period start")} /></label>}
+          <p>{tr("자동 선택은 비슷한 비용에서 효율 패턴이 달라진 후보를 찾습니다. 변경 원인이나 인과 효과를 판정하는 검정이 아닙니다. 기간은 지표를 본 뒤 유리한 결과만 남기기 위해 바꾸지 마세요.", "Auto selection finds efficiency-change candidates at similar costs. It does not test causes or causal impact. Do not change periods merely to retain a favorable result.")}</p>
+          {[...modelsMap].filter(([, wrapper]) => wrapper?.regime?.start).map(([name, wrapper]) => <p key={name}>{name}: {wrapper.regime.start} {tr(`이후 관측 ${wrapper.kept.length}개 사용`, `${wrapper.kept.length} observations since this date`)}</p>)}
         </div>
-      </section>
-
-      {showTable && (() => {
-        // #3 이전(과거) 평균 컬럼 — 최근 N일 평균 일예산/결과/CPR + 전체 비중
-        const prevByCh = {};
-        let prevTotalDaily = 0;
-        items.forEach((it) => {
-          const h = historyByCh[it.channel];
-          const daily = h && isFinite(h.windowCost) ? h.windowCost / recentDays : 0;
-          const resDaily = h && isFinite(h.windowResults) ? h.windowResults / recentDays : 0;
-          prevByCh[it.channel] = { daily, resDaily, cpr: h ? h.avgCPR : null };
-          prevTotalDaily += daily;
-        });
-
-        // ★3 롤업 — 유닛 키("국가 · 채널 · [캠페인] · OS")를 prefix로 그룹핑.
-        // 분배는 finest 그대로, 여기선 표시용 합산 + 레이트 Σcost/Σresults 재계산(§8 함정).
-        const rollupLevels = unitField === "campaign_name"
-          ? [["detail", tr("상세", "Detail")], ["country_channel", tr("국가×채널", "Country×channel")], ["country", tr("국가", "Country")], ["all", tr("전체", "All")]]
-          : unitField === "channel"
-            ? [["detail", tr("상세", "Detail")], ["country", tr("국가", "Country")], ["all", tr("전체", "All")]]
-            : [["detail", tr("상세", "Detail")], ["all", tr("전체", "All")]];
-        const rollupKeyOf = (chKey) => {
-          const parts = String(chKey).split(" · ");
-          if (rollupLevel === "country") return parts[0] || chKey;
-          if (rollupLevel === "country_channel") return parts.slice(0, 2).join(" · ") || chKey;
-          if (rollupLevel === "all") return tr("전체", "All");
-          return chKey;
-        };
-        const rollupRows = (() => {
-          if (rollupLevel === "detail") return null;
-          const m = new Map();
-          items.forEach((it) => {
-            const k = rollupKeyOf(it.channel);
-            if (!m.has(k)) m.set(k, { channel: k, cost: 0, results: 0, prevDaily: 0, prevRes: 0 });
-            const g = m.get(k);
-            g.cost += it.cost; g.results += it.results;
-            const p = prevByCh[it.channel] || { daily: 0, resDaily: 0 };
-            g.prevDaily += p.daily; g.prevRes += p.resDaily;
-          });
-          const arr = [...m.values()];
-          arr.forEach((g) => {
-            g.cpr = g.results > 0 ? g.cost / g.results : null;       // Σcost/Σresults 재계산
-            g.prevCpr = g.prevRes > 0 ? g.prevDaily / g.prevRes : null;
-            g.weight = totalCost > 0 ? g.cost / totalCost : 0;
-            g.prevShare = prevTotalDaily > 0 ? (g.prevDaily / prevTotalDaily) * 100 : 0;
-          });
-          return arr.sort((a, b) => b.cost - a.cost);
-        })();
-
-        return (
-        <section className="block" id="s-table">
-          <div className="section-head">
-            <h2 className="section-title">{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
-            {rollupLevels.length > 1 && (
-              <PillGroup
-                style={{ margin: 0 }}
-                label={tr("묶어 보기", "Group view")}
-                labelTitle={tr("분배는 항상 최소 단위에서 계산되고, 여기 뷰만 합쳐서 봅니다(효율은 합계 기준 재계산).", "Allocation is always calculated at the finest unit — this view just merges it for display (efficiency is recalculated from the totals).")}
-                value={rollupLevel}
-                onChange={setRollupLevel}
-                options={rollupLevels.map(([k, l]) => ({ value: k, label: l }))}
-              />
-            )}
-          </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 0.5rem" }}>
-            {rollupLevel === "detail"
-              ? tr(
-                  <>각 행은 PRISM이 계산한 <strong>권장 배분 Cost</strong>와 그에 따른 <strong>예상 {unitLabel}·효율</strong>을 읽기 전용으로 표시합니다. 조정은 위의 전역 예산 또는 목표 슬라이더에서 합니다.</>,
-                  <>Each row is a read-only result: PRISM&apos;s <strong>recommended allocated cost</strong> and its <strong>projected {unitLabel}s · efficiency</strong>. Adjust the global budget or target slider above, not a channel row.</>
-                )
-              : tr(
-                  <>최소 단위 분배 결과를 <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> 기준으로 합쳐 봅니다(읽기 전용). 효율은 합계에서 재계산합니다(Σ비용÷Σ{unitLabel}).</>,
-                  <>This groups the finest-grain allocation results by <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> (read-only). Efficiency is recalculated from the totals (Σcost ÷ Σ{unitLabel}s).</>
-                )}
-          </p>
-          {rollupLevel !== "detail" && rollupRows ? (
-            <div className="table-wrap">
-              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
-                <thead>
-                  <tr>
-                    <th style={{ minWidth: "150px" }}>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</th>
-                    <th style={{ textAlign: "right" }}>{tr("배분 Cost", "Allocated cost")}</th>
-                    <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
-                    <th style={{ textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
-                    <th style={{ textAlign: "right" }}>{tr("비중", "Share")}</th>
-                    <th style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
-                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
-                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${roas ? "ROAS" : "CPR"}`, `Prior ${roas ? "ROAS" : "CPR"}`)}</th>
-                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr("이전 비중", "Prior share")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rollupRows.map((g) => (
-                    <tr key={g.channel}>
-                      <td>{g.channel}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(Math.round(g.cost), currency)}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong></td>
-                      <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{g.prevDaily > 0 ? fmtCurrency(Math.round(g.prevDaily), currency) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevRes > 0 ? formatNumberK(g.prevRes, 0) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevCpr != null ? fmtCostMetric(g.prevCpr, effectiveMetric, currency) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevShare > 0 ? g.prevShare.toFixed(1) + "%" : "—"}</td>
-                    </tr>
-                  ))}
-                  <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
-                    <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
-                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
-                    <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
-                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
-                    <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
-                    <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(Math.round(prevTotalDaily), currency) : "—"}</td>
-                    <td></td><td></td>
-                    <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ) : (
-          <div className="table-wrap">
-            <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
-              <thead>
-                <tr>
-                  <th style={{ minWidth: "150px" }}>{tr("채널 (검증 통과)", "Channel (verified)")}</th>
-                  <th style={{ minWidth: "120px", textAlign: "right" }}>{tr("배분 Cost", "Allocated cost")}</th>
-                  <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
-                  <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
-                  <th style={{ minWidth: "96px", textAlign: "right" }} title={tr("현 지출점에서 지출을 조금 늘렸을 때 추가 1건당 비용(한계효율). 평균보다 나쁘면 증액을 신중히.", "Cost per additional conversion when spending a bit more at the current point (marginal efficiency). Worse than average → scale up cautiously.")}>{tr(`한계 ${roas ? "ROAS" : "CPR"}`, `Marginal ${roas ? "ROAS" : "CPR"}`)}</th>
-                  <th style={{ minWidth: "60px", textAlign: "right" }}>{tr("비중", "Share")}</th>
-                  <th style={{ minWidth: "90px", textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
-                  <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
-                  <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${roas ? "ROAS" : "CPR"}`, `Prior ${roas ? "ROAS" : "CPR"}`)}</th>
-                  <th style={{ minWidth: "60px", textAlign: "right", color: "var(--text-muted)" }}>{tr("이전 비중", "Prior share")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!(plannedDailyBudget > 0) ? (
-                  <tr>
-                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
-                      {tr("전역 예산 또는 효율 목표를 정하면 채널별 분배 결과가 계산됩니다.", "Set a global budget or efficiency target to calculate the channel allocation.")}
-                    </td>
-                  </tr>
-                ) : items.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
-                      {tr("배분 가능한 채널이 없습니다. 검증 단계에서 추세선 적합에 성공한 채널이 있는지 확인하세요.", "No channels are available for allocation. Check whether any channels have a successful trendline fit in the verification step.")}
-                    </td>
-                  </tr>
-                ) : (
-                  <>
-                    {items.map((it, i) => {
-                      const isZero = it.cost === 0;
-                      const prev = prevByCh[it.channel] || { daily: 0, resDaily: 0, cpr: null };
-                      const prevShare = prevTotalDaily > 0 ? (prev.daily / prevTotalDaily) * 100 : 0;
-                      const wrap = modelsMap.get(it.channel);
-                      const mCpr = allocMarginalCpr(wrap, it.cost);
-                      const conf = allocConfidence(wrap);
-                      return (
-                        <tr key={it.channel} className={isZero ? "alloc-row-zero" : ""}>
-                          <td>
-                            <div className="alloc-ch-name" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                              <span className="sw" style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", background: CHART_THEME.series[i % CHART_THEME.series.length] }}></span>
-                              {it.channel}
-                              {conf && (
-                                <span
-                                  title={tr(`적합 신뢰도 ${conf.ko} · R²=${(conf.r2 || 0).toFixed(2)} · 점 ${conf.n}개 (적합 품질·데이터 기반, 확률 아님)`, `Fit confidence ${conf.en} · R²=${(conf.r2 || 0).toFixed(2)} · ${conf.n} pts (fit quality/data, not probability)`)}
-                                  style={{ fontSize: "var(--fs-xs)", lineHeight: 1.5, whiteSpace: "nowrap", color: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--text-muted)" }}
-                                >{tr(conf.ko, conf.en)}</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="tnum" style={{ textAlign: "right" }}><strong>{fmtCurrency(it.cost, currency)}</strong></td>
-                          <td className="tnum" style={{ textAlign: "right" }}>
-                            {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : formatNumberK(it.results, 0)}
-                          </td>
-                          <td className="tnum" style={{ textAlign: "right" }}>
-                            {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : fmtCostMetric(it.cpr, effectiveMetric, currency)}
-                          </td>
-                          <td className="tnum" style={{ textAlign: "right" }}>
-                            {isZero || mCpr == null ? <span style={{ color: "var(--text-muted)" }}>—</span> : !isFinite(mCpr) ? <span style={{ color: "var(--text-muted)" }} title={tr("한계효용 ≤ 0 — 더 투입해도 효율↑ 없음", "marginal utility ≤ 0 — no gain from more spend")}>∞</span> : fmtCostMetric(mCpr, effectiveMetric, currency)}
-                          </td>
-                          <td className="tnum" style={{ textAlign: "right" }}><strong>{(it.weight * 100).toFixed(1)}%</strong></td>
-                          <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prev.daily > 0 ? fmtCurrency(prev.daily, currency) : "—"}</td>
-                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.resDaily > 0 ? formatNumberK(prev.resDaily, 0) : "—"}</td>
-                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.cpr != null ? fmtCostMetric(prev.cpr, effectiveMetric, currency) : "—"}</td>
-                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevShare > 0 ? prevShare.toFixed(1) + "%" : "—"}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
-                      <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
-                      <td></td>
-                      <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
-                      <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(prevTotalDaily, currency) : "—"}</td>
-                      <td></td>
-                      <td></td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
-                    </tr>
-                  </>
-                )}
-              </tbody>
-            </table>
-          </div>
-          )}
-          {allocation.unallocated > 0 && (
-            <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "8px" }}>
-              · {tr(
-                `미배분 ${fmtCurrency(allocation.unallocated, currency)} (채널별 관측 최대 지출 상한 또는 한계효용 때문에 자동 집행하지 않음)`,
-                `${fmtCurrency(allocation.unallocated, currency)} unallocated (PRISM will not spend beyond a channel's observed-spend ceiling or positive marginal utility)`
-              )}
-            </p>
-          )}
-        </section>
-        );
-      })()}
-
-      {canStorePlan && <>
-          <AllocationDistribution hidden={hiddenBlocks.includes("s-bar")} locale={locale} scopeLabel={lowerScopeLabel} controls={<AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />} rows={(() => {
-            const channelsByEntity = new Map();
-            for (const row of rows) {
-              const key = getRowGroupKey(row, unitField);
-              if (!channelsByEntity.has(key)) channelsByEntity.set(key, new Set());
-              if (row.channel) channelsByEntity.get(key).add(String(row.channel).trim());
-            }
-            return visibleAllocationItems.map(item => {
-              const names = channelsByEntity.get(item.channel);
-              return { entity: item.channel, group: names?.size === 1 ? [...names][0] : item.channel, current: historyByCh[item.channel]?.totalCost ?? 0, next: item.cost };
-            });
-          })()} />
-      </>}
-
-      {/* §5 What-if 시나리오 */}
-      <section className="block" id="s-scenario" hidden={hiddenBlocks.includes("s-scenario")}>
-          <h2 className="section-title">{tr("예산을 바꾸면 결과가 어떻게 달라지나?", "How would results change at another budget?")}</h2>
-        <AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />
-          {!lowerChartEntities.size ? <p className="allocation-chart-empty">{tr("표시할 국가를 선택하세요.", "Select a country to display.")}</p> : !(plannedDailyBudget > 0) || scenarios.length === 0 ? (
-            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
-              {tr("전역 입력을 정하면 해당 계획 예산의 0.5×~2× 구간을 같은 알고리즘으로 비교합니다.", "Set a global input to compare the 0.5×–2× range around that planned budget with the same algorithm.")}
-            </p>
-          ) : (
-            <div className="alloc-card">
-              <p className="allocation-chart-scope">{tr(`${lowerScopeLabel}의 예상 결과입니다. 예산 배수는 전체 계획 기준이며, 아래 금액은 선택 국가에 실제 배분된 일예산입니다.`, `Projected results for ${lowerScopeLabel}. Multipliers apply to the full plan; daily spend below is the amount allocated to the selected countries.`)}</p>
-              <FigureHead exportTitle={locale === "en" ? "Budget scenario comparison" : "예산 시나리오 비교"} target={scenarioChartRef} fileName="budget_scenarios" locale={locale} />
-              <div className="chart-container" style={{ height: "280px" }}>
-                <canvas id="alloc-scenario-chart" ref={scenarioChartRef}></canvas>
-              </div>
-              <div className="table-wrap" style={{ marginTop: "12px" }}>
-                <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
-                  <thead>
-                    <tr>
-                      <th>{tr("시나리오", "Scenario")}</th>
-                      <th style={{ textAlign: "right" }}>{tr("선택 국가 배분액(일)", "Selected spend (daily)")}</th>
-                      <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</th>
-                      <th style={{ textAlign: "right" }}>{tr(`예상 평균 ${metricLabel}`, `Projected avg. ${metricLabel}`)}</th>
-                      <th style={{ textAlign: "right" }}>Δ{unitLabel} {tr("vs 기준안", "vs base plan")}</th>
-                      <th style={{ textAlign: "right" }}>ΔCost</th>
-                      <th style={{ textAlign: "right" }}>{tr(`증분 ${roas ? "ROAS" : metricLabel}`, `Incremental ${roas ? "ROAS" : metricLabel}`)}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const base = scenarios.find((s) => s.m === 1.0);
-                      return scenarios.map((s) => {
-                        const dResults = base ? s.totResults - base.totResults : 0;
-                        const dCost = base ? s.totCost - base.totCost : 0;
-                        const marginal = dCost !== 0 ? dResults / dCost : null;
-                        const isBase = s.m === 1.0;
-                        return (
-                          <tr key={s.m} style={{ background: isBase ? "rgba(173,198,255,0.10)" : "transparent" }}>
-                            <td className="tnum">{s.m}× {isBase && <span style={{ color: "var(--primary, #adc6ff)", fontSize: "var(--fs-xs)" }}>{tr("기준안", "base plan")}</span>}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(s.totCost, currency)}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}><strong>{formatNumberK(s.totResults, 0)}</strong> {unitLabel}{locale === "en" ? "s" : ""}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(s.avgCpr, effectiveMetric, currency)}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}>{isBase ? "—" : (dResults >= 0 ? "+" : "") + formatNumberK(dResults, 0)}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}>{isBase ? "—" : (dCost >= 0 ? "+" : "") + fmtCurrency(dCost, currency)}</td>
-                            <td className="tnum" style={{ textAlign: "right" }}>{isBase || marginal == null ? "—" : roas ? marginal.toFixed(2) + "×" : fmtCurrency(1 / marginal, currency, { metric: true })}</td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-              <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
-                {tr(
-                  <>증분 {roas ? "ROAS" : metricLabel} = 기준안 대비 <strong>{roas ? "매출 변화 ÷ 비용 변화" : `${unitLabel} 1건 변화당 비용 변화`}</strong>입니다. 관측 비용·성과 관계에 따른 예측이며 실제 증분 효과를 뜻하지 않습니다.</>,
-                  <>Incremental {roas ? "ROAS" : metricLabel} = <strong>{roas ? "revenue change ÷ spend change" : `spend change per additional ${unitLabel}`}</strong> vs. the base plan. This is a prediction from observed spend and outcomes, not a causal incremental effect.</>
-                )}
-              </p>
-            </div>
-          )}
-        </section>
-
-      {/* §6 채널 반응 곡선 (PRISM P4) — 지출→결과 곡선 + now/plan/knee/onset 마커 */}
-      <section className="block" id="s-response" hidden={hiddenBlocks.includes("s-response")}>
-        <h2 className="section-title">{tr("채널별 추가 지출 효과는?", "What does additional spend produce by channel?")}</h2>
-        <AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />
-        {!lowerChartEntities.size ? <p className="allocation-chart-empty">{tr("표시할 국가를 선택하세요.", "Select a country to display.")}</p> : !responseCurve || !responseCurve.curve || !responseCurve.curve.points.length ? (
-          <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
-            {tr("총 예산을 입력하고 채널을 선택하면 지출을 늘릴 때 결과가 어떻게 늘어나는지(현재·계획 지점 포함) 곡선으로 보여줍니다.", "Enter a total budget and pick a channel to see how results grow as you increase spend — including current and planned spend.")}
-          </p>
-        ) : (
-          <div className="alloc-card">
-            <div className="allocation-curve-select"><label htmlFor="allocation-response-entity">{tr("확인할 배분 대상", "Allocation to inspect")}</label><select id="allocation-response-entity" value={curveCh} onChange={event => setCurveChannel(event.target.value)}>{visibleAllocationItems.map(item => <option key={item.channel} value={item.channel}>{item.channel}</option>)}</select></div>
-            <FigureHead exportTitle={locale === "en" ? "Response by budget" : "예산별 응답곡선"} target={curveChartRef} fileName="budget_response_curve" locale={locale} />
-            <div className="chart-container" style={{ height: "300px" }}>
-              <canvas id="alloc-response-curve" ref={curveChartRef}></canvas>
-            </div>
-            {/* 마커 평어 해석 (§8 정직: 없는 지점은 없다고 명시) */}
-            {(() => {
-              const c = responseCurve.curve;
-              const m = c.markers;
-              const resAt = (pt) => (pt ? `${formatNumberK(pt.y, 0)} ${unitLabel}${locale === "en" ? "s" : ""}` : "—");
-              return (
-                <div style={{ fontSize: "var(--fs-xs)", marginTop: "10px", lineHeight: 1.6, color: "var(--text-1)" }}>
-                  <div>
-                    <strong>{tr("현재", "Now")}</strong> {fmtCurrency(responseCurve.now, currency)} → {resAt(m.now)}
-                    {" · "}
-                    <strong>{tr("계획", "Plan")}</strong> {fmtCurrency(responseCurve.plan, currency)} → {resAt(m.plan)}
-                  </div>
-                  <div style={{ color: "var(--text-muted)", marginTop: "2px" }}>
-                    {m.knee
-                      ? tr(`한계효율 ${Math.round(c.kneeFraction * 100)}% 지점 ≈ ${fmtCurrency(m.knee.x, currency)} — 관측 범위의 최대 한계효율 대비 감소한 지점이며 최적 예산을 뜻하지 않습니다.`, `${Math.round(c.kneeFraction * 100)}% marginal efficiency ≈ ${fmtCurrency(m.knee.x, currency)} — relative to the observed-range peak, not an optimal budget.`)
-                      : tr("관측 범위에서 한계효율이 최대치의 50% 아래로 내려간 지점은 확인되지 않습니다.", "No point below 50% of peak marginal efficiency was identified in the observed range.")}
-                  </div>
-                  <div className="allocation-response-status" data-status={c.saturation.status}>
-                    <strong>{tr(`한계비용 판단 · 평균비용의 ${c.saturation.threshold}배 기준`, `Marginal-cost assessment · ${c.saturation.threshold}× average cost`)}</strong>
-                    <span>{c.saturation.status === "above_at_start"
-                      ? tr("관측 범위 처음부터 주의 기준을 초과합니다. 기준을 넘기 시작한 지출액은 이 데이터로 식별할 수 없습니다.", "The threshold is already exceeded at the start of the observed range. These data cannot identify where the crossing began.")
-                      : m.onset
-                        ? tr(`약 ${fmtCurrency(m.onset.x, currency)}에서 한계비용이 평균비용의 ${c.saturation.threshold}배를 넘는 것으로 추정됩니다. 매출·설치가 더 이상 늘지 않는 지점이라는 뜻은 아닙니다.`, `Marginal cost is estimated to cross ${c.saturation.threshold}× average cost near ${fmtCurrency(m.onset.x, currency)}. This does not mean outcomes stop increasing.`)
-                        : c.saturation.status === "below_threshold"
-                          ? tr(`관측 범위에서 한계비용이 평균비용의 ${c.saturation.threshold}배를 넘는 구간은 확인되지 않습니다.`, `No segment above ${c.saturation.threshold}× average cost was identified in the observed range.`)
-                          : tr("한계비용 기준을 판단할 관측 범위가 부족합니다.", "Insufficient observed range to assess marginal cost.")}</span>
-                  </div>
-                  <div style={{ color: "var(--text-muted)", marginTop: "4px", fontSize: "var(--fs-xs)" }}>
-                    {tr(`관측 범위 ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · 점선 구간은 데이터 밖 추정(신뢰 낮음).`, `Observed range ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · the dashed segment is an out-of-data estimate (low confidence).`)}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </section>
-
-      {canStorePlan && <PeriodSensitivityPanel
-        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
-        locale={locale}
-        variant="allocation"
-        baselineDays={recentDays}
-        periods={splitObservationPeriods(rows)}
-        budgetLabel={fmtCurrency(plannedDailyBudget, currency)}
-        formatMoney={number => fmtCurrency(number, currency)}
-        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency })}
-      />}
-
-      {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
-      {diagnosis && (
-        <section data-information-section="" className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
-          <header data-information-heading="" className="alloc-insight-summary">
-            <span className="alloc-insight-summary__title">{tr("진단", "Diagnosis")}</span>
-            <strong>{diagnosis.summary}</strong>
-
-          </header>
-          <div className="alloc-diag-grid">
-          {diagnosis.insufficient ? (
-            <article className="alloc-diag-item muted">
-              <span>{tr("진단 대기", "Waiting for data")}</span>
-              <strong>{tr("최근 집행 데이터가 부족합니다", "Not enough recent spend data")}</strong>
-              <p>
-              {tr(
-                `최근 ${recentDays}일 데이터를 더 확보하세요.`,
-                `Add more data from the last ${recentDays} days.`
-              )}
-              </p>
-            </article>
-          ) : (
-            diagnosis.lines.map((l, i) => (
-              <article key={`${l.label}-${i}`} className={`alloc-diag-item ${l.cls}`}>
-                <span>{l.label}</span>
-                <strong>{l.title}</strong>
-                <p>{l.text}</p>
-              </article>
-            ))
-          )}
-          </div>
-        </section>
-      )}
-
-      {/* 총 합계 비교 카드 */}
-      {summary && (
-        <section data-information-section="" className="alloc-total-card alloc-fold">
-          <header data-information-heading="" className="alloc-insight-summary alloc-total-summary">
-            <span className="alloc-insight-summary__title">{tr("총 합계 비교", "Total comparison")}</span>
-            <strong>{comparisonHeadline}</strong>
-
-          </header>
-          <div className="alloc-total-meta">
-            {tr(
-              `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${planBudgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
-              `Algorithm: ${allocMode === "c" ? "absolute CPR weighting" : "marginal-utility greedy"} · Basis: ${planBudgetPeriod === "monthly" ? "monthly (÷30)" : "daily"} budget · Comparison: last ${summary.recentDays}-day CPR`
-            )}
-          </div>
-          <div className="alloc-total-grid">
-            <section className="alloc-total-block">
-              <div className="alloc-total-block-title">{tr(`현재 기준 · 최근 ${summary.recentDays}일`, `Current baseline · last ${summary.recentDays} days`)}</div>
-              <div className="alloc-total-row highlight"><span>{tr("일평균 비용", "Average daily cost")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost, currency)}</strong></div>
-              {summary.prev.installs > 0 && <div className="alloc-total-row"><span>{tr("설치", "Installs")}</span><strong className="tnum">{formatNumberK(summary.prev.installs, 0)}</strong></div>}
-              {summary.prev.actions > 0 && <div className="alloc-total-row"><span>{tr("액션", "Actions")}</span><strong className="tnum">{formatNumberK(summary.prev.actions, 0)}</strong></div>}
-              {summary.prev.revenue > 0 && <div className="alloc-total-row"><span>{tr("매출", "Revenue")}</span><strong className="tnum">{fmtCurrency(summary.prev.revenue, currency)}</strong></div>}
-              <div className="alloc-total-sep" />
-              {summary.prev.installs > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPI", "Average CPI")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.installs, currency, { metric: true })}</strong></div>}
-              {summary.prev.actions > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPA", "Average CPA")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.actions, currency, { metric: true })}</strong></div>}
-              {summary.prevROAS != null && <div className="alloc-total-row"><span>{tr("평균 ROAS", "Average ROAS")}</span><strong className="tnum">{(summary.prevROAS * 100).toFixed(1)}%</strong></div>}
-            </section>
-            <div className="alloc-total-arrow" aria-hidden="true">→</div>
-            <section className="alloc-total-block is-recommended">
-              <div className="alloc-total-block-title">{tr("추천안 · 일 단위", "Recommendation · daily")}</div>
-              <div className="alloc-total-row highlight"><span>{tr("총 배분 비용", "Total allocated cost")}</span><strong className="tnum">{fmtCurrency(summary.next.cost, currency)}{allocation.unallocated > 0 && <small> {tr("미배분", "unallocated")} {fmtCurrency(allocation.unallocated, currency)}</small>}</strong></div>
-              <div className="alloc-total-row"><span>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</span><strong className="tnum">{formatNumberK(summary.next.results, 0)}</strong></div>
-              {summary.nextRevenue > 0 && <div className="alloc-total-row"><span>{tr("예상 매출", "Projected revenue")}</span><strong className="tnum">{fmtCurrency(summary.nextRevenue, currency)}</strong></div>}
-              <div className="alloc-total-sep" />
-              <div className="alloc-total-row"><span>{tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`)}</span><strong className="tnum">{fmtCostMetric(summary.nextAvgCPR, effectiveMetric, currency)}{(() => {
-                const dPrev = displayMetricValue(summary.prevAvgCPR, effectiveMetric);
-                const dNext = displayMetricValue(summary.nextAvgCPR, effectiveMetric);
-                if (dPrev == null || dNext == null || dPrev === 0) return null;
-                const d = dNext - dPrev;
-                const good = roas ? d > 0 : d < 0;
-                const ar = d > 0 ? "▲" : d < 0 ? "▼" : "—";
-                const pct = Math.abs(d / dPrev) * 100;
-                return <span className={`alloc-total-delta ${good ? "is-good" : "is-bad"}`}>{ar} {pct.toFixed(1)}%</span>;
-              })()}</strong></div>
-              {summary.nextROAS != null && <div className="alloc-total-row"><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
-            </section>
-          </div>
-        </section>
-      )}
-
-      {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
-      {verify && plannedDailyBudget > 0 && items.length >= 2 && (
-        <section data-information-section="" className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
-          <header data-information-heading="" className="alloc-insight-summary">
-            <span className="alloc-insight-summary__title">{tr("배분 점검", "Allocation check")}</span>
-            <strong>{verify.head}</strong>
-
-          </header>
-          <div className="alloc-verify-detail">
-            <span>{verify.body}</span>
-            {verify.note && <small>{verify.note}</small>}
-          </div>
-        </section>
-      )}
-
-      {/* §7 알고리즘 노트 (index.html s-algo 이식) */}
-      <section className="block allocation-method-entry" id="s-algo">
-        <div><h2 className="section-title">{tr("계산 기준", "Calculation details")}</h2><p>{tr("배분 방식의 수식과 적용 조건을 확인하세요.", "Review the allocation formulas and conditions.")}</p></div>
-        <button type="button" className="btn secondary" ref={methodTrigger} onClick={() => setMethodOpen(true)}>{tr("계산 방법 보기", "View calculation method")}</button>
-      </section>
+      </ModalDialog>
       <ModalDialog open={methodOpen} onClose={() => setMethodOpen(false)} returnFocusRef={methodTrigger} ariaLabel={tr("계산 기준", "Calculation details")} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel">
         <header className="tool-reference-panel__head"><h2>{tr("계산 기준", "Calculation details")}</h2><button type="button" className="btn ghost" onClick={() => setMethodOpen(false)}>{tr("닫기", "Close")}</button></header>
         <p>{tr(

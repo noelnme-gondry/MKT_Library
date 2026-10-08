@@ -1,5 +1,5 @@
 import { TOOL_OPTIONAL_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
-import { LEGACY_FIELD_MIGRATIONS } from "../schema/legacyFieldMigration";
+import { LEGACY_FIELD_MIGRATIONS, canonicalKeysForToolLegacyField } from "../schema/legacyFieldMigration";
 
 function keysFromContract(toolId) {
   const keys = new Set();
@@ -11,9 +11,9 @@ function keysFromContract(toolId) {
   return keys;
 }
 
-function legacyKeysForCanonical(canonicalKey, allowedKeys) {
+function legacyKeysForCanonical(canonicalKey, allowedKeys, toolId) {
   return Object.entries(LEGACY_FIELD_MIGRATIONS)
-    .filter(([, migration]) => migration.canonicalKey === canonicalKey)
+    .filter(([legacyKey]) => canonicalKeysForToolLegacyField(toolId, legacyKey).includes(canonicalKey))
     .map(([legacyKey]) => legacyKey)
     .filter((legacyKey) => allowedKeys.has(legacyKey));
 }
@@ -32,7 +32,7 @@ export function projectSemanticBindingsToLegacyMapping({ toolId, legacyMapping =
       projected[sourceColumn] = "__ignore__";
       continue;
     }
-    const candidates = legacyKeysForCanonical(binding.canonicalKey, allowedKeys);
+    const candidates = legacyKeysForCanonical(binding.canonicalKey, allowedKeys, toolId);
     // V2에서 사용자가 고른 역할을 V1 엔진이 소비하지 못하면, 이전 V1 선택을
     // 그대로 두어 다른 의미의 열로 계산하지 않는다. 이 경우 V2 eligibility가
     // 분석을 막고 역할을 다시 확인하게 한다.

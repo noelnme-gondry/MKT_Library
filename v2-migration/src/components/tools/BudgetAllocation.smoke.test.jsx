@@ -6,7 +6,7 @@
 // asserts the component MOUNTS without throwing in both the no-data and
 // with-data states. Copy this pattern verbatim for the other tool components.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, fireEvent, screen } from "@testing-library/react";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
@@ -90,16 +90,72 @@ describe("BudgetAllocation render smoke", () => {
     expect(document.body.textContent.length).toBeGreaterThan(0);
   });
 
+  it("connects planner settings, weekly normalization and grouping to the real result path", () => {
+    seedWithData();
+    const original = useAppStore.getState().csvData;
+    const raw = original.raw.map((row, index) => {
+      const weekStart = new Date(Date.UTC(2025, 10, 3 + Math.floor(index / 2) * 7)).toISOString().slice(0, 10);
+      const rest = { ...row };
+      delete rest.Date;
+      return { ...rest, week_start: weekStart, snapshot_date: "2026-02-01" };
+    });
+    const mapping = { ...original.mapping };
+    delete mapping.Date;
+    act(() => {
+      useAppStore.getState().setCurrentRouteId("5-3");
+      useAppStore.getState().setCsvData({ raw, headers: Object.keys(raw[0]), mapping: { ...mapping, week_start: "date", snapshot_date: "snapshot_date" }, fileName: "weekly.csv" });
+      useAppStore.getState().setGroupAnalyzed("5-3");
+    });
+    expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
+    render(<BudgetAllocation />);
+    fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
+    fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "weekly" } });
+    fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "2026-02-01" } });
+    fireEvent.change(screen.getByLabelText("분배 단위", { selector: "select" }), { target: { value: "channel" } });
+    expect(screen.getByLabelText("자료 단위").value).toBe("weekly");
+    expect(screen.getByLabelText("분배 단위", { selector: "select" }).value).toBe("channel");
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    expect(document.querySelector(".allocation-observation-note").textContent).toContain("주간 합계를 7일로");
+    fireEvent.click(screen.getByRole("tab", { name: "예산 비교", exact: true }));
+    expect(screen.getAllByRole("table", { name: "예산 실행안 비교" })).toHaveLength(1);
+    expect(document.querySelector(".result-action-card")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
+    fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "auto" } });
+    fireEvent.change(screen.getByLabelText("분배 단위", { selector: "select" }), { target: { value: "os" } });
+    fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+  });
+
   it("places the conclusion before the scatter plot (결과-먼저 착지)", () => {
     seedWithData();
     render(<BudgetAllocation />);
-    // PRISM 뷰 P2: 위저드 네비 없이 렌더 즉시 결과(step 3). 스코어카드→결론카드→산점도 순.
+    // 결론 뒤의 곡선 탭에서 관측 근거를 확인한다.
 
     const resultCard = document.querySelector(".result-action-card");
     const scatter = document.getElementById("s-scatter");
     expect(resultCard).toBeTruthy();
     expect(scatter).toBeTruthy();
     expect(resultCard.compareDocumentPosition(scatter) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+
+  it("switches result views without refitting or changing the allocation", () => {
+    seedWithData();
+    const fit = vi.spyOn(ALLOC_MATH, "fitBest");
+    const { container } = render(<BudgetAllocation />);
+    const figure = container.querySelector(".result-shift");
+    const original = figure.textContent;
+    const count = fit.mock.calls.length;
+    expect(count).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("radio", { name: "전체 배분표", exact: true }));
+    expect(document.getElementById("s-table").closest("[hidden]")).toBeNull();
+    expect(figure.closest("[hidden]")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
+    expect(container.querySelector(".alloc-verify-strip").closest('[role="tabpanel"]').hidden).toBe(false);
+    expect(container.querySelector(".alloc-total-card")).toBeNull();
+    expect(container.querySelector(".prism-result-grid")).toBeNull();
+    expect(figure.textContent).toBe(original);
+    expect(fit).toHaveBeenCalledTimes(count);
+    fit.mockRestore();
   });
 
   it("greedy mode says when it shows the plan that starts from the current split", () => {

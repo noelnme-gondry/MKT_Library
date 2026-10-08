@@ -1468,6 +1468,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "ret_d7", unlocks: "리텐션 D7 코호트" },
               ],
               "5-3": [
+                { key: "snapshot_date", unlocks: "추출 기준일로 완료 주·D7 성숙도 확인" },
                 {
                   key: "country",
                   unlocks: "분석 단위 선택 (국가/채널/캠페인) + 국가 필터",
