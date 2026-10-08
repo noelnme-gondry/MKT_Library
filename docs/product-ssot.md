@@ -560,6 +560,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - **문단 하나는 역할 하나다.** 결론·행동·주의·자격 조건을 긴 문장에 섞지 않는다. 의미가 바뀌면 별도 문단으로 나눈다. 시각 맞춤용 `<br>`나 문장 자동 분할로 해결하지 않는다. 제목은 균형 있게, 본문은 단어 단위로 줄바꿈하며 날짜·금액은 하나의 값으로 보존한다.
 - **먼저 읽을 수 있게 한다.** 보관·공유·내보내기는 근거와 다음 행동 뒤에 둔다. 실제 실패·설계 한계·가격 조건은 접어서 감추지 않는다. 부가 설명만 상세로 내린다.
 - **결과 이미지는 독립된 문서다.** 제목과 확인 가능한 분석 기간·대상·단위·판정 주의사항을 함께 담는다. 미확인 기간을 오늘 날짜로 대신하지 않는다. 화면 조작 요소는 제외하고 숫자·판정·표시 범위는 화면과 동일하게 유지한다.
+- **CSV 관측 기간의 직접 선택**: 분석·비교 기간 필터는 현재 파일의 유효 분석 날짜에서 최소·최대 경계를 구하고 달력과 적용 단계에서 함께 검사한다. 범위 밖 입력은 기존 조건·결과를 바꾸지 않고 허용 범위를 알린다. 다른 필터를 좁혀도 파일 경계는 줄어들지 않는다. 멀티터치는 최초 클릭 귀속 설치와 선택한 보고서 시간대 기준이며, 원본 교체·시간대 변경 시 경계를 다시 구한다. 예측·계획·검토일과 생존 분석의 관측 종료 선언은 CSV 행을 거르는 기간 필터와 구분한다. / Direct analysis and comparison date filters use the current file's valid observation boundaries. Both calendar and apply handlers validate them; out-of-range drafts leave applied conditions and results unchanged. Other filters do not shrink file-wide bounds. Multi-touch uses earliest click-attributed installs in the selected report time zone and rebuilds bounds for a new source or time zone. Forecast, planning and review dates, and declared survival censoring dates have separate semantics.
 - **시각 언어는 기존 토큰을 유지한다.** 밝은 바탕(`#f4f5f7`)·짙은 글자(`#111827`)·행동 파랑(`#2b6cb0`), 어두운 바탕(`#121212`)·밝은 글자(`#f8fafc`)·행동 파랑(`#adc6ff`). 상태색은 기존 의미 토큰만 사용한다. 본문·제목·수치는 공용 sans와 400/600/700 위계, 숫자 비교에는 tabular-nums를 쓴다. 새 팔레트·장식 모션으로 개성을 대신하지 않는다.
 
 공용 CSS는 읽기·줄바꿈·정렬을, 공용 결과/내보내기 컴포넌트는 판정과 문맥을 책임진다. 화면별 테스트는 실제 과업과 결과의 일치를 검증한다. 특정 CSS 문자열이나 장식 개수를 통과했다고 사용성이 입증된 것으로 간주하지 않는다.

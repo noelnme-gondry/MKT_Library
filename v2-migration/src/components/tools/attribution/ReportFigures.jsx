@@ -1,10 +1,20 @@
 "use client";
-import React, { useId, useMemo, useRef } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import { multitouchFlow } from "@/utils/multitouchMath";
 import { fmtNum, fmtCompact } from "@/utils/format";
 export function TouchFlowFigure({ paths, locale, context = null }) {
   const tr = (ko, en) => locale === "en" ? en : ko, ref = useRef(null);
+  const svgRef = useRef(null), [width, setWidth] = useState(1000);
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined" || !svgRef.current) return undefined;
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width || 1000));
+    observer.observe(svgRef.current);
+    return () => observer.disconnect();
+  }, []);
+  // Keep labels readable at the user's actual content width. Flow thickness
+  // still uses one common scale; only label space changes with the viewport.
+  const labelScale = Math.max(1, 1000 / Math.max(320, width));
   const graph = useMemo(() => {
     const flow = multitouchFlow(paths), total = paths.reduce((n, p) => n + p.installs, 0);
     const categoryVolume = new Map();
@@ -14,17 +24,18 @@ export function TouchFlowFigure({ paths, locale, context = null }) {
     const colors = new Map(categories.map((name, n) => [name, palette[n] || `hsl(${(n * 137.5) % 360} 55% 48%)`]));
     const lanes = [0, 1, 2, 3].map(lane => flow.nodes.filter(n => n.lane === lane));
     const maxNodes = Math.max(...lanes.map(lane => lane.length));
-    const height = Math.max(480, maxNodes * 36 + 360);
+    const gap = 40 * labelScale;
+    const height = Math.max(440, maxNodes * gap + 320);
     // Reserve label rows independently of flow thickness. Tiny nodes retain
     // their true proportional height rather than inflating their volume.
-    const scale = (height - 80 - maxNodes * 36) / Math.max(1, total);
+    const scale = (height - 80 - maxNodes * gap) / Math.max(1, total);
     const nodes = new Map();
     lanes.forEach((lane, index) => {
       let y = 50;
       lane.forEach(node => {
         const thickness = node.volume * scale;
-        nodes.set(node.id, { ...node, x: 15 + index * 270, y: y + 24, labelY: y + 16, height: thickness, sourceOffset: 0, targetOffset: 0 });
-        y += thickness + 36;
+        nodes.set(node.id, { ...node, x: 15 + index * 270, y: y + 28 * labelScale, labelY: y + 16 * labelScale, height: thickness, sourceOffset: 0, targetOffset: 0 });
+        y += thickness + gap;
       });
     });
     const links = flow.links.map(link => {
@@ -32,20 +43,22 @@ export function TouchFlowFigure({ paths, locale, context = null }) {
       const sy = a.y + a.sourceOffset + width / 2, ty = b.y + b.targetOffset + width / 2;
       a.sourceOffset += width; b.targetOffset += width;
       const origin = a.isMissing ? a.history[0] : a.label;
-      return { ...link, width, color: colors.get(origin) || "var(--chart-primary)", path: `M ${a.x + 110} ${sy} C ${a.x + 190} ${sy}, ${b.x - 80} ${ty}, ${b.x} ${ty}` };
+      return { ...link, width, color: colors.get(origin) || "var(--chart-primary)", path: `M ${a.x + 18} ${sy} C ${a.x + 160} ${sy}, ${b.x - 140} ${ty}, ${b.x} ${ty}` };
     });
     return { nodes: [...nodes.values()].map(node => ({ ...node, color: colors.get(node.label) })), links, height };
-  }, [paths]);
+  }, [paths, labelScale]);
   const titles = [tr("첫 기여 접촉", "First contributor"), tr("둘째", "Second"), tr("셋째", "Third"), tr("설치 귀속 매체", "Install source")];
   return <div>
     <FigureHead exportTitle={tr("기여 접촉 시각순 → 설치 귀속 매체", "Contributors by time → install source")} context={context} target={ref} fileName="multitouch_flow" locale={locale} />
     <div className="report-figure-scroll" tabIndex={0} role="region" aria-label={tr("접촉 경로 그림", "Touch flow figure")} ref={ref}>
-      <svg className="report-flow" viewBox={`0 0 1000 ${graph.height}`} role="img" aria-label={tr("유효 시각의 클릭 contributor 경로", "Recorded click-contributor paths with valid timestamps")}>
-        {titles.map((title, n) => <text key={title} x={15 + n * 270} y="22" className="report-svg-label">{title}</text>)}
-        {graph.links.map((link, n) => <path key={n} d={link.path} stroke={link.color} strokeOpacity="0.35" strokeWidth={link.width} fill="none"><title>{fmtNum(link.value)}{tr("설치", " installs")}</title></path>)}
+      <svg ref={svgRef} className="report-flow" viewBox={`0 0 1000 ${graph.height}`} role="img" aria-label={tr("유효 시각의 클릭 contributor 경로", "Recorded click-contributor paths with valid timestamps")}>
+        {titles.map((title, n) => <text key={title} x={15 + n * 270} y={22 * labelScale} className="report-svg-label" style={{ fontSize: 12 * labelScale }}>{title}</text>)}
+        {graph.links.map((link, n) => <path key={n} d={link.path} stroke={link.color} strokeOpacity="0.22" strokeWidth={link.width} fill="none"><title>{fmtNum(link.value)}{tr("설치", " installs")}</title></path>)}
         {graph.nodes.map(node => <g key={node.id}>
-          <rect x={node.x} y={node.y} width="110" height={node.height} fill={node.isMissing ? "var(--surface-container-lowest)" : node.color} fillOpacity={node.isMissing ? 1 : 0.14} stroke="var(--text-muted)" strokeDasharray={node.isMissing ? "4 3" : undefined} />
-          <text x={node.x + 4} y={node.labelY} className="report-svg-node">{node.isMissing ? tr("없음", "None") : node.label.slice(0, 16)}</text>
+          <rect x={node.x} y={node.y} width="18" height={node.height} fill={node.isMissing ? "var(--bg-3)" : node.color} fillOpacity={node.isMissing ? 1 : 0.8} />
+          <text x={node.x} y={node.labelY} className="report-svg-node" style={{ fontSize: 14 * labelScale }}>{node.isMissing ? tr("없음", "None") : node.label.length > Math.floor(16 / labelScale) ? `${node.label.slice(0, Math.floor(16 / labelScale))}…` : node.label}</text>
+          <text x={node.x + 165} y={node.labelY} textAnchor="end" className="report-svg-count" style={{ fontSize: 12 * labelScale }}>{fmtNum(node.volume)}</text>
+          {node.isMissing && <text x={node.x + 24} y={node.y + 12 * labelScale} className="report-svg-history" style={{ fontSize: 10 * labelScale }}>{tr("이후: ", "After: ")}{node.history.filter(name => name !== "None").at(-1)?.slice(0, 10)}</text>}
           <title>{node.isMissing ? `${node.history.join(" → ")} → ${tr("없음", "None")}` : node.label} · {fmtNum(node.volume)}</title>
         </g>)}
       </svg>

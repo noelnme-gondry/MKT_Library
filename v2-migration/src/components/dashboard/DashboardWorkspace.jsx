@@ -7,7 +7,7 @@ import { isDemoData } from '@/lib/dataOrigin';
 import { captureBoardReport } from '@/lib/dashboard/boardReport';
 import { computeAnalyzeSig } from '@/store/useDataStore';
 import { useAppStore } from '@/store/useDataStore';
-import { comparisonWarnings } from '@/lib/analysisPeriod';
+import { comparisonWarnings, dateBounds } from '@/lib/analysisPeriod';
 import { hasPaidAccess } from '@/lib/subscription/entitlement';
 import { getMappedRows } from '@/utils/dashboardAggregator';
 import { buildChartFieldOptions } from '@/utils/customChartConfig';
@@ -53,6 +53,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
     const rows = getMappedRows(csv);
     return Object.fromEntries(Object.entries(SCOPE_FIELDS).map(([key, field]) => [key, [...new Set(rows.map(r => String(r[field] ?? '').trim()).filter(Boolean))].sort()]));
   }, [csv]);
+  const observationBounds = useMemo(() => dateBounds(getMappedRows(csv).map(row => row.date)), [csv]);
   const change = fn => {
     if (!hasPaidAccess(useAppStore.getState().entitlement) || !draft) return;
     setHistory(prev => [...prev.slice(-19), draft]);
@@ -86,8 +87,8 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
     setSelected(id); setPanel('data');
   };
   const save = () => {
-    const invalid = Object.values(draft.tabs || {}).some(value => Object.values(value.blocks || {}).some(block => scopeError(block.scope)));
-    if (invalid) { setMessage(t('개별 분석·비교 기간의 시작일과 종료일을 확인하세요.', 'Check the start and end dates of each independent period.')); return; }
+    const invalid = Object.values(draft.tabs || {}).some(value => Object.values(value.blocks || {}).some(block => scopeError(block.scope, observationBounds)));
+    if (invalid) { setMessage(t(`개별 분석·비교 기간을 CSV 기간 안에서 지정하세요: ${observationBounds.minDate || '…'} ~ ${observationBounds.maxDate || '…'}.`, `Choose independent periods within the CSV dates: ${observationBounds.minDate || '…'} – ${observationBounds.maxDate || '…'}.`)); return; }
     if (commit({ ...draft, tabs: { ...draft.tabs, [tab]: { ...draft.tabs?.[tab], controls } } })) { setLiveControls(controls); setDraft(null); setSelected(null); setMessage(t('보드 설정을 이 기기에 저장했습니다.', 'Board settings saved on this device.')); }
     else setMessage(t('편집 저장에는 유효한 Pro가 필요합니다.', 'An active Pro plan is required to save edits.'));
   };
@@ -110,7 +111,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
   const supportsComparison = Boolean(custom || ['workbench', 's-score', 's-score-daily'].includes(selected));
   const title = custom?.name || available.find(b => b.id === selected)?.title || '';
   const value = { editing, config, locale, content: children, selected, select: id => { setSelected(id); setPanel('layout'); }, patchTab, patchBlock, setAvailable, controls, legacy: workspace.legacy, mutateLegacy,
-    setControl };
+    setControl, observationBounds };
   const selectField = (label, val, items, onChange) => <label className="dashboard-editor-field"><span>{label}</span><select value={val} onChange={e => onChange(e.target.value)}>{items.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>;
   if (!enabled) return children;
   return <DashboardWorkspaceContext.Provider value={value}>
@@ -153,7 +154,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
               <p className="muted">{t('대상 조건은 공통 필터 안에서 추가로 좁힙니다. 국가를 나란히 비교하려면 공통 국가를 전체로 두세요.', 'Block conditions narrow the shared filters. Set the shared country to All to compare countries side by side.')}</p>
               {Object.keys(SCOPE_FIELDS).map((key, index) => options[key].length > 0 && <fieldset key={key}><legend>{[t('국가', 'Country'), t('채널', 'Channel'), t('OS', 'Platform'), t('소스', 'Source')][index]}</legend><button className="ab-pill" aria-pressed={!active.scope?.[key]?.length} onClick={() => patchScope({ [key]: [] })}>{t('공통 대상', 'Shared scope')}</button><div className="dashboard-editor-options">{options[key].map(option => <label key={option}><input type="checkbox" checked={(active.scope?.[key] || []).includes(option)} onChange={e => patchScope({ [key]: e.target.checked ? [...(active.scope?.[key] || []), option] : active.scope[key].filter(v => v !== option) })} />{option}</label>)}</div></fieldset>)}
               {selectField(t('분석 기간', 'Analysis dates'), active.scope?.period || 'shared', [['shared', t('공통 기간 사용', 'Follow shared dates')], ['custom', t('이 구역의 기간 지정', 'Independent dates')]], period => patchScope({ period }))}
-              {active.scope?.period === 'custom' && <><div className="dashboard-editor-dates">{[['dateStart', t('분석 시작일', 'Analysis start')], ['dateEnd', t('분석 종료일', 'Analysis end')]].map(([key, label]) => <label key={key}>{label}<input type="date" value={active.scope?.[key] || ''} onChange={e => patchScope({ [key]: e.target.value })} /></label>)}</div>{supportsComparison && <label><input type="checkbox" disabled={requiresComparison} checked={!!active.scope.compareEnabled} onChange={e => patchScope({ compareEnabled: e.target.checked })} />{t('비교 기간 지정', 'Use comparison dates')}</label>}{active.scope.compareEnabled && <div className="dashboard-editor-dates">{[['comparisonStart', t('비교 시작일', 'Comparison start')], ['comparisonEnd', t('비교 종료일', 'Comparison end')]].map(([key, label]) => <label key={key}>{label}<input type="date" value={active.scope?.[key] || ''} onChange={e => patchScope({ [key]: e.target.value })} /></label>)}</div>}{active.scope.compareEnabled && comparisonWarnings({ start: active.scope.dateStart, end: active.scope.dateEnd }, { start: active.scope.comparisonStart, end: active.scope.comparisonEnd }, locale).map(warning => <p className="muted" key={warning}>{warning}</p>)}{scopeError(active.scope) && <p role="status">{t('시작일·종료일을 순서대로 지정하세요.', 'Choose a valid start and end date.')}</p>}</>}
+              {active.scope?.period === 'custom' && <><div className="dashboard-editor-dates">{[['dateStart', t('분석 시작일', 'Analysis start')], ['dateEnd', t('분석 종료일', 'Analysis end')]].map(([key, label]) => <label key={key}>{label}<input type="date" min={observationBounds.minDate} max={observationBounds.maxDate} value={active.scope?.[key] || ''} onChange={e => patchScope({ [key]: e.target.value })} /></label>)}</div>{supportsComparison && <label><input type="checkbox" disabled={requiresComparison} checked={!!active.scope.compareEnabled} onChange={e => patchScope({ compareEnabled: e.target.checked })} />{t('비교 기간 지정', 'Use comparison dates')}</label>}{active.scope.compareEnabled && <div className="dashboard-editor-dates">{[['comparisonStart', t('비교 시작일', 'Comparison start')], ['comparisonEnd', t('비교 종료일', 'Comparison end')]].map(([key, label]) => <label key={key}>{label}<input type="date" min={observationBounds.minDate} max={observationBounds.maxDate} value={active.scope?.[key] || ''} onChange={e => patchScope({ [key]: e.target.value })} /></label>)}</div>}{active.scope.compareEnabled && comparisonWarnings({ start: active.scope.dateStart, end: active.scope.dateEnd }, { start: active.scope.comparisonStart, end: active.scope.comparisonEnd }, locale).map(warning => <p className="muted" key={warning}>{warning}</p>)}{scopeError(active.scope, observationBounds) && <p role="status">{t(`CSV 기간 안에서 시작일·종료일을 순서대로 지정하세요: ${observationBounds.minDate || '…'} ~ ${observationBounds.maxDate || '…'}.`, `Choose ordered dates within the CSV period: ${observationBounds.minDate || '…'} – ${observationBounds.maxDate || '…'}.`)}</p>}</>}
               {!custom && <p className="muted">{t('이 구역의 원래 분석식과 지표 정의는 유지합니다. 비교 기능이 있는 구역에서만 비교 날짜가 사용됩니다.', 'The original calculation and metric definitions are preserved. Comparison dates apply only to blocks that support comparison.')}</p>}
               <button className="ab-pill" onClick={() => patchActive({ scope: {} })}>{t('공통 조건으로 복귀', 'Reset to shared scope')}</button>
             </>}

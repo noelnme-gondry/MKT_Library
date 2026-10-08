@@ -1,12 +1,12 @@
-import { periodProblem } from '@/lib/analysisPeriod';
-import { getMonFilteredRows } from '@/utils/dashboardAggregator';
+import { periodProblem, dateBounds } from '@/lib/analysisPeriod';
+import { getMonFilteredRows, getMappedRows } from '@/utils/dashboardAggregator';
 
 export const WORKSPACE_SCOPE = 'dashboard-workspace';
 export const SCOPE_FIELDS = { countries: 'country', channels: 'channel', platforms: 'platform', sources: 'source' };
 export const EMPTY_WORKSPACE = { tabs: {}, boards: [] };
 
 // Empty intersections must remain empty; an empty Set otherwise means “all”.
-export function resolveBlockFilter(common = {}, scope = {}) {
+export function resolveBlockFilter(common = {}, scope = {}, bounds = {}) {
   const filter = { ...common };
   let conflict = false;
   for (const key of Object.keys(SCOPE_FIELDS)) {
@@ -23,15 +23,15 @@ export function resolveBlockFilter(common = {}, scope = {}) {
     filter.comparisonStart = scope.comparisonStart;
     filter.comparisonEnd = scope.comparisonEnd;
   }
-  return { filter, conflict, error: scopeError(scope) };
+  return { filter, conflict, error: scopeError(scope, bounds) };
 }
-export function scopeError(scope = {}) {
+export function scopeError(scope = {}, bounds = {}) {
   if (scope.period !== 'custom') return null;
-  const valid = (start, end) => !periodProblem({ start, end });
-  return !valid(scope.dateStart, scope.dateEnd) || (scope.compareEnabled && !valid(scope.comparisonStart, scope.comparisonEnd)) ? 'invalid_period' : null;
+  const problem = periodProblem({ start: scope.dateStart, end: scope.dateEnd }, bounds) || (scope.compareEnabled && periodProblem({ start: scope.comparisonStart, end: scope.comparisonEnd }, bounds));
+  return problem ? (problem === 'bounds' ? 'outside_data_period' : 'invalid_period') : null;
 }
 export function blockRows(csv, common, scope) {
-  const result = resolveBlockFilter(common, scope);
+  const result = resolveBlockFilter(common, scope, dateBounds(getMappedRows(csv).map(row => row.date)));
   return result.conflict || result.error ? [] : getMonFilteredRows(csv, result.filter);
 }
 export function scopeLabel(filter, scope = {}, locale = 'ko') {

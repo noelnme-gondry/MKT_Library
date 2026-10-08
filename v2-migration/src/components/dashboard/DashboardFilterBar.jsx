@@ -222,7 +222,7 @@ export default function DashboardFilterBar({ locale = "ko", commandSlot = null, 
       {commandSlot && <div className="dashboard-filter-bar__command">{commandSlot}</div>}
       <div className="recipe-scope-controls">
         {!hideDate && dates.length > 0 && <ResultPeriodPicker label={dateLabel || (locale === "en" ? "Analysis period" : "분석 기간")} locale={locale}
-          range={{ start: dashboardFilter.dateStart || minDate, end: dashboardFilter.dateEnd || maxDate }}
+          minDate={minDate} maxDate={maxDate} range={{ start: dashboardFilter.dateStart || minDate, end: dashboardFilter.dateEnd || maxDate }}
           onApply={({ start, end }) => setDashboardFilter({ dateStart: start, dateEnd: end })} />}
         <Popover.Root>
           <Popover.Trigger asChild>

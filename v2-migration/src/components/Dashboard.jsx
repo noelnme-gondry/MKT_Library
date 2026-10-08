@@ -6,7 +6,8 @@ import { useDashboardRecipe } from "@/lib/recipe/useDashboardRecipe";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
 import DashboardComparisonPeriod from "@/components/dashboard/DashboardComparisonPeriod";
 import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
-import { getMonFilteredRows } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, getMappedRows } from "@/utils/dashboardAggregator";
+import { dateBounds } from "@/lib/analysisPeriod";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { figureExportSettings, exportLimitations } from "@/lib/analysis-export/exportOptions";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
@@ -106,6 +107,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
 
   const periods = useMemo(() => dashboardPeriods(showResults ? csvData : null, dashboardFilter, dashWindowDays), [showResults, csvData, dashboardFilter, dashWindowDays]);
   const chartDates = useMemo(() => getMonFilteredRows(showResults ? csvData : null, dashboardFilter).map(row => row.date).filter(Boolean).sort(), [showResults, csvData, dashboardFilter]);
+  const observationBounds = useMemo(() => dateBounds(getMappedRows(showResults ? csvData : null).map(row => row.date)), [showResults, csvData]);
   const changeWindow = days => {
     setDashWindowDays(days);
     setDashboardFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null });
@@ -313,7 +315,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
-            {!["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
+            {!["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
             {workerPending && (
               <div className="callout" role="status" aria-live="polite" style={{ marginBottom: "1rem" }}>
                 <div className="ico">◌</div>

@@ -52,13 +52,16 @@ export default function ReportCsvInput({ toolId, fields, locale = "ko", validate
     } catch (problem) { fail(csvImportErrorMessage(problem.code, locale)); }
   };
   const mappingKeys = Object.values(csv?.mapping || {});
-  return <section className="block report-input" aria-label={tr("데이터 준비", "Data preparation")}>
-    <CsvGuide toolId={toolId} locale={locale} onTryExample={runExample} />
+  return <section className={`report-input${hasRows ? " report-input--loaded" : " block"}`} aria-label={tr("데이터 준비", "Data preparation")}>
+    <div className="report-input__head">
+      {hasRows && <span className="report-input__file">{csv.fileName}<small>{fmtNum(csv.raw.length)}{tr("개 원본 행", " source rows")}</small></span>}
+      <CsvGuide toolId={toolId} locale={locale} onTryExample={runExample} compact={hasRows} />
+    </div>
     <div className="report-input__actions">
       <label className="btn ghost" htmlFor={inputId}>{busy ? tr("CSV 읽는 중…", "Reading CSV…") : hasRows ? tr("다른 CSV 선택", "Choose another CSV") : tr("CSV 선택", "Choose CSV")}</label>
       <input id={inputId} className="sr-only" type="file" accept=".csv,text/csv" disabled={!ready} onChange={e => { read(e.target.files?.[0]); e.target.value = ""; }} />
-      {hasRows && <><span>{csv.fileName} · {fmtNum(csv.raw.length)}{tr("행", " rows")}</span><button ref={returnFocus} className="btn ghost" type="button" onClick={() => setEditing(true)}>{tr("컬럼 확인·수정", "Review columns")}</button></>}
-      {hasRows && <button className="btn primary" type="button" disabled={!valid || busy} onClick={() => { trackProductEvent("analysis_started", { tool_id: toolId, source: "csv", locale }); useAppStore.getState().setGroupAnalyzed(toolId); onAnalyze?.(); }}>{analyzed ? tr("다시 분석", "Analyze again") : tr("데이터 분석하기", "Analyze data")}</button>}
+      {hasRows && <button ref={returnFocus} className="btn ghost" type="button" onClick={() => setEditing(true)}>{tr("컬럼 확인·수정", "Review columns")}</button>}
+      {hasRows && <button className={`btn ${analyzed ? "ghost" : "primary"}`} type="button" disabled={!valid || busy} onClick={() => { trackProductEvent("analysis_started", { tool_id: toolId, source: "csv", locale }); useAppStore.getState().setGroupAnalyzed(toolId); onAnalyze?.(); }}>{analyzed ? tr("다시 분석", "Analyze again") : tr("데이터 분석하기", "Analyze data")}</button>}
     </div>
     {error && <p role="alert">{error}</p>}
     {hasRows && !valid && <p role="status">{tr("필수 컬럼을 확인하세요: ", "Check required columns: ")}{missing.map(key => fields[key][locale === "en" ? "labelEn" : "label"]).join(" · ")}{!validate(csv) && tr(" · 날짜 또는 ISO 연도+주차", " · date or ISO year + week")}</p>}

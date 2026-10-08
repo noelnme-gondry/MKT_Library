@@ -3,6 +3,15 @@ import { resolveBlockFilter, blockRows, orderBlocks, moveBlock, groupDates, scop
 import { useAppStore } from '@/store/useDataStore';
 const paid = { plan: 'paid', expiresAt: Date.now() + 60000, offlineUntil: Date.now() + 60000 };
 describe('dashboard block scope', () => {
+  it('blocks independent and comparison dates outside the current CSV, including restored settings', () => {
+    const bounds = { minDate:'2024-01-01', maxDate:'2024-01-31' };
+    const scope = { period:'custom', dateStart:'2024-01-01', dateEnd:'2024-01-31' };
+    expect(scopeError(scope, bounds)).toBeNull();
+    expect(scopeError({ ...scope, dateEnd:'2024-02-01' }, bounds)).toBe('outside_data_period');
+    expect(resolveBlockFilter({}, { ...scope, compareEnabled:true, comparisonStart:'2023-12-01', comparisonEnd:'2023-12-31' }, bounds).error).toBe('outside_data_period');
+    const csv = { raw:[{date:'2024-01-01',cost:'10'}, {date:'2024-01-31',cost:'20'}], mapping:{date:'date',cost:'cost'} };
+    expect(blockRows(csv, {}, { ...scope, dateEnd:'2024-02-01' })).toEqual([]);
+  });
   it('intersects dimensions without turning disjoint selections into all rows', () => {
     const { filter, conflict } = resolveBlockFilter({ countries: new Set([' KR ']), channels: new Set(['Meta']) }, { countries: ['US'] });
     expect(conflict).toBe(true); expect([...filter.channels]).toEqual(['Meta']);

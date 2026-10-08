@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Popover } from "radix-ui";
+import { dateOrdinal, periodProblem } from "@/lib/analysisPeriod";
 
 const DAY_MS = 86_400_000;
 
@@ -51,9 +52,8 @@ const COPY = {
 };
 
 function parseIso(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const ordinal = dateOrdinal(value);
+  return ordinal == null ? null : new Date(ordinal * DAY_MS);
 }
 
 function isoDate(date) {
@@ -207,6 +207,7 @@ export default function DateRangePicker({
   const anchorDate = clampDate(today, minDate, maxDate);
   const initialRange = { start: dateStart || minDate, end: dateEnd || maxDate };
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
   const [draft, setDraft] = useState({
     ...initialRange,
     preset: dateStart || dateEnd ? "custom" : "all",
@@ -239,6 +240,7 @@ export default function DateRangePicker({
 
   const handleOpenChange = (nextOpen) => {
     if (nextOpen) syncDraft();
+    setError("");
     setOpen(nextOpen);
   };
 
@@ -356,8 +358,17 @@ export default function DateRangePicker({
             </div>
           </div>
           <footer className="date-range-footer">
+            {error && <p role="alert">{error}</p>}
             <button type="button" className="btn ghost" onClick={() => setOpen(false)}>{T.cancel}</button>
             <button type="button" className="btn primary" onClick={() => {
+              const bounds = { minDate, maxDate };
+              const problem = periodProblem({ start: draft.start, end: draft.end }, bounds) || (draft.compareEnabled && periodProblem({ start: draft.comparisonStart, end: draft.comparisonEnd }, bounds));
+              if (problem) {
+                setError(problem === "bounds"
+                  ? (locale === "en" ? `Choose dates within the CSV period: ${minDate} – ${maxDate}.` : `CSV 기간 안에서 선택해 주세요: ${minDate} ~ ${maxDate}.`)
+                  : (locale === "en" ? "Enter valid start and end dates in order." : "올바른 시작일·종료일을 순서대로 입력해 주세요."));
+                return;
+              }
               const range = orderedRange(draft.start, draft.end);
               const comparisonRange = draft.comparisonStart && draft.comparisonEnd
                 ? orderedRange(draft.comparisonStart, draft.comparisonEnd)

@@ -13,6 +13,14 @@ const row = (id, extra = {}) => ({
 });
 const dataset = rows => normalizeMultitouch(rows, guessReportMapping(Object.keys(rows[0]), MULTITOUCH_FIELDS));
 describe("AppsFlyer raw counting and timing", () => {
+  it("keeps full-dataset date boundaries after a filtered query and follows the selected time zone", () => {
+    const rows = [row("a", { "Install Time": "2026-09-01T23:50:00Z" }), row("b", { "Install Time": "2026-09-28T23:50:00Z" })];
+    const mapping = guessReportMapping(Object.keys(rows[0]), MULTITOUCH_FIELDS);
+    const data = normalizeMultitouch(rows, mapping, { utcOffsetMinutes: 540 });
+    expect(data.minDate).toBe("2026-09-02"); expect(data.maxDate).toBe("2026-09-29");
+    expect(buildMultitouchView(data, { start: "2026-09-29", utcOffsetMinutes: 540 }).total).toBe(1);
+    expect(data.minDate).toBe("2026-09-02"); expect(data.maxDate).toBe("2026-09-29");
+  });
   it("maps native headers rather than synthetic standard keys", () => {
     const mapping = guessReportMapping(Object.keys(row("a")), MULTITOUCH_FIELDS);
     expect(mapping["AppsFlyer ID"]).toBe("af_id");

@@ -1,5 +1,6 @@
 // Descriptive click-contributor analysis. This is not causal attribution.
 import { reportRows, normalizeReportPlatform, multitouchCapabilities, CONTRIBUTOR_SLOTS } from "../lib/attributionReports/fields";
+import { dateBounds } from "../lib/analysisPeriod";
 const text = value => String(value ?? "").trim();
 const ordered = (a, b) => b.installs - a.installs || a.name.localeCompare(b.name, "en");
 export function parseTouchTimestamp(value, utcOffsetMinutes = 0) {
@@ -63,6 +64,7 @@ export function normalizeMultitouch(raw, mapping, { utcOffsetMinutes = 0 } = {})
     installs.push({ installTime, touchTime: parseTouchTimestamp(row.af_touch_time, utcOffsetMinutes), channel: attributionChannel(row.channel), campaign: text(row.campaign_name) || "Unknown", country: text(row.country) || "Unknown", platform: normalizeReportPlatform(row.platform) || "Unknown", placement: text(row.af_placement) || "Unknown", contributors, unknownTouchTypes });
   }
   return { installs, invalidRows, duplicates, nonClickInstalls, rawRows: raw.length,
+    ...dateBounds(installs.map(i => new Date(i.installTime + utcOffsetMinutes * 60000).toISOString().slice(0, 10))),
     ...multitouchCapabilities(mapping),
     countries: [...new Set(installs.map(i => i.country))].sort(), platforms: [...new Set(installs.map(i => i.platform))].sort(),
     media: [...new Set(installs.map(i => i.channel))].sort(),

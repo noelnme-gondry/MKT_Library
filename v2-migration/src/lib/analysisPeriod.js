@@ -6,9 +6,26 @@ export function dateOrdinal(value) {
   return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value ? time / DAY : null;
 }
 
-export function periodProblem(range) {
+export function dateBounds(values = []) {
+  let minDate, maxDate;
+  for (const value of values) {
+    const date = String(value || "").trim().slice(0, 10);
+    if (dateOrdinal(date) == null) continue;
+    if (!minDate || date < minDate) minDate = date;
+    if (!maxDate || date > maxDate) maxDate = date;
+  }
+  return { minDate, maxDate };
+}
+
+export function dateBoundProblem(value, { minDate, maxDate } = {}) {
+  if (dateOrdinal(value) == null) return "invalid";
+  return (minDate && value < minDate) || (maxDate && value > maxDate) ? "bounds" : null;
+}
+
+export function periodProblem(range, bounds = {}) {
   if (dateOrdinal(range?.start) == null || dateOrdinal(range?.end) == null) return "invalid";
-  return range.start > range.end ? "order" : null;
+  if (range.start > range.end) return "order";
+  return dateBoundProblem(range.start, bounds) || dateBoundProblem(range.end, bounds);
 }
 
 export function periodDays(range) {

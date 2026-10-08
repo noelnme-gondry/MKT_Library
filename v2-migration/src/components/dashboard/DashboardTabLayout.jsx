@@ -24,7 +24,7 @@ function Block({ id, title, node, custom, order, workspace }) {
   const analysis = useAnalysisExport();
   const en = locale === 'en';
   const scoped = Boolean(block.scope && Object.keys(block.scope).length);
-  const result = resolveBlockFilter(common, block.scope);
+  const result = resolveBlockFilter(common, block.scope, workspace.observationBounds);
   if (block.hidden && !editing) return null;
   const content = result.conflict || result.error ? <section className="block dashboard-block-empty"><h2>{title}</h2><p role="status">{result.error ? (en ? 'Choose valid dates in the editor.' : '편집에서 분석·비교 날짜를 올바르게 지정하세요.') : (en ? 'The block conditions do not overlap with the shared scope. No matching data.' : '공통 대상과 이 구역의 조건이 겹치지 않습니다. 해당 데이터가 없습니다.')}</p></section>
     : custom ? <DashboardCustomBlock definition={custom} config={block} locale={locale} />

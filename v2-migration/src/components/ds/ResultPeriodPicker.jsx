@@ -5,7 +5,7 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import { periodProblem, periodDays, previousPeriod } from "@/lib/analysisPeriod";
 
 // 날짜 자체가 조작 대상이다. Radix가 Escape·외부 클릭·포커스 복귀를 담당한다.
-export default function ResultPeriodPicker({ label, range, onApply, previousOf, locale = "ko" }) {
+export default function ResultPeriodPicker({ label, range, onApply, previousOf, minDate, maxDate, locale = "ko" }) {
   const en = locale === "en";
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -17,9 +17,11 @@ export default function ResultPeriodPicker({ label, range, onApply, previousOf, 
   };
   const apply = (event) => {
     event.preventDefault();
-    const problem = periodProblem(draft);
+    const problem = periodProblem(draft, { minDate, maxDate });
     if (problem) {
-      setError(problem === "order"
+      setError(problem === "bounds"
+        ? (en ? `Choose dates within the CSV period: ${minDate || "…"} – ${maxDate || "…"}.` : `CSV 기간 안에서 선택해 주세요: ${minDate || "…"} ~ ${maxDate || "…"}.`)
+        : problem === "order"
         ? (en ? "The start date must not be after the end date." : "시작일이 종료일보다 늦을 수 없습니다.")
         : (en ? "Enter a valid start and end date." : "올바른 시작일과 종료일을 입력해 주세요."));
       return;
@@ -42,7 +44,7 @@ export default function ResultPeriodPicker({ label, range, onApply, previousOf, 
           <form onSubmit={apply} noValidate>
             <div className="result-period-picker__fields">
               {[["start", en ? "Start date" : "시작일"], ["end", en ? "End date" : "종료일"]].map(([key, text]) => <label key={key}>
-                <span>{text}</span><input type="date" required value={draft[key] || ""} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} onChange={(event) => { setDraft((value) => ({ ...value, [key]: event.target.value })); setError(""); }} />
+                <span>{text}</span><input type="date" min={minDate} max={maxDate} required value={draft[key] || ""} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} onChange={(event) => { setDraft((value) => ({ ...value, [key]: event.target.value })); setError(""); }} />
               </label>)}
             </div>
             {previousOf && !periodProblem(previousOf) && <button type="button" className="result-period-picker__previous" onClick={() => { setDraft(previousPeriod(previousOf)); setError(""); }}>{en ? "Use the previous equal-length period" : "직전 같은 길이로 맞추기"}</button>}
