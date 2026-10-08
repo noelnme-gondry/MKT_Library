@@ -61,9 +61,13 @@ for (const locale of ["ko", "en"]) {
       await expect(keepSetup.getByRole("button", { name: locale === "en" ? "Save this setup to the project" : "이 설정을 프로젝트에 저장", exact: true })).toBeVisible();
       await expect(keepSetup.getByRole("link", { name: locale === "en" ? "Open saved setups" : "저장한 설정 보관함", exact: true })).toBeVisible();
       if (slug === "weekly-marketing-report-template") {
-        await expect(page.getByRole("heading", { level: 2, name: /CPI.*1,200.*1,091/ })).toBeVisible();
+        // The initial CTA opens the article's first comparison, not its later follow-up:
+        // 700,000 / 700 = 1,000 → 840,000 / 700 = 1,200.
+        await expect(page.getByRole("heading", { level: 2, name: /CPI.*1,000.*1,200/ })).toBeVisible();
+        await expect(page.locator("main")).toContainText("2026-08-31");
+        await expect(page.locator("main")).toContainText("2026-09-13");
         const campaigns = page.getByRole("table", { name: locale === "en" ? "By Channel · Campaign table" : "채널·캠페인별 결과 데이터 표", exact: true });
-        await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) })).toContainText(/1,500.*1,200/);
+        await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) })).toContainText(/1,000.*1,500/);
         await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "B", exact: true }) })).toContainText(/1,000.*1,000/);
       } else {
         await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();

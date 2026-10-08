@@ -933,3 +933,14 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 입력과 프로젝트 저장은 기존 `useSavedToolInput`의 단일 상태를 사용한다. 복원 후 직접 바꾼 값을 다시 저장하며 이전 레시피 값으로 되돌리지 않는다. 예측 기간·미래 이벤트의 실행값과 편집값은 함께 복원한다. 편집만 하고 적용하지 않은 값이 있으면 먼저 분석 조건을 적용한 뒤 저장하도록 안내한다.
 - 생존 분석은 변경된 조건으로 다시 분석해야 한다. 아하 모먼트의 저장된 성과 관측 시작일은 화면에 복원하되 현재 데이터에 다시 적용해야 평가창 선언으로 사용한다. 레시피는 실험 설계나 데이터 적합성을 승인하지 않는다.
 - EN: Save actual reusable analysis options with view/export settings. Budgets, absolute dates, source columns, entity values and economics stay in the device project. Applying a Pro recipe validates all options atomically, preserves current private inputs and never restores study approval or completed-analysis state. Tools without independent model controls save view/export settings only.
+
+
+### 2026-10-08 Dots UX 감사 보완
+
+- 예산 결과 허브의 미리보기는 매핑된 전체 기간·일평균 예산·한계효용 배분·저신뢰 대상 고정 없음 기준이다. 상세 도구는 자체 기간·방식·제약으로 다시 계산한다. 이동 전 차이를 안내하고, 상세에는 이전 실제 요약과 현재 조건을 함께 표시한다. / Allocation previews use all mapped dates, average daily budget and marginal-utility allocation without low-confidence holds. Explain recalculation before navigation and show the actual prior summary alongside current tool settings.
+- 템플릿의 필수 개수는 필수 역할 수다. `oneOf` 열은 ‘다음 중 하나 이상 / One of’로 구분한다. 자유 역할 도구는 결과 역할과 숫자 행동·요소 역할을 설명하며 식별자·예시 열 이름을 필수로 오인시키지 않는다. / Count required roles and distinguish alternatives; explain custom outcome and feature roles separately from optional identifiers.
+- `/start`에서 분석 가능 도구가 없으면 ‘분석 준비 완료’로 표시하지 않는다. 파일 읽기 상태와 분석 가능 상태를 구분하고 컬럼 재연결·템플릿으로 복구한다. / Separate file loading from analysis readiness and provide remapping and template recovery when no analysis is supported.
+- 결과 이후 설문은 결과 노출 신호부터 최소 60초 뒤 표시한다. 같은 세션에서 닫은 상태와 영구 거절은 유지한다. / Wait at least 60 seconds after result exposure before the source survey; retain session and permanent dismissal.
+- 핵심 그림 PNG 버튼은 ‘구매 이용권 필요 · 체험 제외 / Purchased pass required · excludes trial’를 클릭 전에 표시한다. 구매 안내는 요청 형식이 PNG임을 설명한다. PNG도 공용 다운로드 계측으로 시도·권한 차단·생성 성공·실패를 구분하며, 파일명·원문·그림 제목은 이벤트에 넣지 않는다.
+- 템플릿 상세도 공용 셸과 `main-content` 건너뛰기 목적지를 제공한다. 주간 성과 진입은 실제 `weekly-performance` 영역의 시작점으로 포커스를 옮긴다. 저장 창은 상단 닫기와 기존 Escape·포커스 복귀를 제공한다. / Template details share the shell and skip target; weekly entry focuses its real start; save dialogs expose a top close control with Escape and focus return.
+- 블로그가 특정 비교 기간을 설명하면 예시 그림과 상세 도구가 그 기간을 사용한다. 사용자가 올린 새 파일에는 기사 기간을 강제하지 않는다. / Carry editorial comparison periods into the sample figure and detailed tool, never into an unrelated user upload.

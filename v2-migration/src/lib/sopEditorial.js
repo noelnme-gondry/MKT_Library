@@ -1,6 +1,7 @@
 // SOP의 출처·검수일 SSOT. 본문이 코드/JSON으로 나뉘어 있어도 같은 공개 근거를
 // 화면·구조화 데이터·sitemap에서 재사용한다. URL은 운영 문서의 공식 원문만 쓴다.
 const REVIEWED_AT = "2026-08-09";
+const REVIEWED_BY_ID = { "1-3": "2026-10-08", "2-1": "2026-10-08", "2-2": "2026-10-08" };
 
 const official = (url, ko, en) => ({ url, ko, en });
 
@@ -15,6 +16,7 @@ export const SOP_EDITORIAL = {
     official("https://firebase.google.com/docs/analytics/events", "Firebase Analytics 이벤트 문서", "Firebase Analytics event documentation"),
   ],
   "1-3": [
+    official("https://support.appsflyer.com/hc/en-us/articles/19228737402129-Meta-Ads-Aggregate-Event-Measurement-AEM-for-iOS", "AppsFlyer Meta 앱 AEM 연동", "AppsFlyer Meta app AEM integration"),
     official("https://dev.adjust.com/en/", "Adjust 포스트백·콜백 문서", "Adjust postback and callback documentation"),
     official("https://support.appsflyer.com/hc/en-us", "AppsFlyer 지원 문서", "AppsFlyer support documentation"),
   ],
@@ -23,10 +25,12 @@ export const SOP_EDITORIAL = {
     official("https://developer.apple.com/documentation/storekit/skadnetwork", "Apple SKAdNetwork 문서", "Apple SKAdNetwork documentation"),
   ],
   "2-1": [
+    official("https://support.google.com/google-ads/answer/12575501", "Google Ads 앱 설치 캠페인 설정", "Set up Google Ads App campaigns for installs"),
     official("https://support.google.com/google-ads/answer/6247380", "Google Ads 앱 캠페인 도움말", "Google Ads App campaigns help"),
     official("https://support.google.com/google-ads/", "Google Ads 고객센터", "Google Ads Help Center"),
   ],
   "2-2": [
+    official("https://support.appsflyer.com/hc/en-us/articles/19228737402129-Meta-Ads-Aggregate-Event-Measurement-AEM-for-iOS", "AppsFlyer Meta 앱 AEM 연동", "AppsFlyer Meta app AEM integration"),
     official("https://www.facebook.com/business/help", "Meta Business 도움말", "Meta Business Help Center"),
     official("https://www.facebook.com/business/ads-guide/", "Meta 광고 가이드", "Meta Ads Guide"),
   ],
@@ -72,12 +76,12 @@ export function getSopEditorial(routeId, locale = "ko") {
   const sources = SOP_EDITORIAL[routeId];
   if (!sources) return null;
   return {
-    reviewedAt: REVIEWED_AT,
+    reviewedAt: REVIEWED_BY_ID[routeId] || REVIEWED_AT,
     reviewer: locale === "en" ? "Growth Opt Playbook editorial review" : "Growth Opt Playbook 편집 검수",
     sources: sources.map((source) => ({ url: source.url, title: locale === "en" ? source.en : source.ko })),
   };
 }
 
 export function getSopLastModified(routeId) {
-  return SOP_EDITORIAL[routeId] ? REVIEWED_AT : null;
+  return SOP_EDITORIAL[routeId] ? (REVIEWED_BY_ID[routeId] || REVIEWED_AT) : null;
 }

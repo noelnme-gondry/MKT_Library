@@ -19,7 +19,7 @@ import {
 const KO = SOURCE_SURVEY_COPY.ko;
 const EN = SOURCE_SURVEY_COPY.en;
 
-// 지연은 0이지만 타이머 한 틱은 여전히 지나야 한다(마운트 이펙트 이후에 판정된다).
+// 첫 결과를 읽을 시간을 준 뒤에만 노출한다.
 const settle = () => {
   act(() => { window.dispatchEvent(new Event("gop:analysis-result-ready")); });
   act(() => { vi.advanceTimersByTime(SOURCE_SURVEY_OPEN_DELAY_MS + 1); });
@@ -60,17 +60,20 @@ describe("노출 타이밍", () => {
     expect(screen.queryByText(KO.heading)).toBeNull();
     if (optOut) expect(localStorage.getItem(SOURCE_SURVEY_ANSWERED_KEY)).toBe("1");
   });
-  it("기다리지 않는다 — 타이머 한 틱 만에 뜬다", () => {
+  it("결과를 확인한 직후에는 뜨지 않고 지연 후 나타난다", () => {
     render(<SourceSurveyPopup />);
     // 첫 렌더에는 아직 없다(인사가 자기 존재를 선언할 틈을 준다).
     expect(screen.queryByText(KO.heading)).toBeNull();
-    settle();
+    act(() => { window.dispatchEvent(new Event("gop:analysis-result-ready")); });
+    act(() => { vi.advanceTimersByTime(SOURCE_SURVEY_OPEN_DELAY_MS - 1); });
+    expect(screen.queryByText(KO.heading)).toBeNull();
+    act(() => { vi.advanceTimersByTime(2); });
     expect(screen.getByText(KO.heading)).toBeTruthy();
   });
 
-  it("지연 예산은 0이다 — 체류를 요구하지 않는다", () => {
-    // 값이 아니라 근거를 고정한다: 인사를 닫으면 바로 물어야 한다(§7).
-    expect(SOURCE_SURVEY_OPEN_DELAY_MS).toBe(0);
+  it("첫 결과를 읽는 시간을 최소 1분 보장한다", () => {
+    // 결과 직후 설문이 첫 판단을 가리지 않아야 한다.
+    expect(SOURCE_SURVEY_OPEN_DELAY_MS).toBeGreaterThanOrEqual(60_000);
   });
 
   it("도치 인사가 떠 있는 동안에는 뜨지 않고, 닫는 즉시 뜬다", () => {

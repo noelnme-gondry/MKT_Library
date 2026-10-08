@@ -17,9 +17,26 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? "Review / export device records" : "기기 기록 검토·내보내기" }).click();
     const actual = page.getByRole("textbox", { name: en ? "Actual outcome — Budget review" : "실제 결과 — Budget review", includeHidden: true });
     await actual.fill("2500");
-    await page.getByRole("button", { name: en ? "Save review changes" : "검토 내용 저장", exact: true }).click();
+    const openSave = page.getByRole("button", { name: en ? "Save review changes" : "검토 내용 저장", exact: true });
+    await openSave.click();
     const dialog = page.getByRole("dialog", { name: en ? /^(Save to My projects|Make it my next marketing project)$/ : /^(내 프로젝트에 저장|다음 마케팅 프로젝트로 만들기)$/ });
     const save = dialog.getByRole("button", { name: en ? "Save to My projects" : "내 프로젝트에 저장", exact: true });
+    await expect(save).toBeEnabled();
+    // Top close is reachable on small screens, restores the caller, and preserves the draft.
+    const close = dialog.getByRole("button", { name: en ? "Close save dialog" : "저장 창 닫기", exact: true });
+    await expect(close).toBeVisible();
+    const bounds = await close.boundingBox();
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(page.viewportSize().height);
+    await close.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(openSave).toBeFocused();
+    await expect(actual).toHaveValue("2500");
+    await openSave.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(openSave).toBeFocused();
+    await openSave.click();
     await expect(save).toBeEnabled();
     await page.evaluate(() => {
       window.__rejectReviewWrite = true;

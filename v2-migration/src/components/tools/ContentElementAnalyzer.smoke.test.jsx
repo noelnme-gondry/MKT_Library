@@ -69,6 +69,8 @@ const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 function seedNoData() {
   useAppStore.setState({
     currentRouteId: "9-1",
+    projectsReady: true,
+    projectSwitching: false,
     csvGroups: { ...useAppStore.getState().csvGroups, content_attr: EMPTY_CSV },
     csvData: EMPTY_CSV,
     decisionRecords: [],
@@ -169,6 +171,18 @@ describe("ContentElementAnalyzer render smoke", () => {
     const { container } = render(<ContentElementAnalyzer />);
     expect(document.body.querySelector("*")).toBeTruthy();
     expect(container.querySelector("#s-content-mapping")).toBeTruthy();
+  });
+
+  it.each(["ko", "en"])("waits for project restoration before accepting a CSV (%s)", locale => {
+    useAppStore.setState({ projectsReady: false, projectSwitching: true, decisionPersistenceEnabled: true, projectError: null });
+    const view = render(<ContentElementAnalyzer locale={locale} />);
+    const input = view.container.querySelector('input[type="file"]');
+    expect(input.disabled).toBe(true);
+    expect(view.container.querySelector('.csv-dropzone').getAttribute('data-hydrated')).toBe('false');
+    act(() => useAppStore.setState({ projectSwitching: false }));
+    expect(input.disabled).toBe(true);
+    act(() => useAppStore.setState({ projectsReady: true }));
+    expect(input.disabled).toBe(false);
   });
 
   it("tracks only aggregate CSV import outcomes", async () => {

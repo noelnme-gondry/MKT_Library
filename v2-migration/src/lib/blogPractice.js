@@ -6,6 +6,7 @@ const WEEKLY_REPORT_PRACTICE = {
   "file": "weekly-report-campaigns.csv",
   "currency": "KRW",
   "mode": "detail",
+  comparison: { periodA: { start: "2026-08-31", end: "2026-09-06" }, periodB: { start: "2026-09-07", end: "2026-09-13" }, metric: "cpi" },
   "ko": {
     "title": "두 주의 캠페인 비용과 설치 비교",
     "steps": [
@@ -133,7 +134,7 @@ export function blogPracticeFor(slug, locale = "ko") {
   const config = BLOG_INSIGHT_PLACEMENTS[slug];
   if (!config) return null;
   const practice = BLOG_PRACTICES[slug];
-  if (practice) return { ...COPY[locale], ...practice[locale], mode: practice.mode || "inline", locale, currency: practice.currency, file: practice.file, href: `/examples/${practice.file}` };
+  if (practice) return { ...COPY[locale], ...practice[locale], mode: practice.mode || "inline", comparison: practice.comparison, locale, currency: practice.currency, file: practice.file, href: `/examples/${practice.file}` };
   const tool = toolIndexEntry(config.toolId, locale);
   const group = TOOL_GROUP[config.toolId];
   if (!tool || !group) return null;

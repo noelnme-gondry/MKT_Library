@@ -55,7 +55,7 @@ September 21 is this example's review commitment, not a universal data-finalizat
 
 Ask whether the reason for holding a decision has been resolved. Record campaigns left unchanged too: that helps distinguish actions taken from external changes later.
 
-Use [weekly review](/weekly-review) to revisit the periods, KPI and decision. Running analysis and viewing results are free. Projects and new review or decision saves require active Pro; saving decision records also requires sign-in. The 14-day trial includes project and review storage, while analysis-report downloads require a purchased pass. The public examples and blank worksheet in this article are separate from product-generated report downloads.
+Use [weekly review](/weekly-review) to revisit the periods, KPI and decision. Running analysis and viewing results are free. Projects and new review or decision saves require active Pro; saving decision records also requires sign-in. The 7-day trial includes project and review storage, while analysis-report downloads require a purchased pass. The public examples and blank worksheet in this article are separate from product-generated report downloads.
 
 ## Week 3: keep the decision or change it?
 

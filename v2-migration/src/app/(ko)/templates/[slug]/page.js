@@ -22,7 +22,7 @@ export async function generateMetadata({ params }) {
   const toolName = seo?.title || page.toolId;
   const title = `${toolName} CSV 템플릿 다운로드`;
   const platforms = platformExportNames(page.toolId, "ko");
-  const description = `${toolName}에 바로 올릴 수 있는 CSV 템플릿입니다. 필요한 컬럼 ${page.fields.length}개(필수 ${page.requiredCount}개)와 각 컬럼의 의미를 확인하고 빈 양식을 받으세요.${platforms.length ? ` ${platforms.join("·")} 내보내기 파일도 그대로 올릴 수 있습니다.` : ""}`;
+  const description = `${toolName}에 바로 올릴 수 있는 CSV 템플릿입니다. 필요한 컬럼 ${page.fields.length}개(필수 역할 ${page.requiredCount}개)와 각 컬럼의 의미를 확인하고 빈 양식을 받으세요.${platforms.length ? ` ${platforms.join("·")} 내보내기 파일도 그대로 올릴 수 있습니다.` : ""}`;
   const canonical = `${SITE_URL}/templates/${slug}`;
   return {
     title,
@@ -50,12 +50,12 @@ export default async function Page({ params }) {
     <section className="template-detail">
       <span className="template-detail__eyebrow">CSV 템플릿</span>
       <h1>{toolName} 입력 템플릿</h1>
-      <p className="template-detail__lead">이 도구가 읽는 컬럼만 담은 빈 CSV입니다. 헤더 이름을 그대로 두면 업로드할 때 자동으로 매핑됩니다. 데이터는 브라우저에서만 처리되고 서버로 전송되지 않습니다.</p>
+      <p className="template-detail__lead">이 도구가 읽는 컬럼만 담은 빈 CSV입니다. 표준 필드는 헤더로 자동 연결하며, 역할 선택 도구에서는 업로드 후 성과와 행동·요소를 직접 지정합니다. 데이터는 브라우저에서만 처리되고 서버로 전송되지 않습니다.</p>
 
       <TemplateDownloadCard
         toolId={page.toolId}
         title={`${toolName} 템플릿`}
-        desc={`컬럼 ${page.fields.length}개 · 필수 ${page.requiredCount}개`}
+        desc={`컬럼 ${page.fields.length}개 · 필수 역할 ${page.requiredCount}개`}
         href={`${page.toolPath}`}
         unified={page.hasUnified}
         locale="ko"
@@ -78,12 +78,15 @@ export default async function Page({ params }) {
                 <td><code>{field.key}</code></td>
                 <td>{field.label || "—"}</td>
                 <td>{field.type}</td>
-                <td>{field.required ? "필수" : "선택"}</td>
+                <td>{field.required ? "필수" : field.alternatives ? `다음 중 하나 이상: ${field.alternatives.join(" / ")}` : "선택"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {page.roleMapping && <p>업로드 후 숫자 성과 1개와 숫자 행동·요소 1개 이상을 선택하세요. 행동·요소 열 이름은 예시이며 내 컬럼으로 바꿔 역할을 지정할 수 있습니다. Aha 목표값은 0/1이어야 합니다. 결측값·표본 수·값의 변동 조건은 계산 전에 별도로 검사합니다.</p>}
+      {page.toolId === "5-23" && <p>이 양식은 통제군 방식용입니다. exposed와 holdout 양쪽 그룹이 필요합니다. 신규 켜기·종료 방식은 날짜와 숫자 성과 열을 준비하고 전환일과 전후 관측을 지정하세요. 도구에서 실험 설계도 확인해야 합니다.</p>}
 
       <PlatformExportGuide toolId={page.toolId} locale="ko" />
 
@@ -91,7 +94,7 @@ export default async function Page({ params }) {
       <ul className="template-detail__rules">
         <li>날짜는 <code>YYYY-MM-DD</code> 형식으로 통일하세요. 형식이 섞이면 기간 비교가 어긋납니다.</li>
         <li>금액·수치 컬럼에는 천단위 콤마와 <code>₩</code>·<code>$</code>·<code>KRW</code>·<code>USD</code>·<code>원</code> 같은 통화 표기가 있어도 됩니다. 그 밖의 글자가 섞이면 읽지 않으므로 숫자만 두는 편이 가장 안전합니다.</li>
-        <li>필수 컬럼이 비어 있는 행은 분석에서 제외됩니다. 0과 빈칸은 다른 의미로 처리됩니다.</li>
+        <li>필수 값의 결측·오류는 도구에 따라 해당 행을 제외하거나 분석을 중단합니다. 표시된 행·컬럼 진단을 확인하세요. 0과 빈칸은 다르게 처리됩니다.</li>
         <li>컬럼을 더 넣어도 됩니다. 이 도구가 쓰지 않는 컬럼은 무시됩니다.</li>
       </ul>
 

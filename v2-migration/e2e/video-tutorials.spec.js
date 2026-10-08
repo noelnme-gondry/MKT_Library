@@ -119,8 +119,11 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByRole("banner")).toContainText("weekly-report-three-weeks.csv");
     await expect(page.locator(".analysis-setup__context")).toContainText(en ? "42 source rows" : "42 원본 행");
     const campaign = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) });
-    await expect(campaign).toContainText("1,500");
-    await expect(campaign).toContainText("1,200");
+    // The guide describes the later follow-up, but the main CTA starts at the
+    // article's first comparison: A's 350,000/350 → 420,000/280 CPI.
+    await expect(campaign).toContainText(/1,000.*1,500/);
+    await expect(page.locator("main")).toContainText("2026-08-31");
+    await expect(page.locator("main")).toContainText("2026-09-13");
   });
 }
 

@@ -9,7 +9,7 @@
     { "label": "Default · 7d click + 1d view", "variant": "ok" },
     { "label": "OS split required", "variant": "warning" }
   ],
-  "summary": "AAP (Advantage+ App Campaigns) is Meta's automated campaign type. Ad-set-level fine control is limited and campaign-level optimization is enforced. Meta's default attribution is 7-day click + 1-day view; the standard practice is to report on a reduced 1d_click basis so numbers are comparable with the MMP and other networks. iOS uses the AEM 8-event priority list; Android sends the full in-app event set.",
+  "summary": "AAP (Advantage+ App Campaigns) is Meta's automated campaign type. Ad-set-level fine control is limited and campaign-level optimization is enforced. Meta's default attribution is 7-day click + 1-day view; the standard practice is to report on a reduced 1d_click basis so numbers are comparable with the MMP and other networks. For app AEM, check eligibility in Events Manager and the ad-set settings. Do not apply the historical web eight-event limit as a universal app sending limit.",
   "toc": [
     { "id": "s-structure", "title": "Campaign structure" },
     { "id": "s-setup", "title": "AAP setup steps" },
@@ -61,12 +61,7 @@
             "Creative: upload up to 50 assets. Meta auto-generates combinations"
           ]
         },
-        {
-          "type": "code",
-          "lang": "json",
-          "label": "AEM event priority (Meta Events Manager)",
-          "code": "{\n  \"app_id\": \"fb_app_1234567890\",\n  \"aem_priority\": [\n    \"purchase\",\n    \"subscribe\",\n    \"begin_checkout\",\n    \"add_to_cart\",\n    \"complete_registration\",\n    \"complete_tutorial\",\n    \"level_achieved\",\n    \"session_start\"\n  ],\n  \"value_optimization_events\": [\"purchase\", \"subscribe\"]\n}"
-        }
+        {"type": "paragraph", "html": "Check app and event eligibility in Events Manager and record the ad-set measurement method and optimization event. Compare AEM and SKAN reports only after checking their measurement scope and delays."}
       ]
     },
     {
@@ -96,13 +91,13 @@
           "type": "callout",
           "variant": "danger",
           "title": "iOS campaign installs suddenly drop in reporting",
-          "html": "Likely SKAN postback delay or a recent AEM priority change. Check the AEM Priority change history in Meta Events Manager — a change resets learning and can blank out reporting for up to 28 days."
+          "html": "Check SKAN postback delays, missing events and measurement or optimization changes separately. Compare Events Manager diagnostics with MMP delivery. Do not assume an app AEM setting change causes a 28-day reporting gap."
         },
         {
           "type": "callout",
           "variant": "warn",
           "title": "Revenue is inconsistent in a VBO campaign",
-          "html": "Confirm revenue sending is enabled for the purchase event in Adjust → Meta Partner. AEM's value_optimization toggle must be ON. On iOS, only revenue captured within the SKAN postback window (0–2 days) feeds the signal."
+          "html": "Check revenue and currency mapping for purchase events in the MMP Meta integration and confirm event receipt. Check current app and event eligibility for value optimization. Distinguish AEM from SKAN measurement windows rather than treating all iOS revenue as a single 0–2-day window."
         },
         {
           "type": "callout",

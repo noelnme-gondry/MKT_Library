@@ -127,7 +127,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="en" slot="actions" />}
             {/* 설정 저장·보관함은 결과 뒤에 둔다. 분석 전에 "설정 저장"을 물을
                 이유가 없고, 맨 위에 있으면 결론을 본 사용자에게는 화면 밖이다. */}
-            {routeId !== "dochi-result" && !["storage", "projects", "subscription"].includes(routeId) && <ToolPageOutro
+            {routeId !== "dochi-result" && !["storage", "projects", "subscription", "account"].includes(routeId) && <ToolPageOutro
               toolId={routeId}
               locale="en"
               evidenceLinks={evidenceLinks}

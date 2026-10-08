@@ -45,11 +45,12 @@ function csvFromDemo(toolId) {
   return { raw, headers: demo.headers, mapping: contract.mapping, currency: demo.currency || "KRW", importSource: "demo" };
 }
 
-function csvFromExample(file, toolId, currency) {
+function csvFromExample(file, toolId, currency, comparison) {
   const text = readFileSync(fileURLToPath(new URL(`../../../public/examples/${file}`, import.meta.url)), "utf8");
   const parsed = Papa.parse(text.replace(/^﻿/, ""), { header: true, skipEmptyLines: "greedy" });
-  const contract = blogMapping(parsed.data, parsed.meta.fields, toolId);
-  return { raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, currency: currency || "KRW", importSource: "demo" };
+  const raw = comparison ? parsed.data.filter(row => row.date >= comparison.periodA.start && row.date <= comparison.periodB.end) : parsed.data;
+  const contract = blogMapping(raw, parsed.meta.fields, toolId);
+  return { raw, headers: parsed.meta.fields, mapping: contract.mapping, currency: currency || "KRW", importSource: "demo" };
 }
 
 function runAdapter(toolId, csvData) {
@@ -327,9 +328,17 @@ function exampleFor(slug) {
   const toolId = EXAMPLE_TOOL_SUBSTITUTE[placement.toolId] || placement.toolId;
   const build = BUILDERS[toolId];
   if (!build) throw new Error(`No example builder for ${toolId} (${slug})`);
-  if (practice?.file && ["5-2", "5-22", "5-27", "5-26"].includes(toolId)) {
-    const custom = build(csvFromExample(practice.file, toolId, practice.currency));
-    if (custom) return { toolId, source: practice.file, ...custom };
+  if (practice?.file && ["5-2", "5-21", "5-22", "5-27", "5-26"].includes(toolId)) {
+    const custom = build(csvFromExample(practice.file, toolId, practice.currency, practice.comparison));
+    if (custom) {
+      if (practice.comparison) {
+        const { periodA, periodB } = practice.comparison;
+        const dates = `${periodA.start}–${periodA.end} / ${periodB.start}–${periodB.end}`;
+        custom.ko.caption += ` 비교 기간: ${dates}.`;
+        custom.en.caption += ` Comparison periods: ${dates}.`;
+      }
+      return { toolId, source: practice.file, ...custom };
+    }
     return { toolId, source: practice.file, withheld: true, ...card({
       ko: { headline: "이 예제로는 판단을 보류합니다. 같은 채널을 여러 날짜·여러 지출 수준에서 관측해야 추정할 수 있습니다.", caption: "예시 데이터로 계산했습니다. 행이 많아도 채널마다 관측이 한 번뿐이면 판단할 수 없습니다." },
       en: { headline: "This example withholds a judgment. The same channel must be observed across dates and spend levels.", caption: "Calculated on example data. Many rows do not help when each channel is observed only once." },

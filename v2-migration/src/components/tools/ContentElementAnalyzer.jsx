@@ -262,6 +262,11 @@ function downloadCoefCsv(rows) {
 
 export default function ContentElementAnalyzer({ locale = "ko" }) {
   const isHydrated = useClientReady();
+  // React hydration can finish before the active project restores from IndexedDB.
+  // A write during that switch is rejected by the store, so keep uploads closed.
+  const projectReady = useAppStore((s) => s.currentRouteId === "9-1" && !s.projectSwitching
+    && (!s.decisionPersistenceEnabled || s.projectsReady || Boolean(s.projectError)));
+  const canUpload = isHydrated && projectReady;
   const T = EA_COPY[locale] || EA_COPY.ko;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((s) => s.csvData);
@@ -292,7 +297,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const mixedRequestRef = useRef(0);
 
   const handleFile = async (file) => {
-    if (!file) return;
+    if (!file || !canUpload) return;
+    const projectId = useAppStore.getState().activeProjectId;
     trackProductEvent("data_import_start", { tool_id: "9-1", source: "csv", locale });
     let parseInput;
     try {
@@ -305,6 +311,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     Papa.parse(parseInput, {
       header: true, skipEmptyLines: true,
       complete: (res) => {
+        if (useAppStore.getState().currentRouteId !== "9-1" || useAppStore.getState().activeProjectId !== projectId) return;
         const rows = Array.isArray(res.data) ? res.data : [];
         const headers = res.meta?.fields || [];
         if (!rows.length) {
@@ -320,7 +327,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "parse_error", locale });
           return;
         }
-        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: rows, headers }) });
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: rows, headers }) }, projectId);
         trackProductEvent("data_import_success", { tool_id: "9-1", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "parse_error", locale }),
@@ -685,12 +692,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       <div className="tab-pane active">
         <section className="block" id="s-content-mapping">
           <h2 className="section-title">{T.dataPrep}</h2>
-          <CsvGuide toolId={C.guideToolId} onTryExample={handleLoadDemo} locale={locale} />
+          <CsvGuide toolId={C.guideToolId} onTryExample={canUpload ? handleLoadDemo : null} locale={locale} />
+          {!canUpload && <p role="status">{tr("기기 저장 상태를 확인하고 있습니다…", "Checking device storage…")}</p>}
           <div className="csv-dropzone"
-            data-hydrated={isHydrated}
-            aria-disabled={!isHydrated}
+            data-hydrated={canUpload}
+            aria-disabled={!canUpload}
             role="button"
-            tabIndex={isHydrated ? 0 : -1}
+            tabIndex={canUpload ? 0 : -1}
             aria-label={tr("콘텐츠 분석 CSV 파일 선택", "Choose a content-analysis CSV file")}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }}
@@ -699,7 +707,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             style={{ cursor: "pointer" }}>
             <div className="csv-drop-text">{T.dropTitle}</div>
             <div className="csv-drop-sub">{T.dropSub}</div>
-            <input type="file" disabled={!isHydrated} accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef}
+            <input type="file" disabled={!canUpload} accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef}
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
           </div>

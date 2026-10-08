@@ -130,6 +130,9 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       }
       // The preview used every uploaded row; stale detail filters must not hide them.
       state.setDashboardFilter(useAppStore.getInitialState().dashboardFilter);
+      if (candidate === pendingSample.current && practice?.comparison) {
+        state.handoffCsvToRoute(config.toolId, candidate, { comparison: { ...practice.comparison, source: "blog" } });
+      }
       if (config.type === "funnel") state.setDashboardTab("funnel");
     }
     // 도착 화면(시안 E)이 출처를 한 줄로 말하도록 공개 글 식별자·제목·파일명만 남긴다.

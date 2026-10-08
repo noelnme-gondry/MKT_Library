@@ -12,7 +12,8 @@ export default function SourceExportGuide({ toolId, locale = "ko" }) {
         <li>{en ? "Include the date, campaign, amount spent and the conversion event you will compare. Add impressions, clicks and conversion value when needed. Keep one currency, time zone and attribution setting." : "날짜·캠페인·지출 금액과 비교할 전환 이벤트를 포함하세요. 필요하면 노출·클릭·전환값을 추가하고, 통화·시간대·어트리뷰션 설정을 맞추세요."}</li>
         <li>{en ? "Check which event the Results column represents. Do not combine leads, purchases and installs as one conversion. Verify column mapping before analysis." : "‘결과’ 열이 어떤 이벤트인지 확인하세요. 리드·구매·설치를 하나의 전환으로 합치지 말고, 분석 전 컬럼 연결을 확인하세요."}</li>
       </ol>
-      <a href="https://support.google.com/analytics/answer/16748649" target="_blank" rel="noreferrer">{en ? "Platform export reference (Google Analytics Help)" : "플랫폼별 내보내기 참고 (Google Analytics 도움말)"}</a>
+      <a href="https://www.facebook.com/business/help/849477685213347" target="_blank" rel="noreferrer">{en ? "Meta Ads Manager help (sign-in may be required)" : "Meta 광고 관리자 도움말 (로그인이 필요할 수 있음)"}</a>
+      <p><a href="https://support.google.com/analytics/answer/16748649#meta" target="_blank" rel="noreferrer">{en ? "Meta CSV export steps (Google Analytics Help)" : "Meta CSV 내보내기 순서 (Google Analytics 도움말)"}</a></p>
     </section>
     <GoogleSheetsGuide locale={locale} />
     <p>{en ? "Next time, keep the same columns and measurement definitions and update the dates. Saved settings do not refresh the source: upload the new file and check the comparison periods." : "다음에는 같은 컬럼·측정 기준을 유지하고 기간을 갱신하세요. 저장된 설정이 원본을 자동 갱신하지는 않습니다. 새 파일을 올린 뒤 비교 기간을 확인하세요."}</p>

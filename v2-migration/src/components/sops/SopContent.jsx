@@ -3,6 +3,7 @@ import React from 'react';
 import { IA, displayGroupNumber, displayItemNumber, isNumberedDocItem } from '@/store/useDataStore';
 import { copyToClipboard } from '@/utils/toast';
 import { getSopEditorial } from '@/lib/sopEditorial';
+import { highlightSopCode as hl } from '@/lib/sopHighlight';
 
 // 결정론적 element id 생성기 (§3 Math.random 금지). 렌더마다 0부터 재시작해
 // 같은 콘텐츠는 byte-identical 마크업을 낸다.
@@ -47,46 +48,6 @@ function SopEditorialReferences({ routeId, locale }) {
 
 function escapeHtml(unsafe) { if(!unsafe) return ''; return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 
-function hl(code, lang) {
-  let s = escapeHtml(code);
-  if (lang === "swift" || lang === "kotlin") {
-    s = s.replace(/(\/\/[^\n]*)/g, '<span class="c">$1</span>');
-    s = s.replace(
-      /\b(import|let|var|val|fun|func|class|object|return|if|else|for|while|self|this|true|false|nil|null|companion|override|private|public|internal|suspend)\b/g,
-      '<span class="k">$1</span>',
-    );
-    s = s.replace(/(&quot;[^&]*?&quot;)/g, '<span class="s">$1</span>');
-    s = s.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="n">$1</span>');
-  } else if (lang === "json") {
-    s = s.replace(
-      /(&quot;[^&]*?&quot;)(\s*:)/g,
-      '<span class="a">$1</span>$2',
-    );
-    s = s.replace(
-      /:\s*(&quot;[^&]*?&quot;)/g,
-      ': <span class="s">$1</span>',
-    );
-    s = s.replace(/\b(true|false|null)\b/g, '<span class="k">$1</span>');
-    s = s.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="n">$1</span>');
-  } else if (lang === "bash") {
-    s = s.replace(
-      /(^|\n)(\s*)(#[^\n]*)/g,
-      '$1$2<span class="c">$3</span>',
-    );
-    s = s.replace(
-      /\b(curl|export|echo|cd|grep|adjust|adb|xcrun)\b/g,
-      '<span class="k">$1</span>',
-    );
-    s = s.replace(/(--?[a-zA-Z][\w-]*)/g, '<span class="t">$1</span>');
-  } else if (lang === "http") {
-    s = s.replace(
-      /\b(GET|POST|PUT|PATCH|DELETE)\b/g,
-      '<span class="k">$1</span>',
-    );
-    s = s.replace(/(\{[^}]+\})/g, '<span class="t">$1</span>');
-  }
-  return s;
-}
 
             function codeBlock(lang, label, code) {
               const id = nextSopUid("cb");
@@ -1101,7 +1062,7 @@ function findMeta(id) {
                     { html: '<span class="pill tier-1">SAN</span>' },
                     "1d click / 1d view",
                     "자동",
-                    "AEM 우선순위 8개 설정 필수",
+                    "앱 AEM 적격 여부·최적화 이벤트 확인",
                   ],
                   [
                     "Google Ads (UAC)",
@@ -1161,24 +1122,8 @@ function findMeta(id) {
               </ol>
 
               <h3 class="sub-title">3.1 Meta · Aggregated Event Measurement (AEM)</h3>
-              <p>iOS 14.5+는 AEM으로 최대 8개 이벤트만 전송 가능. 비즈니스 가치 높은 이벤트를 상위에 배치한다. value optimization은 매출 기반 이벤트에만 활성화.</p>
-              ${codeBlock(
-                "json",
-                "Meta AEM Priority Map",
-                `{
-        "app_id": "fb_app_1234567890",
-        "events": [
-          { "priority": 1, "event_name": "purchase",          "value_optimization": true  },
-          { "priority": 2, "event_name": "subscribe",         "value_optimization": true  },
-          { "priority": 3, "event_name": "begin_checkout",    "value_optimization": false },
-          { "priority": 4, "event_name": "add_to_cart",       "value_optimization": false },
-          { "priority": 5, "event_name": "complete_tutorial", "value_optimization": false },
-          { "priority": 6, "event_name": "sign_up",           "value_optimization": false },
-          { "priority": 7, "event_name": "level_achieved",    "value_optimization": false },
-          { "priority": 8, "event_name": "session_start",     "value_optimization": false }
-        ]
-      }`,
-              )}
+              <p>앱 AEM과 웹 이벤트 설정을 구분한다. 과거 웹의 8개 이벤트 우선순위 제한을 모든 iOS 앱의 전송 한도로 적용하지 않는다. Events Manager에서 앱·이벤트의 적격 여부와 현재 광고 세트의 측정·최적화 설정을 확인한다.</p>
+              <p>앱 점검 순서: MMP의 Meta 연동 및 이벤트 매핑 → Events Manager 수신 상태 → 사용할 최적화 이벤트의 적격 여부 → 광고 세트의 AEM·SKAN 설정 확인. 계정에서 지원되는 설정을 기준으로 테스트한다.</p>
 
               <h3 class="sub-title">3.2 Google Ads · Firebase 링크</h3>
               <p>UAC는 Firebase 연결이 강제된다. Adjust에서 발행한 이벤트를 GA4로 미러링하거나 Adjust → Google Ads 직접 전송. 직접 전송 방식이 데이터 손실이 적어 1차 권장.</p>
@@ -1526,7 +1471,7 @@ function findMeta(id) {
                 body: `
             <section class="block" id="s-structure">
               <h2 class="section-title"><span class="ix">§1</span>캠페인 구조 (OS × 국가 × 단계)</h2>
-              <p>UAC는 캠페인 단위로 머신러닝이 학습하므로 분리 = 분산 학습. 너무 잘게 쪼개면 학습량 부족, 너무 합치면 최적화 노이즈. 기본 분리축: <strong>iOS / Android</strong> 와 <strong>국가</strong>는 무조건 분리, <strong>유사 국가는 묶어서</strong> (US+CA, JP+TW 등) 운영.</p>
+              <p>앱 캠페인은 플랫폼과 앱을 선택해 만든다. <strong>iOS와 Android 앱은 별도 캠페인</strong>으로 운영한다. 국가는 항상 나눌 필요가 없으며, <strong>목표·언어·전환 가치가 비슷한 국가</strong>는 함께 타기팅할 수 있다. 국가별 예산 통제나 성과 차이가 크면 분리를 검토하되, 지나친 분할로 학습 데이터가 줄어드는지도 확인한다.</p>
               ${dataTable(
                 [
                   { label: "캠페인 유형", type: "string" },
@@ -1605,7 +1550,7 @@ function findMeta(id) {
                 <div class="ico">!</div>
                 <div class="body">
                   <strong>학습 단계에서 벗어나지 못한다</strong>
-                  <p>일 conversion 10건 미만이면 학습 수렴 불가. 1) Conversion 정의를 한 단계 상위 funnel로 (purchase → add_to_cart). 2) 입찰을 +30% 일시 상향. 3) 국가/OS를 묶어서 캠페인 통합. 학습 완료 후 다시 분리 가능.</p>
+                  <p>전환량이 적으면 먼저 추적 누락·전환 지연·예산과 목표 입찰을 확인한다. 필요하면 사업 목표와 연결되는 상위 퍼널 이벤트를 검토한다. 유사한 목표·언어·전환 가치를 가진 국가의 통합은 검토할 수 있지만, iOS와 Android 앱을 한 캠페인으로 합치지는 않는다. 특정 전환 건수나 일괄 입찰 인상률을 학습 성공의 보장 조건으로 사용하지 않는다.</p>
                 </div>
               </div>
               <div class="callout warn">
@@ -1638,7 +1583,7 @@ function findMeta(id) {
             <span class="chip ok"><span class="dot"></span>기본 · 7d click + 1d view</span>
             <span class="chip warning"><span class="dot"></span>OS 분리 필수</span>`,
                 summary:
-                  "AAP(Advantage+ App Campaigns)는 Meta의 자동화 캠페인. 광고 그룹 단위 디테일 제어가 제한되고 캠페인 단위 최적화가 강제된다. Meta 기본 어트리뷰션은 7-day click + 1-day view이며, MMP·타 매체와 동일 기준 비교를 위해 보고 시 1d_click으로 축소 운영하는 것이 표준 관행. iOS는 AEM(Aggregated Event Measurement) 8개 이벤트 우선순위, Android는 일반 인앱 이벤트 전체 송신이 기본.",
+                  "AAP(Advantage+ App Campaigns)는 Meta의 자동화 캠페인. 광고 그룹 단위 디테일 제어가 제한되고 캠페인 단위 최적화가 강제된다. Meta 기본 어트리뷰션은 7-day click + 1-day view이며, MMP·타 매체와 동일 기준 비교를 위해 보고 시 1d_click으로 축소 운영하는 것이 표준 관행. 앱 AEM은 Events Manager의 적격 여부와 광고 세트 설정을 확인한다. 웹의 과거 8개 이벤트 제한을 앱 전체의 전송 한도로 해석하지 않는다.",
                 toc: [
                   { id: "s-structure", title: "캠페인 구조" },
                   { id: "s-setup", title: "AAP 설정 단계" },
@@ -1701,24 +1646,7 @@ function findMeta(id) {
                 <li>오디언스: 자동(Advantage+ Audience). 제외(exclusion)만 수동 지정 — 최근 30일 구매자 제외</li>
                 <li>크리에이티브: 최대 50개 에셋 업로드. Meta가 자동 조합 생성</li>
               </ol>
-              ${codeBlock(
-                "json",
-                "AEM 이벤트 우선순위 (Meta Events Manager)",
-                `{
-        "app_id": "fb_app_1234567890",
-        "aem_priority": [
-          "purchase",
-          "subscribe",
-          "begin_checkout",
-          "add_to_cart",
-          "complete_registration",
-          "complete_tutorial",
-          "level_achieved",
-          "session_start"
-        ],
-        "value_optimization_events": ["purchase", "subscribe"]
-      }`,
-              )}
+              <p>AEM 점검: 앱과 이벤트가 적격한지 Events Manager에서 확인하고, 광고 세트에서 선택한 측정 방식과 최적화 이벤트를 기록한다. AEM과 SKAN 보고서는 측정 범위와 지연을 확인한 뒤 비교한다.</p>
             </section>
 
             <section class="block" id="s-bid">
@@ -1737,14 +1665,14 @@ function findMeta(id) {
                 <div class="ico">!</div>
                 <div class="body">
                   <strong>iOS 캠페인 install 보고가 급감</strong>
-                  <p>SKAN postback 지연 또는 AEM 우선순위 변경 가능성. Meta Events Manager에서 AEM Priority 최근 변경 이력 확인 — 변경 시 학습 리셋되며 28일간 보고 누락 가능.</p>
+                  <p>SKAN postback 지연, 이벤트 수신 누락, 측정·최적화 설정 변경을 각각 확인한다. Events Manager의 진단과 MMP 전송 상태를 대조한다. 앱 AEM 설정 변경만으로 28일 보고 누락이 발생한다고 단정하지 않는다.</p>
                 </div>
               </div>
               <div class="callout warn">
                 <div class="ico">!</div>
                 <div class="body">
                   <strong>VBO 캠페인에서 매출이 일관되지 않는다</strong>
-                  <p>Adjust → Meta Partner에서 purchase 이벤트의 revenue 송신 활성 확인. AEM의 value_optimization 토글이 ON이어야 함. iOS는 SKAN postback 윈도우(0~2일) 내 매출만 신호로 사용됨.</p>
+                  <p>MMP의 Meta 연동에서 구매 이벤트의 매출·통화 매핑과 수신 상태를 확인한다. 가치 최적화 사용 가능 여부는 현재 앱·이벤트의 적격 조건을 확인한다. AEM과 SKAN의 측정 창을 구분하고, 모든 iOS 매출을 하나의 0~2일 창으로 해석하지 않는다.</p>
                 </div>
               </div>
               <div class="callout info">

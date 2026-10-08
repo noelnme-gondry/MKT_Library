@@ -2,12 +2,12 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { IA } from "@/store/useDataStore";
+import { IA, computeAnalyzeSig } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { trItemTitle } from "@/lib/enNavCopy";
 import { useAppStore } from "@/store/useDataStore";
 import CsvUploader from "@/components/CsvUploader";
-import { trackProductEvent } from "@/lib/analytics";
+import { trackProductEvent, trackProductEventOnce, productEventKey } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import ToolIndex from "@/components/ds/ToolIndex";
 import { blockerFieldLabels, blockersText } from "@/lib/assistant/blockerText";
@@ -118,6 +118,7 @@ function StartGateContent({ locale = "ko" }) {
     ? eligibilitySnapshot.ids
     : hasPreparedData ? [] : null;
   const rememberEligibility = useCallback((eligibility) => {
+    if (!eligibility.some(result => result.status !== "blocked")) trackProductEventOnce("analysis_blocked", productEventKey("start", computeAnalyzeSig(csvData), "no_supported_analysis", locale), { source: "start", placement: "start", state: "no_supported_analysis", count: 0, locale });
     setEligibilitySnapshot({
       raw: csvData.raw,
       headers: csvData.headers,
@@ -132,7 +133,7 @@ function StartGateContent({ locale = "ko" }) {
           hint: blockersText(result, locale),
         }])),
     });
-  }, [csvData.headers, csvData.mapping, csvData.raw, locale]);
+  }, [csvData, locale]);
   const getTitle = (id) => {
     const meta = IA.flatMap((group) => group.items).find((item) => item.id === id);
     return meta ? trItemTitle(id, locale, meta.title) : id;
@@ -152,14 +153,20 @@ function StartGateContent({ locale = "ko" }) {
     <>
       <h1 className="page-title">{browseMethods ? (locale === "en" ? "Browse analyses" : "분석 방법 둘러보기") : (locale === "en" ? "Start with my data" : "내 데이터로 시작")}</h1>
       <p className="page-deck">{browseMethods ? C.indexDeck : C.deck}</p>
-      {!browseMethods && <JourneyProgress stage={hasSubmitted ? "analyze" : "prepare"} completed={hasSubmitted ? ["prepare"] : []} locale={locale} placement="start" />}
+      {!browseMethods && <JourneyProgress stage={hasSubmitted && eligibleIds?.length ? "analyze" : "prepare"} completed={hasSubmitted && eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
 
       {!browseMethods && <>
-        {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · mapping confirmed" : "행 · 매핑 확인 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}
+        {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · file loaded" : "행 · 파일 읽기 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}
         <section className="block start-upload-panel" hidden={hasSubmitted}>
           <CsvUploader toolId="start-gate" locale={locale} showMappingReview collapseMappingReview onAnalyzed={analyze} />
         </section>
         {hasSubmitted && <div ref={workspaceRef}>
+          {isEligibilityCurrent && eligibleIds.length === 0 && <section role="status" className="callout warn">
+            <div><h2>{locale === "en" ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다"}</h2>
+            <p>{locale === "en" ? "The file was read, but the required columns are not connected. Review the mapping or choose a template for your analysis below." : "파일은 읽었지만 분석에 필요한 컬럼이 연결되지 않았습니다. 매핑을 수정하거나 분석 목적에 맞는 템플릿을 선택하세요."}</p>
+            <button className="btn primary" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Fix column mapping" : "컬럼 매핑 수정"}</button>
+            <Link className="btn" href={locale === "en" ? "/en/templates" : "/templates"}>{locale === "en" ? "Choose a data template" : "데이터 템플릿 선택"}</Link></div>
+          </section>}
           <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
           <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart />
           {eligibleIds?.includes("5-2") && <Link className="btn" href={locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</Link>}

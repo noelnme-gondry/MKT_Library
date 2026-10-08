@@ -19,8 +19,8 @@ export const SOURCE_SURVEY_SESSION_KEY = "mkt-library-source-survey-seen";
 // 화면이 받은 답변을 서버가 거절한다.
 export const SOURCE_SURVEY_MAX_LENGTH = 300;
 
-// 결과 확인 이벤트 다음 틱에 연다. 첫 방문 자체로는 표시하지 않는다.
-export const SOURCE_SURVEY_OPEN_DELAY_MS = 0;
+// 결과가 준비된 뒤 읽을 시간을 준다. 첫 방문 자체로는 표시하지 않는다.
+export const SOURCE_SURVEY_OPEN_DELAY_MS = 60_000;
 
 export const SOURCE_SURVEY_LOCALES = ["ko", "en"];
 
