@@ -131,6 +131,7 @@ test("100,000 native rows are parsed and aggregated in browser workers", async (
   await expect(page.getByRole("table", { name: "CTIT", exact: true })).toContainText("10.0");
 });
 test("report layouts keep the page within 320, 980 and 1440 pixels", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   for (const width of [320, 980, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const path of ["/tools/multitouch-map", "/en/tools/cannibalization-diagnosis/detail"]) {
