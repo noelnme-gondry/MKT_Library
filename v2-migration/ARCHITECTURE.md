@@ -96,7 +96,7 @@ v2-migration/
 ## 3. 도메인 매핑 (도구 UI ↔ 순수 엔진)
 | 도구 (UI) | 엔진 (`utils/`) | 비고 |
 |---|---|---|
-| BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) | fitBest·predictSafeCpr·removeOutliers |
+| BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) · `allocationObservations` · `allocationModels` · `allocationRegime` · `allocationDeltaPlan` | 주간/D7·최근 구간·기존 유지 비교. `analysis-export/allocationCostWorkbook` → Cost 입력 수식 예측 |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup. 별도 `efficiencyStages.js`가 집계 CPM·클릭·설치·가입 비율의 순서 평균 단가 기여를 계산하고 `PvmEfficiencyStages.jsx`가 단계별 전후 값·변화·기여를 표시 |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` + `creativePredictiveModel.js` + `lib/analysis/webr/randomForest.js`·`svm.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA). 독립 소재 grain으로 집계한 뒤 표본·변수 조건을 충족할 때만 RF/SVM을 같은 5-fold에서 비교하고, 채널 통제 후 전역 Shapley R²를 속성별로 배분한다. RF 중요도와 Shapley R²는 예측/설명력이며 방향·인과·개별 소재 SHAP이 아님 |

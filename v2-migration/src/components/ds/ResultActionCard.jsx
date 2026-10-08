@@ -10,8 +10,9 @@ import { buildReviewEvidence } from "@/lib/reviewEvidence";
 import LinkAnalysisToDecision from "./LinkAnalysisToDecision";
 import DecisionReview from "@/components/ds/DecisionReview";
 import DecisionReviewPreview from "@/components/ds/DecisionReviewPreview";
-import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
-import AnalysisScopeEvidence from "@/components/ds/AnalysisScopeEvidence";
+import AnalysisBasisBar, { analysisBasisIssues } from "@/components/data-import/AnalysisBasisBar";
+import AnalysisScopeEvidence, { analysisScopeIssues } from "@/components/ds/AnalysisScopeEvidence";
+import IssueMark from "@/components/ds/IssueMark";
 import { scopeEvidenceTable, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import { computeAnalyzeSig, findMeta, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import { findingFromResultCard } from "@/lib/assist/findingProducers";
@@ -70,6 +71,8 @@ export default function ResultActionCard({
   coreFigure = null,
   analysisDetails = null,
   analysisMeta = null,
+  issues = null,
+  analysisContent = null,
   children,
   style,
   collapsePointsAfter = null,
@@ -165,6 +168,13 @@ export default function ResultActionCard({
   const canOpenDecisionReview = Boolean(toolId && !isDemoData(csvData));
   // 예시 데이터에서는 저장하지 않되 저장 단계가 있다는 사실과 조건은 보여 준다(B안).
   const canPreviewDecision = Boolean(decisionReview && toolId && (hasDecisionPrefill || (decisionPrefill == null && resultState === "ready" && headline)) && isDemoData(csvData));
+  const hasCombinedIssues = issues != null;
+  const basisIssues = useMemo(() => hasCombinedIssues && analysisBasis && toolId
+    ? analysisBasisIssues({ canonicalData: csvData?.canonicalData, mapping: csvData?.mapping, toolId, locale }) : [],
+  [hasCombinedIssues, analysisBasis, toolId, csvData?.canonicalData, csvData?.mapping, locale]);
+  const combinedIssues = useMemo(() => issues == null ? null : [...new Set([
+    ...issues, ...analysisScopeIssues(scopeEvidence, locale), ...basisIssues,
+  ].filter(line => line != null && String(line).trim()))], [issues, scopeEvidence, locale, basisIssues]);
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -310,8 +320,9 @@ export default function ResultActionCard({
         )}
         {/* 확인할 점은 결론 옆 빨간 "!" 하나로 모은다(데이터 기준·입력 결측·경고). 문제가 없으면 아무것도
             그리지 않는다. 예전의 '실제 분석 범위·분모 확인'·'신뢰도·방법' 블록은 2026-09-24 제거. */}
-        {(analysisMeta || analysisDetails || scopeEvidence || (analysisBasis && toolId)) && (
+        {(combinedIssues != null || analysisMeta || analysisDetails || scopeEvidence || (analysisBasis && toolId)) && (
           <aside className="result-action-card__evidence" aria-label={locale === "en" ? "Things to check" : "확인할 점"}>
+            {combinedIssues != null ? <IssueMark issues={combinedIssues} locale={locale} /> : <>
             {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
             {analysisDetails}
             {analysisBasis && toolId && (
@@ -326,6 +337,7 @@ export default function ResultActionCard({
               />
             )}
             {analysisMeta}
+            </>}
           </aside>
         )}
       </div>
@@ -370,6 +382,8 @@ export default function ResultActionCard({
           </ul>
         </section>
       )}
+
+      {analysisContent}
 
       {canScheduleDecision && !isDemoData(csvData) && <LinkAnalysisToDecision toolId={toolId} metric={resolvedDecisionPrefill?.metric} locale={locale} evidence={buildReviewEvidence({ headline, points, stats, scope: { ...resultScope, currency: csvData?.currency, metric: resolvedDecisionPrefill?.metric }, analysisType: resolvedAnalysisType, resultState })} />}
       {canScheduleDecision && (

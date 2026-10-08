@@ -14,6 +14,22 @@
    ===================================== */
 @layer reset, tokens, app;
 
+@layer app {
+  .allocation-result-workspace { margin-top: 1.5rem; min-width: 0; }
+  .result-action-card .allocation-result-workspace { margin-left: 47px; }
+  .result-action-card .allocation-result-workspace .tool-core-figure--embedded { margin: 0; padding-top: 0; border-top: 0; }
+  .allocation-result-tabs { display: flex; flex-wrap: wrap; gap: .5rem; border-bottom: 1px solid var(--border); padding-bottom: .75rem; margin-bottom: 1.25rem; }
+  .allocation-result-tabs button { min-height: 44px; padding: .5rem .75rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-primary); font: inherit; font-weight: 600; }
+  .allocation-result-tabs button[aria-selected="true"] { background: var(--primary); color: var(--on-primary); }
+  .allocation-result-tabs button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .allocation-result-panel[hidden] { display: none !important; }
+  .allocation-result-panel > * + * { margin-top: 1.5rem; }
+  .allocation-result-panel .block, .allocation-result-panel .alloc-card { border: 0; background: transparent; box-shadow: none; padding: 0; }
+  .app .content .allocation-result-panel .analysis-design-check--allocation { border: 0; background: transparent; padding: 0; }
+  .allocation-result-subview { margin-bottom: 1rem; }
+  @media (max-width: 768px) { .result-action-card .allocation-result-workspace { margin-left: 0; } }
+}
+
 @layer tokens {
 /* ========== Design Tokens (Obsidian Flux) ========== */
       :root {

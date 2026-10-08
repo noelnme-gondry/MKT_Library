@@ -27,6 +27,12 @@ export const ALLOCATION_OPTIONS = {
   rollupLevel: choice("detail", ["detail", "country_channel", "country", "all"], "표 묶어 보기", "Table grouping"),
   groupModels: { value: {}, private: true, ko: "대상별 모형", en: "Per-target models" },
   curveChannel: { value: null, private: true, ko: "응답곡선 대상", en: "Response target" },
+  observationCadence: choice("auto", ["auto", "daily", "weekly"], "자료 단위", "Observation period"),
+  asOfDate: { value: "", private: true, ko: "추출 기준일", en: "Data as-of date" },
+  maturityMode: choice("auto", ["auto", "mature", "all"], "D7 성숙도", "D7 maturity"),
+  groupByPlatform: { value: true, ko: "OS별 분리", en: "Separate operating systems" },
+  regimeMode: choice("all", ["all", "auto", "manual"], "곡선 사용 구간", "Curve fitting period"),
+  regimeStart: { value: "", private: true, ko: "구간 시작일", en: "Period start" },
 };
 export const ALLOCATION_BLOCKS = [
   { id: "s-result", label: { ko: "결론·현재와 변경안", en: "Conclusion and allocation" }, locked: true },
@@ -53,6 +59,7 @@ export function decodeAllocationOption(key, params) {
   if (value == null && option.value == null) return value;
   let valid;
   if (key === "analysisRange") valid = value && [value.start, value.end].every(date => date === "" || /^\d{4}-\d{2}-\d{2}$/.test(date)) && (!value.start || !value.end || value.start <= value.end);
+  else if (["asOfDate", "regimeStart"].includes(key)) valid = typeof value === "string" && (value === "" || /^\d{4}-\d{2}-\d{2}$/.test(value));
   else if (key === "groupModels") valid = value && !Array.isArray(value) && Object.entries(value).every(([name, model]) => name && ["linear", "log", "poly2", "power", "auto"].includes(model));
   else if (option.list) valid = Array.isArray(value) && value.length <= 100 && value.every(item => typeof item === "string");
   else if (option.values) valid = option.values.includes(value);

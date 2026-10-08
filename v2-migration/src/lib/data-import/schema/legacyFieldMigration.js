@@ -8,6 +8,13 @@ const windowed = (canonicalKey, value) => ({
   window: { kind: "cohort_day", value },
 });
 
+// The weekly-aware allocator projects a period-start TIME binding to its date input.
+// Other daily tools retain their original date-only contract.
+export function canonicalKeysForToolLegacyField(toolId, legacyKey) {
+  const canonicalKey = LEGACY_FIELD_MIGRATIONS[legacyKey]?.canonicalKey;
+  return canonicalKey ? (toolId === "5-3" && legacyKey === "date" ? [canonicalKey, "week"] : [canonicalKey]) : [];
+}
+
 // V1 키 중 V2에서 같은 의미로 합쳐지는 것만 명시한다. 나머지는 이번 기준선에서
 // 억지로 역할을 만들지 않고 legacy_passthrough로 보존한다.
 export const LEGACY_FIELD_MIGRATIONS = Object.freeze({

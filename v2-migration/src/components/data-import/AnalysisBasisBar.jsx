@@ -88,6 +88,24 @@ function cachedPeriodComparison(mappedRows) {
   return comparisonCache.get(mappedRows);
 }
 
+export function analysisBasisIssues({ canonicalData, mapping, toolId, locale = "ko", eligibility: providedEligibility = null }) {
+  if (!canonicalData?.records?.length) return [];
+  const T = COPY[locale] || COPY.ko;
+  const eligibility = providedEligibility || (ANALYSIS_CONTRACTS[toolId] ? evaluateEligibility({ toolId, mapping, canonicalData }) : null);
+  const report = eligibility?.quality || cachedQualityReport(canonicalData, Object.values(mapping || {}).filter(key => key && key !== "__ignore__"), analysisRequiresDate(toolId));
+  return basisIssueLines(report, eligibility?.statisticalStatus, locale, T);
+}
+
+function basisIssueLines(report, status, locale, T) {
+  const isCaution = report.grade === "caution" || status === "CAUTION";
+  const isUnfit = report.grade === "unfit" || status === "INSUFFICIENT_DATA";
+  if (!report.issues.length && !isCaution && !isUnfit) return [];
+  const count = issue => issue.count ? ` (${number(issue.count, locale)}${issue.code === "period_gaps" ? (locale === "en" ? " gaps" : "곳") : issue.fields ? "" : (locale === "en" ? " rows" : "행")})` : "";
+  const lines = report.issues.map(issue => `${T[issue.code] || issue.code}${count(issue)}${issue.fields?.length ? ` — ${issue.fields.join(", ")}` : ""}`);
+  if (!lines.length) lines.push(`${T.basis}: ${isUnfit ? T.unfit : T.caution} · ${number(report.rowCount, locale)} ${T.rows}${report.requiresDate ? ` · ${number(report.periodCount, locale)} ${T.periods}` : ""}`);
+  return lines;
+}
+
 export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, toolId, eligibility: providedEligibility = null, locale = "ko", showPeriodComparison = true, useMappedMetrics = true, variant = "bar" }) {
   const T = COPY[locale] || COPY.ko;
   const metricKeys = useMemo(() => (
@@ -118,9 +136,7 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
     // 결과 카드 머리: 문제가 없으면 아무것도 없고, 있으면 빨간 "!" 하나. 누르면 어느 지점인지
     // (기간 공백 수·열 이름·행 수) 목록으로 보인다(2026-09-24 사용자 결정 — 늘 펼친 근거 블록 제거).
     if (!issueCount && !isCaution && !isUnfit) return null;
-    const count = (issue) => (issue.count ? ` (${number(issue.count, locale)}${issue.code === "period_gaps" ? (locale === "en" ? " gaps" : "곳") : issue.fields ? "" : (locale === "en" ? " rows" : "행")})` : "");
-    const lines = report.issues.map((issue) => `${T[issue.code] || issue.code}${count(issue)}${issue.fields?.length ? ` — ${issue.fields.join(", ")}` : ""}`);
-    if (!lines.length) lines.push(`${T.basis}: ${label} · ${number(report.rowCount, locale)} ${T.rows}${report.requiresDate ? ` · ${number(report.periodCount, locale)} ${T.periods}` : ""}`);
+    const lines = basisIssueLines(report, status, locale, T);
     return <IssueMark issues={lines} locale={locale} />;
   }
 
