@@ -34,7 +34,7 @@
 | 한국어 표기 | **Growth Opt Playbook**(원문 유지) | "그로스 최적화 플레이북"은 **설명 문구로만** 사용. 제품명 자리에 쓰지 않는다 |
 | 공식 도메인 | `https://growthoptplaybook.com` | `routeMap.js` `SITE_URL` |
 | 제품 범주 | 앱·웹 퍼포먼스 마케팅용 **브라우저 기반 분석·의사결정 지원 도구** | — |
-| 도구 수 표기 | **"20개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-18 안의 분석 다섯이 개별 도구로 승격되고 허브(5-18) 자체가 목록에서 내려간 뒤, 5-28 핵심 액션 생존·이탈 분석과 5-29 구성 변화 분석이 공개 도구로 추가됐다(§4.1). 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
+| 도구 수 표기 | **"21개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-30 멀티터치 맵이 추가됐다. 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
 
 **도구 수를 손으로 세지 말 것.** 화면 카피는 `PUBLISHED_TOOL_IDS`(`lib/toolIndex.js`)에서 파생한다(현재 `LandingPage.jsx`의 `T.questionDeck(PUBLISHED_TOOL_IDS.length)`). `brandFacts.getPublishedToolCount()`는 같은 수를 계산하는 두 번째 경로이므로 이제 그것을 재노출한다 — 세는 곳은 하나다. 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
@@ -191,7 +191,11 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 **PR #696으로 관계가 뒤집혔다.** 이전에는 5-18(마케팅 반응 분석)이 정식 도구이고 그 아래 다섯 분석이 subtool이었다. 지금은 다섯 분석이 각각 정식 도구이고 **5-18 허브가 subtool**이다 — 사용자가 찾는 단위가 "마케팅 반응 분석"이 아니라 "잠식 진단"·"MMM 기여도"이기 때문이다. 내부 id(`5-18-*`)는 §4.1 규칙대로 불변이다.
 
-### 4.2 공개 분석 도구 20개
+### 4.2 공개 분석 도구 21개
+
+멀티터치 맵은 설치 raw의 관측된 클릭 contributor와 귀속 매체의 중복을 보여준다. 앱×AppsFlyer ID의 파일 내 가장 이른 설치를 기준으로 하며, 누락·제한된 contributor는 접촉이 없었다는 증거가 아니다. 최대 3개 contributor의 경로이며 전체 접촉이나 인과 기여율을 복원하지 않는다. CTIT는 유효한 귀속 클릭 시각에서 설치까지, probabilistic 비교는 같은 설치 분모의 contributor 포함 범위만 바꾼다. / The multi-touch map describes observed click contributors and the attributed install source. It uses the earliest installation per app × AppsFlyer ID in the file. Missing or restricted contributors are not evidence of no contact. Up to three contributors do not reconstruct a complete journey or causal credit. CTIT uses valid attributed-click timestamps; probabilistic comparisons retain the same installation denominator.
+
+잠식 상세 보기(`/tools/cannibalization-diagnosis/detail`)는 주간 국가·OS별 전년 동주차 증감에서 연속 반대 움직임과 직전 8주 중앙값 대비 반대 움직임을 탐색한다. 채널·캠페인 변화량·동행 주차·성별/연령 변화 구성의 겹침은 기술 통계이며 잠식률이나 인과 판정이 아니다. 누락 주차는 구간을 끊으며 미기록 채널·캠페인을 0으로 읽는 설정은 사용자가 직접 선택한다. / The detail view scans same-ISO-week year-over-year changes within country and OS for consecutive opposite signs or movement against a preceding eight-week median. Channel/campaign changes, co-moving weeks and demographic overlap are descriptive, not causal displacement. Missing weeks break stretches; interpreting absent entities as zero is an explicit user setting.
 
 | ID | 도구 | URL |
 |---|---|---|
@@ -203,6 +207,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 5-18-paid-organic | Paid·Organic 변화맵 | `/tools/paid-organic-trend` |
 | 5-18-trend | 마케팅 추세 분석 | `/tools/marketing-trend` |
 | 5-18-cannibal | 유료·오가닉 잠식 진단 | `/tools/cannibalization-diagnosis` |
+| 5-30 | 멀티터치 맵 | `/tools/multitouch-map` |
 | 5-18-mmm | MMM 기여도 분석 | `/tools/mmm-contribution` |
 | 5-18-forecast | 마케팅 회귀 예측 | `/tools/marketing-forecast` |
 | 5-20 | 핵심 가치(Aha) 발굴 | `/tools/aha-moment` |

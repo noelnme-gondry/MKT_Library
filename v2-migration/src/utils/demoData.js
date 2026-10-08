@@ -20,6 +20,7 @@
 //   aha         convert strongly tied to messages/matches, weakly to boost (lift/F1 spread).
 
 import { seededNoise, generateDates } from "./testFixtures";
+import { buildMultitouchDemo, buildCannibalDetailDemo } from "../lib/attributionReports/demo";
 
 const round = (v) => Math.round(v);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -982,6 +983,8 @@ function buildSegmentComposition() {
 }
 
 const BUILDERS = {
+  multitouch: buildMultitouchDemo,
+  cannibal_detail: buildCannibalDetailDemo,
   efficiency: buildEfficiency,
   creative: buildCreative,
   experiment: buildExperiment,

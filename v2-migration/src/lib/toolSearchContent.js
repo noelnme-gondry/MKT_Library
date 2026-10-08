@@ -1,5 +1,6 @@
 import { getResponseSubtoolContent } from "./responseSubtoolContent";
 import { ROUTES, isRoutePublished } from "./routeMap";
+import { REPORT_SEARCH_CONTENT } from "./attributionReports/content";
 
 // 도구 라우트의 검색 진입면 콘텐츠(SSOT).
 // - 렌더: `components/ToolLongform.jsx` (eyebrow·title·lead·sections·faq)
@@ -7,6 +8,7 @@ import { ROUTES, isRoutePublished } from "./routeMap";
 // 5-18 하위 진입 라우트는 `responseSubtoolContent.js`가 그대로 소유하고 여기서 폴백으로 잇는다.
 // 카피 원칙(AGENTS §8): 관측 결과를 인과로 단정하지 않고, 도구가 못 하는 것을 함께 적는다.
 const CONTENT = {
+  ...REPORT_SEARCH_CONTENT,
   "5-2": {
     ko: {
       eyebrow: "도구 사용 가이드",

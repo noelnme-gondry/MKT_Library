@@ -43,6 +43,8 @@ const AsoStoreConversion = dyn(() => import("@/components/tools/AsoStoreConversi
 const AsaKeywordFinder = dyn(() => import("@/components/tools/AsaKeywordFinder"));
 const SubscriptionSurvivalAnalysis = dyn(() => import("@/components/tools/SubscriptionSurvivalAnalysis"));
 const SegmentCompositionChange = dyn(() => import("@/components/tools/SegmentCompositionChange"));
+const MultitouchMap = dyn(() => import("@/components/tools/MultitouchMap"));
+const CannibalDetail = dyn(() => import("@/components/tools/CannibalDetail"));
 // Content Analytics (콘텐츠 도메인 — 엔진 재사용, 라벨만 신규)
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFinder"));
@@ -114,6 +116,8 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "5-18-paid-organic" && <ToolRecipeWorkspace toolId="5-18-paid-organic" locale="ko"><PaidOrganicTrend /></ToolRecipeWorkspace>}
             {routeId === "5-18-trend" && <ToolRecipeWorkspace toolId="5-18-trend" locale="ko"><MarketingResponse initialStage="trend" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-18-cannibal" && <ToolRecipeWorkspace toolId="5-18-cannibal" locale="ko"><MarketingResponse initialStage="diagnose" isolated /></ToolRecipeWorkspace>}
+            {routeId === "5-18-cannibal-detail" && <ToolRecipeWorkspace toolId="5-18-cannibal-detail" locale="ko"><CannibalDetail /></ToolRecipeWorkspace>}
+            {routeId === "5-30" && <ToolRecipeWorkspace toolId="5-30" locale="ko"><MultitouchMap /></ToolRecipeWorkspace>}
             {routeId === "5-18-mmm" && <ToolRecipeWorkspace toolId="5-18-mmm" locale="ko"><MarketingResponse initialStage="mmm" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-18-forecast" && <ToolRecipeWorkspace toolId="5-18-forecast" locale="ko"><MarketingResponse initialStage="lab" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-20" && <ToolRecipeWorkspace toolId="5-20" locale="ko"><AhaMomentFinder /></ToolRecipeWorkspace>}

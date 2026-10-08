@@ -30,6 +30,8 @@ const DEMO_MINIMUM_ROWS = Object.freeze({
   content_traffic: 300,
   content_dashboard: 300,
   segment_composition: 180,
+  multitouch: 2000,
+  cannibal_detail: 2000,
 });
 
 describe("demo sanity", () => {

@@ -438,6 +438,8 @@ export const IA = [
         seoTitleEn: "Segment Composition Change Analysis",
         seoDescriptionEn: "Compare two periods to see which audience segment shifted, then split it into movement between campaigns and change inside them, in your browser.",
       },
+      { id: "5-30", title: "멀티터치 맵", titleEn: "Multi-touch map", seoTitle: "AppsFlyer 멀티터치 맵", seoTitleEn: "AppsFlyer Multi-touch Map" },
+      { id: "5-18-cannibal-detail", title: "잠식 상세", titleEn: "Cannibalization detail", hidden: true },
       {
         id: "5-28",
         title: "액션 생존·이탈",

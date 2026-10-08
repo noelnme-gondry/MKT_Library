@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ROUTES } from "@/lib/routeMap";
+import { ROUTES, publishedToolIds } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { buildCsvToolInventory } from "./toolDataInventory";
@@ -55,12 +55,9 @@ describe("CSV tool inventory", () => {
     ]));
   });
 
-  it("covers the 19 catalogued public tools and the independent action-survival contract", () => {
+  it("covers the published tools and the independent action-survival contract", () => {
     const publicTools = inventory.filter((tool) => tool.isPublicAnalysisTool);
-    expect(publicTools.map((tool) => tool.toolId).sort()).toEqual([
-      "5-2", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-3", "5-4",
-      "5-18-cannibal", "5-18-forecast", "5-18-mmm", "5-18-paid-organic", "5-18-trend", "9-1", "9-6",
-    ].sort());
+    expect(publicTools.map((tool) => tool.toolId).sort()).toEqual(publishedToolIds().sort());
 
     for (const tool of publicTools) {
       for (const requirement of tool.requirements) {

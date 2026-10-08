@@ -21,6 +21,7 @@ export function mappedKeys(mapping = {}) {
 
 function detectedGrain(entry, fields, cadence) {
   const has = (key) => fields.has(key);
+  if (has("af_id") && has("af_install_time")) return "appsflyer_install";
   if (has("tenure_periods") && has("event_observed")) return "subscription_episode";
   if (has("search_term")) return "asa_keyword_daily";
   if (has("creative_id") && has("impressions")) {

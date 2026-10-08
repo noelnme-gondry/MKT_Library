@@ -157,6 +157,14 @@ export const ROUTE_SEO = {
     ko: { title: "구성 변화 분석 | 이동인가 내부 변화인가", description: "세그먼트별 인원 CSV로 두 기간의 사용자 구성 변화를 보고, 캠페인 간 볼륨 이동과 캠페인 내부 변화로 나눠 봅니다." },
     en: { title: "Segment Composition Change Analysis", description: "Compare two periods to see which audience segment shifted, and split the change into movement between campaigns and change inside them." },
   },
+  "5-30": {
+    ko: { title: "AppsFlyer 멀티터치 맵 | 클릭 경로·CTIT", description: "AppsFlyer 설치 raw의 클릭 contributor로 매체·캠페인 중복, 관측 경로, CTIT와 시간 간격을 비교합니다." },
+    en: { title: "AppsFlyer Multi-touch Map | Click Paths & CTIT", description: "Compare observed click contributors, media and campaign overlap, touch paths and CTIT from AppsFlyer install raw data." },
+  },
+  "5-18-cannibal-detail": {
+    ko: { title: "잠식 상세 분석 | 주간 구간·캠페인·고객 구성", description: "전년 동주차 Paid·Organic 반대 움직임을 찾고 채널·캠페인 증감과 성별·연령 구성을 비교합니다. 인과 판정은 아닙니다." },
+    en: { title: "Cannibalization Detail | Stretches & Campaigns", description: "Inspect opposite Paid and Organic year-over-year stretches, channel and campaign moves and demographic overlap without causal claims." },
+  },
   "5-28": {
     ko: { title: "핵심 액션 생존·이탈 분석 | 위험 시점과 반복 가치", description: "핵심 액션의 유지 기간과 이탈·종료 CSV로 생존율·위험 구간·관측기간 반복 가치를 계산합니다." },
     en: { title: "Action Survival & Drop-off Analysis", description: "Estimate survival, drop-off timing, and observed recurring value from censored action data." },

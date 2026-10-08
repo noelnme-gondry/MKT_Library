@@ -1,3 +1,4 @@
+import { MULTITOUCH_FIELDS } from "../../attributionReports/fields";
 // Semantic Mapper V2의 전역 역할 registry. 이 파일은 기존 STANDARD_FIELDS를
 // 대체하지 않는다. V1 입력·엔진 계약은 마이그레이션이 끝날 때까지 유지한다.
 // alias는 의미 정의가 아니라 다음 단계 scorer의 결정적 신호로 분리한다.
@@ -26,6 +27,8 @@ export const CANONICAL_FIELD_FAMILIES = new Set([
 ]);
 
 export const CANONICAL_FIELDS = Object.freeze({
+  observed_outcome_count: field("observed_outcome_count", "OUTCOME", "관측 성과 건수", "Observed outcome count", { requiresConfirmation: true }),
+  ...Object.fromEntries(Object.entries(MULTITOUCH_FIELDS).filter(([key]) => key.startsWith("af_")).map(([key, value]) => [key, field(key, key.endsWith("_time") ? "TIME" : key.endsWith("_id") || key === "af_id" ? "IDENTIFIER" : "DIMENSION", value.label, value.labelEn, { valueType: "string", unitFamily: "category", aggregation: "none" })])),
   date: field("date", "TIME", "날짜", "Date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "one", validationRules: ["utc_date"] }),
   week: field("week", "TIME", "주차", "Week", { valueType: "date", unitFamily: "week", aggregation: "none", cardinalityHint: "one", validationRules: ["week_or_date"] }),
   snapshot_date: field("snapshot_date", "TIME", "추출 기준일", "Snapshot date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "one" }),

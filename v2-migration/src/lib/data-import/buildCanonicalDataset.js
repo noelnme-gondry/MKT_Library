@@ -1,9 +1,10 @@
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { normalizeDateValue, normalizeNumericValue, parseDateValue } from "./normalizeValues";
+import { MULTITOUCH_FIELDS } from "../attributionReports/fields";
 
 // 범주/식별 차원은 수치 품질 검사 대상이 아니다. 검색어·매치 타입을 지표로 남기면
 // Apple Ads export가 "유효한 핵심 지표 없음"으로 차단된다.
-const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "adgroup_name", "creative_name", "creative_id", "country", "platform", "store_source", "search_term", "match_type"]);
+const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "adgroup_name", "creative_name", "creative_id", "country", "platform", "store_source", "search_term", "match_type", ...Object.keys(MULTITOUCH_FIELDS).filter(key => key.startsWith("af_"))]);
 const EMPTY = (value) => value == null || String(value).trim() === "";
 const SUMMARY_LABEL = /^(?:grand\s+total|sub\s*total|total|subtotal|average|avg|총계|합계|소계|평균)$/i;
 

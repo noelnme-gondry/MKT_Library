@@ -10,6 +10,8 @@ import { deriveStatisticalStatus } from "./statisticalStatus";
 const RESPONSE_PANEL_BASE_CONTRACT = Object.freeze({ minRows: 1, minPeriods: 1 });
 
 export const ANALYSIS_CONTRACTS = {
+  "5-30": { minRows: 1, minPeriods: 0, requiresDate: false, priority: 20 },
+  "5-18-cannibal-detail": { minRows: 2, minPeriods: 0, requiresDate: false, priority: 20 },
   "5-2": { minRows: 1, minPeriods: 1, priority: 1 },
   // PVM은 비교할 두 기간이 필요하다. 2주는 차단 기준, 각 채널의 8일 미만 관측은
   // 원인 순위가 흔들릴 수 있어 주의로만 낮춘다.

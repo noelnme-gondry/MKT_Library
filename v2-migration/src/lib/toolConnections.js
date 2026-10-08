@@ -2,6 +2,7 @@ import { idToSlug } from "@/lib/routeMap";
 import { groupForRoute } from "@/lib/toolGroups";
 
 export const CONNECTED_TOOLS = {
+  "5-30": { title: { ko: "멀티터치 맵", en: "Multi-touch map" }, question: { ko: "어떤 클릭 채널이 함께 기록됐을까?", en: "Which click channels were recorded together?" }, keywords: { ko: "AppsFlyer 멀티터치 contributor 어시스트 경로 CTIT 지면", en: "AppsFlyer multi-touch contributor assist paths CTIT placement" } },
   "5-2": {
     title: { ko: "운영 대시보드", en: "Operations dashboard" },
     question: { ko: "이번 주 전체 성과는 어디서 흔들렸을까?", en: "Where did overall performance move this week?" },
@@ -127,7 +128,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "02 · BASELINE", en: "02 · BASELINE" },
     title: { ko: "추세·잠식 점검", en: "Trend and displacement" },
     description: { ko: "원래 추세인지, 광고가 오가닉을 먹은 건지 가릅니다.", en: "Tell the underlying trend apart from paid displacing organic." },
-    tools: ["5-18-trend", "5-18-paid-organic", "5-18-cannibal"],
+    tools: ["5-18-trend", "5-18-paid-organic", "5-18-cannibal", "5-30"],
   },
   {
     id: "budget",
@@ -180,6 +181,7 @@ export const TOOL_JOURNEY = [
 // (isSameData), 응답 패널을 쓰는 다섯 분석은 서로를 먼저 가리킨다 — 한 번 매핑한
 // CSV로 이어서 볼 수 있는 질문을 다음 단계로 잇는 것이 이 맵의 목적이다.
 export const NEXT_TOOL_IDS = {
+  "5-30": ["5-18-cannibal", "5-23", "5-18-mmm"],
   "5-2": ["5-21", "5-22", "5-3"],
   "5-21": ["5-29", "5-22", "5-3"],
   "5-22": ["5-3", "5-26", "9-6"],
@@ -200,7 +202,7 @@ export const NEXT_TOOL_IDS = {
   // 잠식을 진단하고, 기여를 나눈 뒤 예측으로 넘어간다.
   "5-18-trend": ["5-18-paid-organic", "5-18-cannibal", "5-18-mmm"],
   "5-18-paid-organic": ["5-18-cannibal", "5-18-trend", "5-23"],
-  "5-18-cannibal": ["5-23", "5-18-mmm", "5-18-trend"],
+  "5-18-cannibal": ["5-23", "5-30", "5-18-trend"],
   "5-18-mmm": ["5-25", "5-18-forecast", "5-3"],
   "5-18-forecast": ["5-18-mmm", "5-3", "5-2"],
 };
