@@ -100,7 +100,10 @@ for (const locale of ["ko", "en"]) {
       await expect(panel.getByRole("status").filter({ hasText: practice.file })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await panel.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기", exact: true }).click();
-      await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
+      // This checks the handoff, not a 10-second performance budget. CI traces show
+      // MMM route chunks still arriving after that deadline while navigation is pending.
+      // Keep the exact URL, arrival and page-error assertions after the route settles.
+      await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`, { timeout: 30_000 });
       // 시안 E: 모달 대신 출처 한 줄. 데모 안내 모달이 겹치지 않는다.
       await expect(page.locator(".blog-arrival")).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
