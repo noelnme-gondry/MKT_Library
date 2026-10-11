@@ -21,6 +21,7 @@ export const OG_CARD_URL = `${SITE_URL}${OG_CARD_PATH}`;
 // component tag is documentation-only (the actual dispatch lives in the page).
 export const ROUTES = [
   { id: "home", slug: "/", component: "LandingPage" },
+  { id: "5-31", slug: "/tools/operations-planner", component: "OperationsPlanner" },
   { id: "5-2", slug: "/dashboard", component: "Dashboard" },
   { id: "5-3", slug: "/tools/budget-allocation", component: "BudgetAllocation" },
   { id: "5-21", slug: "/tools/campaign-variance", component: "CampaignPvm" },
@@ -158,7 +159,7 @@ export function isRouteIndexable(routeOrId) {
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
-  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-30",
+  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-30", "5-31",
   // 구 5-18 안에 있던 다섯 분석. 각각 독립 도구다.
   "5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast",
 ]);

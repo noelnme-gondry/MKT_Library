@@ -48,23 +48,23 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(2);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["CSV로 가능한 분석 한 번에", "샘플로 체험하기"]);
-    expect(actions[0].getAttribute("href")).toBe("/start");
-    expect(actions[1].tagName).toBe("BUTTON");
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 데이터로 운영 계획 세우기", "운영 플래너 데모 보기"]);
+    expect(actions[0].getAttribute("href")).toBe("/tools/operations-planner");
+    expect(actions[1].getAttribute("href")).toBe("/tools/operations-planner?example=1");
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("실무 가이드로 기준을 잡고, 내 데이터로 확인하세요.");
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("캠페인 이력 하나로 최근 효율과 신규 소재를 확인하세요.");
     expect(document.querySelectorAll(".dc-hero__deck p")).toHaveLength(2);
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
     expect(document.querySelector(".dc-hero__assurance")?.textContent).toContain("가입 없이 무료 분석");
     expect(document.querySelector(".home-service-terms")?.textContent).toContain("7일 체험에는 포함되지 않습니다.");
-    expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-action-route[href="/tools/operations-planner"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
     // 첫 화면의 행동은 샘플 하나 + 내 데이터 하나다 — 같은 곳으로 가는 버튼을 두 번 두지 않는다.
     expect(document.querySelector(".home-result-preview button")).toBeNull();
-    expect(document.querySelector(".dc-action-route--sample")?.textContent).toContain("샘플로 체험하기");
+    expect(document.querySelector(".dc-action-route--sample")?.textContent).toContain("운영 플래너 데모 보기");
     expect(document.querySelectorAll('.dc-hero a[href="/diagnose"]')).toHaveLength(0);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".home-tool-directory > section")).toHaveLength(TOOL_JOURNEY.length);
@@ -121,14 +121,13 @@ describe("LandingPage render smoke", () => {
   it("starts the clearly labeled hero example without requiring a CSV", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    fireEvent.click(container.querySelector(".dc-action-route--sample"));
-    expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
-    // Navigation mounts the result route, which selects the shared CSV slice.
-    useAppStore.getState().setCurrentRouteId("dochi-result");
-    expect(useAppStore.getState().csvData.fileName).toMatch(/^demo_/);
-    expect(useAppStore.getState().isGroupAnalyzed("dochi-result")).toBe(true);
+    const link = container.querySelector(".dc-action-route--sample");
+    expect(link.getAttribute("href")).toBe("/tools/operations-planner?example=1");
+    clickWithoutNavigation(link);
+    // 홈은 사용자 데이터를 바꾸지 않는다. 예시 진입은 대상 도구에서 처리한다.
+    expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("");
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
-      tool_id: "5-2",
+      tool_id: "5-31",
       interaction_source: "landing",
       placement: "hero_example",
       locale: "ko",
@@ -153,7 +152,7 @@ describe("LandingPage render smoke", () => {
   it("tracks each hero action without attaching CSV values", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/start"]'));
+    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/tools/operations-planner"]'));
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/calculator"]'));
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/diagnose"]'));
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_data_start_clicked", {
@@ -188,7 +187,7 @@ describe("LandingPage render smoke", () => {
       const routes = hero.querySelectorAll(".dc-action-route");
       const primary = hero.querySelectorAll(".dc-action-route--primary");
       expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
-      expect(primary[0].getAttribute("href")).toBe(`${prefix}/start`);
+      expect(primary[0].getAttribute("href")).toBe(`${prefix}/tools/operations-planner`);
       expect(routes.length, `${locale}: 샘플과 CSV의 진입점`).toBe(2);
       // 질문(진단)은 첫 화면이 아니라 아래 질문 목록에서 한 번만 연다(F2 — 같은 곳으로 가는 링크 중복 제거).
       expect(container.querySelectorAll(".dc-hero__utility-actions")).toHaveLength(0);
@@ -198,9 +197,9 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Find analyses for my CSV", "Explore a sample"]);
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Plan operations with my data", "Try the operations planner"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Why did it change?What should you do next?");
-    expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-action-route[href="/en/tools/operations-planner"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
@@ -210,7 +209,7 @@ describe("LandingPage render smoke", () => {
     const enLinks = [...container.querySelectorAll(".home-tool-directory a")];
     expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
-    expect(container.textContent).toContain("Explore a sample");
+    expect(container.textContent).toContain("Try the operations planner");
   });
 
   it("도구 목록이 첫 화면 슬롯에 온다 — 아래로 밀리면 없는 것과 같다", () => {
@@ -229,7 +228,7 @@ describe("LandingPage render smoke", () => {
     expect(container.querySelector(".dc-intake")).toBeNull();
     clickWithoutNavigation(container.querySelector('.dc-action-route--primary'));
     expect(container.querySelector(".dc-intake")).toBeNull();
-    expect(container.querySelector('.dc-action-route--primary').getAttribute("href")).toBe(locale === "en" ? "/en/start" : "/start");
+    expect(container.querySelector('.dc-action-route--primary').getAttribute("href")).toBe(locale === "en" ? "/en/tools/operations-planner" : "/tools/operations-planner");
     const found = new Set();
     for (const section of container.querySelectorAll(".home-tool-directory > section")) {
       const links = section.querySelectorAll("a");

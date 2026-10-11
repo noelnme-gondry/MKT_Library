@@ -1,15 +1,17 @@
 "use client";
 import ResultPeriodPicker from '@/components/ds/ResultPeriodPicker';
 import { comparisonWarnings } from '@/lib/analysisPeriod';
+import PillGroup from '@/components/ds/PillGroup';
 export default function DashboardComparisonPeriod({ periods, windowDays, onWindowChange, onPeriodChange, minDate, maxDate, locale }) {
   const en = locale === 'en';
   const warnings = comparisonWarnings(periods.current, periods.previous, locale);
   return <section className="dashboard-comparison-period" aria-label={en ? 'Conclusion comparison periods' : '결론 비교 기간'}>
     <div className="dashboard-comparison-period__head">
       <strong>{en ? 'Compare performance' : '성과 비교'}</strong>
-      <div className="dashboard-period-presets" role="group" aria-label={en ? 'Recent observation days' : '최근 관측일 수'}>
-        {[7, 14, 28].map(days => <button key={days} type="button" aria-pressed={!periods.custom && windowDays === days} onClick={() => onWindowChange(days)}>{en ? `${days} days` : `${days}일`}</button>)}
-      </div>
+      <PillGroup className="dashboard-period-presets" ariaLabel={en ? 'Recent observation days' : '최근 관측일 수'}
+        value={periods.custom ? 'custom' : windowDays} onChange={days => { if (typeof days === 'number') onWindowChange(days); }}
+        options={[...[7, 14, 28].map(days => ({ value: days, label: en ? `${days} days` : `${days}일` })),
+          ...(periods.custom ? [{ value: 'custom', label: en ? 'Custom' : '직접 지정' }] : [])]} />
     </div>
     <div className="dashboard-comparison-period__dates">
       <ResultPeriodPicker minDate={minDate} maxDate={maxDate} label={en ? 'Analysis period' : '분석 기간'} range={periods.current} onApply={range => onPeriodChange(range, periods.previous)} locale={locale} />

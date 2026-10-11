@@ -30,6 +30,7 @@ export const ITEM_TITLE_EN = {
   "4-2": "Cohort-Based Retention Guide",
   "4-3": "Organic vs Paid Cannibalization Analysis",
   "8-1": "CSV Data Prep & Column Mapping Guide",
+  "5-31": "Operations planner",
   "5-2": "Weekly check",
   "5-21": "Change drivers",
   "5-22": "Headroom check",

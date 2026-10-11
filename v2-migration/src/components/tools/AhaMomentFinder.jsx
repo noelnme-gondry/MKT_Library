@@ -1518,7 +1518,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </div>
               <p className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "14px" }}>{tr("윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.", "The window is auto-selected from the grid. k is chosen on the training set and re-evaluated on the holdout to reduce optimism bias (overfitting).")}</p>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+              <div className="figure-head">
                 <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
                 <FigurePngButton title={locale === "en" ? "Relationship between actions and long-term value" : "행동과 장기 가치의 관계"} target={chartRef} fileName="aha_scatter" locale={locale} />
               </div>
@@ -1574,7 +1574,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 )}</p>
               </section>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+              <div className="figure-head">
                 <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
                 <button className="ab-pill" onClick={() => requirePaidExport() && downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title={tr("액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점", "Long-format: every action × window (D1/D7) × threshold (k) combination — is_optimal=1 marks the optimal point")}>⬇ CSV</button>
               </div>

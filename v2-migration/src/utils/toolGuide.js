@@ -1,3 +1,4 @@
+import { operationsGuide } from "@/lib/operations/operationsGuide";
 import { RESPONSE_SUBTOOL_IDS } from "@/lib/responseSubtoolContent";
 import { reportGuide } from "@/lib/attributionReports/content";
 
@@ -15,6 +16,7 @@ import { reportGuide } from "@/lib/attributionReports/content";
 // }
 
 export const TOOL_GUIDE = {
+  "5-31": operationsGuide("ko"),
   "5-30": reportGuide("multitouch", "ko"),
   "5-18-cannibal-detail": reportGuide("cannibal", "ko"),
   // start-gate는 when·outcomes를 두지 않는다 — 페이지 설명문과 4단계 진행 막대가 같은 말을 이미 한다(2026-09-29).
@@ -382,6 +384,7 @@ export const TOOL_GUIDE = {
 // EN 번역본 — EN_READY_TOOL_IDS(routeMap.js)에 맞춰 번역된 id만 추가.
 // 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
 export const TOOL_GUIDE_EN = {
+  "5-31": operationsGuide("en"),
   "5-30": reportGuide("multitouch", "en"),
   "5-18-cannibal-detail": reportGuide("cannibal", "en"),
   "start-gate": {

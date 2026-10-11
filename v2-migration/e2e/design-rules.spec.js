@@ -1,5 +1,7 @@
+import { openDochiSample } from "./support/dochiSample";
 import { expect, test } from "@playwright/test";
 import { measureDesignRules } from "./support/designRules";
+import { ROUTES, hasEnVersion } from "../src/lib/routeMap";
 
 // 사이트 전역 디자인 규칙(2026-09-24). 규칙과 사유는 e2e/support/designRules.js 머리 주석.
 // 정적 화면과, 예시 데이터로 실제 결과를 그린 도구 화면을 같이 본다 — 결과 화면에서만
@@ -15,13 +17,18 @@ const STATIC_PAGES = [
   // 결론 카드가 수동 입력 뒤에야 그려지는 도구는 입력 화면을 본다.
   "/tools/budget-allocation", "/tools/experiment-analysis", "/tools/incrementality",
 ];
-const RESULT_PAGES = [
+const KO_RESULT_PAGES = [
+  "/tools/operations-planner?example=1",
   "/dashboard", "/tools/campaign-variance", "/tools/campaign-saturation",
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
   "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality", "/tools/subscription-survival",
-  "/en/tools/campaign-variance", "/en/tools/campaign-saturation",
 ];
+// EN 경로는 지원 계약에서 파생한다. 공용 시각 변경은 한국어 예시만 검사하지 않는다.
+const RESULT_PAGES = KO_RESULT_PAGES.flatMap(path => {
+  const route = ROUTES.find(route => route.slug === path.split("?")[0]);
+  return route && hasEnVersion(route.id) ? [path, `/en${path}`] : [path];
+});
 
 // 도구마다 예시가 자동으로 실리기도 하고 버튼으로 실리기도 한다 — 상태를 보고 필요한 단계만 밟는다.
 async function openExampleResult(page) {
@@ -67,6 +74,8 @@ function expectClean(result) {
   expect(result.gradients, "gradient background").toEqual([]);
   expect(result.pills, "pill shape on something you cannot press").toEqual([]);
   expect(result.offPalette, "text color outside the design tokens").toEqual([]);
+  expect(result.figureCrowding, "PNG exports crowding figure titles or metrics").toEqual([]);
+  expect(result.titleInsets, "filled page titles without an inner gutter").toEqual([]);
 }
 
 test("the scanner flags what it claims to flag", async ({ page }) => {
@@ -85,6 +94,8 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
     <div style="background:linear-gradient(90deg,#eef,#fff);height:50px">gradient box</div>
     <span style="display:inline-block;background:#dfe;border-radius:999px;padding:2px 10px">status pill</span>
     <p style="color:#f87171">hard-coded red</p>
+    <header style="display:flex;gap:0"><h2 style="margin:0">Crowded figure title</h2><span class="figure-png-download"><button>PNG</button><span class="figure-png-button__condition">Purchase required</span></span></header>
+    <header class="page-sticky-bar" style="padding:0;background:#eee"><h1>Title touching its surface</h1></header>
     ${"<p>filler text</p>".repeat(20)}
   </main>`);
   const result = await measureDesignRules(page);
@@ -102,6 +113,9 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
   expect(result.gradients.length).toBeGreaterThan(0);
   expect(result.pills.length).toBeGreaterThan(0);
   expect(result.offPalette.length).toBeGreaterThan(0);
+  expect(result.figureExports).toBe(1);
+  expect(result.figureCrowding.length).toBeGreaterThan(0);
+  expect(result.titleInsets.length).toBeGreaterThan(0);
 });
 
 for (const path of STATIC_PAGES) {
@@ -118,7 +132,8 @@ for (const path of RESULT_PAGES) {
     // 9-6은 소재 480개를 분석해 그리는 데만 1분 가까이 걸린다(빌드본 기준).
     test.setTimeout(150_000);
     await page.goto(path);
-    await openExampleResult(page);
+    if (path.includes("?example=1")) await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
+    else await openExampleResult(page);
     expectClean(await measureDesignRules(page));
     // 결과가 나왔으면 매핑 선택상자는 결론 카드 위에 하나도 없어야 한다 — 매핑은 한 줄 요약으로 접힌다.
     const mappingAbove = await page.evaluate(() => {
@@ -131,13 +146,12 @@ for (const path of RESULT_PAGES) {
   });
 }
 
-// 홈 샘플이 도착하는 결과 작업대(/dochi-result). 도구 화면과 부품이 달라(AnalysisResultOutput)
+// 시작 화면 예시가 도착하는 결과 작업대(/dochi-result). 도구 화면과 부품이 달라(AnalysisResultOutput)
 // 위 목록으로는 한 번도 재지 않았고, 금지된 왼쪽 색 막대 "다음 행동" 상자가 이 화면에만 남아 있었다(2026-09-28).
 // 요약 화면과, 분석 하나를 펼친 상세를 함께 잰다.
 test("design rules hold on the sample result workspace", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/");
-  await page.locator(".dc-action-route--sample").click();
+  await openDochiSample(page);
   await expect(page).toHaveURL(/\/dochi-result$/);
   await expect(page.locator('[data-queue-settled="true"]')).toBeAttached({ timeout: 60_000 });
   await page.evaluate(async () => { await document.fonts.ready; });

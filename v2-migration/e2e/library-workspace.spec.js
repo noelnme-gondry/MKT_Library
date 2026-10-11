@@ -1,3 +1,4 @@
+import { openDochiSample } from "./support/dochiSample";
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
@@ -64,10 +65,8 @@ for (const locale of ["ko", "en"]) {
     if (mobile) await expect(page.getByRole("dialog")).toBeHidden();
   });
 
-  test(`home sample opens computed results and retains weekly handoff (${locale})${tag}`, async ({ page }) => {
-    await page.goto(prefix || "/");
-    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
-    await page.locator(".dc-action-route--sample").click();
+  test(`guided sample opens computed results and retains weekly handoff (${locale})${tag}`, async ({ page }) => {
+    await openDochiSample(page, locale);
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
     await expect(page.locator(".sample-journey-scope")).toContainText(en ? "Sample data" : "샘플 데이터");
@@ -84,12 +83,11 @@ for (const locale of ["ko", "en"]) {
   // 연다. 연 도구는 곧장 결과다(2026-09-24). 단 목록은 정직해야 한다: "이 파일로 되는 분석"에는
   // 이 파일로 실제 계산된 것만 있고, 나머지는 필요한 값 한 줄(또는 판정 못 한 사유)과 함께
   // 아래 묶음에 있다. 그 줄에 예시 결과를 섞지 않는다 — 이 파일의 결과로 오해된다(2026-09-25).
-  test(`home sample opens every analysis straight to a result (${locale})${tag}`, async ({ page }, testInfo) => {
+  test(`guided sample opens every analysis straight to a result (${locale})${tag}`, async ({ page }, testInfo) => {
     // 도구 20개를 차례로 연다 — 폭마다 반복할 이유가 없어 데스크톱 한 번만 잰다.
     test.skip(!/desktop/.test(testInfo.project.name), "one width is enough for the per-tool walk");
     test.setTimeout(600_000);
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     const readyNames = await page.locator(".tool-index__stage--ready .tool-index__q").allInnerTexts();
     expect(readyNames).toEqual(expect.arrayContaining(["5-2", "5-21", "5-3"].map((id) => toolIndexEntry(id, locale).name)));
@@ -103,8 +101,7 @@ for (const locale of ["ko", "en"]) {
     const stuck = [];
     for (const toolId of publishedToolIds()) {
       // 샘플은 메모리에만 있다 — 도구마다 홈에서 샘플을 새로 연다.
-      await page.goto(prefix || "/");
-      await page.locator(".dc-action-route--sample").click();
+      await openDochiSample(page, locale);
       await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
       await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
       await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
@@ -117,8 +114,7 @@ for (const locale of ["ko", "en"]) {
 
   // 분석마다 핵심 그림이 달라야 한다 — 예전에는 전부 같은 가로 막대였다(2026-09-25).
   test(`each computed sample analysis shows its own chart (${locale})${tag}`, async ({ page }) => {
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     // 먼저 볼 분석(5-2)의 그림은 결론 밑에 바로 있다 — 누르지 않아도 보이고, 펼친 카드에서는 다시 그리지 않는다.
     await expect(page.locator(".workspace-next-action .dochi-workspace__period-comparison")).toBeVisible();
@@ -134,8 +130,7 @@ for (const locale of ["ko", "en"]) {
 
   // 도구를 열었다가 뒤로 오면 결과가 그대로여야 한다 — 예전에는 컬럼 확인부터 다시 물었다(2026-09-24).
   test(`back from a tool keeps the sample results (${locale})${tag}`, async ({ page }) => {
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     for (const toolId of ["5-2", "5-20"]) {
       await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
@@ -152,8 +147,7 @@ for (const locale of ["ko", "en"]) {
   // 성과 변동이 지목한 채널은 그 채널만 걸러 주간 점검에서 연다 — 도구가 결과와 같은 범위로 열려야 한다(2026-09-28).
   test(`sample decomposition drills down to the named channel (${locale})${tag}`, async ({ page }) => {
     test.setTimeout(120_000);
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached({ timeout: 60_000 });
     await page.locator(".tool-index__chip").filter({ hasText: toolIndexEntry("5-21", locale).name }).first().click();
     const drill = page.getByRole("button", { name: en ? /^View .+ daily trend/ : /일별 추이 보기/ }).first();
@@ -175,10 +169,8 @@ for (const locale of ["ko", "en"]) {
     await expect(panel).toHaveCount(0);
   });
 
-  test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
-    await page.goto(prefix || "/");
-    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
-    await page.locator(".dc-action-route--primary").click();
+  test(`start CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
+    await page.goto(`${prefix}/start`);
     await expect(page).toHaveURL(new RegExp(`${prefix}/start$`));
     await page.locator('.csv-uploader input[type="file"]').first().setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
     await expect(page.locator(".header-data-context")).toContainText("efficiency.csv");

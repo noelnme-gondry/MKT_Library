@@ -31,6 +31,10 @@ export const ROUTE_SEO = {
       description: "Import a campaign CSV or Google Sheet to profile its structure in your browser and find the dashboard, PVM, budget, MMM, or experiment analysis it supports.",
     },
   },
+  "5-31": {
+    ko: { title: "운영 플래너 | 캠페인 예산·성과·소재", description: "긴 캠페인 이력으로 최근 효율 변화와 신규 소재를 확인하고, 동일 예산 조정안과 조건부 예상 개선을 계산합니다." },
+    en: { title: "Operations Planner: Budget, Campaigns and Creatives", description: "Review recent campaign efficiency and newly observed creatives, then calculate same-budget adjustments and conditional improvements from historical data." },
+  },
   "5-2": {
     ko: {
       title: "마케팅 운영 대시보드 | 스코어카드·페이싱·이상탐지",

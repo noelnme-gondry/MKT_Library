@@ -33,6 +33,7 @@ import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
+import { allocConfidence } from "@/utils/allocationConfidence";
 import AllocationResultWorkspace from "@/components/tools/AllocationResultWorkspace";
 import DataTable from "@/components/ds/DataTable";
 import { allocationCadence, prepareAllocationObservations, allocationHistory } from "@/utils/allocationObservations";
@@ -187,15 +188,7 @@ function formatNumberK(n, decimals = 0) {
 
 /* 채널 적합 신뢰도(High/Med/Low) — R²(적합 품질) + 데이터 점 수 기반. Bayesian posterior가
    아니라 "적합 품질·데이터 커버리지" 기준임을 라벨/툴팁으로 정직히 고지(§8). wrapper=fitChannel 결과. */
-export function allocConfidence(wrapper) {
-  if (!wrapper || !wrapper.model) return null;
-  const r2 = Number(wrapper.r2);
-  const n = wrapper.kept ? wrapper.kept.length : 0;
-  if (!isFinite(r2) || n < 3) return { level: "low", ko: "낮음", en: "Low", r2, n };
-  if (r2 >= 0.7 && n >= 6) return { level: "high", ko: "높음", en: "High", r2, n };
-  if (r2 >= 0.4) return { level: "med", ko: "보통", en: "Med", r2, n };
-  return { level: "low", ko: "낮음", en: "Low", r2, n };
-}
+export { allocConfidence } from "@/utils/allocationConfidence";
 
 /* 한계 CPR — 현 배분 지출점에서 +10% 늘렸을 때 추가 1건당 비용(Δcost/Δresults). predictSafeCpr(CPR
    공간) 재사용. 수확체감으로 추가 결과가 없으면 Infinity(한계효용 ≤ 0) → 표시층 "—". */

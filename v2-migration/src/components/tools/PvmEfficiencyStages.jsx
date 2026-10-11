@@ -1,6 +1,6 @@
 import { fmtCurrency } from "@/utils/format";
 
-export default function PvmEfficiencyStages({ value, metric, currency, locale = "ko", domain = "performance" }) {
+export default function PvmEfficiencyStages({ value, metric, currency, locale = "ko", domain = "performance", title, headingLevel = 3 }) {
   if (!value?.ok) return null;
   const en = locale === "en";
   const tr = (ko, english) => en ? english : ko;
@@ -14,9 +14,10 @@ export default function PvmEfficiencyStages({ value, metric, currency, locale = 
   const largest = [...value.stages].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))[0];
   const max = Math.max(...value.stages.map(stage => Math.abs(stage.contribution)), 1e-12);
   const material = Math.abs(largest.contribution) > 1e-8 * Math.max(1, value.start, value.finish);
+  const Heading = headingLevel === 4 ? "h4" : "h3";
   return <section className="pvm-efficiency-bridge pvm-stage-analysis" aria-label={tr("단계별 단가 변화", "Unit-cost change by stage")}>
     <header className="pvm-stage-analysis__head">
-      <h3>{tr("어느 단계에서 단가가 달라졌나", "Where did unit cost change?")}</h3>
+      <Heading>{title || tr("어느 단계에서 단가가 달라졌나", "Where did unit cost change?")}</Heading>
       <span>{metric} {money(value.start)} → {money(value.finish)}</span>
     </header>
     <p className="pvm-stage-analysis__summary">{material

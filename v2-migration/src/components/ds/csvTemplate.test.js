@@ -1,3 +1,4 @@
+import { TOOL_GROUP } from "@/lib/toolGroups";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -35,9 +36,9 @@ describe("tool mapping templates", () => {
     expect(buildToolTemplateCsv("5-18")).toContain("ch_google_roi");
   });
 
-  // 통합 템플릿 버튼은 효율 4총사 전용이다. 자체 예시를 가진 /start가 섞이면
+  // 통합 템플릿 버튼은 효율 도구 전용이다. 자체 예시를 가진 /start가 섞이면
   // 첫 업로드 화면에 중복 다운로드 버튼이 생긴다.
-  it("keeps the unified template family to the four efficiency tools", () => {
-    expect([...TEMPLATE_FAMILY].sort()).toEqual(["5-2", "5-21", "5-22", "5-3"]);
+  it("derives the unified template family from the efficiency group", () => {
+    expect([...TEMPLATE_FAMILY].sort()).toEqual(Object.keys(TOOL_GROUP).filter(id => TOOL_GROUP[id] === "efficiency" && /^(5-|9-)/.test(id)).sort());
   });
 });

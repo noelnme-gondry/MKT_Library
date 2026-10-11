@@ -28,6 +28,7 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
 // 초기 로딩이 느렸음. 각 도구는 해당 라우트 진입 시에만 청크 로드.
 const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>로딩 중…</div> });
+const OperationsPlanner = dyn(() => import("@/components/tools/OperationsPlanner"));
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
 const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));
@@ -107,6 +108,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "account" && <MyAccountPage locale="ko" />}
             {routeId === "dochi-result" && <DochiResultWorkspace />}
 
+            {routeId === "5-31" && <OperationsPlanner locale="ko" />}
             {routeId === "5-2" && <Dashboard />}
             {routeId === "5-3" && <BudgetAllocation />}
             {routeId === "5-21" && <CampaignPvm />}

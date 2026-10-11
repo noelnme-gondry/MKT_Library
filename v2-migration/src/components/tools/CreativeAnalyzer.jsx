@@ -1351,7 +1351,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             {effRows.length ? (
               <>
                 <div className="alloc-card" style={{ margin: "12px 0" }}>
-                  <div className="cann-card-header">
+                  <div className="cann-card-header figure-head">
                     <div className="alloc-card-title">{tr("속성별 영향력 그림 (Forest plot — β + 95% 신뢰구간)", "Attribute effect chart (forest plot — β + 95% CI)")}</div>
                     <FigurePngButton title={locale === "en" ? "Attribute effects and 95% confidence intervals" : "속성별 영향력과 95% 신뢰구간"} target={conceptChartRef} fileName={`creative_forest_${curMetricKey}`} locale={locale} />
                   </div>
@@ -1428,7 +1428,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <p>{tr(`노출·기간 근거 부족으로 보류 ${(fatigue || []).filter((row) => row.qualityStatus !== "reviewable").length}개. 피로 비율의 분모는 근거 기준을 충족한 소재만 포함합니다. 노출 기준 ${CREATIVE_CONFIG.minImpressions}회는 운영 휴리스틱이며 통계적 유의성 기준이 아닙니다.`, `${(fatigue || []).filter((row) => row.qualityStatus !== "reviewable").length} held for insufficient exposure or history. The fatigue share includes only eligible creatives. The ${CREATIVE_CONFIG.minImpressions}-impression threshold is an operating heuristic, not statistical significance.`)}</p>
         {fatiguedRows.length > 0 && (
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
-            <div className="cann-card-header">
+            <div className="cann-card-header figure-head">
               <div className="alloc-card-title">{tr(`클릭률 하락 추이 — 하락률 상위 ${Math.min(5, fatiguedRows.length)}개 (Decay 라인)`, `CTR decline trend — top ${Math.min(5, fatiguedRows.length)} by drop rate (decay line)`)}</div>
               <FigurePngButton title={locale === "en" ? "CTR decline by creative" : "소재별 클릭률 하락 추이"} target={fatigueChartRef} fileName="creative_fatigue_decay" locale={locale} />
             </div>

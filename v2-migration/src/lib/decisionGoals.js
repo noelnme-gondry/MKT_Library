@@ -73,6 +73,7 @@ const RAIL_VOLUME = rail("conversions", "전환수 유지", "Hold conversions", 
  * `publishedToolIds()`에서 파생해 강제한다(손으로 쓴 목록을 돌면 가드가 아니다).
  */
 export const TOOL_DECISION_GOALS = Object.freeze({
+  "5-31": { goals: [g("cpi", "CPI", "CPI", "down"), g("cpa", "CPA", "CPA", "down"), g("conversions", "전환수", "Conversions", "up")], guardrails: [RAIL_SPEND, RAIL_VOLUME, RAIL_CPI] },
   "5-2": {
     goals: [
       g("cpa", "CPA", "CPA", "down"),

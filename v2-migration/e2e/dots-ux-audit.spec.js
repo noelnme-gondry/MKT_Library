@@ -1,3 +1,4 @@
+import { openDochiSample } from "./support/dochiSample";
 import { test, expect } from "@playwright/test";
 import { ITEM_TITLE_EN } from "../src/lib/enNavCopy";
 import { blogConversionFor } from "../src/lib/blogConversion";
@@ -23,8 +24,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".sop-page, .sop-hero")).toHaveCount(0);
   });
   test(`result to weekly start, back and re-entry (${locale})${tag}`, async ({ page }) => {
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     const enter = () => page.getByRole("button", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기", exact: true }).click();
     const checkStart = async () => {
@@ -47,8 +47,7 @@ for (const locale of ["ko", "en"]) {
   });
   test(`allocation shows both scenarios and unbroken numeric values (${locale})${tag}`, async ({ page }) => {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await page.locator(".tool-index__chip", { hasText: en ? ITEM_TITLE_EN["5-3"] : "예산 재배분" }).click();
     await expect(page.locator(".tool-index__panel .allocation-preview-explanation")).toContainText(en ? "recalculates" : "다시 계산");
@@ -110,8 +109,7 @@ for (const locale of ["ko", "en"]) {
     await expect.poll(() => page.evaluate(() => window.__copiedCode)).toBe(originalText);
   });
   test(`PNG condition is visible before its purchase prompt (${locale})${tag}`, async ({ page }) => {
-    await page.goto(prefix || "/");
-    await page.locator(".dc-action-route--sample").click();
+    await openDochiSample(page, locale);
     const figure = page.locator(".workspace-next-action__figure");
     await expect(figure.locator(".figure-png-button__condition")).toContainText(en ? "excludes trial" : "체험 제외");
     await figure.getByRole("button", { name: en ? "Download PNG" : "PNG 받기", exact: true }).click();

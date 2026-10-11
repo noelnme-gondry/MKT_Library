@@ -409,7 +409,7 @@ export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW", downlo
   const headingId = `tool-core-figure-${figure.id}`;
   const Heading = embedded ? "h3" : "h2";
   return <section className={`tool-core-figure${embedded ? " tool-core-figure--embedded" : " block"}`} id={headingId} aria-labelledby={`${headingId}-title`}>
-    <div className="section-head">
+    <div className="section-head figure-head">
       <Heading className="section-title" id={`${headingId}-title`}>{figure.question}</Heading>
       {downloadName && <FigurePngButton target={() => holderRef.current?.querySelector(".result-chart")} fileName={downloadName} locale={locale} title={figure.question} />}
     </div>

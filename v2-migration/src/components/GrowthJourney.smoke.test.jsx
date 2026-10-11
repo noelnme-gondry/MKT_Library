@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { useAppStore } from "@/store/useDataStore";
 import { buildSampleJourney, getSampleJourney } from "@/lib/sampleJourney";
 import * as snapshotStore from "@/lib/weekly-review/snapshotStore";
-import LandingPage from "./LandingPage";
+import HomeResultPreview from "./landing/HomeResultPreview";
 import DochiResultWorkspace from "./assistant/DochiResultWorkspace";
 import WeeklyReviewScreen from "./weekly-review/WeeklyReviewScreen";
 
@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 afterEach(() => { push.mockReset(); vi.restoreAllMocks(); delete window.gtag; });
 
-describe("home → result → weekly review", () => {
+describe("computed Dochi sample → result → weekly review", () => {
   it("does not read real project targets, snapshots or decisions into a guided sample", async () => {
     const settings = vi.spyOn(snapshotStore, "readReviewProject");
     const snapshots = vi.spyOn(snapshotStore, "listStoredSnapshots");
@@ -38,12 +38,14 @@ describe("home → result → weekly review", () => {
     // 컴포넌트가 스토어를 직접 읽으면 샘플 화면에 실제 결정이 딸려 나온다.
     expect(view.container.querySelector("#wr-history").textContent).not.toContain("Private decision");
   });
-  it.each(["ko", "en"])("opens a real computed sample in one click and preserves its scope to the copied review (%s)", async locale => {
+  it.each(["ko", "en"])("preserves the existing computed sample and its scope to the copied review (%s)", async locale => {
     const en = locale === "en";
-    const home = render(<LandingPage locale={locale} />);
+    const home = render(<HomeResultPreview locale={locale} />);
     const preview = home.container.querySelector(".home-sample-change dd").textContent;
-    fireEvent.click(home.container.querySelector(".dc-action-route--sample"));
-    expect(push).toHaveBeenCalledWith(en ? "/en/dochi-result" : "/dochi-result");
+    act(() => {
+      useAppStore.getState().setDenomBasis("actions");
+      useAppStore.getState().handoffCsvToRoute("5-2", buildSampleJourney(locale));
+    });
     home.unmount();
     act(() => useAppStore.getState().setCurrentRouteId("dochi-result"));
     const data = useAppStore.getState().csvData;
@@ -85,9 +87,7 @@ describe("home → result → weekly review", () => {
   });
 
   it("requires mapping again when a real upload replaces the sample on the same screen", () => {
-    const home = render(<LandingPage />);
-    fireEvent.click(home.container.querySelector(".dc-action-route--sample"));
-    home.unmount();
+    act(() => useAppStore.getState().handoffCsvToRoute("5-2", buildSampleJourney()));
     act(() => useAppStore.getState().setCurrentRouteId("dochi-result"));
     const view = render(<DochiResultWorkspace />);
     const sample = useAppStore.getState().csvData;

@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { openDochiSample } from "./support/dochiSample";
+import { buildDemoCsv } from "../src/utils/demoData";
+import { compareSamplePerformance } from "../src/utils/sampleSpendPreview";
 
 for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
   test(`sample continuity and responsive review (${locale})${tag}`, async ({ page }) => {
@@ -10,9 +13,8 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
       const hostname = new URL(route.request().url()).hostname;
       return ["localhost", "127.0.0.1"].includes(hostname) ? route.continue() : route.abort();
     });
-    await page.goto(en ? "/en" : "/");
-    const preview = await page.locator(".home-sample-change dd").innerText();
-    await page.locator(".dc-action-route--sample").click();
+    const preview = `+${(compareSamplePerformance(buildDemoCsv("efficiency").raw).cpaChange * 100).toFixed(1)}%`;
+    await openDochiSample(page, locale);
     await expect(page.locator(".dochi-result-workspace")).toHaveAttribute("data-phase", "results");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await expect(page.locator(".workspace-next-action")).toContainText(preview);

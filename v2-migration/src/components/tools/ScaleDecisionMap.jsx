@@ -254,7 +254,7 @@ export default function ScaleDecisionMap({
 
   return (
     <section className="block scale-decision-map saturation-surface" id="s-scale-map" aria-labelledby="scale-decision-map-title">
-      <header className="scale-decision-map__head">
+      <header className="scale-decision-map__head figure-head">
         <div>
           <h2 className="section-title" id="scale-decision-map-title">
             {isEn ? `Where to act by ${grainLabel}` : `${grainLabel}별 증액·감액 우선순위`}

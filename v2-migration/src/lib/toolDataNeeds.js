@@ -5,6 +5,7 @@
 // 커버리지는 publishedToolIds()에서 파생한 테스트가 막는다(toolDataNeeds.test.js).
 
 const NEEDS = {
+  "5-31": { ko: "캠페인·소재별 긴 일별 광고비와 설치 또는 가입", en: "Daily spend and installs or actions by campaign and creative" },
   "5-2": { ko: "날짜별 광고비와 전환 수", en: "Ad spend and conversions by date" },
   "5-21": { ko: "캠페인별·날짜별 광고비와 전환 수", en: "Ad spend and conversions by campaign and date" },
   "5-22": { ko: "캠페인별·날짜별 광고비와 전환 수", en: "Ad spend and conversions by campaign and date" },

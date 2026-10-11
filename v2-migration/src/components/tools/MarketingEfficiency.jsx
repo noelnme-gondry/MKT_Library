@@ -766,7 +766,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
       {okRows.length > 0 && isVisible("s-sat-curve") && (
         <section className="block saturation-surface" id="s-sat-curve">
-          <div className="section-head">
+          <div className="section-head figure-head">
             <h2 className="section-title">
               {tr("응답곡선", "Response curve")} — {selName}
             </h2>

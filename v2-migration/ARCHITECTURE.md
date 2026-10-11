@@ -32,7 +32,7 @@ v2-migration/
 │     ├─ assistant/                  # 홈 전용 도치 데이터 접수·작업대 handoff UI (분석 엔진/원본 데이터 소유 안 함)
 │     ├─ VideoTutorialHelp.jsx       # RootDocument 공용 영상 도움말 + CsvUploader/Sheets 인라인 진입. lib/videoTutorials.js → 문구·주제·자막 SSOT, scripts/tutorials/ → 실제 UI 시연·정적 영상 생성
 │     ├─ tools/                     # route별 도구 1 컴포넌트
-│     ├─ dashboard/                 # 5-2 운영 대시보드 9탭 + 필터바 + 커스텀차트
+│     ├─ dashboard/                 # 5-2 운영 대시보드 + 필터바 + 커스텀차트
 │     ├─ data-import/               # 업로드 후 판정 UI (기준바·가능분석·품질리포트·이력)
 │     ├─ landing/·seo/·calculators/·sops/
 │     ├─ SubscriptionPage·SubscriptionPlanComparison·SubscriptionReportPreview·SubscriptionTrialOffer  # Free/체험/Pro 구분·첫 결정 저장·결제 진입 (KO/EN 공용)
@@ -56,7 +56,8 @@ v2-migration/
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
 | `/` | home | LandingPage → CSV·샘플 진입 + landing/HomeResultPreview(동일 픽스처 CPA 비교) + ds/HomeToolFinder(전체 toolIndex·TOOL_JOURNEY, 검색·savedTools) + HomeReading(서버 발행 글) |
-| `/dashboard` | 5-2 | Dashboard → dashboard/* (9탭) |
+| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsBrief · operationsDemo |
+| `/dashboard` | 5-2 | Dashboard → dashboard/* |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
 | `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |
 | `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx |
@@ -96,7 +97,7 @@ v2-migration/
 ## 3. 도메인 매핑 (도구 UI ↔ 순수 엔진)
 | 도구 (UI) | 엔진 (`utils/`) | 비고 |
 |---|---|---|
-| BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) · `allocationObservations` · `allocationModels` · `allocationRegime` · `allocationDeltaPlan` | 주간/D7·최근 구간·기존 유지 비교. `analysis-export/allocationCostWorkbook` → Cost 입력 수식 예측 |
+| BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) · `allocationObservations` · `allocationModels` · `allocationRegime` · `allocationDeltaPlan` · `allocationConfidence` | 주간/D7·최근 구간·기존 유지 비교. `analysis-export/allocationCostWorkbook` → Cost 입력 수식 예측 |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup. 별도 `efficiencyStages.js`가 집계 CPM·클릭·설치·가입 비율의 순서 평균 단가 기여를 계산하고 `PvmEfficiencyStages.jsx`가 단계별 전후 값·변화·기여를 표시 |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` + `creativePredictiveModel.js` + `lib/analysis/webr/randomForest.js`·`svm.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA). 독립 소재 grain으로 집계한 뒤 표본·변수 조건을 충족할 때만 RF/SVM을 같은 5-fold에서 비교하고, 채널 통제 후 전역 Shapley R²를 속성별로 배분한다. RF 중요도와 Shapley R²는 예측/설명력이며 방향·인과·개별 소재 SHAP이 아님 |

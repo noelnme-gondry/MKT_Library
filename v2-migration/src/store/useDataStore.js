@@ -263,6 +263,10 @@ export const IA = [
     desc: "실제 운영한 캠페인 데이터를 업로드해 대시보드로 시각화하고, 성과 변동·포화도·예산 배분까지 한 CSV로 이어서 분석.",
     items: [
       {
+        id: "5-31", title: "운영 플래너", titleEn: "Operations planner",
+        seoTitle: "캠페인 예산·성과 변동·신규 소재 통합 운영 계획", seoTitleEn: "Campaign budget, performance changes and new creatives",
+      },
+      {
         id: "5-2",
         title: "주간 성과 점검",
         titleEn: "Weekly check",

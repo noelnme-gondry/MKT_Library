@@ -1,5 +1,7 @@
+import { openDochiSample } from "./support/dochiSample";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { measureDesignRules } from "./support/designRules";
 
 // 도구 화면의 핵심 그림(ToolCoreFigure)은 HTML로 그린다. 캔버스 차트를 걷어낸 자리의 PNG 받기가
 // 실제 브라우저에서 이미지 파일을 만드는지 본다 — jsdom은 SVG foreignObject를 그리지 못한다.
@@ -35,6 +37,9 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES)
       await expect(figure).toBeVisible({ timeout: 5_000 });
     }).toPass({ timeout: 120_000 });
     const button = figure.getByRole("button", { name: "PNG 받기" });
+    const presentation = await measureDesignRules(page);
+    expect(presentation.figureExports).toBeGreaterThan(0);
+    expect(presentation.figureCrowding).toEqual([]);
     // 이용권이 세션에서 읽히기 전에 누르면 결제 안내가 뜬다 — 다운로드가 올 때까지 다시 누른다.
     let download;
     await expect(async () => {
@@ -57,16 +62,16 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES)
   });
 }
 
-// 결과 화면(홈 샘플)의 결론 밑 핵심 그림도 같은 PNG 받기를 쓴다.
+// 결과 화면(시작 화면 예시)의 결론 밑 핵심 그림도 같은 PNG 받기를 쓴다.
 test("result-screen conclusion figure downloads as a real PNG", async ({ page }) => {
   test.setTimeout(150_000);
   await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "figure-owner", email: "figure@example.com" }, entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
   await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
-  await page.goto("/");
-  await page.locator(".dc-action-route--sample").click();
+  await openDochiSample(page);
   const figure = page.locator(".workspace-next-action__figure");
   await expect(figure).toBeVisible({ timeout: 60_000 });
   const button = figure.getByRole("button", { name: "PNG 받기" });
+  expect((await measureDesignRules(page)).figureCrowding).toEqual([]);
   let download;
   await expect(async () => {
     const waiting = page.waitForEvent("download", { timeout: 5_000 });
