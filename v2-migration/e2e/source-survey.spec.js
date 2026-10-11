@@ -29,7 +29,7 @@ test("유입 설문은 결과 확인 후 모서리에 뜨고 뒤를 잠그지 �
   const card = page.locator(".source-survey");
   await expect(card).toHaveCount(0);
   await page.locator(".dc-action-route--sample").click();
-  await expect(page.locator(".operations-priorities")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "결과와 다음 행동" })).toBeVisible();
   await page.locator(".result-action-card").scrollIntoViewIfNeeded();
   await expect(card).toHaveCount(0);
   await page.clock.fastForward(60_001);
@@ -67,7 +67,7 @@ test("유입 설문은 결과 확인 후 모서리에 뜨고 뒤를 잠그지 �
   await expect(card).toHaveCount(0);
   await page.goto("/");
   await page.locator(".dc-action-route--sample").click();
-  await expect(page.locator(".operations-priorities")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "결과와 다음 행동" })).toBeVisible();
   await page.locator(".result-action-card").scrollIntoViewIfNeeded();
   await expect(card).toHaveCount(0);
 });
