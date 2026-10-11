@@ -165,6 +165,11 @@ async function dochiToWeekly(page, locale) {
   const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
   await hero.locator(".dc-action-route--primary").click();
+  // 홈 대표 행동은 운영 플래너다. 기존 통합 분석→결정 저장 흐름은
+  // 공용 내 데이터 진입 링크로 계속 확인한다.
+  const menu = page.locator(".header-sidebar-toggle");
+  if (await menu.getAttribute("aria-haspopup") === "dialog") await menu.click();
+  await page.locator(`.library-nav-item[href="${en ? "/en" : ""}/start"]`).click();
   const intake = page.locator('.csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });

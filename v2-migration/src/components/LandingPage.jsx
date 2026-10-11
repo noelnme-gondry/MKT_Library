@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import HomeResultPreview from "@/components/landing/HomeResultPreview";
+import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
+import { OPERATIONS_PATH, OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
+import { exampleHref } from "@/lib/exampleLink";
 import MobileQuickStart from "@/components/MobileQuickStart";
 import useSampleAnalysis from "@/components/useSampleAnalysis";
 import { useEffect, useRef } from "react";
@@ -17,14 +19,14 @@ const COPY = {
   ko: {
     title: "성과는 왜 바뀌었고,",
     titleAccent: "다음엔 뭘 해야 할까?",
-    deck: ["실무 가이드로 기준을 잡고, 내 데이터로 확인하세요.", "성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다."],
+    deck: ["캠페인 이력 하나로 최근 효율과 신규 소재를 확인하세요.", "같은 예산을 어디로 옮길지, 얼마나 나아질지 함께 살펴봅니다."],
     actionAria: "바로 시작할 작업",
-    dataCta: "CSV로 가능한 분석 한 번에",
+    dataCta: "내 데이터로 운영 계획 세우기",
     reviewCta: "내 프로젝트 열기",
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
     diagnoseCta: "성과 원인 찾기",
-    demoCta: "샘플로 체험하기",
+    demoCta: "운영 플래너 데모 보기",
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
@@ -63,14 +65,14 @@ const COPY = {
   en: {
     title: "Why did it change?",
     titleAccent: "What should you do next?",
-    deck: ["Build your baseline with practical guides and check your data.", "Connect performance analysis to next week’s decisions in one place."],
+    deck: ["Review recent efficiency and new creatives from one campaign history.", "See where the same budget could move and how results may improve."],
     actionAria: "Start a task",
-    dataCta: "Find analyses for my CSV",
+    dataCta: "Plan operations with my data",
     reviewCta: "Open My projects",
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
-    demoCta: "Explore a sample",
+    demoCta: "Try the operations planner",
     dataGuideCta: "Prepare CSV columns",
     assurance: ["Free analysis, no sign-up", "CSV processed in your browser"],
     continueTitle: "Decisions to review",
@@ -193,16 +195,16 @@ export default function LandingPage({ locale = "ko", reading }) {
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
-              href={lang === "en" ? "/en/start" : "/start"}
+              href={`${lang === "en" ? "/en" : ""}${OPERATIONS_PATH}`}
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >
               <strong>{T.dataCta}</strong>
             </Link>
-            <button type="button" className="dc-action-route dc-action-route--sample" onClick={() => openSample("5-2", "hero_example")}><strong>{T.demoCta}</strong></button>
+            <Link className="dc-action-route dc-action-route--sample" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}><strong>{T.demoCta}</strong></Link>
           </nav>
           <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
         </div>
-        <HomeResultPreview locale={lang} />
+        <OperationsSamplePreview locale={lang} />
       </section>
 
       <section className="dc-questions" id="questions" tabIndex={-1} aria-labelledby="dc-question-title">

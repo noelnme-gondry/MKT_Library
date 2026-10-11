@@ -1,6 +1,6 @@
 import { activePro } from "@/test/proEntitlement";
 import { beforeEach, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import AnalysisSetupBar from "./AnalysisSetupBar";
 import { TOOL_INPUT_KEYS } from "@/lib/analysis-settings/toolInputs";
@@ -78,6 +78,15 @@ it.each(["ko", "en"])("hides empty input context before a CSV is provided (%s)",
 it("leaves the data line to the dashboard title row", () => {
   const { container } = render(<AnalysisSetupBar toolId="5-2" slot="context" />);
   expect(container.querySelector(".analysis-setup__context")).toBeNull();
+});
+
+it.each(["ko", "en"])("keeps applied-setup notices when the planner owns its data context (%s)", async locale => {
+  useAppStore.getState().setCurrentRouteId("5-31");
+  const view = render(<AnalysisSetupBar toolId="5-31" locale={locale} slot="context" />);
+  expect(view.container.firstChild).toBeNull();
+  act(() => useAppStore.setState({ savedSetupAppliedTool: "5-31", savedSetupAppliedProject: "p", savedSetupApplied: { id: "saved" } }));
+  await waitFor(() => expect(screen.getByText(locale === "en" ? /Saved settings applied/ : /저장한 설정을 적용했습니다/)).toBeTruthy());
+  expect(view.container.querySelector(".analysis-setup__context")).toBeNull();
 });
 
 it.each(["ko", "en"])("keeps saturation data in its uploader and saving in its own purpose group (%s)", locale => {

@@ -968,7 +968,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     </dl>}
     {summaryHead && focusStats.length > 0 && <dl className="result-sheet__stats">{focusStats.map(stat => <div key={stat.id}><dt>{stat.label}</dt><dd className="tnum">{formatResultStat(stat, locale, dataCurrency)}</dd></div>)}</dl>}
     {focusFigure && <section ref={focusFigureRef} className="workspace-next-action__figure" aria-label={focusFigure.question}>
-      <div className="workspace-next-action__figure-head">
+      <div className="workspace-next-action__figure-head figure-head">
         <p>{focusFigure.question}</p>
         {/* 결론 밑 그림도 도구 화면 그림과 같은 PNG 받기(Pro). 지표 고르기 버튼은 그림 밖이라 이미지에 안 들어간다. */}
         <FigurePngButton target={() => focusFigureRef.current?.querySelector("figure")} fileName={`${focusResult.toolId}_core_figure`} locale={locale} title={focusFigure.question} context={{

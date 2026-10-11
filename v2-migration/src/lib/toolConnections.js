@@ -3,6 +3,7 @@ import { groupForRoute } from "@/lib/toolGroups";
 
 export const CONNECTED_TOOLS = {
   "5-30": { title: { ko: "멀티터치 맵", en: "Multi-touch map" }, question: { ko: "어떤 클릭 채널이 함께 기록됐을까?", en: "Which click channels were recorded together?" }, keywords: { ko: "AppsFlyer 멀티터치 contributor 어시스트 경로 CTIT 지면", en: "AppsFlyer multi-touch contributor assist paths CTIT placement" } },
+  "5-31": { title: { ko: "운영 플래너", en: "Operations planner" }, question: { ko: "예산·캠페인·소재에서 무엇부터 바꿀까?", en: "What should change across budgets, campaigns and creatives?" }, keywords: { ko: "통합 운영 계획 예산 추천 최근 효율 신규 소재 PVM", en: "integrated operations plan budget recent efficiency new creatives PVM" } },
   "5-2": {
     title: { ko: "운영 대시보드", en: "Operations dashboard" },
     question: { ko: "이번 주 전체 성과는 어디서 흔들렸을까?", en: "Where did overall performance move this week?" },
@@ -119,7 +120,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "01 · CHECK", en: "01 · CHECK" },
     title: { ko: "이번 주 점검", en: "This week" },
     description: { ko: "어디가 흔들렸고 왜 그런지 봅니다.", en: "See what moved and why." },
-    tools: ["5-2", "5-21", "5-29"],
+    tools: ["5-31", "5-2", "5-21", "5-29"],
   },
   {
     id: "baseline",
@@ -182,7 +183,8 @@ export const TOOL_JOURNEY = [
 // CSV로 이어서 볼 수 있는 질문을 다음 단계로 잇는 것이 이 맵의 목적이다.
 export const NEXT_TOOL_IDS = {
   "5-30": ["5-18-cannibal", "5-23", "5-18-mmm"],
-  "5-2": ["5-21", "5-22", "5-3"],
+  "5-31": ["5-3", "5-21", "9-6"],
+  "5-2": ["5-31", "5-21", "5-22"],
   "5-21": ["5-29", "5-22", "5-3"],
   "5-22": ["5-3", "5-26", "9-6"],
   "5-3": ["5-22", "5-18-mmm", "5-4"],

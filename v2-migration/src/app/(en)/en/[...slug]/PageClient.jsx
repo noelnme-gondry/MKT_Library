@@ -26,6 +26,7 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 여기 케이스는 미리 준비해도 안전 — hasEnVersion()이 registry에 없는 id는
 // redirect로 먼저 걸러내므로, 아직 번역 안 된 컴포넌트로는 절대 도달하지 않는다.
 const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div> });
+const OperationsPlanner = dyn(() => import("@/components/tools/OperationsPlanner"));
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
 const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));
@@ -95,6 +96,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "storage" && <WorkspaceStoragePage locale="en" />}
             {routeId === "account" && <MyAccountPage locale="en" />}
             {routeId === "dochi-result" && <DochiResultWorkspace locale="en" />}
+            {routeId === "5-31" && <OperationsPlanner locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
             {routeId === "5-21" && <CampaignPvm locale="en" />}

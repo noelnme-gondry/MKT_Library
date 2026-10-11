@@ -269,6 +269,7 @@ export default function CsvUploader({
   toolId,
   refreshRef = null,
   onAnalyzed = null,
+  onLoadDemo = null,
   analyticsToolId = toolId,
   showToolGuide = true,
   locale = "ko",
@@ -668,6 +669,7 @@ export default function CsvUploader({
   // Load a deterministic demo dataset for this tool's group and auto-confirm the
   // analyze gate so results render immediately (§12.8 demo pattern).
   const handleLoadDemo = () => {
+    if (onLoadDemo) { onLoadDemo(); return; }
     if (toolId === "start-gate") { launchSample(); return; }
     setErrorMsg("");
     const demo = buildToolDemo(toolId, locale);

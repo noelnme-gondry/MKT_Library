@@ -1,6 +1,6 @@
 "use client";
 
-// 그림 하나를 PNG로 받는 버튼(Pro). 캔버스 차트와 HTML 그림이 같은 버튼·같은 자리(제목 줄 오른쪽)를 쓴다.
+// 그림 하나를 PNG로 받는 버튼(Pro). 캔버스와 HTML 그림 모두 제목 뒤 독립 내보내기 행을 쓴다.
 // 도구마다 받기 버튼 모양이 갈려 있었다(칩·보조 버튼·메뉴 항목) — 그림을 받는 길은 이 부품 하나다.
 import { useState } from "react";
 import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
@@ -86,10 +86,10 @@ export default function FigurePngButton({ target, fileName, locale = "ko", title
   </span>;
 }
 
-/** 제목 + PNG 받기 한 줄. 제목이 없는 그림은 `title` 없이 쓰면 버튼만 오른쪽에 선다. */
+/** 제목 뒤 독립 PNG 행. 제목이 없는 그림도 같은 내보내기 행을 확보한다. */
 export function FigureHead({ title, exportTitle, context = null, level = 2, id, target, fileName, locale = "ko" }) {
   const Heading = level === 3 ? "h3" : "h2";
-  return <div className={title ? "section-head" : "section-head figure-head--bare"}>
+  return <div className={title ? "section-head figure-head" : "section-head figure-head figure-head--bare"}>
     {title && <Heading className="section-title" id={id}>{title}</Heading>}
     <FigurePngButton target={target} fileName={fileName} locale={locale} title={exportTitle || (typeof title === "string" ? title : "")} context={context} />
   </div>;

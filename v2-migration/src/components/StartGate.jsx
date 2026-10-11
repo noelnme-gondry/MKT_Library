@@ -153,6 +153,7 @@ function StartGateContent({ locale = "ko" }) {
     <>
       <h1 className="page-title">{browseMethods ? (locale === "en" ? "Browse analyses" : "분석 방법 둘러보기") : (locale === "en" ? "Start with my data" : "내 데이터로 시작")}</h1>
       <p className="page-deck">{browseMethods ? C.indexDeck : C.deck}</p>
+      {!browseMethods && !hasSubmitted && <p className="start-operations-entry">{locale === "en" ? "Want a combined campaign, creative and budget plan?" : "캠페인·소재·예산을 한 번에 점검하려면"} <Link href={locale === "en" ? "/en/tools/operations-planner" : "/tools/operations-planner"}>{locale === "en" ? "Open operations planner →" : "운영 플래너로 시작 →"}</Link></p>}
       {!browseMethods && <JourneyProgress stage={hasSubmitted && eligibleIds?.length ? "analyze" : "prepare"} completed={hasSubmitted && eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
 
       {!browseMethods && <>

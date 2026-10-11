@@ -265,7 +265,37 @@ export async function measureDesignRules(page) {
     // 9) 페이지 가로 넘침 — 폰에서 좌우로 밀리는 화면(5-22의 화면낭독용 표가 409px로 넘쳤다).
     const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
 
+    // PNG가 숫자/제목을 밀어내는 문제는 글자끼리 겹치지 않아도 발생한다.
+    // 실제 내보내기 행의 경계와 이전 형제 콘텐츠 사이의 간격을 모든 사용처에서 검사한다.
+    const figureCrowding = [];
+    const exports = [...document.querySelectorAll(".figure-png-download")].filter(visible);
+    for (const action of exports) {
+      const r = action.getBoundingClientRect(), parent = action.parentElement;
+      const siblings = [...parent.children].filter(node => node !== action && visible(node));
+      for (const sibling of siblings) {
+        const s = sibling.getBoundingClientRect();
+        if (s.width > 0 && s.height > 0 && r.top - s.bottom < 11) figureCrowding.push(`${label(parent)}: export crowds ${label(sibling)}`);
+      }
+      for (const child of action.querySelectorAll("button, .figure-png-button__condition")) {
+        const c = child.getBoundingClientRect();
+        if (c.left < r.left - 1 || c.right > r.right + 1 || c.top < r.top - 1 || c.bottom > r.bottom + 1) figureCrowding.push(`${label(parent)}: export content escapes its row`);
+      }
+      for (const plot of document.querySelectorAll("canvas, .result-chart svg")) {
+        if (!visible(plot)) continue;
+        const p = plot.getBoundingClientRect();
+        if (Math.min(r.right, p.right) - Math.max(r.left, p.left) > 1 && Math.min(r.bottom, p.bottom) - Math.max(r.top, p.top) > 1) figureCrowding.push(`${label(parent)}: export overlaps a plot`);
+      }
+    }
+    const titleInsets = [...document.querySelectorAll(".page-sticky-bar:has(h1)")].filter(visible).flatMap(node => {
+      const box = node.getBoundingClientRect(), title = node.querySelector("h1").getBoundingClientRect();
+      const minimum = window.innerWidth <= 768 ? 15 : 23;
+      return title.left - box.left < minimum ? [`${label(node)}: title has no inner gutter`] : [];
+    });
+
     return {
+      figureExports: exports.length,
+      figureCrowding: [...new Set(figureCrowding)],
+      titleInsets,
       shadows: [...new Set(shadows)].slice(0, 30),
       gradients: [...new Set(gradients)].slice(0, 30),
       pills: [...new Set(pills)].slice(0, 30),

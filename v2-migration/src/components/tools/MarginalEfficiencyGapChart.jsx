@@ -83,7 +83,7 @@ export default function MarginalEfficiencyGapChart({
 
   return (
     <section ref={sectionRef} className="block marginal-gap saturation-surface" id="s-marginal-gap" aria-labelledby="marginal-gap-title">
-      <header className="marginal-gap__head">
+      <header className="marginal-gap__head figure-head">
         <div>
           <h2 className="section-title" id="marginal-gap-title">{isEn
             ? "Average efficiency vs. marginal efficiency on the next budget increase"
@@ -96,7 +96,7 @@ export default function MarginalEfficiencyGapChart({
           <span><i className="is-average" aria-hidden="true" />{isEn ? "Average" : "평균"}</span>
           <span><i className="is-marginal" aria-hidden="true" />{isEn ? "Marginal" : "한계"}</span>
         </div>
-        {view.points.length > 0 && <div className="marginal-gap__download" data-figure-skip="">
+        {view.points.length > 0 && <div className="marginal-gap__download figure-head" data-figure-skip="">
           <FigurePngButton title={locale === "en" ? "Average and marginal efficiency" : "평균 효율과 한계 효율"} target={sectionRef} fileName={`marginal_gap_${grain}_${metric}`} locale={locale} />
         </div>}
       </header>

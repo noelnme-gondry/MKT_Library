@@ -11,6 +11,7 @@ export const PAGE_KEYWORDS_BASE = "퍼포먼스 마케팅, 마케팅 데이터 �
 
 // 분석 도구 (5-x, 9-x) — 항목(item) 단위.
 export const ITEM_KEYWORDS = {
+  "5-31": "운영 플래너, 캠페인 예산 조정, 최근 효율, 신규 소재, PVM, 동일 예산 예상 성과",
   "5-2": "운영 대시보드, 마케팅 대시보드 무료, 캠페인 스코어카드, 페이싱 분석, 이상탐지, 코호트 분석, 퍼널 분석",
   "5-21": "캠페인 성과 변동, PVM 분해, 믹스효과, 효율효과, CPA 상승 원인, 성과 변동 진단",
   "5-22": "캠페인 포화도, 한계 CPA, 한계 ROAS, 응답곡선, 캠페인 최적화, 예산 스케일업",
@@ -63,6 +64,7 @@ export const ITEM_KEYWORDS = {
 export const PAGE_KEYWORDS_BASE_EN = "performance marketing, marketing data analytics, free marketing tools, data-driven marketing";
 
 export const ITEM_KEYWORDS_EN = {
+  "5-31": "operations planner, campaign budget plan, recent efficiency, new creatives, PVM, same-budget forecasts",
   "5-2": "operations dashboard, free marketing dashboard, campaign scorecard, pacing analysis, anomaly detection, cohort analysis, funnel analysis",
   "5-21": "campaign performance variance, PVM decomposition, mix effect, efficiency effect, CPA increase cause, performance variance diagnosis",
   "5-22": "campaign saturation, marginal CPA, marginal ROAS, response curve, campaign optimization, budget scale-up",

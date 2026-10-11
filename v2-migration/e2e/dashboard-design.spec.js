@@ -63,7 +63,7 @@ for (const locale of ['ko', 'en']) {
     await expect(period).toHaveText(appliedPeriod);
     await expect(page.locator('.result-action-card__stats')).toHaveText(appliedStats);
     await dialog.press('Escape');
-    await page.locator('.dashboard-period-presets').getByRole('button').first().click();
+    await page.locator('.dashboard-period-presets').getByRole('radio').first().click();
     await expect(page.locator('.result-action-card')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
@@ -87,7 +87,7 @@ for (const locale of ['ko', 'en']) {
     await expect(dialog).toHaveCount(0);
     await expect(page.locator('.dashboard-content')).toContainText(en ? 'Not enough data to compare' : '비교할 데이터가 부족합니다');
     await expect(page.locator('.result-action-card')).toHaveCount(0);
-    await page.locator('.dashboard-period-presets').getByRole('button').first().click();
+    await page.locator('.dashboard-period-presets').getByRole('radio').first().click();
     await expect(page.locator('.result-action-card')).toBeVisible();
   });
 

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { parse } from "espree";
 
 // 화면에 그리는 차트(<canvas>)마다 같은 PNG 받기(ds/FigurePngButton)가 붙어 있어야 한다.
 // 도구마다 받기 버튼 모양이 갈려 있었고(칩 "⬇ PNG"·결과 받기 메뉴·버튼 없음), 차트 50개 중
@@ -60,5 +61,35 @@ describe("차트 PNG 받기 커버리지", () => {
       .filter((path) => /downloadChartAsPNG\(/.test(stripComments(readFileSync(path, "utf8"))))
       .map((path) => relative(ROOT, path));
     expect(legacy).toEqual([]);
+  });
+
+  it("모든 직접 PNG 버튼은 제목·수치를 밀어내지 않는 공통 내보내기 행 안에 있다", () => {
+    const missing = [], uses = [];
+    for (const path of walk(ROOT)) {
+      const source = readFileSync(path, "utf8");
+      if (!source.includes("<FigurePngButton")) continue;
+      const ast = parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true });
+      const visit = (node, elements = []) => {
+        if (!node || typeof node !== "object") return;
+        if (node.type === "JSXElement") {
+          if (node.openingElement.name.name === "FigurePngButton") {
+            uses.push(relative(ROOT, path));
+            // Provider 같은 React 컴포넌트는 DOM 행이 아니다. 실제 HTML 부모를 검사한다.
+            const parent = elements.findLast(element => /^[a-z]/.test(element.openingElement.name.name || ""));
+            const className = parent?.openingElement.attributes.find(attr => attr.name?.name === "className")?.value;
+            if (!className || !source.slice(...className.range).includes("figure-head")) missing.push(relative(ROOT, path));
+          }
+          elements = [...elements, node];
+        }
+        for (const [key, value] of Object.entries(node)) {
+          if (key === "range") continue;
+          if (Array.isArray(value)) value.forEach(child => visit(child, elements));
+          else if (value && typeof value === "object") visit(value, elements);
+        }
+      };
+      visit(ast);
+    }
+    expect(uses.length, "실제 JSX 버튼을 읽지 못한 스캐너가 통과하지 않게").toBeGreaterThan(10);
+    expect(missing).toEqual([]);
   });
 });

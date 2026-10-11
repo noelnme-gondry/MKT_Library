@@ -30,7 +30,7 @@ async function checkHome(page, locale) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.locator(".dc-action-route--primary").focus();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/start$/);
+  await expect(page).toHaveURL(/\/tools\/operations-planner$/);
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
   await page.reload();
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();

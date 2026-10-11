@@ -980,7 +980,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
 
       {/* 선택 KPI 탐색 — 카드와 하나의 큰 실제 차트를 1:1로 연결한다. */}
       <section className="block dashboard-explorer dashboard-viz-workbench__chart" id="s-charts">
-        <div className="dashboard-explorer__head">
+        <div className="dashboard-explorer__head figure-head">
           <div>
             <h2 className="section-title">{activeMetricLabel} {locale === "en" ? "trend" : "추이"}</h2>
           </div>
@@ -1030,7 +1030,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           <div className="chart-grid cols-2">
             {orderedCharts.map((c) => (
               <div key={c.k} className="chart-card" data-design-exempt="nested: independent chart title, plot and export action grouped inside the supporting-chart surface (design.md §2)" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
-                <div className="dashboard-supporting-chart__head">
+                <div className="dashboard-supporting-chart__head figure-head">
                   <div><div className="chart-title">{c.title}</div><div className="chart-sub">{c.sub}</div></div>
                   {!customScorecardFor(c.k) && <FigurePngButton title={c.title} target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} />}
                 </div>

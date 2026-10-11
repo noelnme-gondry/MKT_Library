@@ -82,6 +82,7 @@ export function productElapsedBucket(elapsedMs) {
 const SENT_ONCE_KEYS = new Set();
 
 const ANALYSIS_TYPE_BY_TOOL = {
+  "5-31": "operations_planner",
   "5-2": "dashboard",
   "5-3": "budget_allocation",
   "5-4": "experiment",
