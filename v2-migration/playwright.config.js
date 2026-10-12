@@ -7,6 +7,20 @@ const isCi = Boolean(process.env.CI);
 // 빌드본으로 돌리려면 먼저 `npm run build` 후 E2E_SERVER=production.
 const useProductionServer = process.env.E2E_SERVER === "production";
 
+// 기본 테마는 다크이므로 라이트 검사는 OS 설정과 별개로 저장된 선택을 명시한다.
+function storageState(theme) {
+  return {
+    cookies: [],
+    origins: [{
+      origin: "http://127.0.0.1:3100",
+      localStorage: [
+        { name: SOURCE_SURVEY_ANSWERED_KEY, value: "1" },
+        ...(theme ? [{ name: "mkt-library-theme", value: theme }] : []),
+      ],
+    }],
+  };
+}
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -19,15 +33,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:3100",
     // 유입 경로 서베이를 기본으로 끈다(사유·계약은 e2e/support/sourceSurvey.js).
     // 이 시드를 지우면 e2e/source-survey.spec.js가 먼저 빨개진다.
-    storageState: {
-      cookies: [],
-      origins: [{
-        origin: "http://127.0.0.1:3100",
-        localStorage: [
-          { name: SOURCE_SURVEY_ANSWERED_KEY, value: "1" },
-        ],
-      }],
-    },
+    storageState: storageState(),
     browserName: "chromium",
     colorScheme: "dark",
     reducedMotion: "reduce",
@@ -44,7 +50,7 @@ export default defineConfig({
     {
       name: "desktop-light-en",
       grep: /@light-en/,
-      use: { colorScheme: "light", viewport: { width: 1440, height: 1000 } },
+      use: { colorScheme: "light", storageState: storageState("light"), viewport: { width: 1440, height: 1000 } },
     },
   ],
   webServer: {

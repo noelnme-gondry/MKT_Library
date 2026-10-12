@@ -6,6 +6,7 @@ for (const locale of ['ko','en']) {
     const errors=[]; page.on('pageerror',error=>errors.push(error.message));
     await page.addInitScript(()=>localStorage.setItem('mkt-library-source-survey-answered','1'));
     await page.emulateMedia({colorScheme:'light'});
+    await page.addInitScript(()=>localStorage.setItem('mkt-library-theme','light'));
     await page.goto(`${locale==='en'?'/en':''}/dashboard?example=1`);
     await expect(page.locator('#s-kpi')).toBeVisible();
     const tabs=await page.locator('[id^="dashboard-tab-"]').evaluateAll(nodes=>nodes.map(node=>node.id));

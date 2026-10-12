@@ -108,6 +108,7 @@ for (const locale of ['ko', 'en']) {
 
 test('allocation content surfaces and alignment in light mode', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
+  await page.addInitScript(() => localStorage.setItem('mkt-library-theme', 'light'));
   await page.goto('/tools/budget-allocation?example=1');
   await expect(page.locator('#s-controls')).toBeVisible();
   const surfaces = await page.locator('#s-controls, .result-action-card, .allocation-data').evaluateAll(els => els.map(el => ({ bg: getComputedStyle(el).backgroundColor, padding: parseFloat(getComputedStyle(el).paddingLeft) })));

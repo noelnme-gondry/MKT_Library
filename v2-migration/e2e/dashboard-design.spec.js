@@ -5,6 +5,7 @@ for (const locale of ['ko', 'en']) {
   test(`dashboard dates, grouping and keyboard dialogs (${locale})`, async ({ page }) => {
     const en = locale === 'en';
     await page.emulateMedia({ colorScheme: 'light' });
+    await page.addInitScript(() => localStorage.setItem('mkt-library-theme', 'light'));
     await page.goto(`${en ? '/en' : ''}/dashboard?example=1`);
     await expect(page.locator('#s-kpi')).toBeVisible();
     const header = page.locator('.dashboard-workspace__header');

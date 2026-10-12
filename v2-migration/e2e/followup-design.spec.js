@@ -6,6 +6,7 @@ for(const locale of ['ko','en']) for(const id of Object.keys(FOLLOWUP_TOOL_SPECS
   test(`follow-up ${id} scope and surfaces (${locale})`,async({page})=>{
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.emulateMedia({colorScheme:locale==='ko'?'light':'dark'});
+    await page.addInitScript(theme=>localStorage.setItem('mkt-library-theme',theme),locale==='ko'?'light':'dark');
     await page.goto(`${locale==='en'?'/en':''}${ROUTES.find(r=>r.id===id).slug}?example=1`);
     const root=page.locator('.tool-autonomy');await expect(root).toBeVisible();
     await expect(root.locator('.tool-recipe-controls')).toBeVisible({timeout:45000});
