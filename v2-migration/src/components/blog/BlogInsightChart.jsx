@@ -22,7 +22,7 @@ export default function BlogInsightChart({ visual, locale }) {
   useEffect(() => {
     if (!series) return;
     let chart, cancelled = false;
-    import("chart.js/auto").then(({ default: Chart }) => {
+    import("@/utils/chartGlobals").then(({ default: Chart }) => {
       if (cancelled || !ref.current) return;
       chart = new Chart(ref.current, { type: series.type, data: { labels: series.labels, datasets: [{ label: series.label, data: series.values, backgroundColor: CHART_THEME.primary, borderColor: CHART_THEME.primary, spanGaps: false }] }, options: { ...chartCommonOpts(), responsive: true, maintainAspectRatio: false, animation: false } });
       requestAnimationFrame(() => { if (!cancelled) chart.resize(); });

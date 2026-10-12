@@ -92,14 +92,14 @@ export default function MarginalEfficiencyGapChart({
             ? `Sorted by the modeled marginal-efficiency headroom for each ${grainLabel}. Values stay within the observed spend range and are not causal incrementality estimates.`
             : `${grainLabel}별 모델 한계효율 여유가 큰 순서입니다. 관측 지출 범위 안의 추정치이며 인과적 증분효과가 아닙니다.`}</p>
         </div>
-        <div className="marginal-gap__legend" aria-label={isEn ? "Marker legend" : "표식 설명"}>
-          <span><i className="is-average" aria-hidden="true" />{isEn ? "Average" : "평균"}</span>
-          <span><i className="is-marginal" aria-hidden="true" />{isEn ? "Marginal" : "한계"}</span>
-        </div>
-        {view.points.length > 0 && <div className="marginal-gap__download figure-head" data-figure-skip="">
+        {view.points.length > 0 &&
           <FigurePngButton title={locale === "en" ? "Average and marginal efficiency" : "평균 효율과 한계 효율"} target={sectionRef} fileName={`marginal_gap_${grain}_${metric}`} locale={locale} />
-        </div>}
+        }
       </header>
+      <div className="marginal-gap__legend" aria-label={isEn ? "Marker legend" : "표식 설명"}>
+        <span><i className="is-average" aria-hidden="true" />{isEn ? "Average" : "평균"}</span>
+        <span><i className="is-marginal" aria-hidden="true" />{isEn ? "Marginal" : "한계"}</span>
+      </div>
 
       <dl className="saturation-reading-guide">
         <div><dt>{isEn ? "Average · observed performance" : "평균 · 지금까지의 성과"}</dt><dd>{isEn ? `The observed ${metricLabel} at the current spend level.` : `현재 지출 수준에서 관측한 ${metricLabel}입니다.`}</dd></div>

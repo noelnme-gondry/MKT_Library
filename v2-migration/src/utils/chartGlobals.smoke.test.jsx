@@ -13,6 +13,9 @@ function makeFakeChartCtor() {
     register(plugin) {
       this.registered.push(plugin);
     },
+    unregister(plugin) {
+      this.registered = this.registered.filter(item => item.id !== plugin.id);
+    },
     defaults: {
       font: {},
       animation: {},

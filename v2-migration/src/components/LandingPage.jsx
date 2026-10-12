@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
 import { OPERATIONS_PATH, OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
+import { DATA_GUIDE_PATH } from "@/lib/analysisDataGuide";
 import { exampleHref } from "@/lib/exampleLink";
 import MobileQuickStart from "@/components/MobileQuickStart";
 import useSampleAnalysis from "@/components/useSampleAnalysis";
@@ -19,15 +20,18 @@ const COPY = {
   ko: {
     title: "성과는 왜 바뀌었고,",
     titleAccent: "다음엔 뭘 해야 할까?",
-    deck: ["캠페인 이력 하나로 최근 효율과 신규 소재를 확인하세요.", "같은 예산을 어디로 옮길지, 얼마나 나아질지 함께 살펴봅니다."],
+    deck: ["최근 효율과 새 소재를 보고, 다음 예산을 정하세요."],
     actionAria: "바로 시작할 작업",
-    dataCta: "내 데이터로 운영 계획 세우기",
+    dataCta: "내 데이터로 운영하기",
     reviewCta: "내 프로젝트 열기",
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
     diagnoseCta: "성과 원인 찾기",
-    demoCta: "운영 플래너 데모 보기",
-    dataGuideCta: "CSV 컬럼 준비 방법",
+    demoCta: "데모 보기",
+    dataGuideCta: "필요한 데이터 양식 확인",
+    dataHint: "캠페인 CSV를 올려 분석합니다.",
+    demoHint: "가상 데이터로 결과를 살펴봅니다.",
+    dataGuideHint: "분석별 데이터와 양식을 확인합니다.",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
     assurance: ["가입 없이 무료 분석", "CSV는 브라우저에서 처리"],
@@ -63,17 +67,20 @@ const COPY = {
     naver: "네이버 블로그",
   },
   en: {
-    title: "Why did it change?",
+    title: "Why did performance change?",
     titleAccent: "What should you do next?",
-    deck: ["Review recent efficiency and new creatives from one campaign history.", "See where the same budget could move and how results may improve."],
+    deck: ["Review recent efficiency and new creatives, then plan your next budget."],
     actionAria: "Start a task",
     dataCta: "Plan operations with my data",
     reviewCta: "Open My projects",
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
-    demoCta: "Try the operations planner",
-    dataGuideCta: "Prepare CSV columns",
+    demoCta: "View demo",
+    dataGuideCta: "Check data requirements",
+    dataHint: "Upload a campaign CSV to analyze.",
+    demoHint: "Explore results with fictional data.",
+    dataGuideHint: "Check data and formats for each analysis.",
     assurance: ["Free analysis, no sign-up", "CSV processed in your browser"],
     continueTitle: "Decisions to review",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
@@ -186,8 +193,9 @@ export default function LandingPage({ locale = "ko", reading }) {
       </section>}
       <section className="dc-hero" aria-labelledby="dc-hero-title">
         <div className="dc-hero__copy">
+          <header className="dc-hero__intro">
           <h1 id="dc-hero-title">
-            <span>{T.title}</span>
+            <span>{T.title}</span>{" "}
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
@@ -195,14 +203,19 @@ export default function LandingPage({ locale = "ko", reading }) {
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
+              aria-label={T.dataCta}
+              aria-describedby="home-data-hint"
               href={`${lang === "en" ? "/en" : ""}${OPERATIONS_PATH}`}
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >
               <strong>{T.dataCta}</strong>
+              <span className="sr-only dc-action-route__hint" id="home-data-hint">{T.dataHint}</span>
             </Link>
-            <Link className="dc-action-route dc-action-route--sample" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}><strong>{T.demoCta}</strong></Link>
+            <Link className="dc-action-route dc-action-route--sample" aria-label={T.demoCta} aria-describedby="home-demo-hint" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}><strong>{T.demoCta}</strong><span className="sr-only dc-action-route__hint" id="home-demo-hint">{T.demoHint}</span></Link>
+            <Link className="dc-action-route dc-action-route--guide" aria-label={T.dataGuideCta} aria-describedby="home-guide-hint" href={`${lang === "en" ? "/en" : ""}${DATA_GUIDE_PATH}`} onClick={() => trackProductEvent("landing_data_guide_clicked", { locale: lang, source: "landing", placement: "hero" })}><strong>{T.dataGuideCta}</strong><span className="sr-only dc-action-route__hint" id="home-guide-hint">{T.dataGuideHint}</span></Link>
           </nav>
           <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
+          </header>
         </div>
         <OperationsSamplePreview locale={lang} />
       </section>

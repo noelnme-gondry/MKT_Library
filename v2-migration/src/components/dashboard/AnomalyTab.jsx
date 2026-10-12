@@ -193,7 +193,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
           label: metricOpts.find(m => m[0] === metric)?.[1] || metric,
           data: seriesVals,
           borderColor: CHART_THEME.primary,
-          backgroundColor: "rgba(173,198,255,0.2)",
+          backgroundColor: CHART_THEME.primary + "33",
           fill: true,
           tension: 0.2,
           pointRadius: flags.map(f => f.flag ? 6 : 1.5),

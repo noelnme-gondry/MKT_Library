@@ -101,6 +101,7 @@ export default function Header({ locale = "ko" }) {
   const isTemplates = cleanPath === "/templates";
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
   const isDiagnose = cleanPath === "/diagnose";
+  const isDataGuide = cleanPath === "/data-guide";
   const isWeeklyReport = cleanPath === "/weekly-report";
   const isWeeklyReview = cleanPath === "/weekly-review";
   // 용어사전도 동일 패턴(§glossary) — 이제 EN 있음(content/glossary-en), 블로그처럼
@@ -124,13 +125,8 @@ export default function Header({ locale = "ko" }) {
   // The first inline body script already applies the stored class before paint.
   // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
   useEffect(() => {
-    // 저장값이 없으면 OS 설정을 따른다 — 부팅 인라인 스크립트와 같은 규칙이어야
-    // 마운트 직후 테마가 뒤집히지 않는다.
-    const stored = localStorage.getItem("mkt-library-theme");
-    const shouldBeDark = stored
-      ? stored === "dark"
-      : Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.body.classList.toggle("light-mode", !shouldBeDark);
+    // 부팅 스크립트가 적용한 저장 선택/기본 다크를 읽어 복원 중 테마가 뒤집히지 않게 한다.
+    const shouldBeDark = !document.body.classList.contains("light-mode");
     if (useAppStore.getState().isDarkMode !== shouldBeDark) toggleTheme();
     hasRestoredTheme.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,7 +135,8 @@ export default function Header({ locale = "ko" }) {
     if (!hasRestoredTheme.current) return;
     const currentDark = useAppStore.getState().isDarkMode;
     document.body.classList.toggle("light-mode", !currentDark);
-    localStorage.setItem("mkt-library-theme", currentDark ? "dark" : "light");
+    try { localStorage.setItem("mkt-library-theme", currentDark ? "dark" : "light"); } catch { /* 저장 제한이어도 이번 화면의 테마는 전환한다. */ }
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", getComputedStyle(document.body).backgroundColor);
     // 차트가 실제로 떠 있을 때만 chart.js를 내려받는다. 블로그·용어사전 같은 콘텐츠
     // 페이지는 canvas가 없는데도 테마 동기화 때문에 매 진입마다 차트 번들을 받고 있었다.
     if (!document.querySelector("canvas")) return;
@@ -175,6 +172,7 @@ export default function Header({ locale = "ko" }) {
           {isBlog && <><span className="sep">/</span><Link href={blogHref} className="current current--section">{locale === "en" ? "Blog" : "블로그"}</Link></>}
           {isTemplates && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Templates" : "템플릿"}</span></>}
           {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Metric calculators" : "지표 계산기"}</Link></>}
+          {isDataGuide && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Data requirements" : "필요한 데이터 양식"}</span></>}
           {isDiagnose && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Diagnosis" : "문제 진단"}</span></>}
           {(isWeeklyReport || isWeeklyReview) && (
             <><span className="sep">/</span><span className="current current--section">

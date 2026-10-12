@@ -7,6 +7,7 @@ import { ROUTES, hasEnVersion } from "../src/lib/routeMap";
 // 정적 화면과, 예시 데이터로 실제 결과를 그린 도구 화면을 같이 본다 — 결과 화면에서만
 // 생기는 겹침·상자 안 상자는 빈 업로드 화면으로는 절대 안 잡힌다.
 const STATIC_PAGES = [
+  "/data-guide", "/en/data-guide",
   "/", "/start", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
   "/guide/kpi-analysis", "/glossary", "/templates", "/compare",
   "/en", "/en/blog/ad-performance-diagnosis", "/en/start",
@@ -77,6 +78,13 @@ function expectClean(result) {
   expect(result.figureCrowding, "PNG exports crowding figure titles or metrics").toEqual([]);
   expect(result.titleInsets, "filled page titles without an inner gutter").toEqual([]);
 }
+
+test("the scanner accepts compact figure actions and rejects reserved PNG rows", async ({ page }) => {
+  await page.setContent('<main id="main-content"><header class="figure-head" style="display:flex;align-items:center;gap:12px"><h3 style="margin:0">Chart heading</h3><span class="figure-png-download"><button>PNG</button></span></header></main>');
+  expect((await measureDesignRules(page)).figureCrowding).toEqual([]);
+  await page.locator("header").evaluate(node => { node.style.flexDirection = "column"; });
+  expect((await measureDesignRules(page)).figureCrowding).toContainEqual(expect.stringContaining("export reserves a separate title row"));
+});
 
 test("the scanner flags what it claims to flag", async ({ page }) => {
   await page.setContent(`<main id="main-content">

@@ -707,8 +707,8 @@ export const useAppStore = create(persist((set, get) => ({
   };
   }),
 
-  // Theme State — 라이트모드 기본값 (매 새로고침 리셋 방지)
-  isDarkMode: false,
+  // 첫 방문은 다크. RootDocument가 복원한 사용자 선택은 Header에서 동기화한다.
+  isDarkMode: true,
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
 
   // 분석가 모드 — 진단·재현 레이어의 전역 표시 설정. CSV나 매핑과 달리 민감 데이터가

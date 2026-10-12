@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 //
 // Render-smoke for Header. Regression net for a render/mount-effect throw. Header
-// runs two mount effects (theme apply → localStorage + body class; theme restore
-// → matchMedia). It reads isDarkMode/theme from the store, NOT csvData. We seed
+// runs two mount effects (theme restore from the initial DOM; theme apply
+// → localStorage + body class). It reads isDarkMode/theme from the store, NOT csvData. We seed
 // the store (no-data + with-data) for parity; the topbar must mount either way.
 import { describe, it, expect, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";

@@ -30,11 +30,16 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByRole("dialog")).toBeHidden();
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
-    const hero = await page.locator(".dc-hero").boundingBox();
+    const intro = await page.locator(".dc-hero__intro").boundingBox();
+    const inset = await page.locator(".dc-hero__intro").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft));
     // CSV is the primary entry; sample exploration remains beside it.
     const primary = await page.locator(".dc-action-route--primary").boundingBox();
-    expect(Math.abs(primary.x - hero.x)).toBeLessThan(1);
-    expect(primary.height).toBeLessThanOrEqual(56);
+    expect(primary.x).toBeGreaterThanOrEqual(intro.x + inset - 1);
+    expect(primary.x + primary.width).toBeLessThanOrEqual(intro.x + intro.width - inset + 1);
+    // 시작 버튼은 소개 면 안의 같은 기준선에 놓이며 긴 설명 카드가 되지 않는다.
+    expect(primary.height).toBeGreaterThanOrEqual(44);
+    expect(primary.height).toBeLessThanOrEqual(72);
+    await expect(page.locator(".dc-hero__actions .dc-action-route__hint")).toHaveCount(3);
     await page.locator(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();

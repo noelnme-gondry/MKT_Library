@@ -12,6 +12,7 @@ import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
 import GuideIndex from "@/components/GuideIndex";
 import StartGate from "@/components/StartGate";
+import AnalysisDataGuide from "@/components/AnalysisDataGuide";
 import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
@@ -64,7 +65,8 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
   // slug = undefined; on any nested path it's a string[].
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
-  const responseStage = resolveResponseStage(useSearchParams().get("stage"));
+  const searchParams = useSearchParams();
+  const responseStage = resolveResponseStage(searchParams.get("stage"));
   const isResponseSubtoolRoute = isResponseSubtool(routeId);
 
   // Unknown URL -> 404 (must run before any dispatch that assumes a valid id).
@@ -102,6 +104,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "home" && <><LandingPage reading={reading} /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
+            {routeId === "data-guide" && <AnalysisDataGuide locale="ko" />}
             {routeId === "projects" && <ProjectsPage locale="ko" />}
             {routeId === "subscription" && <SubscriptionPage locale="ko" />}
             {routeId === "storage" && <WorkspaceStoragePage />}
@@ -123,7 +126,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "5-18-mmm" && <ToolRecipeWorkspace toolId="5-18-mmm" locale="ko"><MarketingResponse initialStage="mmm" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-18-forecast" && <ToolRecipeWorkspace toolId="5-18-forecast" locale="ko"><MarketingResponse initialStage="lab" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-20" && <ToolRecipeWorkspace toolId="5-20" locale="ko"><AhaMomentFinder /></ToolRecipeWorkspace>}
-            {routeId === "5-23" && <ToolRecipeWorkspace toolId="5-23" locale="ko"><Incrementality /></ToolRecipeWorkspace>}
+            {routeId === "5-23" && <ToolRecipeWorkspace toolId="5-23" locale="ko"><Incrementality initialMethod={searchParams.get("method")} /></ToolRecipeWorkspace>}
             {routeId === "5-24" && <ToolRecipeWorkspace toolId="5-24" locale="ko"><BrandCampaignIncrementality /></ToolRecipeWorkspace>}
             {routeId === "5-25" && <ToolRecipeWorkspace toolId="5-25" locale="ko"><MulticollinearityChecker /></ToolRecipeWorkspace>}
             {routeId === "5-27" && <ToolRecipeWorkspace toolId="5-27" locale="ko"><AsoStoreConversion /></ToolRecipeWorkspace>}
@@ -142,6 +145,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId !== "home" &&
              routeId !== "guide-index" &&
              routeId !== "start-gate" &&
+             routeId !== "data-guide" &&
              !["storage", "projects", "subscription", "account"].includes(routeId) &&
              routeId !== "dochi-result" &&
              !routeId.startsWith("5-") &&

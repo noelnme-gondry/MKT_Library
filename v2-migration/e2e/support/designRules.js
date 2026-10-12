@@ -266,17 +266,23 @@ export async function measureDesignRules(page) {
     const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
 
     // PNG가 숫자/제목을 밀어내는 문제는 글자끼리 겹치지 않아도 발생한다.
-    // 실제 내보내기 행의 경계와 이전 형제 콘텐츠 사이의 간격을 모든 사용처에서 검사한다.
+    // 제목 옆 보조 행동은 가로 간격을 검사하며, 별도 PNG 행으로 다시 커지면 잡는다.
     const figureCrowding = [];
     const exports = [...document.querySelectorAll(".figure-png-download")].filter(visible);
     for (const action of exports) {
       const r = action.getBoundingClientRect(), parent = action.parentElement;
       const siblings = [...parent.children].filter(node => node !== action && visible(node));
       for (const sibling of siblings) {
+        if (sibling.matches(".figure-head__description")) continue;
         const s = sibling.getBoundingClientRect();
-        if (s.width > 0 && s.height > 0 && r.top - s.bottom < 11) figureCrowding.push(`${label(parent)}: export crowds ${label(sibling)}`);
+        if (!(s.width > 0 && s.height > 0)) continue;
+        const overlapsY = Math.min(r.bottom, s.bottom) - Math.max(r.top, s.top) > 1;
+        const gap = overlapsY ? Math.max(r.left - s.right, s.left - r.right) : Math.max(r.top - s.bottom, s.top - r.bottom);
+        if (gap < 11) figureCrowding.push(`${label(parent)}: export crowds ${label(sibling)}`);
+        if (parent.classList.contains("figure-head") && sibling.matches("h2, h3") && !overlapsY) figureCrowding.push(`${label(parent)}: export reserves a separate title row`);
       }
       for (const child of action.querySelectorAll("button, .figure-png-button__condition")) {
+        if (!visible(child)) continue;
         const c = child.getBoundingClientRect();
         if (c.left < r.left - 1 || c.right > r.right + 1 || c.top < r.top - 1 || c.bottom > r.bottom + 1) figureCrowding.push(`${label(parent)}: export content escapes its row`);
       }

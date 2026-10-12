@@ -129,7 +129,7 @@ const METHODS_EN = [
 ];
 
 
-export default function Incrementality({ locale = "ko" } = {}) {
+export default function Incrementality({ locale = "ko", initialMethod = null } = {}) {
   const isHydrated = useClientReady();
   // Hydration can finish before IndexedDB restoration. setCsvData deliberately
   // rejects writes while a project is switching, so do not accept files yet.
@@ -143,7 +143,9 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const currency = useAppStore((s) => s.displayCurrency);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
-  const [method, setMethod] = useSavedToolInput("5-23", "method", "suppression");
+  const requestedMethod = initialMethod;
+  const hasRequestedMethod = ["suppression", "on", "off"].includes(requestedMethod);
+  const [method, setMethod] = useSavedToolInput("5-23", "method", hasRequestedMethod ? requestedMethod : "suppression", { preferInitial: hasRequestedMethod });
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
   const selectMethod = useCallback((nextMethod) => {

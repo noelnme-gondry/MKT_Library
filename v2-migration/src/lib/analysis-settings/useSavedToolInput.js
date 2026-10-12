@@ -7,7 +7,7 @@ import { cleanToolInputs, inputScope, sameInputShape } from "./toolInputs";
 
 // Local React state retains each tool's original update behavior. Only options
 // are mirrored after commit, so render-time resets never update another component.
-export function useSavedToolInput(toolId, key, initial, { migrate } = {}) {
+export function useSavedToolInput(toolId, key, initial, { migrate, preferInitial = false } = {}) {
   const recipe = useContext(ToolRecipeContext);
   const bridge = recipe?.toolId === toolId && key !== "recipeSteps" ? recipe.inputs : null;
   const application = bridge?.application;
@@ -17,7 +17,7 @@ export function useSavedToolInput(toolId, key, initial, { migrate } = {}) {
     const isApplied = state.savedSetupAppliedTool === toolId && state.savedSetupAppliedProject === state.activeProjectId;
     const saved = isApplied ? cleanToolInputs(toolId, state.savedSetupAppliedInputs) : {};
     const fallback = typeof initial === "function" ? initial() : initial;
-    const restored = Object.hasOwn(saved, key) && sameInputShape(saved[key], fallback) ? saved[key] : fallback;
+    const restored = !preferInitial && Object.hasOwn(saved, key) && sameInputShape(saved[key], fallback) ? saved[key] : fallback;
     return applyFollowupInput(application?.overrides || {}, key, restored);
   });
   const revision = useAppStore(state => state.savedSetupApplied || 0);

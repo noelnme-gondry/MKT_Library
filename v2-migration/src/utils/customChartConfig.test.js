@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CHART_FONT_STACK } from "./chartUtils.js";
 import {
   buildChartFieldOptions,
   buildCustomChartConfig,
@@ -65,7 +66,7 @@ describe("custom chart scorecard", () => {
       opts,
     );
     expect(config.options.maintainAspectRatio).toBe(false);
-    expect(config.options.plugins.legend.labels.font.family).toContain("DM Sans");
+    expect(config.options.plugins.legend.labels.font.family).toBe(CHART_FONT_STACK);
     expect(config.options.plugins.tooltip.backgroundColor).toBe("rgba(0,0,0,0.85)");
   });
 });

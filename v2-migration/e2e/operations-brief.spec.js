@@ -38,20 +38,52 @@ for (const locale of ["ko", "en"]) {
     await expect(actions.first()).toHaveAttribute("href", `${en ? "/en" : ""}/tools/operations-planner`);
     const previewCpi = (await page.locator(".operations-sample-preview__metric strong").textContent()).split("→").at(-1).trim();
     await page.screenshot({ path: testInfo.outputPath("operations-home.png") });
-    await page.getByRole("link", { name: en ? /Try the operations planner/ : /운영 플래너 데모 보기/ }).click();
+    await page.getByRole("link", { name: en ? /View demo/ : /데모 보기/ }).click();
     await expect(page.locator("#ops-budget-title")).toBeVisible();
     await expect(page.locator(".operations-planner__demo")).toContainText(en ? "98 days" : "98일");
     await expect(page.locator(".result-action-card__stats")).toContainText(previewCpi);
     await expect(page.locator(".operations-new-creatives")).toContainText(en ? "Customer review video" : "고객 후기 영상");
     await expect(page.locator(".operations-workbench canvas")).toHaveCount(6);
+    const figureHeader = page.locator(".operations-trend .figure-head");
+    const titleBounds = await figureHeader.locator("h3").boundingBox();
+    const pngBounds = await figureHeader.getByRole("button", { name: en ? "Download PNG" : "PNG 받기", exact: true }).boundingBox();
+    expect(Math.min(titleBounds.y + titleBounds.height, pngBounds.y + pngBounds.height) - Math.max(titleBounds.y, pngBounds.y), "PNG stays beside the chart title").toBeGreaterThan(1);
+    expect(pngBounds.x - titleBounds.x - titleBounds.width, "title keeps horizontal space before PNG").toBeGreaterThanOrEqual(11);
+    const pngButton = figureHeader.getByRole("button", { name: en ? "Download PNG" : "PNG 받기", exact: true });
+    // Radix closes help on scroll. Focus the visible control rather than closing
+    // it immediately with focus()'s automatic scroll from an off-screen panel.
+    await pngButton.scrollIntoViewIfNeeded();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await pngButton.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByRole("tooltip")).toContainText(en ? "Purchased pass required" : "구매 이용권 필요");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
     if (testInfo.project.use.viewport.width > 1100) {
       const budgetHeading = await page.locator("#ops-budget-title").boundingBox();
       const trendHeading = await page.locator("#ops-trend-title").boundingBox();
       expect(Math.abs(budgetHeading.y - trendHeading.y), "paired task headings share a top edge").toBeLessThanOrEqual(1);
+      const subtitles = await page.locator(".operations-panel--budget .operations-brief__heading p, .operations-trend .figure-head__description").evaluateAll(nodes => nodes.map(node => ({ top: node.getBoundingClientRect().top, size: getComputedStyle(node).fontSize, color: getComputedStyle(node).color })));
+      expect(Math.abs(subtitles[0].top - subtitles[1].top), "paired subtitles share a baseline").toBeLessThanOrEqual(1);
+      expect(subtitles[0].size).toBe(subtitles[1].size);
+      expect(subtitles[0].color).toBe(subtitles[1].color);
       const figureHeads = await page.locator(".operations-decomposition-grid .section-head").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().bottom));
       expect(Math.abs(figureHeads[0] - figureHeads[1]), "stage and mix plots start below aligned figure headers").toBeLessThanOrEqual(1);
     }
-    await expect(page.locator(".operations-brief__forecast")).toContainText("3.5%");
+    const forecast = page.locator(".operations-brief__forecast");
+    const summaryRows = await forecast.locator(":scope > div").evaluateAll(nodes => nodes.map(node => ({
+      left: node.getBoundingClientRect().left,
+      title: node.querySelector("dt").getBoundingClientRect().top,
+      value: node.querySelector("strong").getBoundingClientRect().top,
+      context: node.querySelector("dd:last-child").getBoundingClientRect().top,
+    })));
+    if (Math.abs(summaryRows[0].left - summaryRows[1].left) > 1) {
+      for (const row of ["title", "value", "context"]) expect(Math.abs(summaryRows[0][row] - summaryRows[1][row]), `budget summary ${row} shares a baseline`).toBeLessThanOrEqual(1);
+    }
+    await expect(forecast.locator("b")).toHaveText(/\+[\d.]+%/);
+    const modeled = (await forecast.locator("strong").nth(1).textContent()).split("→").map(value => Number(value.replace(/,/g, "")));
+    expect(modeled[1]).toBeGreaterThan(modeled[0]);
+    expect(Number((await forecast.locator("b").textContent()).replace(/[^\d.]/g, ""))).toBeCloseTo((modeled[1] / modeled[0] - 1) * 100, 1);
     if (testInfo.project.name === "desktop-1440") {
       await page.locator(".operations-workbench__group--creative").screenshot({ path: testInfo.outputPath("operations-creatives.png") });
       await page.locator(".operations-data > summary").click();
@@ -65,9 +97,10 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".operations-trend canvas")).toHaveAttribute("aria-label", en ? "Daily observed portfolio Spend" : "전체 일별 실측 광고비");
     await trendControls.getByRole("radio", { name: en ? "Spend" : "광고비", exact: true }).press("Home");
     await expect(trendControls.getByRole("radio", { name: "CPI", exact: true })).toBeFocused();
+    await page.getByRole("button", { name: en ? "Select Customer review video" : "고객 후기 영상 선택", exact: true }).click();
     await page.getByRole("button", { name: en ? /Follow up on this creative next week/ : /이 소재를 다음 주에도 확인/ }).click();
     await expect(page.locator(".operations-review-plan")).toContainText(en ? "Customer review video" : "고객 후기 영상");
-    await expect(page.locator(".operations-review-plan")).toContainText("₩841");
+    const baseline = await page.locator(".operations-review-plan > div").first().locator("strong").textContent();
     await expect(page.locator(".operations-review-demo")).toBeVisible();
     await expect(page.locator(".decision-review-launch")).toHaveCount(0);
     await page.locator("#ops-review").evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
@@ -80,7 +113,14 @@ for (const locale of ["ko", "en"]) {
     expect(csv.errors).toEqual([]);
     expect(new Set(csv.data.map(row => row.Date)).size).toBe(98);
     expect(new Set(csv.data.map(row => row["Campaign ID"])).size).toBe(4);
-    expect(csv.data.length).toBe(406);
+    // 다운로드한 원본의 독립 집계와 홈·주간 리뷰의 실측 기준값을 대조한다.
+    const recent = csv.data.filter(row => row.Date >= "2026-09-30");
+    const cpi = values => values.reduce((sum, row) => sum + Number(row.Cost), 0) / values.reduce((sum, row) => sum + Number(row.Installs), 0);
+    expect(Number(previewCpi.replace(/[^\d.]/g, ""))).toBe(Math.round(cpi(recent)));
+    const customerReview = recent.filter(row => row["Creative ID"] === (en ? "Customer review video" : "고객 후기 영상"));
+    expect(Number(baseline.replace(/[^\d.]/g, ""))).toBe(Math.round(cpi(customerReview)));
+    expect(new Set(customerReview.map(row => row.Date)).size).toBe(7);
+    expect(new Set(recent.filter(row => row["Creative ID"] === (en ? "Feature comparison" : "기능 비교 이미지")).map(row => row.Date)).size).toBe(5);
     await page.locator(".operations-planner__conditions > summary").click();
     expect(errors).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -214,10 +254,16 @@ for (const locale of ["ko", "en"]) {
     await scope.getByRole("button", { name: en ? "Reset scope" : "대상 초기화", exact: true }).click();
     await scope.getByRole("button", { name: en ? "Done" : "완료", exact: true }).click();
     await expect(summary).toContainText(en ? "All entities" : "전체 대상");
+    const originalPromise = page.waitForEvent("download");
+    await settings.getByRole("button", { name: en ? "Download demo CSV" : "데모 원본 CSV", exact: true }).click();
+    const original = await originalPromise;
+    const exported = Papa.parse(await readFile(await original.path(), "utf8"), { header: true, skipEmptyLines: true });
+    expect(exported.errors).toEqual([]);
+    const recentSpend = exported.data.filter(row => row.Date >= "2026-09-23" && row.Date <= "2026-10-06").reduce((sum, row) => sum + Number(row.Cost), 0);
     await summary.press("Enter");
     await expect(settings).not.toHaveAttribute("open");
     await expect(summary).toBeFocused();
-    await expect(page.locator(".result-action-card__stats")).toContainText("₩10,688,000");
+    await expect(page.locator(".result-action-card__stats")).toContainText(`₩${recentSpend.toLocaleString("en-US")}`);
     await page.locator(".operations-data > summary").press("Enter");
     await expect(page.getByRole("table", { name: en ? "Recent efficiency by creative" : "소재별 최근 효율", exact: true })).toBeVisible();
     await summary.press("Enter");

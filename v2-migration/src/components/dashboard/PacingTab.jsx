@@ -200,7 +200,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
       label: T.cumulative,
       data: cumData.map(d => d.y),
       borderColor: CHART_THEME.primary,
-      backgroundColor: "rgba(173,198,255,0.3)",
+      backgroundColor: CHART_THEME.primary + "4D",
       fill: true,
       tension: 0.2,
       pointRadius: 2,

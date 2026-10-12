@@ -6,6 +6,10 @@ function Inputs() {
   const [budget, setBudget] = useSavedToolInput("5-3", "budget", "");
   return <input aria-label="Budget" value={budget} onChange={event => setBudget(event.target.value)} />;
 }
+function Method({ requested }) {
+  const [method] = useSavedToolInput("5-23", "method", requested || "suppression", { preferInitial: Boolean(requested) });
+  return <output aria-label="Method">{method}</output>;
+}
 beforeEach(() => useAppStore.setState(useAppStore.getInitialState(), true));
 it("captures entered values and applies a saved setup to an already mounted input", async () => {
   render(<Inputs />);
@@ -17,4 +21,15 @@ it("captures entered values and applies a saved setup to an already mounted inpu
 it("ignores incompatible imported shapes", () => {
   useAppStore.setState({ viewConfig: { "analysis-inputs:5-3": { budget: { unsafe: 1 } } } });
   render(<Inputs />); expect(screen.getByRole("textbox").value).toBe("");
+});
+it("honors an explicitly requested analysis method before a restored setup", () => {
+  useAppStore.setState({ savedSetupAppliedTool: "5-23", savedSetupAppliedProject: useAppStore.getState().activeProjectId, savedSetupAppliedInputs: { method: "suppression" } });
+  render(<Method requested="on" />);
+  expect(screen.getByLabelText("Method").textContent).toBe("on");
+  expect(useAppStore.getState().viewConfig["analysis-inputs:5-23"].method).toBe("on");
+});
+it("preserves restoration priority when no method is requested", () => {
+  useAppStore.setState({ savedSetupAppliedTool: "5-23", savedSetupAppliedProject: useAppStore.getState().activeProjectId, savedSetupAppliedInputs: { method: "off" } });
+  render(<Method />);
+  expect(screen.getByLabelText("Method").textContent).toBe("off");
 });

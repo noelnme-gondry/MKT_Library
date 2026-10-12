@@ -54,7 +54,7 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/`);
     await page.evaluate(async () => { await document.fonts.ready; });
     const deck = page.locator(".dc-hero__deck");
-    const width = await page.locator(".dc-hero__copy").evaluate(node => node.clientWidth);
+    const width = await page.locator(".dc-hero__intro").evaluate(node => node.clientWidth - parseFloat(getComputedStyle(node).paddingLeft) - parseFloat(getComputedStyle(node).paddingRight));
     expect(await deck.evaluate(node => node.clientWidth)).toBeGreaterThanOrEqual(width - 1);
     const conditions = page.locator(".dc-hero__assurance > span");
     await expect(conditions).toHaveCount(2);

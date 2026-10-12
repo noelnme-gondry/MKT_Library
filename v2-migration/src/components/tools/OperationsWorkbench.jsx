@@ -23,10 +23,18 @@ export default function OperationsWorkbench({ brief, plan, budgetRows, campaign,
           {holdMessages.map(message => <p key={message}>{message}</p>)}
           <p>{plan.holds.filter(hold => hold.id).map(hold => brief.campaigns.find(row => row.id === hold.id)?.name).filter(Boolean).join(" · ")}</p>
         </div> : <>
-          <div className="operations-brief__forecast">
-            <div><span>{tr("같은 하루 예산", "Same daily budget")}</span><strong>{money(plan.totalBudget)}</strong></div>
-            <div><span>{tr("모형 예상 성과 / 일", "Modeled outcomes / day")}</span><strong>{number(plan.baselineResults)} → {number(plan.expectedResults)}</strong><b>{pct(plan.improvementPct)}</b></div>
-          </div>
+          <dl className="operations-brief__forecast" data-design-exempt="nested: budget and modeled outcomes are separate comparisons inside the operating plan (product-ssot.md §5.6)">
+            <div>
+              <dt>{tr("같은 하루 예산", "Same daily budget")}</dt>
+              <dd className="operations-brief__forecast-value"><strong>{money(plan.totalBudget)}</strong></dd>
+              <dd className="operations-brief__forecast-context">{tr("유지안·조정안 동일", "Same for both plans")}</dd>
+            </div>
+            <div>
+              <dt>{tr("모형 예상 성과 / 일", "Modeled outcomes / day")}</dt>
+              <dd className="operations-brief__forecast-value"><strong><span>{number(plan.baselineResults)} </span><span className="operations-brief__forecast-arrow">→</span><span> {number(plan.expectedResults)}</span></strong></dd>
+              <dd className="operations-brief__forecast-context"><b>{pct(plan.improvementPct)}</b>{tr("유지안 대비", "vs. keep plan")}</dd>
+            </div>
+          </dl>
           <OperationsBudgetChart rows={budgetRows} currency={currency} locale={locale} periods={periods} isDemo={isDemo} />
           <div className="operations-budget-shifts">{budgetRows.map(row => <div key={row.id}><span>{row.name}<small>{tr(`예상 ${metricName}`, `Predicted ${metricName}`)} {money(row.baselineCpr)} → {money(row.expectedCpr)}</small></span><b data-tone={row.budget > row.current + 1e-6 ? "increase" : row.budget < row.current - 1e-6 ? "decrease" : "neutral"}>{row.budget > row.current + 1e-6 ? "+" : row.budget < row.current - 1e-6 ? "−" : ""}{money(Math.abs(row.budget - row.current))}<small> / {tr("일", "day")}</small></b></div>)}</div>
           <p className="operations-chart__caption">{tr(`유지안 → 조정안 예상 ${metricName}`, `Maintenance → revised predicted ${metricName}`)} {money(plan.baselineCpr)} → {money(plan.expectedCpr)}. {tr("같은 모형의 조건부 예측이며 개선은 보장되지 않습니다.", "Conditional predictions from the same model; improvement is not guaranteed.")}</p>

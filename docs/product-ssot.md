@@ -244,6 +244,11 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 캠페인·소재 식별자는 국가·플랫폼·채널·유입 구분을 포함해 묶는다. 소재의 첫 관측은 업로드 이력 기준이며 생성·추가 시점은 미확인이다. 구성/효율 분해와 단계별 기여는 관측 단가 변화의 산술 설명이며 원인을 확정하지 않는다. / Scope campaign and creative identifiers by country, platform, channel and source. A creative’s first observation is within uploaded history; creation/addition dates are unverified. Mix/rate decomposition and stage contributions explain observed unit-cost changes arithmetically and do not establish causation.
 
 - 예시는 긴 일별 이력과 복수 캠페인·소재를 가진 결정적 가상 데이터다. 홈 미리보기·도구 내 예시·CSV 다운로드가 같은 원본을 사용한다. 클릭하면 실제 계산 결과로 연결되며 데모임을 표시한다. / Use one deterministic fictional daily history across the home preview, in-tool sample and CSV download. An explicit sample click opens actual calculated results, with a sample label.
+- 홈 첫 화면은 제목·짧은 설명과 내 데이터·데모·데이터 양식의 세 버튼, 운영 플래너 결과 미리보기 순서다. 내 데이터가 주 행동이며 버튼별 접근 가능한 설명을 제공한다. 미리보기는 캠페인·예산·소재를 동등한 보기 탭으로 전환한다. 같은 가상 원본과 직전·최근 7일로 캠페인 CPI, 동일 예산 유지/조정 모형 예상, 새로 관측된 소재 단가를 계산한다. 캠페인 추세의 단가 축은 0부터 시작하며 선택한 캠페인의 실제 값 범위에 맞춘다. 네 캠페인의 전후 값·변화율·비교 날짜는 함께 보존한다. 모형 예상과 실측을 구분하며 소재 관측일 수·동일 캠페인의 기존 소재 대비를 표시한다. 원인 분해와 세부 조건은 도구 결과에서 확인한다. / Order the home as a title and short explanation with three buttons (my data, demo, data requirements), then an operations preview. My data is primary; provide accessible descriptions. Switch between peer campaign, budget and creative views. Use the same fictional source and prior/recent seven-day windows for CPI, conditional maintenance/revised model predictions and first-observed creatives. Start the trend cost axis at zero and adapt its range to the selected campaign's observed values; retain all four before/after comparisons, changes and dates. Distinguish modeled predictions from observations, show creative observation days and same-campaign references, and leave decomposition and detailed settings in the tool.
+
+홈 소개 문구는 "성과는 왜 바뀌었고, 다음엔 뭘 해야 할까?"와 "최근 효율과 새 소재를 보고, 다음 예산을 정하세요."다. EN은 "Why did performance change? What should you do next?"와 "Review recent efficiency and new creatives, then plan your next budget."를 사용한다. 캠페인 미리보기는 실제 일별 추세를 기본으로 최근 28일/전체 이력을 전환한다. 직전·최근 구간과 직전 7일의 가중 단가 기준선을 구분하고 날짜별 값을 마우스·키보드로 탐색한다. 네 캠페인의 전후 비교값을 보존하며 추세를 변화점 검출이나 인과 증거로 표현하지 않는다. 예산 조정은 공통 0 기준의 증감 방향과 실제 금액을 함께 표시한다. / Preview observed daily trends with recent-28-day/full-history views, distinguish prior/recent windows and the prior weighted unit-cost reference, and allow pointer/keyboard date inspection. Preserve all four campaign comparisons without claiming change-point detection or causality. Show budget changes around a common zero with their actual amounts.
+
+홈의 가상 데이터 추세 캔버스는 제품 미리보기 삽화이며 `FigurePngButton` 적용의 개별 예외다. 사용자 분석 결과·다운로드 화면이 아니므로 홈에는 PNG 받기를 붙이지 않는다. 기존 데모 버튼으로 실제 운영 플래너를 열면 공통 분석·PNG 다운로드 계약을 그대로 적용한다. 이 예외는 `landing/OperationsHomeTrend.jsx` 한 파일에만 적용하며 전체 차트 가드를 제외하거나 느슨하게 하지 않는다. / The fictional homepage trend canvas is a product-preview illustration, exempt from FigurePngButton in this one file. Keep PNG controls off the home entry screen; opening the actual planner through View demo retains the shared analysis/export contracts. Scope the exception to landing/OperationsHomeTrend.jsx without weakening global coverage.
 
 #### 입력·비교 기준의 정확성 (2026-09-13)
 
@@ -272,7 +277,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 홈·분석 화면의 우하단은 **튜토리얼 / Tutorial** 물음표 버튼으로 안내한다. 업로드 전에도 **업로드 방법 보기 / How to upload** 진입점을 제공한다. 설문·동의·모달이 열린 동안 플로팅 버튼은 숨기며, 일반 버튼에 포커스가 있다는 이유만으로 숨기지 않는다. 실제 입력 조작과 겹치면 물러나고 업로드 영역의 안내는 유지한다.
 
-홈 제목은 §1.1a를 유지하며 소개는 긴 캠페인 이력의 운영 점검을 설명한다. 주 행동은 **내 데이터로 운영 계획 세우기 / Plan operations with my data**, 보조 행동은 **운영 플래너 데모 보기 / Try the operations planner**다. 두 행동은 독립 운영 플래너로 연결한다. `/start`의 범용 파일 진입은 분석 목록·내비게이션에서 유지한다. 업로드 후 매핑을 확인하고 명시적으로 분석을 시작하며 결과 이후 입력은 편집 가능한 한 줄 요약으로 접힌다. / Link both homepage actions to the standalone operations planner, preserving the general Start entry in navigation and tool discovery. Confirm mappings and explicitly analyze uploaded data; summarize input after results. 저장된 결정의 상단 재진입은 유지한다.
+홈 제목은 §1.1a를 유지하며 소개는 긴 캠페인 이력의 운영 점검을 설명한다. 주 행동은 **내 데이터로 운영하기 / Plan operations with my data**, 보조 행동은 **데모 보기 / View demo**다. 두 행동은 독립 운영 플래너로 연결한다. **필요한 데이터 양식 확인 / Check data requirements**은 `/data-guide`와 `/en/data-guide`로 연결한다. 보고 싶은 질문에서 공개 분석을 선택하고 출처·행 단위·필수/추가 항목의 쓰임·가상 작성 예시·준비 주의사항·실제 빈 CSV 양식을 확인한다. 질문·도구 목록은 홈 레지스트리, 요구사항과 예시는 업로더, 다운로드는 기존 템플릿 계약에서 가져온다. 내부 도구 번호를 화면에 표시하지 않는다. / The data guide maps questions to analyses and explains sources, row structure, field purpose, fictional sample rows, preparation checks and compatible CSV templates using the existing registries. `/start`의 범용 파일 진입은 분석 목록·내비게이션에서 유지한다. 업로드 후 매핑을 확인하고 명시적으로 분석을 시작하며 결과 이후 입력은 편집 가능한 한 줄 요약으로 접힌다. / Link both homepage actions to the standalone operations planner, preserving the general Start entry in navigation and tool discovery. Confirm mappings and explicitly analyze uploaded data; summarize input after results. 저장된 결정의 상단 재진입은 유지한다.
 
 **목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 분류와 공개 도구를 처음부터 모두 보여준다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
@@ -453,6 +458,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ### 5.6 차트·표 계약
 
+동일 예산 조정안의 요약은 예산과 모형 예상 성과를 각각 라벨·값·비교 설명으로 묶는다. 이 두 비교 구획만 운영 계획 면 안에서 내부 면으로 허용한다. 두 구획이 나란히 놓일 때 세 행의 기준선을 공유하고, 좁으면 전체 구획을 세로로 배치한다. 예산의 비교 설명은 `유지안·조정안 동일` / `Same for both plans`, 성과의 변화율은 `유지안 대비` / `vs. keep plan`을 붙여 기준을 밝힌다. / The same-budget summary groups budget and modeled outcomes into label, value and comparison context. These two distinct comparison groups may form inner surfaces within the operating plan. Side-by-side groups share row alignment; narrow layouts stack complete groups. Comparison text states the common budget and the keep-plan reference for the modeled change.
+
+2026-10-12 승인: 모든 페이지의 차트·표는 기존 사이트의 파랑·회색을 공통으로 사용한다. 주요 데이터/조정안은 파랑, 직전/현재 비교는 회색, 캠페인 분류는 고정된 파란 계열이다. 개선·악화·주의는 기존 success/danger/warning 의미 토큰을 유지한다. 축·범례·툴팁은 사이트 sans를 공유하고, 차트 종류별 막대·선·라벨 표현은 구분한다. 표는 수치·헤더 정렬과 행 간격을 공유한다. PNG는 제목 옆 작은 보조 버튼으로 표시하고 전용 행이나 고정 높이로 다른 요소를 밀어내지 않는다(2026-10-13 사용자 수정). 구매 조건은 버튼의 접근 가능한 설명과 마우스·키보드 도움말, 실제 다운로드 권한 안내에서 확인한다. 계산·축 범위·관측점·구간 의미·사용자가 저장한 차트 표현은 보존한다. / Approved on 2026-10-12: charts and tables across pages share the site's blue/gray palette. Primary data and proposals are blue; prior/current comparisons are gray; categories use consistent blue-family colors. Existing success/danger/warning semantics remain. Axes, legends and tooltips use the site sans, with chart-specific marks and labels. Tables share numeric/header alignment and row spacing. Following the user's 2026-10-13 correction, PNG is a compact action beside the title, without a reserved row or fixed-height spacer. Purchase conditions remain in the accessible description, hover/focus help and the download gate. Preserve calculations, axis domains, observed coordinates, interval semantics and saved custom chart choices.
+
+PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / `Download PNG`다. 실제 다운로드는 기존 구매 이용권 조건을 유지한다. 운영 플래너의 추세 설명은 `전체 이력의 일별 실측` / `Daily observations across the uploaded history`다. / Keep the existing purchased-pass eligibility and distinguish observations from modeled budget outcomes in the planner.
+
 | 대상 | 규칙 |
 |---|---|
 | 차트 제목 | '무엇을 보여주는가'가 아니라 **'무슨 판단에 답하는가'** |
@@ -509,6 +520,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 ### 6.2 대비·색상·테마
 
 색은 의미를 **보조**할 수 있지만 단독으로 상태를 전달하지 않는다. 모든 상태는 라벨·아이콘·패턴·위치 중 하나 이상을 병행하고 **라이트/다크 각각 검증**한다.
+
+첫 방문은 OS 설정과 관계없이 다크 모드로 연다. 이 기기에 저장된 라이트·다크 선택은 그대로 복원하며, 첫 페인트·헤더·차트·모바일 브라우저 색을 같은 테마로 맞춘다. / First visits use dark mode regardless of the OS preference. Restore an explicit light or dark choice saved on this device, keeping the initial paint, header, charts and mobile browser color in sync.
 
 | 요소 | 기준 |
 |---|---|
@@ -635,7 +648,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 결과 머리·결론을 배경에 흩어 두기 | 결론보다 약한 하단 안내가 먼저 보인다 | 결과 요약은 흰 면 하나: 제목·입력 요약 → 결론·핵심 수치/그림·행동 → 공통 설정. 수치는 가용 폭에 맞춰 4·2·1열로 배치하고 날짜/금액 중간 줄바꿈과 잘림을 피한다. 다음 프로젝트 안내도 같은 흰 면·보조 버튼 |
 | 진행 단계가 배경에 흩어지거나 현재만 탭처럼 보임 | 작업 순서와 현재 위치를 읽기 어렵다 | 하나의 테두리 면 안에 네 단계를 구획하고 번호·이름을 모두 표시한다. 현재는 바탕·굵기로, 실제 완료만 ✓로 구분한다. 폰에서도 2×2로 이름을 유지하며 이동 가능한 리뷰에만 링크를 둔다. / Group all four named steps in one bordered surface; use a 2×2 layout on phones, and mark only known completed tasks. |
 | 페이지 제목이 채운 면 가장자리에 붙음 | 제목과 바탕의 경계가 어긋나 보인다 | 공통 페이지 제목 면의 좌우 안쪽 여백은 데스크톱 24px, 폰 16px 이상으로 유지한다. / Inset shared page titles by 24px on desktop and at least 16px on phones. |
-| PNG 받기·권한 안내가 제목·수치·조작을 밀어냄 | 근거보다 내보내기가 강해지고 비교 수치를 읽기 어렵다 | 모든 그림은 제목 뒤 별도 내보내기 행을 확보한다. 버튼과 구매 조건은 좁은 폭에서 줄바꿈하며 제목·수치와 최소 12px를 띄운다. / Reserve a separate export row after figure titles; wrap the action and purchase condition without squeezing headings or metrics. |
+| PNG 받기·권한 안내가 제목·수치·조작을 밀어냄 | 근거보다 내보내기가 강해지고 비교 수치를 읽기 어렵다 | 제목 옆 작은 PNG 보조 버튼을 두고 12px 가로 간격을 확보한다. 조건은 접근 가능한 설명·마우스/키보드 도움말로 제공하고 PNG 전용 행·고정 높이·큰 구매 문구로 본문을 밀지 않는다. 모바일 터치 영역은 유지한다. / Use a compact PNG action beside the title with 12px horizontal spacing. Keep purchase conditions in accessible descriptions and hover/focus help, retain touch targets, and avoid reserved export rows or fixed-height spacers. |
 | 분석마다 같은 막대·꺾은선으로 결과 그리기 (2026-09-25) | 무엇을 답하는 분석인지 그림에서 사라진다 | 분석별 핵심 그림: 성과 변동=직전→비중→효율→최근 다리+채널별 두 성분, 포화=평균↔한계 단가, 예산=지금↔바꾼 안, 채널 중복=VIF 기준선, 소재=상태 띠, 생존=계단 곡선+95% 띠 |
 
 ---

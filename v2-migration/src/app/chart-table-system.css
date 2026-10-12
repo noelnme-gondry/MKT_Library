@@ -1,0 +1,162 @@
+/* Shared by both root layouts. Palette values live here; canvas consumers resolve
+   them through CHART_THEME. Status colors retain their existing meaning. */
+@layer app {
+  :root {
+    --chart-category-1-light: #3146d8;
+    --chart-category-2-light: #4f6ddd;
+    --chart-category-3-light: #6f8bde;
+    --chart-category-4-light: #7b8faa;
+    --chart-category-5-light: #294264;
+    --chart-category-6-light: #8292a8;
+    --chart-category-1-dark: #8fb1ff;
+    --chart-category-2-dark: #becdff;
+    --chart-category-3-dark: #5b7fca;
+    --chart-category-4-dark: #5c77ad;
+    --chart-category-5-dark: #dbe7ff;
+    --chart-category-6-dark: #889bb8;
+  }
+  body {
+    --chart-category-1: var(--chart-category-1-dark);
+    --chart-category-2: var(--chart-category-2-dark);
+    --chart-category-3: var(--chart-category-3-dark);
+    --chart-category-4: var(--chart-category-4-dark);
+    --chart-category-5: var(--chart-category-5-dark);
+    --chart-category-6: var(--chart-category-6-dark);
+    --chart-comparison-light: #8594ab;
+    --chart-comparison-dark: #9baac0;
+    --chart-comparison: var(--chart-comparison-dark);
+    --chart-grid: #2a374b;
+    --chart-primary: var(--chart-category-1);
+    --chart-primary-soft: #8fb1ff24;
+    --chart-secondary: var(--chart-category-2);
+    --chart-tertiary: var(--chart-comparison);
+  }
+  body.light-mode {
+    --chart-category-1: var(--chart-category-1-light);
+    --chart-category-2: var(--chart-category-2-light);
+    --chart-category-3: var(--chart-category-3-light);
+    --chart-category-4: var(--chart-category-4-light);
+    --chart-category-5: var(--chart-category-5-light);
+    --chart-category-6: var(--chart-category-6-light);
+    --chart-comparison: var(--chart-comparison-light);
+    --chart-grid: #e8edf3;
+    --chart-primary: var(--chart-category-1);
+    --chart-primary-soft: #3146d824;
+    --chart-secondary: var(--chart-category-2);
+    --chart-tertiary: var(--chart-comparison);
+  }
+
+  .app .chart-container {
+    background: var(--library-surface);
+    border: 1px solid var(--library-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+  }
+  .app :is(.block, .card, .operations-panel):has(.figure-head) {
+    background: var(--library-surface);
+    border-color: var(--library-border);
+  }
+  .app :is(.block, .card, .operations-panel):has(.figure-head) .chart-container,
+  .app .operations-chart .chart-container {
+    background: transparent;
+    border: 0;
+    padding: 4px 0 0;
+  }
+  .app .figure-head {
+    margin-bottom: 12px;
+    padding-bottom: 0;
+    border-bottom: 0;
+    gap: 0 12px;
+  }
+  .app .figure-head > :is(h2, h3) {
+    font-family: var(--font-sans);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: -.02em;
+    overflow-wrap: anywhere;
+  }
+  .app .figure-png-button { font-size: var(--fs-xs); font-weight: 400; }
+  .app .operations-chart__toolbar { gap: 12px 18px; margin-block: 0 14px; }
+  .app .operations-chart__caption { gap: 10px 18px; line-height: 1.6; }
+
+  .app :is(.table-wrap, .table-scroll) {
+    min-width: 0;
+    max-width: 100%;
+    background: var(--library-surface);
+    border-color: var(--library-border);
+    border-radius: var(--radius-md);
+    overscroll-behavior-x: contain;
+  }
+  .app .table-wrap table.data {
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    line-height: 1.55;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  .app .table-wrap table.data thead th {
+    padding: 12px 16px;
+    background: var(--surface-container-low);
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--library-border);
+    font-family: var(--font-sans);
+    font-size: var(--fs-xs);
+    font-weight: 400;
+    letter-spacing: normal;
+    line-height: 1.5;
+    vertical-align: middle;
+  }
+  .app .table-wrap table.data tbody :is(td, th) {
+    padding: 14px 16px;
+    border-top-color: var(--border-subtle);
+    vertical-align: middle;
+    line-height: 1.55;
+  }
+  .app .table-wrap table.data tbody tr:hover { background: var(--surface-container-low); }
+  .app .table-wrap table.data tbody tr:last-child :is(td, th) { border-bottom: 0; }
+  .app .table-wrap table.data :is(th, td):is(.tnum, [data-numeric="true"]) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .app :is(.home-sample-table, .dochi-workspace__result-table, .compare-page__table, .plan-pro-table, .growth-funnel-tools, .blog-inline-insight table) {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.55;
+  }
+  .app :is(.home-sample-table, .dochi-workspace__result-table, .compare-page__table, .plan-pro-table, .growth-funnel-tools, .blog-inline-insight table) :is(th, td) {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-color: var(--border-subtle);
+  }
+
+  .gop-chart-tooltip {
+    background: var(--library-surface);
+    border-color: var(--library-border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--text-primary) 12%, transparent);
+  }
+  .gop-chart-tooltip__title { color: var(--text-primary); font-weight: 600; letter-spacing: normal; }
+  .gop-chart-tooltip__list li { line-height: 1.6; font-variant-numeric: tabular-nums; }
+  .app .dochi-workspace__chart-series.is-series-1 :is(polyline, circle) { stroke: var(--chart-category-2); }
+  .app .dochi-workspace__chart-series.is-series-2 :is(polyline, circle) { stroke: var(--chart-category-3); }
+  .app .dochi-workspace__chart-series.is-series-3 :is(polyline, circle) { stroke: var(--chart-category-5); }
+  .app .dochi-workspace__chart-series.is-series-4 :is(polyline, circle) { stroke: var(--chart-category-6); }
+  .app .dochi-workspace__chart-dot.is-series-1 { fill: var(--chart-category-2); }
+  .app .dochi-workspace__chart-dot.is-series-2 { fill: var(--chart-category-3); }
+  .app .dochi-workspace__chart-dot.is-series-3 { fill: var(--chart-category-5); }
+  .app .dochi-workspace__chart-dot.is-series-4 { fill: var(--chart-category-6); }
+  .app .dochi-workspace__chart-legend i.is-series-1::before { background: var(--chart-category-2); }
+  .app .dochi-workspace__chart-legend i.is-series-2::before { background: var(--chart-category-3); }
+  .app .dochi-workspace__chart-legend i.is-series-3::before { background: var(--chart-category-5); }
+  .app .dochi-workspace__chart-legend i.is-series-4::before { background: var(--chart-category-6); }
+  @media (max-width: 768px) {
+    .app .chart-container { padding: 12px; }
+    .app .table-wrap table.data thead th { padding: 10px 12px; }
+    .app .table-wrap table.data tbody :is(td, th) { padding: 12px; }
+  }
+}

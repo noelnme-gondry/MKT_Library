@@ -41,7 +41,7 @@ export function operationsReviewCandidates({ brief, plan, currency, locale = "ko
       prefill: { ...common, baseline: money(row.cpr), actionKind: "investigate", actionTarget: `${row.campaign} · ${row.creative} · ${row.context}`,
         conclusion: tr(`${row.creative}: 첫 관측 ${row.firstDate}, ${row.days}일 · 성과 ${fmtNum(row.results)} · ${metric} ${money(row.cpr)}.`, `${row.creative}: first seen ${row.firstDate}, ${row.days} days · ${fmtNum(row.results)} outcomes · ${metric} ${money(row.cpr)}.`),
         action: tr(`${row.creative}를 같은 캠페인의 기존 소재와 함께 관찰하고 다음 기간 실적을 비교합니다.`, `Observe ${row.creative} alongside established creatives in the same campaign and compare the next period.`),
-        hypothesis: tr("낮은 관측 단가가 다음 기간에도 유지되는지 살핍니다. 소재의 인과 효과는 별도 테스트가 필요합니다.", "Check whether the observed unit cost persists. Causal creative effects require a separate test."),
+        hypothesis: tr("관측 단가와 기존 소재 대비 차이가 다음 기간에도 이어지는지 살핍니다. 소재의 인과 효과는 별도 테스트가 필요합니다.", "Check whether the observed unit cost and the gap from established creatives persist. Causal creative effects require a separate test."),
         reviewQuestion: tr(`${row.creative}의 다음 기간 비용·성과·${metric}는 얼마이며 관측일 수는 충분한가요?`, `What are ${row.creative}'s next-period spend, outcomes and ${metric}, and is coverage sufficient?`) } });
   }
   return candidates;
