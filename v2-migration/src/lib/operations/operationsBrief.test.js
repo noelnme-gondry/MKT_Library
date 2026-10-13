@@ -129,7 +129,7 @@ describe("operations planner sample", () => {
     expect(newCreatives.some(row => row.vsEstablishedPct < 0)).toBe(true);
     expect(newCreatives.some(row => row.vsEstablishedPct > 0)).toBe(true);
     expect(new Set(newCreatives.map(row => row.firstDate)).size).toBe(2);
-    expect(brief.campaigns.find(row => row.name.includes("리타기팅")).changePct).toBeGreaterThan(15);
+    expect(brief.campaigns.find(row => row.name.includes("리타겟팅")).changePct).toBeGreaterThan(15);
     expect(plan.holds).toEqual([]);
     expect(plan.ok).toBe(true);
     expect(plan.improvementPct).toBeGreaterThan(0);

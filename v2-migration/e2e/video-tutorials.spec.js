@@ -54,8 +54,15 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/`);
     await page.evaluate(async () => { await document.fonts.ready; });
     const deck = page.locator(".dc-hero__deck");
-    const width = await page.locator(".dc-hero__intro").evaluate(node => node.clientWidth - parseFloat(getComputedStyle(node).paddingLeft) - parseFloat(getComputedStyle(node).paddingRight));
+    // 설명은 제목과 같은 열을 사용한다. 옆 진입 버튼의 열까지 차지하도록 강제하지 않는다.
+    const message = page.locator(".dc-hero__message");
+    const width = await message.evaluate(node => node.clientWidth - parseFloat(getComputedStyle(node).paddingLeft) - parseFloat(getComputedStyle(node).paddingRight));
     expect(await deck.evaluate(node => node.clientWidth)).toBeGreaterThanOrEqual(width - 1);
+    const messageBox = await message.boundingBox();
+    const entryBox = await page.locator(".dc-hero__entry").boundingBox();
+    // 나란한 두 열 또는 위아래 두 행이어야 하며 서로 침범하지 않는다.
+    expect(entryBox.x >= messageBox.x + messageBox.width - 1 || entryBox.y >= messageBox.y + messageBox.height - 1).toBe(true);
+    await expect(page.locator(".dc-hero__actions a")).toHaveCount(3);
     const conditions = page.locator(".dc-hero__assurance > span");
     await expect(conditions).toHaveCount(2);
     // Paid download conditions remain visible in the dedicated service terms.

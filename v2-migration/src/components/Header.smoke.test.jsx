@@ -5,7 +5,7 @@
 // → localStorage + body class). It reads isDarkMode/theme from the store, NOT csvData. We seed
 // the store (no-data + with-data) for parity; the topbar must mount either way.
 import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Header from "@/components/Header";
 import { workspaceNavItem } from "@/lib/workspaceNav";
@@ -139,5 +139,20 @@ describe("Header render smoke", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     fireEvent.keyDown(document, { key: "Escape" });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+  it.each([
+    ["ko", "기타 설정", "프로젝트 설정", "설정 내보내기", "닫기"],
+    ["en", "More settings", "Project settings", "Export settings", "Close"],
+  ])("keeps project settings alive when its parent popover closes (%s)", async (locale, utilities, settings, exportLabel, close) => {
+    render(<Header locale={locale} />);
+    const trigger = screen.getByRole("button", { name: utilities });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: settings }));
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(await screen.findByRole("dialog", { name: settings })).toBeTruthy();
+    expect(screen.getByRole("button", { name: exportLabel })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: close, exact: true }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: settings })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 });

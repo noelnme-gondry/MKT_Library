@@ -114,10 +114,14 @@ describe("LandingPage render smoke", () => {
       expect(node.querySelector("[data-tone]").dataset.tone).toBe(currentCpi > priorCpi ? "bad" : "good");
       fireEvent.click(node.querySelector("button"));
       expect(document.querySelector(".home-trend-heading > strong").textContent).toBe(name);
-      const finalDay = sums(values.filter(row => row.Date === "2026-10-06"));
-      expect(Number(document.querySelector(".home-operations-trend__inspection output").dataset.cpi)).toBeCloseTo(finalDay.cost / finalDay.installs, 10);
     }
     expect(document.querySelector(".operations-sample-chart__legend").textContent).toContain("09.30–10.06");
+  });
+  it.each(["ko", "en"])("keeps daily inspection in the chart without another control row (%s)", locale => {
+    const { queryByRole, container } = render(<LandingPage locale={locale} />);
+    expect(queryByRole("slider")).toBeNull();
+    expect(queryByRole("combobox", { name: locale === "en" ? "Inspect a date" : "날짜별 값 확인" })).toBeNull();
+    expect(container.querySelector(".home-operations-trend input, .home-operations-trend select, .home-operations-trend output")).toBeNull();
   });
   it("with-data mounts", () => {
     seedWithData();

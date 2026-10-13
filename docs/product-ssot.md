@@ -232,6 +232,10 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ## 5. UX 계약
 
+- 홈 추세의 날짜별 값은 차트에 마우스를 올렸을 때 나오는 툴팁으로 확인한다. 차트 아래에 날짜 슬라이더·날짜 선택·별도 CPI 표시를 추가하지 않는다. 최근 28일/전체 이력 전환과 캠페인별 전후 비교 값은 유지한다. / Inspect daily values through the homepage chart’s hover tooltip. Do not add a date slider, date selector or separate CPI readout below the chart. Retain recent-28-day/full-history switching and campaign-level period comparisons.
+
+- 홈의 소개는 제목과 세 진입 버튼을 담는 열린 영역이며, 계산된 결과 미리보기와 가까이 둔다. 미리보기만 콘텐츠 면으로 구분하고 모바일은 제목 → 세 행동 → 미리보기 순서를 유지한다. 공용 `···` 팝오버는 안내·데이터 관리·환경 설정을 구분선으로 묶은 행 목록이다. 모든 행의 글자 기준선과 터치 영역을 맞추고 테마·분석가 모드의 현재 상태를 표시한다. 프로젝트 설정 창은 팝오버를 닫은 뒤 열며 종료 시 `···`로 포커스를 돌린다. / Present the homepage introduction as an open area with the title and three entry actions, close to the calculated preview. Give only the preview a content surface; preserve title → three actions → preview on mobile. The shared More settings popover groups help, data management and preferences with separators and consistently aligned touch targets. Display current theme and analyst-mode states. Close the popover before opening Project settings and return focus to its trigger when the dialog closes.
+
 ### 5.1 한 화면, 한 결정
 
 #### 독립 운영 플래너 / Standalone operations planner

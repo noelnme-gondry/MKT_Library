@@ -12,7 +12,7 @@ function csvFixture({ gap = false } = {}) {
     if (gap && day === 67 && campaign === 1) continue;
     const cost = 100000 + day % 11 * 14000;
     const installs = cost / ((campaign ? 1800 : 600) + cost * (campaign ? 0.006 : 0.001));
-    const name = campaign ? "리타기팅 · 기존 구매자 재방문" : "신규 유입 · 제품 사용 장면";
+    const name = campaign ? "리타겟팅 · 기존 구매자 재방문" : "신규 유입 · 제품 사용 장면";
     const parts = campaign === 0 && day >= 63 ? [["사용 장면 영상", 0.7], ["이번 주 추가로 관측된 후기 소재", 0.3]] : [["사용 장면 영상", 1]];
     for (const [creative, share] of parts) lines.push([date, "KR", "iOS", "Meta", name, creative, cost * share, installs * share, installs * 200 * share, installs * 10 * share].join(","));
   }
@@ -196,17 +196,17 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? /Review this campaign next week/ : /이 캠페인 점검을 주간 리뷰로/ }).click();
     await page.locator(".decision-review-launch").click();
     const editor = page.getByRole("dialog", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기", exact: true });
-    await expect(editor.getByLabel(en ? "Target" : "대상", { exact: true })).toHaveValue(/리타기팅/);
+    await expect(editor.getByLabel(en ? "Target" : "대상", { exact: true })).toHaveValue(/리타겟팅/);
     await expect(editor).toContainText(en ? "no automatic outcome match" : "자동 실제값 대조는 제공하지 않습니다");
     await editor.getByRole("switch", { name: en ? "Store source files and decision records on this device" : "원본 파일과 결정 기록을 이 기기에 저장", exact: true }).check();
     await editor.getByRole("button", { name: en ? "Create it" : "이대로 만들기", exact: true }).click();
     await confirmReviewDialog(page, en);
     await page.getByRole("link", { name: en ? "Open Weekly review" : "주간 리뷰 열기", exact: true }).click();
     await expect(page).toHaveURL(/weekly-review#wr-history$/);
-    await expect(page.locator("#wr-history")).toContainText("리타기팅");
+    await expect(page.locator("#wr-history")).toContainText("리타겟팅");
     await expect(page.locator(".header-data-context")).toContainText("synthetic-operations.csv");
-    await page.locator("#wr-history").getByRole("button", { name: /2026-09-15.*리타기팅/ }).click();
-    const review = page.getByRole("dialog", { name: /리타기팅/ });
+    await page.locator("#wr-history").getByRole("button", { name: /2026-09-15.*리타겟팅/ }).click();
+    const review = page.getByRole("dialog", { name: /리타겟팅/ });
     await expect(review).toContainText("2026-09-08");
     await expect(review).toContainText("CPI");
     await expect(review.getByRole("link", { name: en ? /Operations planner/ : /운영 플래너/ })).toHaveAttribute("href", /tools\/operations-planner/);

@@ -321,9 +321,15 @@ test("프로젝트 설정은 동일 헤더를 다시 선택한 뒤에만 적용�
   while (await confirmations.count()) await confirmations.first().click();
 
   const utilities = page.locator(".utility-popover-panel");
+  const utilityTrigger = page.locator(".header-utility-menu__trigger");
+  const openUtilities = async () => {
+    if (!await utilities.isVisible()) await utilityTrigger.click();
+    await expect(utilities).toBeVisible();
+  };
   const openSettings = async () => {
-    if (!await utilities.isVisible()) await page.locator(".header-utility-menu__trigger").click();
+    await openUtilities();
     await utilities.getByRole("button", { name: "프로젝트 설정", exact: true }).click();
+    await expect(utilities).not.toBeVisible();
   };
   const projectSettings = page.getByRole("dialog", { name: "프로젝트 설정", exact: true });
   await openSettings();
@@ -338,6 +344,8 @@ test("프로젝트 설정은 동일 헤더를 다시 선택한 뒤에만 적용�
   expect(exportedText).not.toContain("efficiency.csv");
 
   await projectSettings.getByRole("button", { name: "닫기", exact: true }).click();
+  await expect(utilityTrigger).toBeFocused();
+  await openUtilities();
   await utilities.getByRole("button", { name: "CSV 변경" }).click();
   await expect(page.locator(".header-data-context")).toHaveCount(0);
 

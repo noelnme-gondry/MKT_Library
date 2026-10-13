@@ -9,7 +9,7 @@ export function buildOperationsDemo(locale = "ko") {
   const en = locale === "en";
   const campaigns = [
     { name: en ? "Meta · New customers" : "Meta · 신규 고객", channel: "Meta", base: 800, slope: 0.0014, spend: 240000 },
-    { name: en ? "Meta · Retargeting" : "Meta · 리타기팅", channel: "Meta", base: 2000, slope: 0.005, spend: 180000 },
+    { name: en ? "Meta · Retargeting" : "Meta · 리타겟팅", channel: "Meta", base: 2000, slope: 0.005, spend: 180000 },
     { name: en ? "Google · App discovery" : "Google · 앱 탐색", channel: "Google", base: 1100, slope: 0.0025, spend: 220000 },
     { name: en ? "TikTok · Product demo" : "TikTok · 제품 시연", channel: "TikTok", base: 1600, slope: 0.003, spend: 120000 },
   ];
@@ -26,7 +26,7 @@ export function buildOperationsDemo(locale = "ko") {
       const dailyEfficiency = 1 + 0.045 * noise() + 0.012 * Math.sin(day / 5 + index);
       const installs = Math.round(cost / ((campaign.base + cost * campaign.slope) * recentShift * dailyEfficiency));
       const actions = Math.round(installs * (0.59 + 0.08 * noise()));
-      // 리타기팅은 설치 전환율, TikTok은 노출 단가 변화가 단계별 비교에 나타난다.
+      // 리타겟팅은 설치 전환율, TikTok은 노출 단가 변화가 단계별 비교에 나타난다.
       const clicks = Math.round(installs * (index === 1 ? 8 * recentShift : 8) * (1 + 0.06 * noise()));
       const impressions = Math.round(clicks / ((index === 3 ? 0.014 * recentShift : 0.022) * (1 + 0.08 * noise())));
       const firstDay = index === 0 ? 91 : index === 2 ? 93 : Infinity;

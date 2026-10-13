@@ -92,13 +92,8 @@ for (const locale of ["ko", "en"]) {
         await expect(page.locator(".home-trend-heading > strong")).toHaveText(name);
       }
       await page.locator(".operations-sample-campaigns button").first().click();
-      const slider = page.getByRole("slider", { name: locale === "en" ? "Inspect a date" : "날짜별 값 확인" });
-      const output = page.locator(".home-operations-trend__inspection output");
-      await slider.focus();
-      await page.keyboard.press("Home");
-      await expect(output).toHaveAttribute("data-date", await canvas.getAttribute("data-range-start"));
-      await page.keyboard.press("End");
-      await expect(output).toHaveAttribute("data-date", "2026-10-06");
+      await expect(page.getByRole("slider")).toHaveCount(0);
+      await expect(page.locator(".home-operations-trend input, .home-operations-trend select, .home-operations-trend output")).toHaveCount(0);
       await page.getByRole("button", { name: locale === "en" ? "Full history" : "전체 이력", exact: true }).click();
       await expect(canvas).toHaveAttribute("data-point-count", "98");
       await expect(canvas).toHaveAttribute("data-range-start", "2026-07-01");

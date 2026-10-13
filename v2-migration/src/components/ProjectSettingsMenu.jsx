@@ -35,9 +35,11 @@ const COPY = {
   },
 };
 
-export default function ProjectSettingsMenu({ locale = "ko" }) {
+export default function ProjectSettingsMenu({ locale = "ko", open: controlledOpen, onOpenChange, returnFocusRef, showTrigger = true }) {
   const t = COPY[locale] || COPY.ko;
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = onOpenChange || setLocalOpen;
   const csvGroups = useAppStore((state) => state.csvGroups);
   const pendingProjectConfig = useAppStore((state) => state.pendingProjectConfig);
   const setPendingProjectConfig = useAppStore((state) => state.setPendingProjectConfig);
@@ -90,11 +92,11 @@ export default function ProjectSettingsMenu({ locale = "ko" }) {
 
   return (
     <div className="project-settings no-print">
-      <button type="button" className="btn ghost" aria-label={t.menu} aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      {showTrigger && <button type="button" className="btn ghost" aria-label={t.menu} aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <span className="project-settings__label">{t.menu}</span>
         <span className="project-settings__mobile-icon" aria-hidden="true">⋯</span>
-      </button>
-      <ModalDialog open={open} onClose={() => setOpen(false)} ariaLabel={t.menu} overlayClassName="tutorial-overlay" panelClassName="checkout-recovery-panel"><header><h2>{t.menu}</h2><button className="btn" onClick={() => setOpen(false)}>{t.close}</button></header>
+      </button>}
+      <ModalDialog open={open} onClose={() => setOpen(false)} returnFocusRef={returnFocusRef} ariaLabel={t.menu} overlayClassName="tutorial-overlay" panelClassName="checkout-recovery-panel"><header><h2>{t.menu}</h2><button className="btn" onClick={() => setOpen(false)}>{t.close}</button></header>
         <p>{t.privacy}</p>
         <div>
           <button className="btn ghost" type="button" onClick={exportSettings}>{t.export}</button>
