@@ -1,4 +1,8 @@
 export const ROUTE_SEO = {
+  "data-guide": {
+    ko: { title: "분석별 필요한 데이터·CSV 양식 안내", description: "보고 싶은 내용에 맞는 마케팅 분석을 찾고, 데이터 출처·행 단위·필수 항목과 작성 예시를 확인하세요. 분석별 CSV 양식도 받을 수 있습니다." },
+    en: { title: "Data Requirements and CSV Templates by Analysis", description: "Find marketing analyses by question. Check data sources, row structure, required information and sample tables, then download a CSV template." },
+  },
   "dochi-result": {
     ko: { title: "분석 결과", description: "업로드한 데이터의 분석 결과와 다음 확인 항목을 살펴보세요." },
     en: { title: "Analysis Results", description: "Review analysis results and next checks for your uploaded data." },

@@ -19,6 +19,7 @@
 import Chart from "chart.js/auto";
 
 import { CHART_FONT_STACK, CHART_THEME, getCssVar, reducedMotion } from "@/utils/chartUtils";
+import { chartPresentationPlugin } from "@/utils/chartPresentation";
 
 const TOOLTIP_ID = "gop-chart-tooltip";
 
@@ -170,7 +171,7 @@ export function applyChartGlobals(ChartCtor = Chart) {
 
   const d = ChartCtor.defaults;
   d.font.family = CHART_FONT_STACK;
-  d.font.size = 11;
+  d.font.size = 12;
 
   // 애니메이션: 등장은 부드럽게, 모션 축소 설정이면 즉시.
   d.animation.easing = "easeOutQuart";
@@ -189,6 +190,10 @@ export function applyChartGlobals(ChartCtor = Chart) {
   d.plugins.tooltip.position = "nearest";
 
   ChartCtor.register(crosshairPlugin);
+  // Fast Refresh keeps the Chart.js singleton but reloads this module. Replace
+  // our presentation hook so development previews cannot keep the old palette.
+  ChartCtor.unregister(chartPresentationPlugin);
+  ChartCtor.register(chartPresentationPlugin);
   return ChartCtor;
 }
 

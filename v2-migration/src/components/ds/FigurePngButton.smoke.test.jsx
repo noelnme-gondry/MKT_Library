@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { trackProductEvent } from "@/lib/analytics";
-import FigurePngButton from "./FigurePngButton";
+import FigurePngButton, { FigureHead } from "./FigurePngButton";
 import ResultActionCard from "./ResultActionCard";
 import { downloadElementAsPNG } from "@/utils/figureImage";
 import { useAppStore } from "@/store/useDataStore";
@@ -13,6 +13,20 @@ vi.mock("@/lib/subscription/paidExport", () => ({ requirePaidExport: () => true 
 
 describe("PNG context from the result card", () => {
   beforeEach(() => { vi.clearAllMocks(); });
+  it.each(["ko", "en"])("keeps compact actions named and their purchase conditions correctly owned (%s)", locale => {
+    render(<><FigureHead title="One chart" target={document.createElement("figure")} locale={locale} /><FigureHead title="Another chart" target={document.createElement("figure")} locale={locale} /></>);
+    const buttons = screen.getAllByRole("button", { name: locale === "en" ? "Download PNG" : "PNG 받기", exact: true });
+    expect(buttons).toHaveLength(2);
+    const descriptions = buttons.map(button => {
+      expect(button.textContent).toBe("PNG");
+      const id = button.getAttribute("aria-describedby");
+      const description = document.getElementById(id);
+      expect(description).not.toBeNull();
+      expect(description.textContent).toBe(locale === "en" ? "Purchased pass required · excludes trial" : "구매 이용권 필요 · 체험 제외");
+      return id;
+    });
+    expect(new Set(descriptions).size).toBe(2);
+  });
   it.each([true, false])("counts PNG generation outcome without file names (success: %s)", async success => {
     downloadElementAsPNG.mockResolvedValueOnce(success);
     useAppStore.setState({ currentRouteId: "5-3" });

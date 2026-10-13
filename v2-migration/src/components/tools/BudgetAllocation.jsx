@@ -42,7 +42,7 @@ import { allocationDeltaPlan } from "@/utils/allocationDeltaPlan";
 import { allocationCostWorkbook } from "@/lib/analysis-export/allocationCostWorkbook";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
-import { getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import { showToast } from "@/utils/toast";
 import { sourceCurrencyOf } from "@/utils/format";
 import {
@@ -58,30 +58,6 @@ import {
   isAllocationFullyFunded,
   selectBudgetForTarget,
 } from "@/utils/budgetAllocTool";
-
-const CHART_THEME = {
-  get text() { return getCssVar("--text-muted") || "#6B7280"; },
-  get textPrimary() { return getCssVar("--text-primary") || "#F9FAFB"; },
-  get muted() { return getCssVar("--text-muted") || "#6B7280"; },
-  get grid() { return getCssVar("--border-subtle") || "rgba(255,255,255,0.06)"; },
-  get border() { return getCssVar("--border") || "rgba(255,255,255,0.08)"; },
-  get primary() { return getCssVar("--chart-primary") || "#8fb1ff"; },
-  get primaryContainer() { return getCssVar("--primary") || "#4d8eff"; },
-  get secondary() { return getCssVar("--chart-secondary") || "#77dcaa"; },
-  get series() {
-    return [
-      this.primary,
-      this.secondary,
-      getCssVar("--chart-tertiary") || "#ffc56e",
-      getCssVar("--chart-accent") || "#ff8d7e",
-      "#a78bfa",
-      "#2dd4bf",
-      "#fb923c",
-      "#f472b6",
-    ];
-  },
-  get surface() { return getCssVar("--bg-1") || "#0d0e0f"; },
-};
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -341,7 +317,7 @@ export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normaliz
         borderColor: CHART_THEME.surface,
         borderWidth: 1.5,
         pointRadius: 5,
-        pointStyle: "circle",
+        pointStyle: ["circle", "rectRot", "triangle", "rect"][Math.floor(i / CHART_THEME.series.length) % 4],
         showLine: false,
       });
     }

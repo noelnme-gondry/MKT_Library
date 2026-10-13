@@ -331,7 +331,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
         datasets: [{
           label: tr("전환율 (%)", "Conversion rate (%)"),
           data: [readoutData.cRate, readoutData.tRate],
-          backgroundColor: ["#fbbf24", "#22c55e"],
+          backgroundColor: [CHART_THEME.comparison, CHART_THEME.primary],
         }],
       },
       options: { responsive: true, maintainAspectRatio: false },
@@ -364,7 +364,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           label: `MDE (%) · ${tr("baseline", "baseline")} ${pcBaseline}%`,
           data: pts.map((p) => ({ x: p.n, y: p.mdePct })),
           borderColor: CHART_THEME.primary,
-          backgroundColor: "rgba(122,162,247,0.12)",
+          backgroundColor: CHART_THEME.primary + "1F",
           borderWidth: 2,
           pointRadius: 2,
           tension: 0.2,

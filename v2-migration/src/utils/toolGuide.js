@@ -79,7 +79,7 @@ export const TOOL_GUIDE = {
       { col: "installs 또는 actions", label: "전환", why: "효율(CPA) 계산", required: true },
       { col: "revenue_d7", label: "매출", why: "ROAS 기준 포화도(옵션)", required: false },
     ],
-    prep: ["5-2·5-3와 같은 효율 CSV를 공유합니다 — 한 번 올리면 형제 도구가 이어받습니다.", "분석 설정에서 OS별·국가별·포화만 보기 등을 고를 수 있습니다. 보기 설정은 순위표에만 적용됩니다."],
+    prep: ["운영 대시보드·예산 배분과 같은 CSV를 씁니다. 한 번 올린 파일을 이어서 사용할 수 있습니다.", "분석 설정에서 OS별·국가별·포화만 보기 등을 고를 수 있습니다. 보기 설정은 순위표에만 적용됩니다."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-21": {
@@ -92,7 +92,7 @@ export const TOOL_GUIDE = {
       { col: "installs 또는 actions", label: "전환", why: "효율(CPA) 계산", required: true },
       { col: "campaign_name·creative_id", label: "캠페인·소재", why: "드릴다운(채널→캠페인→소재)", required: false },
     ],
-    prep: ["가장 잘게(소재·일별) 넣을수록 분해 항등식이 정확합니다.", "올린 뒤 '분석 설정' 입력창에 'OS별'·'국가별'·'Meta만 분석'처럼 쓰면 나눠 보는 기준을 바꿀 수 있습니다.", "효율 CSV 공유(5-2/5-3/5-22)."],
+    prep: ["가장 잘게(소재·일별) 넣을수록 분해 항등식이 정확합니다.", "올린 뒤 '분석 설정' 입력창에 'OS별'·'국가별'·'Meta만 분석'처럼 쓰면 나눠 보는 기준을 바꿀 수 있습니다.", "운영 대시보드·예산 배분·증액 여력 분석에서도 같은 CSV를 쓸 수 있습니다."],
     example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
   },
   "5-4": {
@@ -256,7 +256,7 @@ export const TOOL_GUIDE = {
     prep: [
       "속성 컬럼(앵글·형식·후킹)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
       "조합표는 조합당 소재 5개 이상 있어야 '검증'으로 뜹니다.",
-      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험(5-4)으로 검증하세요.",
+      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험 분석으로 검증하세요.",
     ],
     example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta,52000,1600,210,540000,혜택강조,영상\ncr_002,2024-02-01,Google,48000,1900,180,480000,사례연구,이미지",
   },
@@ -273,7 +273,7 @@ export const TOOL_GUIDE = {
     prep: [
       "속성 컬럼(앵글·형식·후킹)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
       "조합표는 조합당 콘텐츠 5개 이상 있어야 '검증'으로 뜹니다.",
-      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험(5-4)으로 검증하세요.",
+      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험 분석으로 검증하세요.",
     ],
     example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\npost_001,2024-02-01,블로그,52000,1600,210,540000,정보성가이드,글\npost_002,2024-02-01,유튜브,48000,1900,180,480000,사례연구,영상",
   },
@@ -340,6 +340,8 @@ export const TOOL_GUIDE = {
       { col: "(인원수 컬럼)", label: "인원수 또는 비율+모수", why: "비중을 계산할 분자와 분모", required: true },
       { col: "campaign_name", label: "분석 단위", why: "단위 간 이동과 단위 내부 변화를 나누려면 필요합니다(선택)", required: false },
     ],
+    prep: ["비교할 두 기간을 포함하고, 성별·연령 등 구분 기준을 두 기간에 똑같이 적용하세요.", "인원수 대신 비율을 넣을 때는 전체 인원도 필요합니다."],
+    example: "date,campaign_name,gender,signups\n2026-09-01,Acquisition,Female,120\n2026-09-01,Acquisition,Male,180\n2026-09-08,Acquisition,Female,150\n2026-09-08,Acquisition,Male,150",
   },
   "5-28": {
     when: "정의한 핵심 액션이 어느 기간까지 유지되고 이탈·종료 위험이 높아지는 시점을 중도절단까지 반영해 확인합니다.",
@@ -430,7 +432,7 @@ export const TOOL_GUIDE_EN = {
       { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
       { col: "campaign_name · creative_id", label: "Campaign · creative", why: "Drill-down (channel → campaign → creative)", required: false },
     ],
-    prep: ["The finer the grain (creative/daily), the more accurate the decomposition identity.", "After uploading, type words like 'By OS', 'By country' or 'Analyze Meta only' in the Analysis setup box to change how the result is split.", "Shares the efficiency CSV (5-2/5-3/5-22)."],
+    prep: ["The finer the grain (creative/daily), the more accurate the decomposition identity.", "After uploading, type words like 'By OS', 'By country' or 'Analyze Meta only' in the Analysis setup box to change how the result is split.", "Shares a CSV with the operations dashboard, budget allocation and saturation analysis."],
     example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
   },
   "5-22": {
@@ -443,7 +445,7 @@ export const TOOL_GUIDE_EN = {
       { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
       { col: "revenue_d7", label: "Revenue", why: "ROAS-based saturation (optional)", required: false },
     ],
-    prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up.", "Choose By OS, By country or Show saturated only in Analysis setup. View settings affect the ranking only."],
+    prep: ["Shares a CSV with the operations dashboard and budget allocation. Upload once and reuse the file.", "Choose By OS, By country or Show saturated only in Analysis setup. View settings affect the ranking only."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-4": {
@@ -616,7 +618,7 @@ export const TOOL_GUIDE_EN = {
     prep: [
       "Adding attribute columns (angle, format, hook) unlocks the 'which trait works' breakdown and combination table.",
       "The combination table only shows as 'verified' when each combination has 5+ creatives.",
-      "The result is association, not causation — confirm with an experiment (5-4) before acting on it.",
+      "The result is association, not causation — confirm with an experiment analysis before acting on it.",
     ],
     example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta,52000,1600,210,540000,Benefit-led,Video\ncr_002,2024-02-01,Google,48000,1900,180,480000,Case study,Image",
   },
@@ -633,7 +635,7 @@ export const TOOL_GUIDE_EN = {
     prep: [
       "Adding attribute columns (angle, format, hook) unlocks the 'which trait works' breakdown and combination table.",
       "The combination table only shows as 'verified' when each combination has 5+ pieces of content.",
-      "The result is association, not causation — confirm with an experiment (5-4) before acting on it.",
+      "The result is association, not causation — confirm with an experiment analysis before acting on it.",
     ],
     example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\npost_001,2024-02-01,Blog,52000,1600,210,540000,Informational guide,Article\npost_002,2024-02-01,YouTube,48000,1900,180,480000,Case study,Video",
   },
@@ -697,6 +699,8 @@ export const TOOL_GUIDE_EN = {
       { col: "(count column)", label: "Head count, or rate with a total", why: "The numerator and denominator behind each share", required: true },
       { col: "campaign_name", label: "Analysis unit", why: "Needed to split movement between units from change inside them (optional)", required: false },
     ],
+    prep: ["Include both comparison periods and apply the same segment definitions to each.", "If you use rates instead of counts, include the population total."],
+    example: "date,campaign_name,gender,signups\n2026-09-01,Acquisition,Female,120\n2026-09-01,Acquisition,Male,180\n2026-09-08,Acquisition,Female,150\n2026-09-08,Acquisition,Male,150",
   },
   "5-28": {
     when: "Measure how long a defined key action persists and when drop-off or exit risk rises while retaining censored observations.",
@@ -744,6 +748,30 @@ export const TOOL_GUIDE_EN = {
 for (const toolId of RESPONSE_SUBTOOL_IDS) {
   TOOL_GUIDE[toolId] = TOOL_GUIDE["5-18"];
   TOOL_GUIDE_EN[toolId] = TOOL_GUIDE_EN["5-18"];
+}
+
+// 변화맵은 지출 모델이 아니라 Paid와 Organic 성과를 비교한다.
+// 공통 패널 안내만 보여 주면 지출을 필수로 오해하고 Paid 성과를 빠뜨린다.
+for (const locale of ["ko", "en"]) {
+  const en = locale === "en", tr = (ko, english) => en ? english : ko;
+  const guides = en ? TOOL_GUIDE_EN : TOOL_GUIDE;
+  guides["5-18-paid-organic"] = {
+    when: tr("광고로 유입된 성과와 오가닉 성과가 주별로 어떻게 움직였는지 비교합니다.", "Compare weekly movements in paid and organic outcomes."),
+    source: tr("MMP·분석 도구에서 집계한 전체·광고·오가닉 성과를 같은 날짜나 주차로 맞춘 표.", "Total, paid and organic outcome counts from your MMP or analytics tool, aligned to the same dates or weeks."),
+    grain: tr("1행 = 하루 또는 한 주의 전체·Paid·Organic 성과", "One row = total, paid and organic outcomes for a day or week"),
+    needs: [
+      { col: "date", label: tr("날짜·주차", "Date or week"), why: tr("같은 주의 성과를 맞춰 전주 대비 변화를 계산합니다.", "Align outcomes to the same week and calculate week-on-week changes."), required: true },
+      { col: "paid_signups", label: tr("광고에 귀속된 성과 수", "Paid-attributed outcomes"), why: tr("광고로 집계된 설치·가입·전환 수입니다. 광고비를 넣는 자리가 아닙니다.", "Installs, signups or conversions attributed to ads. This is an outcome count, not spend."), required: true },
+      { col: "signups 또는 organic_signups", label: tr("전체 성과 또는 오가닉 성과", "Total or organic outcomes"), why: tr("둘 중 하나가 필요합니다. 전체 성과가 있으면 전체에서 Paid를 빼 오가닉을 구합니다.", "Include either one. With total outcomes, organic is calculated as total minus paid."), required: true },
+    ],
+    prep: [tr("전체와 Paid는 같은 성과·집계 기간·측정 기준이어야 합니다. 전체보다 Paid가 큰 주는 제외됩니다.", "Use the same outcome, reporting window and measurement definition for total and paid. Weeks with paid above total are excluded."), tr("일별 행은 주간으로 합칩니다. 반대 방향으로 움직였다는 사실만으로 광고가 오가닉을 잠식했다고 단정하지 않습니다.", "Daily rows are aggregated to weeks. Opposite movement does not prove paid displaced organic outcomes.")],
+    example: "date,signups,paid_signups\n2026-09-07,1000,700\n2026-09-14,1020,750\n2026-09-21,980,740",
+  };
+  guides["5-18-cannibal"] = {
+    ...guides["5-18"],
+    needs: [...guides["5-18"].needs, { col: "paid_signups", label: tr("광고에 귀속된 성과 수", "Paid-attributed outcomes"), why: tr("전체 성과에서 Paid를 뺀 오가닉 성과와 지출 변화를 함께 비교합니다. 같은 전환 정의로 집계하세요.", "Compare spend with organic outcomes derived from total minus paid. Use the same conversion definition."), required: true }],
+    example: "date,signups,paid_signups,google_spend,meta_spend\n2026-09-07,1000,700,420000,310000\n2026-09-14,1020,750,440000,300000\n2026-09-21,980,740,390000,320000",
+  };
 }
 
 export function getToolGuide(toolId, locale = "ko") {

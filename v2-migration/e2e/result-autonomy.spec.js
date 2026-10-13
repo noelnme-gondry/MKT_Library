@@ -61,6 +61,9 @@ for (const locale of ["ko", "en"]) {
 
 test.describe("direct periods in light mode", () => {
   test.use({ colorScheme: "light" });
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("mkt-library-theme", "light"));
+  });
   for (const locale of ["ko", "en"]) {
     for (const tool of ["campaign-variance", "campaign-saturation"]) {
       test(`${tool} date dialog contrast and apply (${locale})`, async ({ page }) => {
@@ -314,6 +317,9 @@ for (const locale of ["ko", "en"]) {
 
 test.describe("analysis surfaces in light mode", () => {
   test.use({ colorScheme: "light" });
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("mkt-library-theme", "light"));
+  });
   for (const locale of ["ko", "en"]) {
     test(`saturation content surfaces are white against the page (${locale})`, async ({ page }) => {
       await page.goto(`${locale === "en" ? "/en" : ""}/tools/campaign-saturation?example=1`);

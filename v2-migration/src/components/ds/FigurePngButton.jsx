@@ -1,8 +1,10 @@
 "use client";
 
-// 그림 하나를 PNG로 받는 버튼(Pro). 캔버스와 HTML 그림 모두 제목 뒤 독립 내보내기 행을 쓴다.
+// 그림 하나를 PNG로 받는 버튼(Pro). 제목 옆 보조 행동이며 별도 행을 만들지 않는다.
 // 도구마다 받기 버튼 모양이 갈려 있었다(칩·보조 버튼·메뉴 항목) — 그림을 받는 길은 이 부품 하나다.
-import { useState } from "react";
+import { useId, useState } from "react";
+import { Download } from "lucide-react";
+import { Tooltip } from "radix-ui";
 import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
 import { figureExportContext } from "@/utils/figureExportContext";
 import { figureHeaderFor, figureSourceLine } from "@/lib/analysis-export/exportOptions";
@@ -62,6 +64,7 @@ export async function downloadFigureTarget(element, fileName, context = null) {
 /** `target`: ref · 요소 · 요소를 돌려주는 함수. */
 export default function FigurePngButton({ target, fileName, locale = "ko", title = "", context = null }) {
   const [failed, setFailed] = useState(false);
+  const conditionId = useId();
   const analysis = useAnalysisExport();
   const download = async () => {
     setFailed(false);
@@ -80,17 +83,21 @@ export default function FigurePngButton({ target, fileName, locale = "ko", title
     } catch { setFailed(true); }
   };
   return <span className="figure-png-download">
-    <button type="button" className="btn secondary figure-png-button" onClick={download}>{tr(locale, "PNG 받기", "Download PNG")}</button>
-    <span className="figure-png-button__condition">{tr(locale, "구매 이용권 필요 · 체험 제외", "Purchased pass required · excludes trial")}</span>
+    <Tooltip.Provider delayDuration={180}><Tooltip.Root>
+      <Tooltip.Trigger asChild><button type="button" className="btn secondary figure-png-button" aria-label={tr(locale, "PNG 받기", "Download PNG")} aria-describedby={conditionId} onClick={download}><Download size={14} aria-hidden="true" />PNG</button></Tooltip.Trigger>
+      <Tooltip.Portal><Tooltip.Content className="figure-png-button__condition" sideOffset={6} collisionPadding={16}>{tr(locale, "구매 이용권 필요 · 체험 제외", "Purchased pass required · excludes trial")}</Tooltip.Content></Tooltip.Portal>
+    </Tooltip.Root></Tooltip.Provider>
+    <span id={conditionId} className="sr-only">{tr(locale, "구매 이용권 필요 · 체험 제외", "Purchased pass required · excludes trial")}</span>
     {failed && <span className="figure-png-button__error" role="alert">{tr(locale, "이 브라우저에서는 그림을 이미지로 만들지 못했습니다. 화면 캡처를 이용해 주세요.", "This browser could not turn the figure into an image. Please use a screenshot instead.")}</span>}
   </span>;
 }
 
-/** 제목 뒤 독립 PNG 행. 제목이 없는 그림도 같은 내보내기 행을 확보한다. */
-export function FigureHead({ title, exportTitle, context = null, level = 2, id, target, fileName, locale = "ko" }) {
+/** 제목 옆 PNG 보조 행동. 설명은 제목 아래, 제목 없는 그림은 짧은 보조 행동만 표시한다. */
+export function FigureHead({ title, description, exportTitle, context = null, level = 2, id, target, fileName, locale = "ko" }) {
   const Heading = level === 3 ? "h3" : "h2";
   return <div className={title ? "section-head figure-head" : "section-head figure-head figure-head--bare"}>
     {title && <Heading className="section-title" id={id}>{title}</Heading>}
     <FigurePngButton target={target} fileName={fileName} locale={locale} title={exportTitle || (typeof title === "string" ? title : "")} context={context} />
+    {description && <p className="figure-head__description">{description}</p>}
   </div>;
 }

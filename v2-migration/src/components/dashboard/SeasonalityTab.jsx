@@ -98,7 +98,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
         datasets: [{
           label: locale === "en" ? "Average vs. yearly baseline" : "연간 기준 대비 평균",
           data: result.seasonal.map((item) => item.delta),
-          backgroundColor: result.seasonal.map((item) => item.delta >= 0 ? CHART_THEME.secondary : CHART_THEME.accent),
+          backgroundColor: result.seasonal.map((item) => item.delta >= 0 ? CHART_THEME.success : CHART_THEME.danger),
           borderRadius: 3,
         }],
       },

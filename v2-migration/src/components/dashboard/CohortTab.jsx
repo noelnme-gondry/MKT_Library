@@ -155,7 +155,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           label: tr("전체 리텐션 (%)", "Overall Retention (%)"),
           data,
           borderColor: CHART_THEME.primary,
-          backgroundColor: "rgba(173,198,255,0.2)",
+          backgroundColor: CHART_THEME.primary + "33",
           fill: true,
           tension: 0.2,
           pointRadius: 3,

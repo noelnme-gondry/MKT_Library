@@ -12,12 +12,16 @@ export const CHART_THEME = {
     return getCssVar("--text-muted") || "#8992a3";
   },
   get grid() {
-    return getCssVar("--border-subtle") || "rgba(255,255,255,0.075)";
+    const grid = getCssVar("--chart-grid");
+    return grid !== "#999" ? grid : getCssVar("--border-subtle");
   },
   get border() {
     return getCssVar("--border") || "rgba(255,255,255,0.14)";
   },
   get primary() { return getCssVar("--chart-primary") || "#8fb1ff"; },
+  get comparison() { const color = getCssVar("--chart-comparison"); return color !== "#999" ? color : this.muted; },
+  get surface() { return getCssVar("--bg-1"); },
+  get primaryContainer() { return getCssVar("--primary"); },
   get secondary() { return getCssVar("--chart-secondary") || "#77dcaa"; },
   get tertiary() { return getCssVar("--chart-tertiary") || "#ffc56e"; },
   get quaternary() { return getCssVar("--secondary") || "#8fb1ff"; },
@@ -26,11 +30,13 @@ export const CHART_THEME = {
   get markerCyan() { return getCssVar("--chart-marker-cyan") || "#22d3ee"; },
   get markerNeutral() { return getCssVar("--chart-marker-neutral") || "#e2e8f0"; },
   bg: "transparent",
-  // 채널/카테고리 비교용 팔레트 — 구 버전은 전부 파랑·인디고 계열이라 채널 3~4개만
-  // 써도(파이·막대) 색이 거의 구분 안 됐음. 서로 다른 색상(hue)으로 교체, 다크/라이트
-  // 양쪽에서 충분한 명도 대비 유지.
+  // 승인된 분류 팔레트는 상태색과 분리한다. 값은 공용 CSS가 소유하며
+  // 이름·마커·직접 라벨도 함께 유지한다(색만으로 대상을 구분하지 않는다).
   get colors() {
-    return [this.primary, this.secondary, this.tertiary, this.accent, "#a78bfa", "#2dd4bf", "#fb923c", "#f472b6", "#60a5fa", this.muted];
+    return Array.from({ length: 6 }, (_, index) => {
+      const color = getCssVar(`--chart-category-${index + 1}`);
+      return color !== "#999" ? color : this.primary;
+    });
   },
   get series() { return this.colors; },
   // 판정 색(나쁨/주의/좋음). 도구들이 데이터셋에 `#f87171` 같은 리터럴을 직접 적어
@@ -44,7 +50,7 @@ export const CHART_THEME = {
 };
 
 /* 폰트 스택 SSOT — 축 틱·범례·툴팁이 제각각 문자열을 쓰면 차트마다 글꼴이 갈린다. */
-export const CHART_FONT_STACK = '"DM Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+export const CHART_FONT_STACK = '"Wanted Sans Subset", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 export const CHART_MONO_STACK = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 export function reducedMotion() {
@@ -66,7 +72,7 @@ export function chartCommonOpts() {
       legend: {
         display: true,
         position: "top",
-        align: "end",
+        align: "start",
         labels: {
           color: CHART_THEME.text,
           font: { family: CHART_FONT_STACK, size: 12 },
@@ -74,7 +80,7 @@ export function chartCommonOpts() {
           pointStyle: "circle",
           boxWidth: 8,
           boxHeight: 8,
-          padding: 20,
+          padding: 14,
         },
       },
       tooltip: {
@@ -84,7 +90,7 @@ export function chartCommonOpts() {
         backgroundColor: "rgba(0,0,0,0.85)",
         titleColor: "#F9FAFB",
         bodyColor: "#F9FAFB",
-        bodyFont: { family: CHART_MONO_STACK, size: 12 },
+        bodyFont: { family: CHART_FONT_STACK, size: 12 },
         padding: 10,
         cornerRadius: 8,
         borderColor: "rgba(255,255,255,0.1)",
@@ -98,7 +104,7 @@ export function chartCommonOpts() {
         border: { color: CHART_THEME.grid },
         ticks: {
           color: CHART_THEME.muted,
-          font: { family: CHART_FONT_STACK, size: 11 },
+          font: { family: CHART_FONT_STACK, size: 12 },
           // 라벨이 많아지면 Chart.js 기본값은 45도로 눕혀 읽기 어려워진다. 눕히지 않고
           // 자동으로 솎아낸다(날짜 축에서 특히 차이가 큼).
           maxRotation: 0,
@@ -111,7 +117,7 @@ export function chartCommonOpts() {
         // 실선 그리드는 데이터선과 경쟁한다. 점선 + 얇은 톤으로 뒤로 물린다.
         grid: { color: CHART_THEME.grid, drawBorder: false, drawTicks: false, lineWidth: 1, tickBorderDash: [3, 3], borderDash: [3, 3] },
         border: { display: false, dash: [3, 3] },
-        ticks: { color: CHART_THEME.muted, font: { family: CHART_FONT_STACK, size: 11 }, padding: 10, maxTicksLimit: 6 },
+        ticks: { color: CHART_THEME.muted, font: { family: CHART_FONT_STACK, size: 12 }, padding: 10, maxTicksLimit: 6 },
         beginAtZero: true,
       },
     },
@@ -134,8 +140,16 @@ export function getCssVar(name) {
 // Existing Chart.js instances keep resolved color strings. Re-apply semantic
 // chart tokens when the page theme changes without forcing every tool to
 // destroy/recompute its data model.
-export function refreshMountedChartThemes(ChartCtor) {
-  if (!ChartCtor?.instances) return;
+const mountedThemeSnapshots = new WeakMap();
+function themeRoles() {
+  return Object.fromEntries([
+    ...["primary", "secondary", "tertiary", "comparison", "danger", "warning", "success"].map(role => [role, CHART_THEME[role]]),
+    ...CHART_THEME.colors.map((color, index) => [`category-${index}`, color]),
+  ]);
+}
+
+export function refreshChartThemeColors(chart) {
+  if (!chart) return;
   // 키는 "마운트된 차트에 남아 있을 수 있는 값" 전부 — 각 토큰의 다크·라이트 값과,
   // 도구들이 예전에 직접 적었던 리터럴까지. 하나라도 빠지면 그 데이터셋만 테마를
   // 안 따라가고 옛 색으로 굳는다.
@@ -148,25 +162,45 @@ export function refreshMountedChartThemes(ChartCtor) {
     ["#f2b84b", CHART_THEME.warning], ["#a76400", CHART_THEME.warning], ["#fbbf24", CHART_THEME.warning],
     ["#65d3b3", CHART_THEME.success], ["#11866e", CHART_THEME.success], ["#34d399", CHART_THEME.success],
   ]);
-  const remap = (value) => {
-    if (Array.isArray(value)) return value.map(remap);
+  // Both palette variants come from the CSS SSOT. Preserve alpha suffixes on
+  // uncertainty bands and keep mounted charts synchronized after theme changes.
+  for (let index = 1; index <= CHART_THEME.colors.length; index += 1) {
+    for (const theme of ["light", "dark"]) {
+      replacements.set(getCssVar(`--chart-category-${index}-${theme}`).toLowerCase(), CHART_THEME.colors[index - 1]);
+    }
+  }
+  for (const theme of ["light", "dark"]) replacements.set(getCssVar(`--chart-comparison-${theme}`).toLowerCase(), CHART_THEME.comparison);
+  const remap = (value, colors) => {
+    if (Array.isArray(value)) return value.map(item => remap(item, colors));
     if (typeof value !== "string") return value;
-    return replacements.get(value.toLowerCase()) || value;
+    const lower = value.toLowerCase();
+    if (/^#[0-9a-f]{8}$/.test(lower)) return (colors.get(lower.slice(0, 7)) || lower.slice(0, 7)) + lower.slice(7);
+    return colors.get(lower) || value;
   };
+  const colors = new Map(replacements);
+  const previous = mountedThemeSnapshots.get(chart), current = themeRoles();
+  for (const [role, color] of Object.entries(previous || {})) colors.set(color.toLowerCase(), current[role]);
+  const options = chart.options || {};
+  Object.entries(options.scales || {}).forEach(([id, scale]) => {
+    if (scale.ticks) scale.ticks.color = CHART_THEME.muted;
+    const grid = chart.config?.options?.scales?.[id]?.grid || scale.grid;
+    if (scale.grid && typeof grid?.color !== "function") scale.grid.color = CHART_THEME.grid;
+    if (scale.title) scale.title.color = CHART_THEME.muted;
+  });
+  if (options.plugins?.legend?.labels) options.plugins.legend.labels.color = CHART_THEME.muted;
+  (chart.data?.datasets || []).forEach((dataset) => {
+    dataset.borderColor = remap(dataset.borderColor, colors);
+    dataset.backgroundColor = remap(dataset.backgroundColor, colors);
+    dataset.pointBackgroundColor = remap(dataset.pointBackgroundColor, colors);
+    dataset.pointBorderColor = remap(dataset.pointBorderColor, colors);
+  });
+  mountedThemeSnapshots.set(chart, current);
+}
+
+export function refreshMountedChartThemes(ChartCtor) {
+  if (!ChartCtor?.instances) return;
   Object.values(ChartCtor.instances).forEach((chart) => {
-    const options = chart.options || {};
-    Object.values(options.scales || {}).forEach((scale) => {
-      if (scale.ticks) scale.ticks.color = CHART_THEME.muted;
-      if (scale.grid) scale.grid.color = CHART_THEME.grid;
-      if (scale.title) scale.title.color = CHART_THEME.muted;
-    });
-    if (options.plugins?.legend?.labels) options.plugins.legend.labels.color = CHART_THEME.muted;
-    (chart.data?.datasets || []).forEach((dataset) => {
-      dataset.borderColor = remap(dataset.borderColor);
-      dataset.backgroundColor = remap(dataset.backgroundColor);
-      dataset.pointBackgroundColor = remap(dataset.pointBackgroundColor);
-      dataset.pointBorderColor = remap(dataset.pointBorderColor);
-    });
+    refreshChartThemeColors(chart);
     chart.update("none");
   });
 }

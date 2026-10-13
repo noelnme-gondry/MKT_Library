@@ -12,6 +12,7 @@ const ROOT = join(process.cwd(), "src/components");
 export const FIGURE_PNG_EXEMPT = Object.freeze({
   "blog/BlogInsightChart.jsx": "블로그 본문 삽화 — 분석 결과가 아니라 글의 예시 그림이다(받을 결과물이 아님)",
   "ds/ModelDiagnosticsPanel.jsx": "모형 진단용 작은 보조 그림(잔차 등) — 접힌 진단 영역 안에서 적합 상태를 확인하는 용도다",
+  "landing/OperationsHomeTrend.jsx": "홈의 가상 제품 미리보기 삽화 — 사용자 분석 결과가 아님. 실제 데모 진입 후 공통 PNG 계약 적용(product-ssot.md 홈 계약)",
 });
 
 function walk(dir) {

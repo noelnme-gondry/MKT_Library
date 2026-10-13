@@ -13,7 +13,7 @@ import { buildMmmAggregateMediaPanel, buildMmmWeeklyPerformance, sliceMmmChannel
 import { mmmPriorMroiAtSpend } from "@/utils/mmmPriorMath";
 import { mmmParseNumericValue } from "@/utils/mmmInputUtils";
 import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
-import { CHART_THEME as GLOBAL_CHART_THEME } from "@/utils/chartUtils";
+import { CHART_FONT_STACK, CHART_THEME as GLOBAL_CHART_THEME } from "@/utils/chartUtils";
 import HelpTip from "@/components/ds/HelpTip";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 
@@ -976,8 +976,8 @@ export function CollinearPairInputChart({ labels, pair, locale }) {
         datasets: pair.series.map((channel, index) => ({
           label: channel.label,
           data: channel.values,
-          borderColor: index === 0 ? "#f59e0b" : "#7F77DD",
-          backgroundColor: index === 0 ? "rgba(245,158,11,.12)" : "rgba(127,119,221,.12)",
+          borderColor: index === 0 ? CHART_THEME.primary : CHART_THEME.comparison,
+          backgroundColor: (index === 0 ? CHART_THEME.primary : CHART_THEME.comparison) + "1F",
           borderWidth: 2,
           pointRadius: 1.5,
           pointHoverRadius: 4,
@@ -1044,14 +1044,14 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
           </div>
           {activeChannels.map((channel, channelIndex) => {
             const maximum = maxByKey[channel.key] || 1;
-            const hue = channelIndex % 2 ? "127,119,221" : "93,202,165";
+            const hue = GLOBAL_CHART_THEME.colors[channelIndex % GLOBAL_CHART_THEME.colors.length];
             return <React.Fragment key={channel.key}>
               <span title={channel.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{channel.label}</span>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(" + labels.length + ", minmax(3px, 1fr))", gap: "1px", height: "18px" }}>
                 {channel.values.map((rawValue, index) => {
                   const value = Math.max(0, Number(rawValue) || 0);
                   const intensity = Math.min(1, value / maximum);
-                  return <span key={index} title={String(labels[index]) + " · " + channel.label + ": " + value.toLocaleString()} style={{ minWidth: "3px", borderRadius: "1px", background: intensity > 0 ? "rgba(" + hue + ", " + (0.12 + intensity * 0.78) + ")" : "var(--bg-1)" }} />;
+                  return <span key={index} title={String(labels[index]) + " · " + channel.label + ": " + value.toLocaleString()} style={{ minWidth: "3px", borderRadius: "1px", background: intensity > 0 ? `color-mix(in srgb, ${hue} ${(0.12 + intensity * 0.78) * 100}%, transparent)` : "var(--bg-1)" }} />;
                 })}
               </div>
             </React.Fragment>;
@@ -1112,11 +1112,13 @@ export function MmmBacktestChart({ title = null, labels, actual, variants, local
         const x = instance.scales.x.getPixelForValue(validationStartIndex);
         const { ctx, chartArea } = instance;
         ctx.save();
-        ctx.strokeStyle = "#f59e0b";
+        ctx.strokeStyle = CHART_THEME.warning;
         ctx.setLineDash([4, 4]);
         ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
-        ctx.setLineDash([]); ctx.fillStyle = "#b45309"; ctx.font = "10px sans-serif";
-        ctx.fillText(locale === "en" ? "validation starts" : "검증 시작", Math.min(x + 5, chartArea.right - 66), chartArea.top + 12);
+        ctx.setLineDash([]); ctx.fillStyle = CHART_THEME.warning; ctx.font = `12px ${CHART_FONT_STACK}`;
+        const label = locale === "en" ? "validation starts" : "검증 시작";
+        const labelX = Math.max(chartArea.left, Math.min(x + 5, chartArea.right - ctx.measureText(label).width));
+        ctx.fillText(label, labelX, chartArea.top + 12);
         ctx.restore();
       },
     };
@@ -1126,7 +1128,7 @@ export function MmmBacktestChart({ title = null, labels, actual, variants, local
         labels,
         datasets: [
           { label: locale === "en" ? "Actual" : "실제", data: actual, borderColor: CHART_THEME.text, borderWidth: 2.5, pointRadius: 2.5, tension: 0.18 },
-          ...variants.map((series, index) => ({ label: series.label, data: series.predicted, borderColor: series.color || MMM_MEDIA_PALETTE[index % MMM_MEDIA_PALETTE.length], borderDash: series.dash || [5, 3], borderWidth: series.recommended ? 2.5 : 1.4, pointRadius: 0, tension: 0.18 })),
+          ...variants.map((series, index) => ({ label: series.label, data: series.predicted, borderColor: series.color || GLOBAL_CHART_THEME.colors[index % GLOBAL_CHART_THEME.colors.length], borderDash: series.dash || [5, 3], borderWidth: series.recommended ? 2.5 : 1.4, pointRadius: 0, tension: 0.18 })),
         ],
       }, plugins: splitPlugin ? [splitPlugin] : [],
       options: {
@@ -3498,23 +3500,23 @@ export function mmmStageDefs(locale) {
 }
 
 // ② 기여 분해 스택 차트 버킷 — 12+ 드라이버를 마케터가 한눈에 읽는 4묶음으로.
-// 엔진 groupNames→버킷 매핑(수학 불변, 표시 그룹핑만). tone은 다크/라이트 둘 다 읽히는 중간 채도.
+// 엔진 groupNames→버킷 매핑(수학 불변, 표시 그룹핑만). 색은 공용 분류 팔레트에서 읽는다.
 export function mmmBucketMeta(locale) {
   if (locale === "en") {
     return {
-      base: { label: "Seasonality", tone: "#94a3b8" },
-      trend: { label: "Base demand · trend", tone: "#38bdf8" },
-      event: { label: "Events · regime change", tone: "#f59e0b" },
-      industry: { label: "Industry trend", tone: "#a78bfa" },
-      media: { label: "Ad effect", tone: "#8b7ff0" },
+      base: { label: "Seasonality", tone: GLOBAL_CHART_THEME.comparison },
+      trend: { label: "Base demand · trend", tone: GLOBAL_CHART_THEME.colors[1] },
+      event: { label: "Events · regime change", tone: GLOBAL_CHART_THEME.colors[3] },
+      industry: { label: "Industry trend", tone: GLOBAL_CHART_THEME.colors[4] },
+      media: { label: "Ad effect", tone: GLOBAL_CHART_THEME.primary },
     };
   }
   return {
-    base: { label: "계절 요인", tone: "#94a3b8" },
-    trend: { label: "기본 수요·추세", tone: "#38bdf8" },
-    event: { label: "이벤트·구조변화", tone: "#f59e0b" },
-    industry: { label: "업계 현황", tone: "#a78bfa" },
-    media: { label: "광고 효과", tone: "#8b7ff0" },
+    base: { label: "계절 요인", tone: GLOBAL_CHART_THEME.comparison },
+    trend: { label: "기본 수요·추세", tone: GLOBAL_CHART_THEME.colors[1] },
+    event: { label: "이벤트·구조변화", tone: GLOBAL_CHART_THEME.colors[3] },
+    industry: { label: "업계 현황", tone: GLOBAL_CHART_THEME.colors[4] },
+    media: { label: "광고 효과", tone: GLOBAL_CHART_THEME.primary },
   };
 }
 // 아래→위 쌓는 순서. base(=baseline+계절)는 절대 밴드로 별도 처리, 나머지는 그 위 누적.
@@ -3526,9 +3528,6 @@ export function decompBucketOf(g) {
   if (g === "Holidays" || g === "Regime(steps)") return "event";
   return MMM_NONMEDIA_GROUPS.includes(g) ? "event" : "media";
 }
-// 개별 채널(광고) 밴드용 팔레트 — 보라 계열 명도차. hex+alpha는 fill에만.
-export const MMM_MEDIA_PALETTE = ["#8b7ff0", "#a78bfa", "#c084fc", "#e879f9", "#7dd3fc", "#67e8f9"];
-
 // 차트 테마·공통 옵션 — 컴포넌트 밖(상수)로 두어 effect 의존성 안정화
 export const CHART_THEME = GLOBAL_CHART_THEME;
 export function chartBase() {
@@ -3623,7 +3622,7 @@ export function buildMmmSaturationCurveGroups(saturationByChannel = {}, channels
       label: locale === "en" ? (kind === "brand" ? "Brand total" : "Performance total") : (kind === "brand" ? "브랜딩 전체" : "퍼포먼스 전체"),
       recentMean,
       isGroup: true,
-      color: kind === "brand" ? "#d5df8e" : "#df8392",
+      color: kind === "brand" ? GLOBAL_CHART_THEME.colors[4] : GLOBAL_CHART_THEME.primary,
       members,
       responseAt: (spend) => members.reduce((sum, channel) => sum + channel.responseAt(Math.max(0, spend) * weights[channel.key]), 0),
     };

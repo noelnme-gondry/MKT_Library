@@ -483,7 +483,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           // D0는 코호트 시작 모수 자체이므로 정의상 100%. D7/D14만 원자료를 모수
           // 가중 집계한다(행 단순평균은 작은 코호트를 과대반영하므로 금지).
           data: buildRetentionCurve(filteredRows, effBasis, [0, 7, 14]),
-          borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.08)", borderWidth: 2.5, pointRadius: 4, tension: 0.28, fill: false,
+          borderColor: CHART_THEME.primary, backgroundColor: CHART_THEME.primary + "14", borderWidth: 2.5, pointRadius: 4, tension: 0.28, fill: false,
         }],
       };
     }
@@ -495,7 +495,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
     return {
       labels: dates,
       datasets: [
-        { label: locale === "en" ? "Total" : "전체", data: valuesFor(null), borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.08)", borderWidth: 2.5, pointRadius: 2, tension: 0.28, fill: false },
+        { label: locale === "en" ? "Total" : "전체", data: valuesFor(null), borderColor: CHART_THEME.primary, backgroundColor: CHART_THEME.primary + "14", borderWidth: 2.5, pointRadius: 2, tension: 0.28, fill: false },
         ...channels.slice(0, 6).map((channel, index) => ({ label: channel, data: valuesFor(channel), borderColor: CHART_THEME.series[index % CHART_THEME.series.length], borderWidth: 1.5, pointRadius: 0, tension: 0.28, fill: false })),
       ],
     };
@@ -566,7 +566,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
               data: dailyAgg.map((d) => d.cost),
               yAxisID: "y",
               borderColor: CHART_THEME.primary,
-              backgroundColor: "rgba(173,198,255,0.1)",
+              backgroundColor: CHART_THEME.primary + "1A",
               tension: 0.3,
               fill: true,
               pointRadius: 0,
@@ -577,7 +577,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
               data: dailyAgg.map((d) => (effBasis === "actions" ? d.actions : d.installs)),
               yAxisID: "y1",
               borderColor: CHART_THEME.secondary,
-              backgroundColor: "rgba(76,215,246,0.05)",
+              backgroundColor: CHART_THEME.secondary + "0D",
               tension: 0.3,
               fill: false,
               pointRadius: 0,
@@ -652,7 +652,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           datasets: [{
             label: acqLabel,
             data: cpiData.map((d) => d.cpi),
-            backgroundColor: cpiData.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length] + "cc"),
+            backgroundColor: cpiData.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]),
             borderRadius: 4,
             barThickness: 18,
           }],
@@ -673,9 +673,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
       const funnelData = effBasis === "actions"
         ? [totals.impressions, totals.clicks, totals.installs, totals.actions, totals.pu_d7]
         : [totals.impressions, totals.clicks, totals.installs, totals.pu_d7];
-      const funnelColors = effBasis === "actions"
-        ? ["#adc6ff", "#4cd7f6", "#5ad19a", "#bb9af7", "#f7b955"]
-        : ["#adc6ff", "#4cd7f6", "#5ad19a", "#f7b955"];
+      const funnelColors = funnelLabels.map((_, index) => CHART_THEME.series[index % CHART_THEME.series.length]);
       instances.funnel = new Chart(canvasRefs.current.funnel.getContext("2d"), {
         type: "bar",
         data: {

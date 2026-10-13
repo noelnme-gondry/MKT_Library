@@ -30,11 +30,16 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByRole("dialog")).toBeHidden();
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
-    const hero = await page.locator(".dc-hero").boundingBox();
+    const intro = await page.locator(".dc-hero__intro").boundingBox();
+    const inset = await page.locator(".dc-hero__intro").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft));
     // CSV is the primary entry; sample exploration remains beside it.
     const primary = await page.locator(".dc-action-route--primary").boundingBox();
-    expect(Math.abs(primary.x - hero.x)).toBeLessThan(1);
-    expect(primary.height).toBeLessThanOrEqual(56);
+    expect(primary.x).toBeGreaterThanOrEqual(intro.x + inset - 1);
+    expect(primary.x + primary.width).toBeLessThanOrEqual(intro.x + intro.width - inset + 1);
+    // 시작 버튼은 소개 면 안의 같은 기준선에 놓이며 긴 설명 카드가 되지 않는다.
+    expect(primary.height).toBeGreaterThanOrEqual(44);
+    expect(primary.height).toBeLessThanOrEqual(72);
+    await expect(page.locator(".dc-hero__actions .dc-action-route__hint")).toHaveCount(3);
     await page.locator(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
@@ -172,7 +177,9 @@ for (const locale of ["ko", "en"]) {
   test(`start CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
     await page.goto(`${prefix}/start`);
     await expect(page).toHaveURL(new RegExp(`${prefix}/start$`));
-    await page.locator('.csv-uploader input[type="file"]').first().setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
+    const input = page.locator('.csv-uploader[data-hydrated="true"] input[type="file"]').first();
+    await expect(input).toBeEnabled();
+    await input.setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
     await expect(page.locator(".header-data-context")).toContainText("efficiency.csv");
     // 원본 통화는 묻지 않고 기본값(최근 선택 → 화면 언어)으로 채운다. 바꾸는 버튼만 남는다.
     await expect(page.getByRole("button", { name: en ? "USD $" : "원 ₩", exact: true })).toHaveAttribute("aria-pressed", "true");

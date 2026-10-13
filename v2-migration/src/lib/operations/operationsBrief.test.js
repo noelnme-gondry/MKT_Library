@@ -124,11 +124,39 @@ describe("operations planner sample", () => {
     const plan = planOperationsBudget(brief);
     expect(brief.campaigns).toHaveLength(4);
     expect(brief.creatives.filter(row => row.isNew)).toHaveLength(2);
-    expect(brief.creatives.filter(row => row.isNew).every(row => row.vsEstablishedPct < 0)).toBe(true);
+    const newCreatives = brief.creatives.filter(row => row.isNew);
+    // 신규 소재라는 이유만으로 모두 우수하게 만들지 않는다. 서로 다른 관측 기간·성과를 비교한다.
+    expect(newCreatives.some(row => row.vsEstablishedPct < 0)).toBe(true);
+    expect(newCreatives.some(row => row.vsEstablishedPct > 0)).toBe(true);
+    expect(new Set(newCreatives.map(row => row.firstDate)).size).toBe(2);
     expect(brief.campaigns.find(row => row.name.includes("리타기팅")).changePct).toBeGreaterThan(15);
     expect(plan.holds).toEqual([]);
     expect(plan.ok).toBe(true);
     expect(plan.improvementPct).toBeGreaterThan(0);
     expect(plan.totalBudget).toBeCloseTo(brief.current.cost / brief.days, 7);
+  });
+
+  it("keeps a reproducible export without a repeating spend cycle or fractional funnel counts", () => {
+    const data = buildOperationsDemo();
+    expect(buildOperationsDemo()).toEqual(data);
+    const english = buildOperationsDemo("en");
+    const numerical = row => [row.Date, row["Campaign ID"], row.Cost, row.Impressions, row.Clicks, row.Installs, row.Actions];
+    expect(english.raw.map(numerical)).toEqual(data.raw.map(numerical));
+    for (const row of data.raw) {
+      for (const field of ["Cost", "Impressions", "Clicks", "Installs", "Actions"]) {
+        expect(Number.isInteger(row[field]), `${row.Date} ${field}`).toBe(true);
+        expect(row[field]).toBeGreaterThan(0);
+      }
+      expect(row.Impressions).toBeGreaterThanOrEqual(row.Clicks);
+      expect(row.Clicks).toBeGreaterThanOrEqual(row.Installs);
+      expect(row.Installs).toBeGreaterThanOrEqual(row.Actions);
+    }
+    const dailyCost = new Map();
+    for (const row of data.raw.filter(row => row["Campaign ID"] === "campaign-1")) {
+      dailyCost.set(row.Date, (dailyCost.get(row.Date) || 0) + row.Cost);
+    }
+    expect(dailyCost.size).toBe(98);
+    // 원래 데모는 98일 내내 동일한 11개 지출만 반복했다.
+    expect(new Set(dailyCost.values()).size).toBeGreaterThan(80);
   });
 });

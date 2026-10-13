@@ -1,52 +1,105 @@
 "use client";
-import { useMemo } from "react";
-import { buildOperationsDemo } from "@/lib/operations/operationsDemo";
-import { operationsTotals, operationsDailyTrend } from "@/lib/operations/operationsBrief";
-import { getMappedRows } from "@/utils/dashboardAggregator";
-import { fmtCurrency, fmtPct } from "@/utils/format";
+import { useId, useMemo, useRef, useState } from "react";
+import { buildOperationsHomePreview } from "@/lib/operations/operationsHomePreview";
+import DataTable from "@/components/ds/DataTable";
+import OperationsHomeTrend from "./OperationsHomeTrend";
+import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 
 export default function OperationsSamplePreview({ locale = "ko" }) {
   const en = locale === "en", tr = (ko, english) => en ? english : ko;
-  const sample = useMemo(() => {
-    const rows = getMappedRows(buildOperationsDemo(locale));
-    const dates = [...new Set(rows.map(row => row.date))].sort();
-    const recent = new Set(dates.slice(-7)), prior = new Set(dates.slice(-14, -7));
-    const grouped = new Map();
-    for (const row of rows) {
-      if (!grouped.has(row.campaign_id)) grouped.set(row.campaign_id, []);
-      grouped.get(row.campaign_id).push(row);
-    }
-    const campaigns = [...grouped.values()].map(values => ({
-      name: values[0].campaign_name,
-      current: operationsTotals(values.filter(row => recent.has(row.date)), "installs"),
-      previous: operationsTotals(values.filter(row => prior.has(row.date)), "installs"),
-      trend: operationsDailyTrend(values, "installs"),
-    })).sort((a, b) => b.current.cpr / b.previous.cpr - a.current.cpr / a.previous.cpr);
-    return { dates, campaigns, trend: operationsDailyTrend(rows, "installs"),
-      current: operationsTotals(rows.filter(row => recent.has(row.date)), "installs"), previous: operationsTotals(rows.filter(row => prior.has(row.date)), "installs") };
-  }, [locale]);
+  const sample = useMemo(() => buildOperationsHomePreview(locale), [locale]);
+  const [campaignId, setCampaignId] = useState(sample.campaigns[0].id);
+  const [fullHistory, setFullHistory] = useState(false);
+  const [probeDate, setProbeDate] = useState(sample.periods.current.end);
+  const campaign = sample.campaigns.find(row => row.id === campaignId) || sample.campaigns[0];
+  const trend = useMemo(() => fullHistory ? campaign.trend : campaign.trend.slice(-28), [campaign, fullHistory]);
+  const [view, setView] = useState("campaigns");
+  const id = useId(), tabsRef = useRef(null);
+  const views = [
+    { id: "campaigns", label: tr("캠페인", "Campaigns") },
+    { id: "budget", label: tr("예산", "Budget") },
+    { id: "creatives", label: tr("소재", "Creatives") },
+  ];
+  const handleTabKey = (event, index) => {
+    let target;
+    if (["ArrowRight", "ArrowDown"].includes(event.key)) target = (index + 1) % views.length;
+    else if (["ArrowLeft", "ArrowUp"].includes(event.key)) target = (index + views.length - 1) % views.length;
+    else if (event.key === "Home") target = 0;
+    else if (event.key === "End") target = views.length - 1;
+    if (target == null) return;
+    event.preventDefault();
+    setView(views[target].id);
+    tabsRef.current.querySelectorAll('[role="tab"]')[target].focus();
+  };
   const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
   const change = sample.current.cpr / sample.previous.cpr - 1;
-  const worst = sample.campaigns[0];
-  const max = Math.max(...sample.trend.map(row => row.cpr), ...worst.trend.map(row => row.cpr)) * 1.1;
-  const points = rows => rows.map((row, index) => `${46 + index / (rows.length - 1) * 316},${172 - row.cpr / max * 148}`).join(" ");
+  const budgetMax = Math.ceil(Math.max(1, ...sample.budgetMoves.map(row => Math.abs(row.delta))) / 10000) * 10000;
+  const date = index => sample.dates.at(index).slice(5).replace("-", ".");
+  const pct = value => `${value > 0 ? "+" : ""}${fmtPct(value)}`;
+  const tone = value => value > 0 ? "bad" : value < 0 ? "good" : "neutral";
+  const creativeColumns = [
+    { key: "creative", label: tr("소재", "Creative"), fmt: name => <span className="operations-sample-creative__name"><strong>{name}</strong></span> },
+    { key: "cpr", label: tr("CPI · 기존 대비", "CPI · vs established"), align: "right", fmt: (value, row) => <span className="operations-sample-creative__result"><strong>{money(value)}</strong><small data-tone={tone(row.vsEstablishedPct)}>{row.vsEstablishedPct == null ? tr("비교 불가", "Not comparable") : pct(row.vsEstablishedPct / 100)}</small></span> },
+    { key: "campaign", label: tr("캠페인", "Campaign") },
+    { key: "firstDate", label: tr("첫 관측", "First seen"), fmt: (value, row) => <span className="operations-sample-creative__observations">{value.slice(5).replace("-", ".")}<small>{row.days}{tr("일 관측", " days observed")}</small></span> },
+    { key: "results", label: tr("설치 수", "Installs"), align: "right", fmt: value => fmtNum(value, 0) },
+  ];
   return <aside className="home-result-preview home-result-preview--comparison operations-sample-preview" aria-label={tr("운영 플래너 데모 미리보기", "Operations planner demo preview")}>
-    <h2>{tr("한 파일에서 다음 운영 계획까지", "From one file to your next operating plan")}</h2>
-    <p className="home-sample-context">{tr("가상 운영 데이터 · 98일 · 4개 캠페인", "Fictional operations data · 98 days · 4 campaigns")}</p>
-    <div className="operations-sample-preview__metric"><span>{tr("직전 7일 → 최근 7일 CPI", "Prior → recent 7-day CPI")}</span>
-      <strong>{money(sample.previous.cpr)} → {money(sample.current.cpr)}</strong><b>{change > 0 ? "+" : ""}{fmtPct(change)}</b></div>
-    <figure className="operations-sample-chart">
-      <figcaption>{tr("일별 CPI 추세 · 전체와 악화 캠페인", "Daily CPI · portfolio and deteriorating campaign")}</figcaption>
-      <svg viewBox="0 0 380 205" role="img" aria-label={tr("98일의 전체·선택 캠페인 실측 CPI 추세", "98 days of observed portfolio and selected campaign CPI")}>
-        {[0, 0.5, 1].map(ratio => <g key={ratio}><line x1="46" x2="362" y1={172 - ratio * 148} y2={172 - ratio * 148} className="operations-sample-chart__grid" /><text x="39" y={176 - ratio * 148} textAnchor="end">{money(max * ratio)}</text></g>)}
-        <rect x={46 + 91 / 97 * 316} y="24" width={6 / 97 * 316} height="148" className="operations-sample-chart__recent" />
-        <polyline points={points(sample.trend)} className="operations-sample-chart__line" />
-        <polyline points={points(worst.trend)} className="operations-sample-chart__line operations-sample-chart__line--alert" />
-        <text x="46" y="195">{sample.dates[0].slice(5)}</text><text x="362" y="195" textAnchor="end">{sample.dates.at(-1).slice(5)}</text>
-      </svg>
-      <div className="operations-sample-chart__legend"><span><i />{tr("전체", "Portfolio")}</span><span><i />{worst.name}</span></div>
+    <h2>{tr("운영 플래너 미리보기", "Operations planner preview")}</h2>
+    <p className="home-sample-context">{tr("가상 데이터 · 최근 7일", "Fictional data · recent 7 days")} {sample.periods.current.start} – {sample.periods.current.end}</p>
+    <div className="operations-sample-tabs" role="tablist" aria-label={tr("데모 분석 보기", "Demo analysis views")} ref={tabsRef}>
+      {views.map((item, index) => <button key={item.id} type="button" role="tab" id={`${id}-tab-${item.id}`} aria-controls={`${id}-panel-${item.id}`} aria-selected={view === item.id} tabIndex={view === item.id ? 0 : -1} onClick={() => setView(item.id)} onKeyDown={event => handleTabKey(event, index)}>{item.label}</button>)}
+    </div>
+    <div className="operations-sample-preview__body">
+    <section className="operations-sample-preview__campaigns" role="tabpanel" id={`${id}-panel-campaigns`} aria-labelledby={`${id}-tab-campaigns`} tabIndex={0} hidden={view !== "campaigns"}>
+    <h3 id="home-campaign-title" className="sr-only">{tr("캠페인별 설치 단가", "Campaign cost per install")}</h3>
+    <div className="operations-sample-preview__metric"><span>{tr("전체 CPI", "Portfolio CPI")}</span>
+      <strong>{money(sample.previous.cpr)} → {money(sample.current.cpr)}</strong><b data-tone={tone(change)}>{pct(change)}</b></div>
+    <figure className="operations-sample-chart" aria-label={tr("캠페인 일별 CPI 추세와 직전·최근 비교", "Campaign daily CPI trend and period comparison")}>
+      <figcaption className="home-trend-heading"><strong>{campaign.name}</strong><b data-tone={tone(campaign.changePct)}>{tr("최근 7일", "Recent 7 days")} {pct(campaign.changePct / 100)}</b>
+        <div className="home-trend-window" role="group" aria-label={tr("그래프 범위", "Chart window")}>
+          <button type="button" aria-pressed={!fullHistory} onClick={() => setFullHistory(false)}>{tr("최근 28일", "Recent 28 days")}</button>
+          <button type="button" aria-pressed={fullHistory} onClick={() => setFullHistory(true)}>{tr("전체 이력", "Full history")}</button>
+        </div>
+      </figcaption>
+      <div className="operations-sample-chart__legend">
+        <span><i className="operations-key operations-key--previous" aria-hidden="true" />{tr("직전", "Prior")} {date(-14)}–{date(-8)}</span>
+        <span><i className="operations-key" aria-hidden="true" />{tr("최근", "Recent")} {date(-7)}–{date(-1)}</span>
+        <span className="home-trend-reference">{tr("점선: 직전 CPI", "Dashed: prior CPI")} {money(campaign.previous.cpr)}</span>
+      </div>
+      <OperationsHomeTrend {...{ campaign, rows: trend, periods: sample.periods, probeDate, onProbeDate: setProbeDate, isVisible: view === "campaigns", locale }} />
+      <dl className="operations-sample-campaigns">{sample.campaigns.map(row => <div key={row.id}>
+        <dt><button type="button" aria-pressed={campaign.id === row.id} onClick={() => setCampaignId(row.id)}>{row.name}</button></dt>
+        <dd className="operations-sample-campaigns__comparison">
+          <span>{money(row.previous.cpr)} → <strong>{money(row.current.cpr)}</strong></span>
+          <b data-tone={tone(row.current.cpr / row.previous.cpr - 1)}>{pct(row.current.cpr / row.previous.cpr - 1)}</b>
+        </dd>
+      </div>)}</dl>
     </figure>
-    <div className="operations-sample-campaigns">{sample.campaigns.map(row => <div key={row.name}><span>{row.name}</span><strong>{money(row.current.cpr)}</strong><b data-tone={row.current.cpr > row.previous.cpr ? "bad" : "good"}>{row.current.cpr > row.previous.cpr ? "+" : ""}{fmtPct(row.current.cpr / row.previous.cpr - 1)}</b></div>)}</div>
-    <p className="home-sample-context">{sample.dates.at(-14)} – {sample.dates.at(-1)} · {tr("CPI = 광고비 ÷ 설치 수", "CPI = spend ÷ installs")}</p>
+    <p className="home-sample-context">{tr("캠페인 이름을 눌러 추세를 바꿔 보세요. CPI는 낮을수록 효율적입니다.", "Select a campaign name to explore its trend. Lower CPI is better.")}</p>
+    </section>
+    <section className="operations-sample-preview__budget" role="tabpanel" id={`${id}-panel-budget`} aria-labelledby={`${id}-tab-budget`} tabIndex={0} hidden={view !== "budget"}>
+      <h3 id="home-budget-title" className="sr-only">{tr("동일 예산의 조정안", "A plan for the same budget")}</h3>
+      {sample.plan.ok ? <>
+        <dl className="operations-sample-budget__metrics">
+          <div><dt>{tr("하루 총 예산", "Total daily budget")}</dt><dd>{money(sample.plan.totalBudget)}</dd></div>
+          <div><dt>{tr("예상 설치 / 일 · 유지 → 조정", "Modeled installs / day · keep → revise")}</dt><dd>{fmtNum(sample.plan.baselineResults, 1)} → {fmtNum(sample.plan.expectedResults, 1)} <b>{pct(sample.plan.improvementPct / 100)}</b></dd></div>
+        </dl>
+        <dl className="operations-sample-budget__moves">{sample.budgetMoves.map(row => <div key={row.id}><dt>{row.name}</dt><dd>{row.delta > 0 ? "+" : row.delta < 0 ? "−" : ""}{money(Math.abs(row.delta))}</dd>
+          <dd className="home-budget-delta" aria-hidden="true"><i data-direction={row.delta < 0 ? "decrease" : "increase"} style={{ left: `${row.delta < 0 ? 50 - Math.abs(row.delta) / budgetMax * 50 : 50}%`, width: `${Math.abs(row.delta) / budgetMax * 50}%` }} /></dd>
+        </div>)}</dl>
+        <div className="home-budget-axis" aria-hidden="true"><span>−{money(budgetMax)}</span><span>0</span><span>+{money(budgetMax)}</span></div>
+        <p className="home-sample-context">{tr("왼쪽 감액 · 오른쪽 증액", "Left: decrease · right: increase")} · {tr("공통 축", "Shared scale")} ±{money(budgetMax)} · {tr("변경 한도", "Change limit")} ±{fmtPct(sample.changeLimit, 0)}</p>
+        <p className="operations-sample-preview__note">{tr(`${sample.historyDays}일 이력에 따른 모형 예상입니다. 앞으로의 성과를 보장하지 않습니다.`, `Modeled from ${sample.historyDays} days of history. Future performance is not guaranteed.`)}</p>
+      </> : <p role="status">{tr("이 데이터에서는 예산 조정안을 추정할 수 없습니다.", "A budget plan cannot be estimated from this data.")}</p>}
+    </section>
+    <section className="operations-sample-preview__creatives" role="tabpanel" id={`${id}-panel-creatives`} aria-labelledby={`${id}-tab-creatives`} tabIndex={0} hidden={view !== "creatives"}>
+      <h3 id="home-creative-title" className="sr-only">{tr("새로 관측된 소재", "First-observed creatives")}</h3>
+      <p className="operations-sample-creative__summary">{tr(`첫 관측 소재 ${sample.newCreatives.length}개`, `${sample.newCreatives.length} first-observed creatives`)}</p>
+      <DataTable columns={creativeColumns} rows={sample.newCreatives} rowKey={row => row.id} ariaLabel={tr("첫 관측 소재의 설치 단가와 기존 소재 비교", "First-observed creative CPI versus established creatives")} />
+      <p className="operations-sample-creative__scroll-hint">{tr("표를 옆으로 밀어 전체 항목을 확인하세요.", "Scroll the table sideways to see all columns.")}</p>
+      <p className="operations-sample-preview__note">{tr("같은 캠페인의 기존 소재 대비입니다. 첫 관측일은 생성일과 다를 수 있습니다.", "Compared with established creatives in the same campaign. First observation may differ from creation date.")}</p>
+    </section>
+    </div>
   </aside>;
 }

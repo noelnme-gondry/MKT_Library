@@ -251,7 +251,7 @@ describe("Dochi analysis workspace", () => {
     const next = directChildren[decisionIndex];
     expect(next.querySelector(".workspace-next-action__figure")).toBeTruthy();
     // 결론 밑 그림도 도구 화면 그림과 같은 PNG 받기를 둔다.
-    expect(next.querySelector(".workspace-next-action__figure-head .figure-png-button")?.textContent).toBe("PNG 받기");
+    expect(within(next).getByRole("button", { name: "PNG 받기", exact: true }).textContent).toBe("PNG");
     expect([...next.querySelectorAll("button")].map((button) => button.textContent)).toContain("도구에서 자세히 보기 →");
     expect(next.textContent).not.toContain("근거와 실행 계획 보기");
     openAnalysis("5-2");

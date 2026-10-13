@@ -9,6 +9,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import StartGate from "@/components/StartGate";
+import AnalysisDataGuide from "@/components/AnalysisDataGuide";
 import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
@@ -58,7 +59,8 @@ import { resolveResponseStage } from "@/lib/responseStage";
 export default function PageClient({ params, initialSopData = null, evidenceLinks = [] }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
-  const responseStage = resolveResponseStage(useSearchParams().get("stage"));
+  const searchParams = useSearchParams();
+  const responseStage = resolveResponseStage(searchParams.get("stage"));
   const isResponseSubtoolRoute = isResponseSubtool(routeId);
 
   // Unknown URL -> 404. Known but untranslated -> KR canonical (thin/half-EN
@@ -91,6 +93,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
+            {routeId === "data-guide" && <AnalysisDataGuide locale="en" />}
             {routeId === "projects" && <ProjectsPage locale="en" />}
             {routeId === "subscription" && <SubscriptionPage locale="en" />}
             {routeId === "storage" && <WorkspaceStoragePage locale="en" />}
@@ -112,7 +115,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "5-18-mmm" && <ToolRecipeWorkspace toolId="5-18-mmm" locale="en"><MarketingResponse locale="en" initialStage="mmm" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-18-forecast" && <ToolRecipeWorkspace toolId="5-18-forecast" locale="en"><MarketingResponse locale="en" initialStage="lab" isolated /></ToolRecipeWorkspace>}
             {routeId === "5-20" && <ToolRecipeWorkspace toolId="5-20" locale="en"><AhaMomentFinder locale="en" /></ToolRecipeWorkspace>}
-            {routeId === "5-23" && <ToolRecipeWorkspace toolId="5-23" locale="en"><Incrementality locale="en" /></ToolRecipeWorkspace>}
+            {routeId === "5-23" && <ToolRecipeWorkspace toolId="5-23" locale="en"><Incrementality locale="en" initialMethod={searchParams.get("method")} /></ToolRecipeWorkspace>}
             {routeId === "5-24" && <ToolRecipeWorkspace toolId="5-24" locale="en"><BrandCampaignIncrementality locale="en" /></ToolRecipeWorkspace>}
             {routeId === "5-25" && <ToolRecipeWorkspace toolId="5-25" locale="en"><MulticollinearityChecker locale="en" /></ToolRecipeWorkspace>}
             {routeId === "5-27" && <ToolRecipeWorkspace toolId="5-27" locale="en"><AsoStoreConversion locale="en" /></ToolRecipeWorkspace>}

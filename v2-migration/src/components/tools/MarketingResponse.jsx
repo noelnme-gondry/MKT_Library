@@ -16,6 +16,7 @@ import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
+import { CHART_FONT_STACK, getCssVar } from "@/utils/chartUtils";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianLikeRun, mmmBayesianHealth, mmmBayesianWeeklyDecomp, mmmBayesianForecast, mmmForecastApplySelectedBlend, mmmForecastCombineNestedParts, mmmForecastScenarioEligibility, mmmForecastRestoreSeasonality, mmmTrendExistence, mmmElasticities, mmmCannibalization, mmmChannelCoverage, mmmIRF, mmmAdstock, mmmAudit, mmmMacroFacts, mmmDataQualityAudit, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
 import { mmmNonlinearLaplace } from "@/utils/mmmNonlinearLaplace";
@@ -72,7 +73,6 @@ import {
   ForecastHint,
   MMM_BUCKET_ORDER,
   MMM_COUNTRY_HEADER_PATTERN,
-  MMM_MEDIA_PALETTE,
   MMM_TEMPLATE_CSV,
   MMM_USER_TARGETS,
   MUTED,
@@ -2620,9 +2620,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         : NaN;
     });
     const stlRows = [
-      { key: "stl-trend", label: tx("순수 베이스라인 STL 추세", "Pure baseline STL trend"), tone: "#38bdf8", change: delta(trend.stl?.trend) },
-      { key: "stl-seasonal", label: tx("계절성 조정", "Seasonality adjustment"), tone: "#5DCAA5", change: delta(trend.stl?.seasonal) },
-      { key: "stl-residual", label: tx("불규칙·잔차", "Irregular / residual"), tone: "#94a3b8", change: delta(trend.stl?.residual) },
+      { key: "stl-trend", label: tx("순수 베이스라인 STL 추세", "Pure baseline STL trend"), tone: CHART_THEME.secondary, change: delta(trend.stl?.trend) },
+      { key: "stl-seasonal", label: tx("계절성 조정", "Seasonality adjustment"), tone: CHART_THEME.colors[3], change: delta(trend.stl?.seasonal) },
+      { key: "stl-residual", label: tx("불규칙·잔차", "Irregular / residual"), tone: CHART_THEME.comparison, change: delta(trend.stl?.residual) },
     ];
     const modelBuckets = new Map(MMM_BUCKET_ORDER.map((bucket) => [bucket, 0]));
     const weeks = mmm.run?.weeks || [];
@@ -2865,7 +2865,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           const respAt = (s, x) => s.responseAt(x);
           // 현재 지출 위치(●)는 각 채널 선 위 데이터점으로 → 선을 숨기면 점도 같이 숨겨짐(별도 scatter 제거).
           const lineDs = chs.map((s, i) => {
-            const col = s.color || MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
+            const col = s.color || CHART_THEME.colors[i % CHART_THEME.colors.length];
             const curIdx = grid.indexOf(s.recentMean);
             return {
               type: "line",
@@ -2910,7 +2910,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             return isRoas ? result / spend : convAmt(spend / result);
           };
           const datasets = chs.map((s, i) => {
-            const col = s.color || MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
+            const col = s.color || CHART_THEME.colors[i % CHART_THEME.colors.length];
             const curIdx = grid.indexOf(s.recentMean);
             return {
               type: "line",
@@ -2993,7 +2993,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         } else {
           const mediaGroups = dateViewDecomp.groupNames.filter((g) => decompBucketOf(g) === "media");
           mediaGroups.forEach((g, i) => {
-            bars.push({ label: g, data: dateViewDecomp.weeks.map((w) => w.contrib[g] || 0), tone: MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length] });
+            bars.push({ label: g, data: dateViewDecomp.weeks.map((w) => w.contrib[g] || 0), tone: CHART_THEME.colors[i % CHART_THEME.colors.length] });
           });
         }
         const datasets = bars.map((b) => ({
@@ -3044,7 +3044,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               const idx = s.i != null ? s.i : s.week - 1;
               const x = scales.x.getPixelForValue(idx);
               if (x < chartArea.left || x > chartArea.right) return;
-              ctx.strokeStyle = "#f59e0b";
+              ctx.strokeStyle = CHART_THEME.warning;
               ctx.setLineDash([4, 3]);
               ctx.lineWidth = 1.5;
               ctx.beginPath();
@@ -3053,12 +3053,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               ctx.stroke();
               ctx.setLineDash([]);
               // 번호 뱃지(원)
-              ctx.fillStyle = "#f59e0b";
+              ctx.fillStyle = CHART_THEME.warning;
               ctx.beginPath();
               ctx.arc(x, chartArea.top + 7, 8, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = "#fff";
-              ctx.font = "bold 10px sans-serif";
+              ctx.fillStyle = getCssVar("--on-warning");
+              ctx.font = `600 12px ${CHART_FONT_STACK}`;
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillText(String(numOf(s)), x, chartArea.top + 7);
@@ -3131,8 +3131,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               { label: tx("모델(과거)", "Model (past)"), data: model, borderColor: CHART_THEME.primary, pointRadius: 0, tension: 0.2 },
               { label: tx("예측(미래)", "Forecast (future)"), data: future, borderColor: CHART_THEME.primary, borderDash: [6, 4], pointRadius: 0, tension: 0.2 },
               ...componentDatasets,
-              { label: tx("상한", "Upper bound"), data: bandHi, borderColor: "transparent", backgroundColor: "rgba(122,162,247,0.12)", fill: "+1", pointRadius: 0 },
-              { label: tx("하한", "Lower bound"), data: bandLo, borderColor: "transparent", backgroundColor: "rgba(122,162,247,0.12)", fill: false, pointRadius: 0 },
+              { label: tx("상한", "Upper bound"), data: bandHi, borderColor: "transparent", backgroundColor: CHART_THEME.primary + "1F", fill: "+1", pointRadius: 0 },
+              { label: tx("하한", "Lower bound"), data: bandLo, borderColor: "transparent", backgroundColor: CHART_THEME.primary + "1F", fill: false, pointRadius: 0 },
             ],
           },
           options: {
@@ -3179,7 +3179,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 label: tx("베이스라인 추세 외 요인 (계절성 + 잔차)", "Baseline non-trend (seasonality + residual)"),
                 data: trendLedger?.stlNonTrend || [],
                 borderColor: CHART_THEME.secondary,
-                backgroundColor: "rgba(93,202,165,0.12)",
+                backgroundColor: CHART_THEME.secondary + "1F",
                 borderDash: [6, 4],
                 pointRadius: 0,
                 borderWidth: 1.8,
@@ -4884,7 +4884,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 )
               : tx("기여 분해 결과를 계산할 수 없어요.", "Can't compute the contribution breakdown.");
             const maxPct = Math.max(0.0001, ...shRows.map((r) => r.pct || 0));
-            const barColor = (nm) => isMediaDrv(nm) ? "#7F77DD" : nm === "Seasonality" ? "#5DCAA5" : nm === "Industry Trend" ? "#a78bfa" : nm === "baseline" ? "var(--border-strong)" : "#85B7EB";
+            const barColor = (nm) => nm === "baseline" ? CHART_THEME.comparison : bucketMeta[decompBucketOf(nm)].tone;
             const sat = displayedSaturationByChannel;
             const spendReferenceLabel = contributionViewStart || contributionViewEnd
               ? tx("선택 기간 평균 지출", "Selected-period avg. spend")
@@ -4987,14 +4987,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               return { ...worst, domG, domV, lbl: w.week, bLabel: bucketMeta[worst.bucket]?.label || worst.bucket };
             })();
             const groupPanelPalette = {
-              "기본 수요": "#94a3b8",
-              Trend: "#c9c2c0",
-              Seasonality: "#f4d877",
-              "Holidays & Events": "#f4b366",
-              "Regime change": "#bda593",
-              "Industry Trend": "#a78bfa",
-              Performance: "#df8392",
-              Brand: "#d5df8e",
+              "기본 수요": CHART_THEME.comparison,
+              Trend: bucketMeta.trend.tone,
+              Seasonality: bucketMeta.base.tone,
+              "Holidays & Events": bucketMeta.event.tone,
+              "Regime change": bucketMeta.event.tone,
+              "Industry Trend": bucketMeta.industry.tone,
+              Performance: bucketMeta.media.tone,
+              Brand: CHART_THEME.colors[4],
             };
             const groupPanels = viewedDecomp
               ? [
@@ -5586,7 +5586,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               label={group.label}
                               values={group.values}
                               labels={contributionLabels}
-                              color={groupPanelPalette[group.key] || "#85B7EB"}
+                              color={groupPanelPalette[group.key] || CHART_THEME.secondary}
                               locale={locale}
                               formatValue={targetValueLabel}
                             />

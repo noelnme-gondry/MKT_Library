@@ -42,6 +42,11 @@ describe("chart evidence and review handoff", () => {
     expect(budget.prefill.reviewDate).toBe("2026-10-13");
     expect(budget.prefill.comparisonWindowDays).toBe(7);
     expect(candidates.filter(row => row.kind === "creative")).toHaveLength(2);
+    const worseCreative = brief.creatives.find(row => row.isNew && row.vsEstablishedPct > 0);
+    expect(worseCreative).toBeTruthy();
+    const followUp = candidates.find(row => row.id === `creative:${worseCreative.id}`);
+    expect(followUp.prefill.baseline).toBe(fmtCurrency(worseCreative.cpr, { currency: "KRW", precise: true }));
+    expect(followUp.prefill.hypothesis).not.toContain("낮은 관측 단가");
     expect(candidates.filter(row => row.kind !== "budget").every(row => !row.automatic)).toBe(true);
     const zero = operationsReviewCandidates({ brief, plan: planOperationsBudget(brief, { changeLimit: 0 }), currency: "KRW", locale })[0];
     expect(zero.prefill.actionKind).toBe("hold");

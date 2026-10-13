@@ -24,7 +24,7 @@ const nameLines = name => {
   return lines;
 };
 
-function ChartCanvas({ config, label, title = label, headingId, scopeLabel, fileName, locale, currency, periods, isDemo, className = "", height, controls }) {
+function ChartCanvas({ config, label, title = label, description, headingId, scopeLabel, fileName, locale, currency, periods, isDemo, className = "", height, controls }) {
   const canvas = useRef(null);
   useEffect(() => {
     if (!canvas.current) return undefined;
@@ -34,7 +34,7 @@ function ChartCanvas({ config, label, title = label, headingId, scopeLabel, file
   }, [config]);
   const comparison = periods?.previous ? `${locale === "en" ? "Comparison" : "비교"}: ${periods.previous.start} – ${periods.previous.end}` : null;
   return <figure className={`operations-chart ${className}`}>
-    <FigureHead level={3} id={headingId} title={title} target={canvas} locale={locale} fileName={fileName}
+    <FigureHead level={3} id={headingId} title={title} description={description} target={canvas} locale={locale} fileName={fileName}
       exportTitle={[title, scopeLabel].filter(Boolean).join(" · ")}
       context={figureExportContext({ title: label, locale, scope: { dateStart: periods?.current.start, dateEnd: periods?.current.end, caption: [currency, scopeLabel, comparison].filter(Boolean).join(" · ") }, source: { importSource: isDemo ? "demo" : "csv" } })} />
     {controls}
@@ -51,7 +51,7 @@ export function OperationsTrend({ rows, metricName, currency, locale, periods, i
     const label = view === "cpr" ? metricName : view === "cost" ? (locale === "en" ? "Spend" : "광고비") : (locale === "en" ? "Outcomes" : "성과수");
     const format = value => view === "results" ? fmtNum(value) : money(value, currency);
     return { type: "line", data: { labels: rows.map(row => row.date), datasets: [{ label, data: rows.map(row => row[view]),
-      borderColor: CHART_THEME.primary, backgroundColor: CHART_THEME.primary, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, spanGaps: false }] },
+      borderColor: CHART_THEME.primary, backgroundColor: CHART_THEME.primary, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4, spanGaps: false }] },
       plugins: [{ id: "operations-periods", beforeDatasetsDraw(chart) {
         const { ctx, scales: { x }, chartArea } = chart;
         for (const [range, recent] of [[periods.previous, false], [periods.current, true]]) {
@@ -63,16 +63,16 @@ export function OperationsTrend({ rows, metricName, currency, locale, periods, i
           const right = Math.min(chartArea.right, x.getPixelForValue(last) + half), height = chartArea.bottom - chartArea.top;
           ctx.save(); ctx.beginPath(); ctx.rect(left, chartArea.top, right - left, height); ctx.clip();
           if (recent) {
-            ctx.globalAlpha = 0.18; ctx.fillStyle = CHART_THEME.primary;
+            ctx.globalAlpha = 0.07; ctx.fillStyle = CHART_THEME.primary;
             ctx.fillRect(left, chartArea.top, right - left, height);
           } else {
-            ctx.globalAlpha = 0.4; ctx.strokeStyle = CHART_THEME.muted; ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.2; ctx.strokeStyle = CHART_THEME.comparison; ctx.lineWidth = 1;
             for (let diagonal = left - height; diagonal < right; diagonal += 8) {
               ctx.beginPath(); ctx.moveTo(diagonal, chartArea.bottom); ctx.lineTo(diagonal + height, chartArea.top); ctx.stroke();
             }
           }
-          ctx.restore(); ctx.save(); ctx.strokeStyle = recent ? CHART_THEME.primary : CHART_THEME.muted;
-          ctx.lineWidth = recent ? 2 : 1; ctx.setLineDash(recent ? [] : [4, 3]);
+          ctx.restore(); ctx.save(); ctx.strokeStyle = recent ? CHART_THEME.primary : CHART_THEME.comparison;
+          ctx.lineWidth = 1; ctx.setLineDash(recent ? [] : [4, 3]);
           ctx.strokeRect(left, chartArea.top, right - left, height); ctx.restore();
         }
       } }],
@@ -82,7 +82,7 @@ export function OperationsTrend({ rows, metricName, currency, locale, periods, i
   }, [rows, view, metricName, currency, locale, periods]);
   if (!rows.length) return <><h3 id="ops-trend-title">{tr("전체 실적 추이", "Portfolio performance trend")}</h3><p>{tr("추세를 계산할 관측이 없습니다.", "No observations are available for a trend.")}</p></>;
   return <div className="operations-trend">
-    <ChartCanvas config={config} headingId="ops-trend-title" title={tr(`일별 ${views[view]} 추이`, `Daily ${views[view]} trend`)} label={tr(`전체 일별 실측 ${views[view]}`, `Daily observed portfolio ${views[view]}`)} fileName="operations_daily_unit_cost" locale={locale} currency={currency} periods={{ current: { start: rows[0].date, end: rows.at(-1).date } }} isDemo={isDemo} controls={<div className="operations-chart__toolbar">
+    <ChartCanvas config={config} headingId="ops-trend-title" title={tr(`일별 ${views[view]} 추이`, `Daily ${views[view]} trend`)} description={tr("전체 이력의 일별 실측", "Daily observations across the uploaded history")} label={tr(`전체 일별 실측 ${views[view]}`, `Daily observed portfolio ${views[view]}`)} fileName="operations_daily_unit_cost" locale={locale} currency={currency} periods={{ current: { start: rows[0].date, end: rows.at(-1).date } }} isDemo={isDemo} controls={<div className="operations-chart__toolbar">
       <PillGroup ariaLabel={tr("추세 지표", "Trend metric")} options={Object.entries(views).map(([value, label]) => ({ value, label }))} value={view} onChange={setView} />
       <span>{rows[0].date} – {rows.at(-1).date}</span>
     </div>} />
@@ -96,8 +96,8 @@ export function OperationsBudgetChart({ rows, currency, locale, periods, isDemo 
   const config = useMemo(() => {
     const opts = operationsChartOptions();
     return { type: "bar", data: { labels: rows.slice(0, 12).map(row => nameLines(row.name)), datasets: [
-      { label: locale === "en" ? "Current / day" : "현재 / 일", data: rows.slice(0, 12).map(row => row.current), backgroundColor: CHART_THEME.muted, maxBarThickness: 15 },
-      { label: locale === "en" ? "Revised / day" : "조정안 / 일", data: rows.slice(0, 12).map(row => row.budget), backgroundColor: CHART_THEME.primary, maxBarThickness: 15 }] },
+      { label: locale === "en" ? "Current / day" : "현재 / 일", data: rows.slice(0, 12).map(row => row.current), backgroundColor: CHART_THEME.comparison, maxBarThickness: 10, borderRadius: 3 },
+      { label: locale === "en" ? "Revised / day" : "조정안 / 일", data: rows.slice(0, 12).map(row => row.budget), backgroundColor: CHART_THEME.primary, maxBarThickness: 14, borderRadius: 3 }] },
       plugins: [{ id: "operations-budget-labels", afterDatasetsDraw(chart) {
         const { ctx } = chart, font = opts.plugins.legend.labels.font;
         ctx.save(); ctx.fillStyle = CHART_THEME.textPrimary; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.font = `${font.size}px ${font.family}`;
@@ -118,10 +118,10 @@ export function OperationsCampaignChart({ rows, selected, onSelect, metricName, 
   const config = useMemo(() => {
     const opts = operationsChartOptions(), data = rows.slice(0, 12);
     return { type: "scatter", data: { datasets: [
-      { label: locale === "en" ? "Prior (upper)" : "직전 (위)", data: data.flatMap((row, index) => row.previous.cpr == null ? [] : [{ x: row.previous.cpr, y: index - 0.18, id: row.id }]), pointStyle: "circle", pointRadius: 5, backgroundColor: CHART_THEME.muted },
-      { label: locale === "en" ? "Recent (lower)" : "최근 (아래)", data: data.flatMap((row, index) => row.current.cpr == null ? [] : [{ x: row.current.cpr, y: index + 0.18, id: row.id }]), pointStyle: "triangle", pointRadius: context => context.raw?.id === selected ? 9 : 7, pointBorderColor: CHART_THEME.textPrimary, pointBorderWidth: context => context.raw?.id === selected ? 2 : 0, backgroundColor: data.filter(row => row.current.cpr != null).map(row => row.changePct == null ? CHART_THEME.primary : row.changePct > 0 ? CHART_THEME.danger : CHART_THEME.success) }] },
+      { label: locale === "en" ? "Prior (upper)" : "직전 (위)", data: data.flatMap((row, index) => row.previous.cpr == null ? [] : [{ x: row.previous.cpr, y: index - 0.18, id: row.id }]), pointStyle: "circle", pointRadius: 5, backgroundColor: CHART_THEME.comparison },
+      { label: locale === "en" ? "Recent (lower)" : "최근 (아래)", data: data.flatMap((row, index) => row.current.cpr == null ? [] : [{ x: row.current.cpr, y: index + 0.18, id: row.id }]), pointStyle: "triangle", pointRadius: context => context.raw?.id === selected ? 8 : 6, pointBorderColor: CHART_THEME.textPrimary, pointBorderWidth: context => context.raw?.id === selected ? 2 : 0, backgroundColor: CHART_THEME.primary }] },
       plugins: [{ id: "operations-cost-connectors", beforeDatasetsDraw(chart) {
-        const { ctx, scales: { x, y } } = chart; ctx.save(); ctx.strokeStyle = CHART_THEME.muted; ctx.lineWidth = 2;
+        const { ctx, scales: { x, y } } = chart; ctx.save(); ctx.strokeStyle = CHART_THEME.comparison; ctx.lineWidth = 1.5;
         for (const [index, row] of data.entries()) if (row.previous.cpr != null && row.current.cpr != null) {
           ctx.beginPath(); ctx.moveTo(x.getPixelForValue(row.previous.cpr), y.getPixelForValue(index - 0.18)); ctx.lineTo(x.getPixelForValue(row.current.cpr), y.getPixelForValue(index + 0.18)); ctx.stroke();
         }
@@ -194,7 +194,7 @@ export function OperationsMixChart({ value, currency, locale, periods, isDemo, m
   const config = useMemo(() => {
     const opts = operationsChartOptions(), rows = value?.finest || [];
     return { type: "bar", data: { labels: rows.map(row => nameLines(row.crKey || (locale === "en" ? "Unspecified" : "미지정"))), datasets: [
-      { label: locale === "en" ? "Creative mix" : "소재 구성 변화", data: rows.map(row => row.mix), backgroundColor: CHART_THEME.tertiary, maxBarThickness: 18 },
+      { label: locale === "en" ? "Creative mix" : "소재 구성 변화", data: rows.map(row => row.mix), backgroundColor: CHART_THEME.comparison, maxBarThickness: 12 },
       { label: locale === "en" ? "Creative unit costs" : "소재 단가 변화", data: rows.map(row => row.rate), backgroundColor: CHART_THEME.primary, maxBarThickness: 18 }] },
       options: { ...opts, indexAxis: "y", plugins: { ...opts.plugins, tooltip: { ...opts.plugins.tooltip, callbacks: { label: context => `${context.dataset.label} ${money(context.parsed.x, currency)}` } } },
         scales: { x: { ...opts.scales.x, stacked: true, title: { display: true, text: `${metricName} ${locale === "en" ? "contribution" : "변화 기여"} · ${currency}`, color: CHART_THEME.muted }, ticks: { ...opts.scales.x.ticks, maxTicksLimit: 5, callback: amount => money(amount, currency) } }, y: { ...opts.scales.y, stacked: true, grid: { display: false } } } } };
@@ -211,7 +211,7 @@ export function OperationsCreativeChart({ rows, currency, locale, metricName, pe
       label: locale === "en" ? (isNew ? "First seen this period" : "Established") : isNew ? "이번 기간 첫 관측" : "기존 소재",
       // Chart.js의 원은 πr², rectRot은 2r²: 같은 성과수의 실제 면적을 맞춘다.
       data: valid.filter(row => row.isNew === isNew).map(row => ({ x: row.cost, y: row.cpr, r: 23 * Math.sqrt(row.results / max) * (isNew ? Math.sqrt(Math.PI / 2) : 1), id: row.id, row })),
-      pointStyle: isNew ? "rectRot" : "circle", backgroundColor: isNew ? CHART_THEME.primary : CHART_THEME.muted,
+      pointStyle: isNew ? "rectRot" : "circle", backgroundColor: isNew ? CHART_THEME.primary : CHART_THEME.comparison,
       borderColor: CHART_THEME.textPrimary, borderWidth: context => context.raw?.id === selected ? 3 : 1,
     })) }, plugins: [{ id: "operations-selected-creative", afterDatasetsDraw(chart) {
       const { ctx, chartArea } = chart, font = opts.plugins.legend.labels.font;

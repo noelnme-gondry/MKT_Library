@@ -9,6 +9,9 @@ import AxeBuilder from "@axe-core/playwright";
 // 테마 토큰 글자색을 쓴 조합이라, CSS를 정적으로 읽는 가드는 구조적으로 못 본다.
 // 배경과 글자를 실제로 합성해 봐야 나온다.
 test.use({ colorScheme: "light" });
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("mkt-library-theme", "light"));
+});
 
 // 뷰포트 프로젝트 셋에서 모두 돈다. 폭에 따라 색이 바뀌는 규칙이 실제로 있으므로
 // (예: 좁은 폭에서만 적용되는 배경) 한 폭만 보면 그 규칙이 검사 밖에 남는다.
