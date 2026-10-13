@@ -177,7 +177,9 @@ for (const locale of ["ko", "en"]) {
   test(`start CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
     await page.goto(`${prefix}/start`);
     await expect(page).toHaveURL(new RegExp(`${prefix}/start$`));
-    await page.locator('.csv-uploader input[type="file"]').first().setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
+    const input = page.locator('.csv-uploader[data-hydrated="true"] input[type="file"]').first();
+    await expect(input).toBeEnabled();
+    await input.setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
     await expect(page.locator(".header-data-context")).toContainText("efficiency.csv");
     // 원본 통화는 묻지 않고 기본값(최근 선택 → 화면 언어)으로 채운다. 바꾸는 버튼만 남는다.
     await expect(page.getByRole("button", { name: en ? "USD $" : "원 ₩", exact: true })).toHaveAttribute("aria-pressed", "true");

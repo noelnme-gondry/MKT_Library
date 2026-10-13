@@ -108,11 +108,19 @@ for (const locale of ["ko", "en"]) {
     await code.getByRole("button", { name: "Copy", exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.__copiedCode)).toBe(originalText);
   });
-  test(`PNG condition is visible before its purchase prompt (${locale})${tag}`, async ({ page }) => {
+  test(`PNG condition is accessible before its purchase prompt (${locale})${tag}`, async ({ page }) => {
     await openDochiSample(page, locale);
     const figure = page.locator(".workspace-next-action__figure");
-    await expect(figure.locator(".figure-png-button__condition")).toContainText(en ? "excludes trial" : "체험 제외");
-    await figure.getByRole("button", { name: en ? "Download PNG" : "PNG 받기", exact: true }).click();
+    const png = figure.getByRole("button", { name: en ? "Download PNG" : "PNG 받기", exact: true });
+    await expect(png).toHaveAccessibleDescription(en ? /excludes trial/ : /체험 제외/);
+    await png.scrollIntoViewIfNeeded();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await png.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByRole("tooltip")).toContainText(en ? "excludes trial" : "체험 제외");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+    await png.click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("PNG");
