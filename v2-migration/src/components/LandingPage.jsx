@@ -194,11 +194,14 @@ export default function LandingPage({ locale = "ko", reading }) {
       <section className="dc-hero" aria-labelledby="dc-hero-title">
         <div className="dc-hero__copy">
           <header className="dc-hero__intro">
+          <div className="dc-hero__message">
           <h1 id="dc-hero-title">
             <span>{T.title}</span>{" "}
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
+          </div>
+          <div className="dc-hero__entry">
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link
               className="dc-action-route dc-action-route--primary"
@@ -215,6 +218,7 @@ export default function LandingPage({ locale = "ko", reading }) {
             <Link className="dc-action-route dc-action-route--guide" aria-label={T.dataGuideCta} aria-describedby="home-guide-hint" href={`${lang === "en" ? "/en" : ""}${DATA_GUIDE_PATH}`} onClick={() => trackProductEvent("landing_data_guide_clicked", { locale: lang, source: "landing", placement: "hero" })}><strong>{T.dataGuideCta}</strong><span className="sr-only dc-action-route__hint" id="home-guide-hint">{T.dataGuideHint}</span></Link>
           </nav>
           <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
+          </div>
           </header>
         </div>
         <OperationsSamplePreview locale={lang} />

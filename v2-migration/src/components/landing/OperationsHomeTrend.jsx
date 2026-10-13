@@ -1,16 +1,15 @@
 "use client";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Chart from "@/utils/chartGlobals";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { fmtCurrency, fmtNum } from "@/utils/format";
 
 export default function OperationsHomeTrend({ campaign, rows, periods, probeDate, onProbeDate, isVisible, locale }) {
   const canvas = useRef(null), chartRef = useRef(null), activeRef = useRef(0);
-  const inputId = useId(), en = locale === "en";
+  const en = locale === "en";
   const found = rows.findIndex(row => row.date === probeDate);
   const activeIndex = found < 0 ? rows.length - 1 : found;
   const point = rows[activeIndex];
-  const money = value => fmtCurrency(value, { currency: "KRW" });
 
   useEffect(() => {
     activeRef.current = activeIndex;
@@ -91,11 +90,5 @@ export default function OperationsHomeTrend({ campaign, rows, periods, probeDate
   return <div className="home-operations-trend">
     <div className="chart-container"><canvas ref={canvas} role="img" aria-label={en ? `${campaign.name} observed daily CPI trend` : `${campaign.name} 일별 실측 CPI 추세`}
       data-point-count={rows.length} data-range-start={rows[0].date} data-range-end={rows.at(-1).date} /></div>
-    <div className="home-operations-trend__inspection">
-      <label htmlFor={inputId}>{en ? "Inspect a date" : "날짜별 값 확인"}</label>
-      <output htmlFor={inputId} data-date={point.date} data-cpi={point.cpr}>{point.date.slice(5).replace("-", ".")} <strong>{money(point.cpr)}</strong></output>
-      <input id={inputId} type="range" min="0" max={rows.length - 1} value={activeIndex} onChange={event => onProbeDate(rows[Number(event.target.value)].date)}
-        aria-valuetext={`${point.date} CPI ${money(point.cpr)}`} />
-    </div>
   </div>;
 }

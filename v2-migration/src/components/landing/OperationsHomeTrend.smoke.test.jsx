@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import OperationsHomeTrend from "./OperationsHomeTrend";
 import { buildOperationsHomePreview } from "@/lib/operations/operationsHomePreview";
 import { buildOperationsDemo } from "@/lib/operations/operationsDemo";
@@ -38,16 +38,12 @@ describe("home observed trend binding", () => {
       unmount();
     }
   });
-  it.each(["ko", "en"])("maps date inspection and chart hover to the same source dates (%s)", locale => {
+  it.each(["ko", "en"])("inspects source dates through chart hover without a second control (%s)", locale => {
     const sample = buildOperationsHomePreview(locale), campaign = sample.campaigns[0];
     const rows = campaign.trend.slice(-28), onProbeDate = vi.fn();
     const props = { campaign, rows, periods: sample.periods, probeDate: rows.at(-1).date, onProbeDate, isVisible: true, locale };
-    const { getByRole, container, rerender } = render(<OperationsHomeTrend {...props} />);
-    fireEvent.change(getByRole("slider"), { target: { value: "3" } });
-    expect(onProbeDate).toHaveBeenLastCalledWith(rows[3].date);
-    rerender(<OperationsHomeTrend {...props} probeDate={rows[3].date} />);
-    expect(container.querySelector("output").dataset.date).toBe(rows[3].date);
-    expect(Number(container.querySelector("output").dataset.cpi)).toBe(rows[3].cpr);
+    const { container, rerender } = render(<OperationsHomeTrend {...props} />);
+    expect(container.querySelector("input, select, output")).toBeNull();
     configs.at(-1).options.onHover({}, [{ index: 12, datasetIndex: 0 }]);
     expect(onProbeDate).toHaveBeenLastCalledWith(rows[12].date);
     const full = campaign.trend;

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Popover } from "radix-ui";
+import { FolderCog, HardDrive, SlidersHorizontal, Languages, Moon, Sun, Printer, FileUp, CreditCard, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber, isNumberedDocItem } from "@/store/useDataStore";
@@ -39,10 +40,15 @@ const HEADER_COPY = {
     decisionInboxAria: (count, name) => `${name}${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
     dataContext: "현재 데이터",
     utilities: "기타 설정",
-    storage: "이 기기에 저장된 것",
     analystMode: "분석가 모드",
     analystModeOn: "분석가 모드 켜짐",
     analystModeOff: "분석가 모드 꺼짐",
+    projectSettings: "프로젝트 설정",
+    theme: "화면 테마",
+    dark: "다크",
+    light: "라이트",
+    on: "켜짐",
+    off: "꺼짐",
   },
   en: {
     breadcrumbAria: "Breadcrumb",
@@ -62,10 +68,15 @@ const HEADER_COPY = {
     decisionInboxAria: (count, name) => `${name}${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
     dataContext: "Current data",
     utilities: "More settings",
-    storage: "Stored on this device",
     analystMode: "Analyst mode",
     analystModeOn: "Analyst mode on",
     analystModeOff: "Analyst mode off",
+    projectSettings: "Project settings",
+    theme: "Appearance",
+    dark: "Dark",
+    light: "Light",
+    on: "On",
+    off: "Off",
   },
 };
 
@@ -115,6 +126,7 @@ export default function Header({ locale = "ko" }) {
   const hasRestoredTheme = useRef(false);
   const utilityMenuRef = useRef(null);
   const [utilityOpen, setUtilityOpen] = useState(false);
+  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
   const closeUtilityMenu = () => setUtilityOpen(false);
 
 
@@ -243,43 +255,43 @@ export default function Header({ locale = "ko" }) {
               <span className="header-utility-menu__dots" aria-hidden="true">•••</span>
               <span className="header-utility-menu__label">{T.utilities}</span>
             </Popover.Trigger>
-            <Popover.Portal><Popover.Content className="utility-popover-panel" sideOffset={10} align="end" collisionPadding={12}>
+            <Popover.Portal><Popover.Content className="utility-popover-panel" aria-label={T.utilities} sideOffset={8} align="end" collisionPadding={12}>
+              <div className="utility-popover-group">
               {/* 폰(≤480px)은 헤더를 한 줄로 두려고 위 아이콘 버튼을 숨기고 여기서 연다(CSS가 폭에 따라 둘 중 하나만 보인다). */}
-              <Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"} className="btn ghost header-utility-review" onClick={() => { trackProductEvent("review_entry_clicked", { source: "navigation", placement: "header_menu", locale, result_state: dueDecisionCount ? "due" : "available" }); closeUtilityMenu(); }}>
-                {workspaceNavItem("review", locale).name}{dueDecisionCount > 0 && <em className="header-utility-review__count">{dueDecisionCount}</em>}
+              <Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"} className="utility-popover-row header-utility-review" onClick={() => { trackProductEvent("review_entry_clicked", { source: "navigation", placement: "header_menu", locale, result_state: dueDecisionCount ? "due" : "available" }); closeUtilityMenu(); }}>
+                <FolderOpen aria-hidden="true" size={16} /><span>{workspaceNavItem("review", locale).name}</span>{dueDecisionCount > 0 && <em className="header-utility-review__count">{dueDecisionCount}</em>}
               </Link>
-              <VideoHelpButton locale={locale} className="btn ghost" onOpen={() => { closeUtilityMenu(); return utilityMenuRef.current; }}>{locale === "en" ? "Video guide" : "영상 사용 안내"}</VideoHelpButton>
-              <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link>
-              <ProjectSettingsMenu locale={locale} />
-              <Link href={locale === "en" ? "/en/storage" : "/storage"} className="btn ghost" onClick={closeUtilityMenu}>{T.storage}</Link>
-              <button className="btn ghost header-analyst-mode-menu" type="button" aria-pressed={analystMode} onClick={() => { setAnalystMode(!analystMode); closeUtilityMenu(); }}>
-                {analystMode ? "✓ " : ""}{T.analystMode}
-              </button>
+              <VideoHelpButton locale={locale} className="utility-popover-row" onOpen={() => { closeUtilityMenu(); return utilityMenuRef.current; }}><span>{locale === "en" ? "Video guide" : "영상 사용 안내"}</span></VideoHelpButton>
+              <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="utility-popover-row" onClick={closeUtilityMenu}><CreditCard aria-hidden="true" size={16} /><span>{locale === "en" ? "Subscription guide" : "구독 안내"}</span></Link>
+              </div>
+              <div className="utility-popover-group">
+              <button className="utility-popover-row" type="button" aria-haspopup="dialog" onClick={() => { closeUtilityMenu(); setProjectSettingsOpen(true); }}><FolderCog aria-hidden="true" size={16} /><span>{T.projectSettings}</span></button>
+              <Link href={locale === "en" ? "/en/storage" : "/storage"} className="utility-popover-row" onClick={closeUtilityMenu}><HardDrive aria-hidden="true" size={16} /><span>{workspaceNavItem("storage", locale).name}</span></Link>
               {hasCsv && (
-                <button className="btn ghost header-csv-change" type="button" title={T.csvChangeTitle} onClick={async () => { await resetCsv(); closeUtilityMenu(); }}>
-                  {T.csvChangeBtn}
+                <button className="utility-popover-row header-csv-change" type="button" title={T.csvChangeTitle} onClick={async () => { await resetCsv(); closeUtilityMenu(); }}>
+                  <FileUp aria-hidden="true" size={16} /><span>{T.csvChangeBtn}</span>
                 </button>
               )}
               {isAnalysisRoute && (
-                <button className="btn ghost header-print" type="button" title={T.printTitle} onClick={() => { if (requirePaidExport({ toolId: currentRouteId, locale, format: "print" })) window.print(); closeUtilityMenu(); }}>
-                  {T.print}
+                <button className="utility-popover-row header-print" type="button" title={T.printTitle} onClick={() => { if (requirePaidExport({ toolId: currentRouteId, locale, format: "print" })) window.print(); closeUtilityMenu(); }}>
+                  <Printer aria-hidden="true" size={16} /><span>{T.print}</span>
                 </button>
               )}
-              <Link href={switchHref} className="btn ghost header-locale" title={T.localeSwitchTitle} onClick={() => { setLocalePref(switchLocale); closeUtilityMenu(); }}>
-                {T.localeSwitch}
-              </Link>
-              <button className="btn ghost header-theme" id="theme-toggle" type="button" aria-label={T.themeAria} title={T.themeTitle} onClick={() => { toggleTheme(); closeUtilityMenu(); }}>
-                {isDarkMode ? (
-                  <svg className="sun-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                  </svg>
-                ) : (
-                  <svg className="moon-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                )}
-                <span>{T.themeTitle}</span>
+              </div>
+              <div className="utility-popover-group">
+              <button className="utility-popover-row header-analyst-mode-menu" type="button" aria-pressed={analystMode} onClick={() => { setAnalystMode(!analystMode); closeUtilityMenu(); }}>
+                <SlidersHorizontal aria-hidden="true" size={16} /><span>{T.analystMode}</span><span className="utility-popover-state" aria-hidden="true">{analystMode ? T.on : T.off}</span>
               </button>
+              <Link href={switchHref} className="utility-popover-row header-locale" title={T.localeSwitchTitle} onClick={() => { setLocalePref(switchLocale); closeUtilityMenu(); }}>
+                <Languages aria-hidden="true" size={16} /><span>{T.localeSwitch}</span>
+              </Link>
+              <button className="utility-popover-row header-theme" id="theme-toggle" type="button" aria-label={T.themeAria} aria-pressed={isDarkMode} title={T.themeTitle} onClick={() => { toggleTheme(); closeUtilityMenu(); }}>
+                {isDarkMode ? <Moon aria-hidden="true" size={16} /> : <Sun aria-hidden="true" size={16} />}<span>{T.theme}</span><span className="utility-popover-state" aria-hidden="true">{isDarkMode ? T.dark : T.light}</span>
+              </button>
+              </div>
             </Popover.Content></Popover.Portal>
           </Popover.Root></div>
+          <ProjectSettingsMenu locale={locale} showTrigger={false} open={projectSettingsOpen} onOpenChange={setProjectSettingsOpen} returnFocusRef={utilityMenuRef} />
           <MyAccountMenu locale={locale} />
         </div>
       </div>
