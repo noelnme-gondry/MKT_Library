@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PARTNER_AD_PLACEMENTS, partnerAdFormat, pageAdPlacement, partnerAdMode } from "./partnerAds";
-import { partnerAdDocument, partnerAdSource, PARTNER_FRAME_CSP } from "./partnerAdFrame";
+import { partnerAdSource } from "./partnerAdFrame";
 
 describe("partner ad sizing and placement", () => {
   it("selects exactly one unscaled horizontal format that fits the available width", () => {
@@ -39,20 +39,17 @@ it("loads only on production hosts and respects opt-out and pending consent", ()
   expect(partnerAdMode({ ...base, hostname: "localhost", environment: "development" })).toBe("preview");
 });
 
-it("embeds only the issued creatives in unique-origin documents", () => {
+it("loads only the issued creatives directly from the partner origin", () => {
   for (const [format, id, width, height] of [["rail", 1039165, "160", "600"], ["wide", 1039166, "728", "90"], ["compact", 1039167, "320", "100"]]) {
     const source = partnerAdSource(format);
-    expect(source).toMatch(/^data:text\/html;charset=utf-8,/);
-    const html = decodeURIComponent(source.split(",").slice(1).join(","));
-    const config = JSON.parse(html.match(/new PartnersCoupang.G\((\{[^<]+\})\);/)[1]);
-    expect(config).toEqual({ id, template: "carousel", trackingCode: "AF3219545", width, height, tsource: "" });
-    expect(html).toContain('src="https://ads-partners.coupang.com/g.js"');
-    expect(html).toContain('name="referrer" content="origin"');
-    expect(html).toContain(PARTNER_FRAME_CSP);
-    expect(PARTNER_FRAME_CSP).toContain("default-src 'none'");
+    const url = new URL(source);
+    expect(url.origin).toBe("https://ads-partners.coupang.com");
+    expect(url.pathname).toBe("/widgets.html");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ id: String(id), template: "carousel", trackingCode: "AF3219545", subId: "", width, height, tsource: "" });
+    // No SDK wrapper, page URL, query, analysis data or size handshake.
+    expect(url.hash).toBe("");
   }
   for (const format of [null, "constructor", "toString", "<script>", "unknown"]) {
-    expect(partnerAdDocument(format)).toBeNull();
     expect(partnerAdSource(format)).toBeNull();
   }
 });

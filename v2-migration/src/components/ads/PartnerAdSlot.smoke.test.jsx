@@ -39,7 +39,7 @@ it("a hidden preview returns after resizing and mounts only the fitting creative
   expect(disconnect).toHaveBeenCalledOnce();
 });
 
-it("mounts only the fitting live iframe with a unique-origin data document", () => {
+it("mounts only the fitting live iframe on the partner origin", () => {
   vi.spyOn(adMode, "default").mockReturnValue("live");
   let notify;
   vi.stubGlobal("ResizeObserver", class { constructor(callback) { notify = callback; } observe() {} disconnect() {} });
@@ -50,7 +50,7 @@ it("mounts only the fitting live iframe with a unique-origin data document", () 
   expect(parent.querySelectorAll("iframe")).toHaveLength(1);
   const frame = parent.querySelector("iframe");
   expect(frame.getAttribute("src")).toBe(partnerAdSource("wide"));
-  expect(frame.getAttribute("src")).toMatch(/^data:text\/html/);
+  expect(new URL(frame.getAttribute("src")).origin).toBe("https://ads-partners.coupang.com");
   expect(frame.hasAttribute("srcdoc")).toBe(false);
   expect(frame.getAttribute("sandbox").split(" ")).toEqual(["allow-scripts", "allow-same-origin", "allow-popups", "allow-popups-to-escape-sandbox"]);
   expect(frame.getAttribute("referrerpolicy")).toBe("origin");
