@@ -50,15 +50,21 @@ for (const locale of ["ko", "en"]) {
     expect(errors).toEqual([]);
   });
   }
-  test(`hero uses available width and keeps semantic phrases together (${locale})`, async ({ page }) => {
+  test(`hero keeps readable copy and semantic phrases together (${locale})`, async ({ page }) => {
     await page.goto(`${prefix}/`);
     await page.evaluate(async () => { await document.fonts.ready; });
     const deck = page.locator(".dc-hero__deck");
-    // 설명은 제목과 같은 열을 사용한다. 옆 진입 버튼의 열까지 차지하도록 강제하지 않는다.
+    // 승인된 추상 배경은 제목보다 짧은 본문 열을 쓴다. 부모 폭을 채우도록 강제하면
+    // 넓은 화면에서 줄 길이가 늘어난다. 여유가 있을 때 24–36em의 읽기 폭을 보장한다.
     const message = page.locator(".dc-hero__message");
     const width = await message.evaluate(node => node.clientWidth - parseFloat(getComputedStyle(node).paddingLeft) - parseFloat(getComputedStyle(node).paddingRight));
-    expect(await deck.evaluate(node => node.clientWidth)).toBeGreaterThanOrEqual(width - 1);
+    const fontSize = await deck.evaluate(node => parseFloat(getComputedStyle(node).fontSize));
+    const deckBox = await deck.boundingBox();
     const messageBox = await message.boundingBox();
+    expect(deckBox.width).toBeGreaterThanOrEqual(Math.min(width, 24 * fontSize) - 1);
+    expect(deckBox.width).toBeLessThanOrEqual(36 * fontSize + 1);
+    expect(deckBox.x).toBeGreaterThanOrEqual(messageBox.x - 1);
+    expect(deckBox.x + deckBox.width).toBeLessThanOrEqual(messageBox.x + messageBox.width + 1);
     const entryBox = await page.locator(".dc-hero__entry").boundingBox();
     // 나란한 두 열 또는 위아래 두 행이어야 하며 서로 침범하지 않는다.
     expect(entryBox.x >= messageBox.x + messageBox.width - 1 || entryBox.y >= messageBox.y + messageBox.height - 1).toBe(true);

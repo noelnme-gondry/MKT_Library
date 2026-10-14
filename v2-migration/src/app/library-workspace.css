@@ -1097,7 +1097,7 @@
 .home-preview-evidence { grid-column: 2; grid-row: 1 / 3; min-width: 0; padding-left: 28px; border-left: 1px solid var(--library-border); }
 .home-approved .operations-sample-preview__metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 24px 0 0; padding: 0; border: 0; }
 .home-approved .operations-sample-preview__metric > span { flex-basis: 100%; }
-.home-approved .operations-sample-preview__metric > span { font-size: var(--fs-sm); color: var(--library-muted); }
+.home-approved .operations-sample-preview__metric > span { font-size: var(--fs-base); color: var(--library-muted); }
 .home-approved .operations-sample-preview__metric strong { grid-row: auto; grid-column: auto; font-size: var(--fs-lg); font-weight: 600; text-align: left; line-height: 1.4; white-space: normal; }
 .home-approved .operations-sample-preview__metric b { align-self: center; font-size: var(--fs-base); }
 .home-approved .operations-sample-chart { margin: 0; }
