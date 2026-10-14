@@ -147,7 +147,7 @@ export default function ChecklistDownloadCard({ checklistId, locale = "ko" }) {
   if (!item || !copy) return null;
   return (
     <article className="template-checklist-card">
-      <span>{locale === "en" ? "MARKDOWN CHECKLIST" : "실무 체크리스트"}</span>
+      <span>{locale === "en" ? "Markdown checklist" : "실무 체크리스트"}</span>
       <h3>{copy.title}</h3>
       <p>{copy.desc}</p>
       <div>
