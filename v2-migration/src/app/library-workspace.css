@@ -1353,7 +1353,7 @@
 .brand-hero { position: relative; isolation: isolate; }
 .brand-hero .brand-hero__stage {
   position: relative; isolation: isolate; display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
-  min-height: 420px; padding: 44px 0 52px;
+  padding: 44px 0 32px;
 }
 .brand-hero__art {
   --hero-light: color-mix(in srgb, var(--library-accent) 16%, transparent);
@@ -1392,7 +1392,7 @@ body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--
 .analysis-hub-entry .btn.primary { background: var(--library-action); border-color: var(--library-action); color: var(--library-on-action); }
 #analysis-examples { scroll-margin-top: 88px; }
 @media (max-width: 1100px) {
-  .brand-hero .brand-hero__stage { min-height: 360px; padding-block: 32px 44px; }
+  .brand-hero .brand-hero__stage { padding-block: 32px; }
   .home-approved .dc-hero.brand-hero h1,
   .brand-hero .analysis-hub-intro h1 { font-size: 32px; }
 }
