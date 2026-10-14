@@ -21,6 +21,8 @@ import UiSemantics from "@/components/ds/UiSemantics";
 import GuideAnswer from "@/components/GuideAnswer";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
+import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
+import { isAnalysisAdRoute } from "@/lib/partnerAds";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
@@ -138,6 +140,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />}
+            {isAnalysisAdRoute(routeId) && <PartnerAdSlot placement="analysis-bottom" locale="en" />}
             </article>
           </main>
         </div>

@@ -1,4 +1,5 @@
 import TaskTemplatePaths from "@/components/TaskTemplatePaths";
+import EditorialLayout from "@/components/EditorialLayout";
 import SourceExportGuide from "@/components/ds/SourceExportGuide";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { SITE_URL } from "@/lib/routeMap";
@@ -100,7 +101,7 @@ export default function TemplatesPage() {
   const checklists = ["taxonomy", "postback", "media"];
   const publishedGroups = GROUPS;
   return (
-    <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <EditorialLayout><main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()) }}
@@ -161,6 +162,6 @@ export default function TemplatesPage() {
           </section>
         ))}
       </section>
-    </main>
+    </main></EditorialLayout>
   );
 }

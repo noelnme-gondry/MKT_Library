@@ -23,6 +23,8 @@ import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
+import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
+import { isAnalysisAdRoute } from "@/lib/partnerAds";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
@@ -166,6 +168,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />}
+            {isAnalysisAdRoute(routeId) && <PartnerAdSlot placement="analysis-bottom" />}
             </article>
           </main>
         </div>

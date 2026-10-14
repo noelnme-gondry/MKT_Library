@@ -11,6 +11,8 @@ export const EEA_UK_REGIONS = [
 ];
 
 export const CONSENT_STORAGE_KEY = "gop_consent_v1";
+export const CONSENT_CHANGE_EVENT = "gop:consent-change";
+let transientConsent = null;
 
 // EEA/UK 기본 거부 + 그 외 지역 허용. GTM·GA4 스크립트보다 먼저 실행돼야 의미가 있다.
 export function consentDefaultSnippet() {
@@ -36,6 +38,7 @@ export function looksEeaVisitor(timeZone, language) {
 
 export function readStoredConsent() {
   if (typeof window === "undefined") return null;
+  if (transientConsent) return transientConsent;
   try {
     const value = window.localStorage.getItem(CONSENT_STORAGE_KEY);
     return value === "granted" || value === "denied" ? value : null;
@@ -46,11 +49,14 @@ export function readStoredConsent() {
 
 export function writeStoredConsent(value) {
   if (typeof window === "undefined") return;
+  transientConsent = value;
   try {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, value);
+    transientConsent = null;
   } catch {
     // 저장소를 못 쓰면 이번 세션 선택만 적용된다(동의 자체는 gtag update로 전달됨).
   }
+  window.dispatchEvent(new CustomEvent(CONSENT_CHANGE_EVENT));
 }
 
 export function applyConsent(value) {
