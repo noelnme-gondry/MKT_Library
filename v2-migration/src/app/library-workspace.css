@@ -1350,18 +1350,27 @@
 .dochi-workspace__next-step:hover { color: var(--text-primary); }
 
 /* Quiet, asymmetric light fields. Decoration has no content or layout footprint. */
+.app.is-home #main-content,
+.app #main-content:has(> .marketing-analysis-hub) { container: marketing-landing / inline-size; }
+.app.is-home .content { max-width: none; }
+.decision-console-landing.home-approved,
+.compare-page.marketing-analysis-hub {
+  --hero-gutter: clamp(20px, 3cqi, 64px);
+  width: 100%; max-width: none; margin: 0;
+  padding: clamp(20px, 2cqi, 40px) var(--hero-gutter) 40px;
+}
 .brand-hero { position: relative; isolation: isolate; }
 .brand-hero .brand-hero__stage {
   position: relative; isolation: isolate; display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
-  padding: 44px 0 32px;
+  padding: clamp(20px, 3cqi, 56px) 0 32px;
 }
 .brand-hero__art {
   --hero-light: color-mix(in srgb, var(--library-accent) 16%, transparent);
   --hero-edge: color-mix(in srgb, var(--library-accent) 22%, transparent);
-  position: absolute; inset: 0; z-index: -1; overflow: hidden;
+  position: absolute; inset: 0 calc(-1 * var(--hero-gutter)); z-index: -1; overflow: hidden;
   pointer-events: none; user-select: none;
   background: radial-gradient(ellipse at 84% 85%, var(--hero-light), transparent 58%);
-  mask-image: linear-gradient(90deg, transparent 20%, black 74%), linear-gradient(0deg, transparent, black 16%, black 84%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 18%, black 72%, transparent), linear-gradient(0deg, transparent, black 28%, black 72%, transparent);
   mask-composite: intersect;
 }
 .brand-hero__curve {
@@ -1378,39 +1387,32 @@
 body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--library-accent) 9%, transparent); --hero-edge: color-mix(in srgb, var(--library-accent) 16%, transparent); }
 .home-approved .dc-hero.brand-hero { gap: 0; padding-top: 0; }
 .home-approved .dc-hero.brand-hero .dc-hero__intro,
-.brand-hero .analysis-hub-intro { min-width: 0; width: 100%; padding: 20px 0; margin: 0; max-width: 680px; }
-.home-approved .dc-hero.brand-hero .dc-hero__intro { gap: 28px; align-content: center; }
+.brand-hero .analysis-hub-intro { min-width: 0; width: 100%; padding: clamp(8px, 1.4cqi, 24px) 0; margin: 0; max-width: 48rem; }
+.home-approved .dc-hero.brand-hero .dc-hero__intro { gap: clamp(20px, 2cqi, 32px); align-content: center; }
 .home-approved .dc-hero.brand-hero h1,
-.brand-hero .analysis-hub-intro h1 { max-width: 22ch; margin: 0; font-size: clamp(32px, 3.4vw, 46px); font-weight: 600; line-height: 1.3; letter-spacing: -.045em; }
+.brand-hero .analysis-hub-intro h1 { max-width: 22ch; margin: 0; font-size: clamp(1.75rem, 1.5rem + 1.8cqi, 3.5rem); font-weight: 600; line-height: 1.3; letter-spacing: -.045em; }
 .home-approved .dc-hero.brand-hero .dc-hero__deck,
-.brand-hero .analysis-hub-intro .compare-page__lead { max-width: 540px; margin: 22px 0 0; font-size: var(--fs-md); line-height: 1.8; }
-.brand-hero .analysis-hub-intro .compare-page__lead { max-width: 560px; }
-.analysis-hub-entry { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 16px; }
+.brand-hero .analysis-hub-intro .compare-page__lead { max-width: 34em; margin: clamp(18px, 1.8cqi, 28px) 0 0; font-size: clamp(.875rem, .8rem + .25cqi, 1.125rem); line-height: 1.8; }
+.home-approved .dc-hero.brand-hero .dc-hero__deck p { font-size: inherit; line-height: inherit; }
+.home-approved .dc-hero.brand-hero .dc-hero__actions,
+.analysis-hub-entry { display: flex; flex-wrap: wrap; gap: clamp(8px, 1cqi, 16px); }
+.analysis-hub-entry { margin: clamp(20px, 2cqi, 32px) 0 16px; }
 .brand-hero .analysis-hub-entry .btn,
-.home-approved .dc-hero.brand-hero .dc-action-route { border-radius: var(--radius-md); min-height: 46px; padding: 12px 20px; }
+.home-approved .dc-hero.brand-hero .dc-action-route { width: auto; max-width: 100%; border-radius: var(--radius-md); min-height: 46px; padding: 12px clamp(16px, 1.4cqi, 24px); font-size: clamp(.875rem, .8rem + .2cqi, 1rem); white-space: normal; }
 .analysis-hub-entry .btn { background: var(--library-surface); color: var(--library-text); border-color: var(--library-border); text-decoration: none; }
 .analysis-hub-entry .btn.primary { background: var(--library-action); border-color: var(--library-action); color: var(--library-on-action); }
 #analysis-examples { scroll-margin-top: 88px; }
-@media (max-width: 1100px) {
-  .brand-hero .brand-hero__stage { padding-block: 32px; }
-  .home-approved .dc-hero.brand-hero h1,
-  .brand-hero .analysis-hub-intro h1 { font-size: 32px; }
-}
-@media (max-width: 720px) {
-  .brand-hero .brand-hero__stage { min-height: 0; padding: 20px 0 28px; }
+@container marketing-landing (max-width: 720px) {
+  .brand-hero .brand-hero__stage { padding-bottom: 28px; }
   /* Anchor decoration to the title, not the height of the stacked actions. */
   .brand-hero__heading { position: relative; }
   .brand-hero__art {
-    inset: -28px 0 -12px; opacity: .65;
-    mask-image: linear-gradient(90deg, transparent 12%, black 54%, black 70%, transparent), linear-gradient(0deg, transparent, black 28%, black 72%, transparent);
+    inset-block: -28px -12px; opacity: .65;
   }
   .home-approved .dc-hero.brand-hero .dc-hero__intro,
   .brand-hero .analysis-hub-intro { padding: 8px 0 20px; }
-  .home-approved .dc-hero.brand-hero h1,
-  .brand-hero .analysis-hub-intro h1 { font-size: clamp(28px, 6.4vw, 38px); line-height: 1.3; }
-  .home-approved .dc-hero.brand-hero .dc-hero__deck,
-  .brand-hero .analysis-hub-intro .compare-page__lead { font-size: var(--fs-base); margin-top: 18px; }
+}
+@container marketing-landing (max-width: 480px) {
   .home-approved .dc-hero.brand-hero .dc-action-route,
-  .brand-hero .analysis-hub-entry .btn { padding: 12px 16px; }
-  .analysis-hub-entry { gap: 10px; }
+  .brand-hero .analysis-hub-entry .btn { width: 100%; }
 }
