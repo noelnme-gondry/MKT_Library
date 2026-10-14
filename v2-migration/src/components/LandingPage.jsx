@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
+import HeroArtwork from "@/components/landing/HeroArtwork";
 import { OPERATIONS_PATH, OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
 import { DATA_GUIDE_PATH } from "@/lib/analysisDataGuide";
 import { exampleHref } from "@/lib/exampleLink";
@@ -191,8 +192,8 @@ export default function LandingPage({ locale = "ko", reading }) {
           </article>}
         </div>
       </section>}
-      <section className="dc-hero" aria-labelledby="dc-hero-title">
-        <div className="dc-hero__copy">
+      <section className="dc-hero brand-hero" aria-labelledby="dc-hero-title">
+        <div className="dc-hero__copy brand-hero__stage">
           <header className="dc-hero__intro">
           <div className="dc-hero__message">
           <h1 id="dc-hero-title">
@@ -220,6 +221,7 @@ export default function LandingPage({ locale = "ko", reading }) {
           <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
           </div>
           </header>
+          <HeroArtwork />
         </div>
         <OperationsSamplePreview locale={lang} />
       </section>

@@ -45,8 +45,8 @@ export default defineConfig({
   timeout: 60_000,
   projects: [
     { name: "mobile-320", grepInvert: /@light-en/, use: { viewport: { width: 320, height: 800 } } },
-    { name: "tablet-768", grepInvert: /@light-en/, use: { viewport: { width: 768, height: 1024 } } },
-    { name: "desktop-1440", grepInvert: /@light-en/, use: { viewport: { width: 1440, height: 1000 } } },
+    { name: "tablet-768", grepInvert: /@light-en|@mobile-only/, use: { viewport: { width: 768, height: 1024 } } },
+    { name: "desktop-1440", grepInvert: /@light-en|@mobile-only/, use: { viewport: { width: 1440, height: 1000 } } },
     {
       name: "desktop-light-en",
       grep: /@light-en/,

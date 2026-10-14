@@ -58,7 +58,7 @@ v2-migration/
 ├─ src/lib/              도메인 로직 (analysis-router·data-import·decisionReview…)
 └─ src/app/              App Router ((ko)/·(en)/·blog/)
 ```
-- **검증**: `npm run test:all`(vitest golden+smoke) · `npm run lint`(eslint 0 errors 유지) · `npm run build`
+- **검증**: 변경 범위에 따라 §6.1에서 선택한다. 작은 수정은 관련 테스트·파일 lint·필요한 화면 확인, 큰 변경은 `npm run test:all`·`npm run lint`·필요 시 `npm run build`.
 - **CSS**: Obsidian Flux 토큰(`--bg-1`·`--text-muted`·`--border`)+다크/라이트 **전역**(`globals.css`, `:root`+`body.light-mode`). CSS Modules는 일회성만(토큰 스코핑 불가). Tailwind 미사용.
 - **Supabase**: 현재 운영 연결은 미사용. 주간 리뷰 확장 라이선스 RPC 클라이언트는 선택적 환경 설정 뒤에 준비돼 있으며, 현재 결제는 Toss + PostgreSQL을 사용한다. 분석은 무료이며 보고서 다운로드 등 Pro 범위는 docs/product-ssot.md를 따른다. service_role key 규칙(§2.3) 불변.
 
@@ -135,7 +135,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 ### 6.1 구현 흐름 (PR)
 1. 요청 받음 → 모호하면 옵션·트레이드오프 제시하고 묻기(§2.7).
 2. **시작 전 항상 `git fetch origin main` + `git status`**: 차이 있으면 "pull 후 진행?" 확인. 최신 main 위 **단명 브랜치**(`feat/xxx`·`fix/xxx`·`docs/xxx`) 생성. **장수 브랜치 재사용 금지**(conflict·역행 위험).
-3. 변경 후 **검증 필수**: `npm run test:all` + `npm run lint` + 필요 시 `npm run build`. 순수함수 밖(렌더 분기·상태 배선)은 골든이 못 잡으므로 **스모크 테스트 또는 재현 스크립트**로 보강(§7).
+3. 변경 후 **영향 범위에 맞는 검증 필수**(2026-10-14 사용자 지정): 작은 스타일·카피·국소 수정은 관련 테스트와 수정 파일 lint, 필요한 실제 화면 확인으로 끝낸다. **전체 검사는 기능 추가, 여러 영역에 걸친 동작 변경, 변경량이 많거나 영향 범위를 좁히기 어려운 큰 변경이 있을 때만** `npm run test:all` + `npm run lint`를 실행한다. build는 라우트·import·의존성·배포 산출물 확인이 필요할 때 실행한다. 단순히 작업의 마지막이라는 이유로 전체 검사를 반복하지 않는다. 순수함수 밖(렌더 분기·상태 배선)은 **관련 스모크 테스트 또는 재현 스크립트**로 보강한다(§7). 실행·생략한 범위와 이유를 완료 보고에 남긴다.
    **디자인 변경은 §6.0과 `design.md`에 따라 실제 화면을 검토한다.** 사용자 육안 확인을 구현자의 사전 검토 대신으로 삼지 않는다. 검토 목적이 없는 반복 캡처는 금지하며, 캡처 아티팩트는 실제 UI 결함과 구분한다(§7).
 4. `git add <명시 파일>` + 커밋(§6.3).
 5. push → PR 생성(base `main`). 본문: `## Summary` bullets + `## Test plan` checkboxes.
@@ -156,7 +156,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 
 ## 7. 버그 트리아지 + 알려진 함정
 
-**트리아지 5단계**: ① 증상 확인(스크린샷·콘솔) ② 재현(임시 테스트/스크립트로 실제 데이터 파싱+의심 함수 직접 호출) ③ 근본 원인(line-by-line, edge case: 윤년/0/NaN/빈배열/타입) ④ 방어 코드 + 진단 패널 ⑤ `test:all`+`lint` 재실행 후 commit.
+**트리아지 5단계**: ① 증상 확인(스크린샷·콘솔) ② 재현(임시 테스트/스크립트로 실제 데이터 파싱+의심 함수 직접 호출) ③ 근본 원인(line-by-line, edge case: 윤년/0/NaN/빈배열/타입) ④ 방어 코드 + 진단 패널 ⑤ 관련 회귀 검사와 §6.1의 범위별 검증 후 commit.
 
 ### 이 절을 관통하는 네 가지 (사례마다 다시 적지 않는다)
 
@@ -357,7 +357,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - ❌ 새 라이브러리·프레임워크 사용자 확인 없이 추가
 - ❌ 사용자 데이터를 서버에 전송 / Supabase service_role key 요청·언급
 - ❌ main 직접 push / `--no-verify` / `--force` to main
-- ❌ 검증(`test:all`·`lint`) 없이 commit / 콘솔 에러 무시
+- ❌ §6.1의 영향 범위별 검증 없이 commit / 콘솔 에러 무시
 - ❌ `git add -A`·`git add .` (§2.6) / `.legacy-local/` 접근
 - ❌ 모호한 결정 임의 확정 (2개+ 선택지면 묻기)
 - ❌ 사용자 요청 외 페이지·기능 임의 추가
@@ -608,7 +608,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ## 14. 마지막 점검 체크리스트 (모든 PR 직전)
 
-- [ ] `npm run test:all` 통과 / `npm run lint` 0
+- [ ] §6.1에 따른 관련 검사 통과 / 큰 변경일 때만 전체 검사 / 실행·생략 범위 명시
 - [ ] conflict marker 없음
 - [ ] PR 본문에 Summary + Test plan / 커밋에 Co-Authored-By
 - [ ] main 직접 push 안 함 / `git add` 명시 파일만
