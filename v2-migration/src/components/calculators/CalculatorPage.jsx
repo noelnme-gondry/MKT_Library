@@ -32,8 +32,7 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
 
       <section className="calculator-explainer">
         <div>
-          <span>{isEn ? "HOW TO READ IT" : "결과 읽는 법"}</span>
-          <h2>{isEn ? "Use the answer as a decision boundary" : "계산값을 판단 기준으로 쓰세요"}</h2>
+          <h2>{calculator.guideTitle || (isEn ? "Use the answer as a decision boundary" : "계산값을 판단 기준으로 쓰세요")}</h2>
         </div>
         <div className="calculator-explainer__rows">
           {calculator.guide.map(([label, description]) => (
@@ -50,7 +49,6 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
       </section>
 
       <section className="calculator-faq" aria-label={isEn ? "Frequently asked questions" : "자주 묻는 질문"}>
-        <span>FAQ</span>
         <h2>{isEn ? "Questions before using this number" : "이 숫자를 쓰기 전 확인할 것"}</h2>
         {calculator.faq.map(([question, answer]) => (
           <section data-information-section="" key={question}>

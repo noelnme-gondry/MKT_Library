@@ -49,6 +49,14 @@ export default async function EnglishCalculatorRoute({ params }) {
           acceptedAnswer: { "@type": "Answer", text: answer },
         })),
       },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
+          { "@type": "ListItem", position: 2, name: "Calculators", item: `${SITE_URL}/en/calculator` },
+          { "@type": "ListItem", position: 3, name: calculator.name, item: url },
+        ],
+      },
     ],
   };
   return (

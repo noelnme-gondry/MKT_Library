@@ -2,10 +2,30 @@ import { describe, expect, it } from "vitest";
 import { CALCULATOR_ORDER, calculateMarketingMetric, getAllCalculators } from "./calculators";
 
 describe("marketing calculators", () => {
+  it("calculates ROAS from totals and preserves zero revenue without inventing a denominator", () => {
+    expect(calculateMarketingMetric("roas", { adSpend: "200", revenue: "500" })).toMatchObject({ primary: 2.5, secondary: 0.4 });
+    expect(calculateMarketingMetric("roas", { adSpend: 200, revenue: 0 })).toMatchObject({ primary: 0, secondary: null });
+    for (const value of [null, undefined, "", " ", -1, NaN, Infinity, false, [], {}]) {
+      expect(calculateMarketingMetric("roas", { adSpend: value, revenue: 500 })).toBeNull();
+      expect(calculateMarketingMetric("roas", { adSpend: 200, revenue: value })).toBeNull();
+    }
+    expect(calculateMarketingMetric("roas", { adSpend: 0, revenue: 500 })).toBeNull();
+    expect(calculateMarketingMetric("roas", { adSpend: 1e-300, revenue: 1e300 })).toBeNull();
+  });
   it("keeps every calculator indexable in both locales", () => {
-    expect(CALCULATOR_ORDER).toHaveLength(8);
-    expect(getAllCalculators("ko")).toHaveLength(8);
-    expect(getAllCalculators("en")).toHaveLength(8);
+    expect(CALCULATOR_ORDER.length).toBeGreaterThan(0);
+    expect(new Set(CALCULATOR_ORDER).size).toBe(CALCULATOR_ORDER.length);
+    for (const locale of ["ko", "en"]) {
+      const calculators = getAllCalculators(locale);
+      expect(calculators.map((calculator) => calculator.slug)).toEqual(CALCULATOR_ORDER);
+      for (const calculator of calculators) {
+        expect(calculator.title).toBeTruthy();
+        expect(calculator.description).toBeTruthy();
+        expect(calculator.faq.length).toBeGreaterThan(0);
+        for (const input of calculator.inputs) expect(calculator.labels[input.id]).toBeTruthy();
+        expect(calculateMarketingMetric(calculator.slug, Object.fromEntries(calculator.inputs.map((input) => [input.id, input.defaultValue])))).not.toBeNull();
+      }
+    }
   });
 
   it("converts between CPA and ROAS in both directions", () => {

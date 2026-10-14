@@ -1,9 +1,9 @@
 ---
-title: "Performance Marketing Analysis: Pick the Right First Method"
-description: "Choose between a dashboard, variance decomposition, saturation, A/B testing, incrementality, and MMM based on the question and data you actually have."
+title: "Performance Marketing: Goals, Metrics and Marketing Analysis"
+description: "Connect performance marketing goals and metrics to analysis of performance drops, ROAS and budgets, with data requirements and matching tools."
 date: "2026-08-09"
 slug: "performance-marketing-analysis-order"
-searchTitleTerms: ["Performance Marketing Analysis"]
+searchTitleTerms: ["Performance Marketing", "Analysis"]
 keywords: "performance marketing analysis, marketing data analysis, campaign analysis, MMM data requirements, incrementality analysis, advertising CSV"
 tags: ["Diagnosis", "Analysis Methodology"]
 draft: false
@@ -17,13 +17,54 @@ faq:
     a: "Start with daily spend and conversions to validate the period and scope. Then use variance decomposition to separate channel mix from within-channel efficiency."
   - q: "Can I run MMM as soon as I have a lot of data?"
     a: "No. You need a long weekly channel panel with meaningful spend variation, then a VIF check for collinearity. High collinearity makes channel contributions hard to separate."
-updated: "2026-09-14"
+updated: "2026-10-14"
 ---
-When performance drops, it is tempting to choose a method first: “Should we run MMM?” or “Is this an A/B test?” That can force the data into a method it cannot support. A daily campaign export can find an operating problem quickly, but it cannot prove the net causal effect of advertising by itself.
+Ad spend has produced conversions, yet the next budget decision is still unclear. Installs may not lead to purchases, and a high ROAS does not necessarily mean a campaign is profitable. Performance marketing connects goal setting, measurement, analysis and operating changes.
 
-Choose the first analysis from two things: **the decision you need to make** and **what one row represents**. Get those right, and you can reach an action without starting with the heaviest model.
+This guide explains the meaning, goals and metrics of performance marketing, then selects an analysis from **the decision you need to make** and **what one row represents**. For a worked numerical example, follow the [marketing analysis CSV walkthrough](/blog/marketing-analysis-example).
 
 ![Choose the first marketing analysis from the question and data shape](/blog-assets-en/performance-marketing-analysis-order/analysis-path.svg)
+
+## Define the goal and conversion before choosing an analysis
+
+Performance marketing sets measurable goals such as installs, signups or purchases, then uses observed results to adjust advertising. A platform conversion count is only the starting point: check whether those conversions serve the business goal and whether their cost is sustainable.
+
+For a new-customer purchase campaign, installs alone are insufficient. Align the definition of a new purchase and the reporting window, then review cost per purchase and attributed revenue relative to ad spend. ROAS is a revenue ratio, not profit margin or incremental advertising impact.
+
+Connect **goal and conversion definition → metric review → change analysis → operating action → review on the same basis**. Use the [performance marketing metrics guide](/blog/performance-marketing-metrics) for calculation definitions and [marketing analysis methods and tools](/compare) to choose a path for the question at hand.
+
+## What performance marketing means in practice
+
+Performance marketing sets measurable goals and uses outcomes to adjust marketing activity. In paid acquisition, that connects channel selection, conversion measurement, creative and landing-page tests, budget decisions and analysis. It does not simply mean paying only when a click or conversion occurs.
+
+It is not completely separate from brand marketing either. Brand activity can be measured through reach, search, awareness and business outcomes; purchase-focused ads may also affect later brand perceptions. Define the result and how to measure it rather than relying on the campaign label.
+
+| Business result | Campaign goal | Metrics to inspect | What remains unanswered |
+|---|---|---|---|
+| Acquire users | Installs or signups | CPI or signup CPA | Later use, purchases and retention |
+| Acquire new buyers | Deduplicated first purchases | Purchase CPA and new-customer CAC | Cost scope and repeat-customer exclusion |
+| Grow revenue | Purchase value | ROAS, revenue and contribution | Revenue that would occur without ads |
+| Reactivate customers | Return visits or repeat purchases | Audience-specific CPA and repeat purchase | Organic returns versus advertising lift |
+
+If an install campaign ultimately serves purchases, connect installs to downstream conversion and customer value. Judging it too early on incomplete purchase reporting can confuse conversion delay with weak efficiency.
+
+## A 300% ROAS is not enough to justify scaling
+
+Consider a hypothetical calculation, not an observed customer result. KRW 1 million in ad spend produces 100 purchases and KRW 3 million in attributed revenue. Purchase CPA is KRW 10,000 and ROAS is 300%. Neither metric alone establishes profit.
+
+Assume a 25% contribution margin before advertising. KRW 3 million in revenue contributes KRW 750,000 before subtracting the KRW 1 million ad spend, leaving −KRW 250,000 before fixed costs. Under those assumptions, the advertising break-even ROAS is 1 ÷ 0.25 = 4×, or 400%. Also check how refunds and discounts enter reported revenue.
+
+Use the [ROAS calculator](/calculator/roas) and [break-even ROAS calculator](/calculator/break-even-roas) with your own cost scope. Clearing that threshold does not ensure the next budget increment performs equally well; separately inspect [marginal efficiency and allocation](/blog/budget-marginal-efficiency).
+
+## Five steps in a performance marketing workflow
+
+1. **Goal and audience:** Define first-time versus repeat buyers, the outcome and its time horizon.
+2. **Measurement:** Check event definitions, attribution, currency and reporting delay before combining numbers.
+3. **Execution and comparison design:** Record budget, creative and landing-page changes. Plan experiments before launch when causal impact is the question.
+4. **Analysis and adjustment:** Locate the channels, campaigns or funnel stages where the goal metric changed, then identify possible adjustments.
+5. **Review:** Compare mature periods using unchanged definitions. Separate observed improvement from the causal effect of an action.
+
+The following table helps choose an analysis for step four. Then use the [marketing analysis walkthrough](/blog/marketing-analysis-example) to distinguish observations, hypotheses and actions in your report.
 
 ## The short answer: first analysis by data shape
 

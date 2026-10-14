@@ -16,7 +16,7 @@ faq:
   - q: "Does a ROAS increase after reallocation prove the change worked?"
     a: "It is an observed improvement, not proof of causation. Seasonality, promotions, and competition can change at the same time, so validate important scale decisions with small steps or a control."
 reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+updated: "2026-10-14"
 ---
 When ROAS falls, the instinct is to cut budget. But one blended ROAS number can make you cut a channel that still has efficient room to grow. First separate **immature data, channel movement, and leakage after conversion** before changing spend.
 
@@ -63,3 +63,5 @@ Reallocation is therefore not â€œput everything into the best-looking channel.â€
 4. Save the baseline and review date, then compare an equally long new window.
 
 Do not call a reallocation causal merely because ROAS rose afterward. Validate consequential changes through a comparable control or a small experiment, as described in [incrementality measurement](/blog/incrementality-measurement).
+
+For the wider workflow, see [performance marketing from goals to analysis](/blog/performance-marketing-analysis-order). To match a question and dataset to a tool, use [marketing analysis methods and tools](/compare).

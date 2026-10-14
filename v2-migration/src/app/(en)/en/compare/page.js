@@ -1,12 +1,11 @@
-import Link from "next/link";
+import MarketingAnalysisHub from "@/components/MarketingAnalysisHub";
+import { marketingAnalysisCopy } from "@/lib/marketingAnalysisHub";
 
-import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 
 export async function generateMetadata() {
-  const title = "Marketing analysis method comparisons";
-  const description = "Compare incrementality designs, MMM versus experiments, budget allocation rules, and spreadsheets versus dedicated tools, with guidance on when to use each.";
+  const { title, description } = marketingAnalysisCopy("en");
   const canonical = `${SITE_URL}/en/compare`;
   return {
     title,
@@ -20,20 +19,5 @@ export async function generateMetadata() {
 }
 
 export default function Page() {
-  const pages = COMPARE_SLUGS.map((slug) => getComparePage(slug, "en"));
-  return (
-    <section className="compare-page">
-      <span className="compare-page__eyebrow">Method comparison</span>
-      <h1>Marketing analysis method comparisons</h1>
-      <p className="compare-page__lead">When several methods answer the same question, these pages set out what differs and when to use which. Each one opens with the question and a one-sentence answer.</p>
-      <ul className="compare-page__index">
-        {pages.map((page) => (
-          <li key={page.slug}>
-            <Link href={`/en/compare/${page.slug}`}>{page.title}</Link>
-            <p>{page.answer}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+  return <MarketingAnalysisHub locale="en" />;
 }

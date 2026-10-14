@@ -19,8 +19,26 @@ import { tutorialDuration } from "@/lib/videoTutorials";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { defaultSourceCurrency } from "@/lib/sourceCurrencyPreference";
 import { rememberSourceCurrency } from "@/lib/account/accountClient";
+import { inlineCalculatorForBlog } from "@/lib/contentToolRegistry";
+import CalculatorWorkbench from "@/components/calculators/CalculatorWorkbench";
 
-export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null, example = null, postTitle = "" }) {
+function BlogCalculatorAnalysis({ slug, locale }) {
+  const calculator = inlineCalculatorForBlog(slug);
+  const copy = blogConversionFor(slug, locale);
+  const ref = useBlogCtaView(slug, locale, "article_inline", "calculator");
+  return <aside ref={ref} className="blog-inline-insight blog-practice blog-example" id="blog-practice" tabIndex={-1} aria-labelledby="blog-calculator-title">
+    <h2 id="blog-calculator-title">{copy.action}</h2><p>{copy.preview}</p>
+    <CalculatorWorkbench slug={calculator} locale={locale} />
+    <p><Link href={`${locale === "en" ? "/en" : ""}/calculator/break-even-roas`}>{locale === "en" ? "Check the break-even ROAS for my margin" : "내 이익률로 손익분기 ROAS 확인하기"}</Link></p>
+  </aside>;
+}
+
+export default function BlogCsvAnalysis(props) {
+  if (inlineCalculatorForBlog(props.slug)) return <BlogCalculatorAnalysis slug={props.slug} locale={props.locale || "ko"} />;
+  return <BlogCsvWorkbench {...props} />;
+}
+
+function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, example = null, postTitle = "" }) {
   const en = locale === "en", id = useId(), router = useRouter();
   const [csv, setCsv] = useState(null), [result, setResult] = useState(null), [error, setError] = useState("");
   const [busy, setBusy] = useBlogJourneyBusy();

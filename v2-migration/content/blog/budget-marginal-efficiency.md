@@ -89,3 +89,5 @@ faq:
 
 - 도구: [캠페인 포화도 진단](/tools/campaign-saturation) — 증액 여력이 남았는지 · [소재 피로도 분석](/content/freshness) — 운영 중 소재 피로 신호 확인
 - 용어사전: [한계 CPA·한계 ROAS·응답곡선 등 '한계 지표' 개념 정리](/glossary/marginal-cpa)
+
+분석 순서가 필요하다면 [퍼포먼스 마케팅 실무 흐름](/blog/performance-marketing-analysis-order)을, 보유 데이터에 맞는 도구를 고르려면 [마케팅 분석 방법과 도구](/compare)를 함께 확인하세요.

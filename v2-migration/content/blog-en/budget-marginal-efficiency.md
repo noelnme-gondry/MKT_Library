@@ -89,3 +89,5 @@ No signup · your CSV is processed in the browser · no server storage.
 
 - Tools: [Campaign Saturation Diagnosis](/tools/campaign-saturation) — is there headroom to scale · [Creative Fatigue Analysis](/content/freshness) — check fatigue signals during operation
 - Glossary: [Marginal CPA · Marginal ROAS · response curve — the marginal-metrics hub](/glossary/marginal-cpa)
+
+For the wider workflow, see [performance marketing from goals to analysis](/blog/performance-marketing-analysis-order). To match a question and dataset to a tool, use [marketing analysis methods and tools](/compare).

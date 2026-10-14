@@ -10,6 +10,7 @@ import { blogConversionFor } from "@/lib/blogConversion";
 import BlogConversionEntry, { BlogJourneyProvider } from "./BlogConversionEntry";
 import { blogPracticeFor } from "@/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
+import { inlineCalculatorForBlog } from "@/lib/contentToolRegistry";
 import { buildBlogPracticeDownload } from "@/lib/blogPracticeData";
 import { trackProductEvent } from "@/lib/analytics";
 import Incrementality from "@/components/tools/Incrementality";
@@ -54,7 +55,7 @@ describe("blog CSV to full analysis", () => {
     expect(screen.getByText(locale === "en" ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
     expect(screen.getByLabelText(locale === "en" ? "Holdout start date" : "홀드아웃 시작일").value).toBe(demo.designWindow.start);
   });
-  it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("opens the header sample without a second analyze click: %s/%s", async (slug, locale) => {
+  it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).filter(slug => !inlineCalculatorForBlog(slug)).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("opens the header sample without a second analyze click: %s/%s", async (slug, locale) => {
     const config = BLOG_INSIGHT_PLACEMENTS[slug];
     const practice = blogPracticeFor(slug, locale);
     if (!practice.demoGroup) vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, text: async () => readFileSync(`public${practice.href}`, "utf8") })));
@@ -70,6 +71,18 @@ describe("blog CSV to full analysis", () => {
     expect(state.csvData.importSource).toBe("demo");
     expect(state.isGroupAnalyzed(config.toolId)).toBe(true);
     expect(trackProductEvent).toHaveBeenCalledWith("blog_tool_cta_clicked", expect.objectContaining({ content_slug: slug, placement: "article_entry", source: "demo" }));
+  });
+  it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).filter(inlineCalculatorForBlog).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("answers the article's question with its inline calculator: %s/%s", (slug, locale) => {
+    const en = locale === "en";
+    render(<BlogJourneyProvider><BlogConversionEntry slug={slug} locale={locale} sample toolId={BLOG_INSIGHT_PLACEMENTS[slug].toolId} /><BlogCsvAnalysis slug={slug} locale={locale} /></BlogJourneyProvider>);
+    expect(screen.getByRole("link", { name: blogConversionFor(slug, locale).action }).getAttribute("href")).toBe("#blog-practice");
+    expect(document.getElementById("blog-practice")).toBeTruthy();
+    fireEvent.change(screen.getByRole("spinbutton", { name: en ? /^Ad spend/ : /^광고비/ }), { target: { value: "200" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: en ? /^Attributed revenue/ : /^귀속 매출/ }), { target: { value: "500" } });
+    expect(screen.getByText("250% · 2.50×")).toBeTruthy();
+    expect(screen.getByRole("link", { name: en ? "Analyze budget allocation with a channel CSV" : "채널별 CSV로 예산 배분 분석하기", exact: false }).getAttribute("href")).toBe(`${en ? "/en" : ""}/tools/budget-allocation`);
+    expect(useAppStore.getState().csvData.raw.length).toBe(0);
+    expect(push).not.toHaveBeenCalled();
   });
   it.each(["ko", "en"])("waits for initial device restoration before accepting a %s demo or upload", async locale => {
     useAppStore.setState({ decisionPersistenceEnabled: true, projectsReady: false });

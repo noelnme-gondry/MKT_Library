@@ -103,6 +103,7 @@ export const TOPIC_CLUSTERS = [
       "campaign-anomaly-detection",
       "weekly-marketing-report-template",
       "marketing-report-sheets-bigquery",
+      "marketing-analysis-example",
       "cohort-analysis-guide",
       "funnel-dropoff-analysis",
       "performance-marketer-skills",

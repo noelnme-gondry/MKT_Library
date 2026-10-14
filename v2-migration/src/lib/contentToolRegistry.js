@@ -2,6 +2,7 @@
 // glossary entry. This is deliberately explicit rather than keyword-based:
 // every published topic has one reviewed conversion destination.
 const BLOG_PRIMARY_TOOL = {
+  "marketing-analysis-example": "5-21",
   "simpson-paradox-conversion-rate": "5-29",
   "user-churn-survival-analysis": "5-28",
   "weekly-marketing-report-template": "5-21",
@@ -108,6 +109,7 @@ const GLOSSARY_PRIMARY_TOOL = {
 // 5-18은 이제 매핑 허브와 네 개의 독립 분석 화면으로 분리된다. 콘텐츠의 질문에
 // 맞는 화면으로 바로 보내고, CSV·매핑은 해당 브라우저 세션에서만 공유한다.
 const BLOG_RELATED_GLOSSARY = {
+  "marketing-analysis-example": ["cpi", "cpa", "roas", "incrementality"],
   "simpson-paradox-conversion-rate": ["cvr", "funnel"],
   "user-churn-survival-analysis": ["retention", "cohort", "ltv"],
   "weekly-marketing-report-template": ["cpi", "cpa"],
@@ -198,12 +200,16 @@ export const PUBLISHED_BLOG_GLOSSARY_MAP = BLOG_RELATED_GLOSSARY;
  * 입력으로 받지만 "CPM 뜻"을 찾아온 사람의 질문은 필요 전환율이 아니다.
  * 주제가 겹치는 정도로 넣으면 읽은 내용과 다른 화면이 열린다.
  *
- * 비어 있는 표면(blog)은 폴백 없이 null이다 — 폴백을 두면 무엇이 폴백으로
+ * 대응 계산기가 없는 콘텐츠는 폴백 없이 null이다 — 폴백을 두면 무엇이 폴백으로
  * 떨어졌는지 화면에서도 테스트에서도 안 보인다.
  * 슬러그 실재와 KO/EN 카피는 `contentActionPanel.test.js`가 CALCULATOR_ORDER에서
  * 파생 검사한다.
  * ============================================================ */
 const GLOSSARY_PRIMARY_CALCULATOR = {
+  // 관측 전환율 차이부터 계산하고, 인과 해석·불확실성은 증분 분석에서 확인한다.
+  uplift: "uplift",
+  incrementality: "uplift",
+  "holdout-test": "uplift",
   // LTV·CAC는 입력, 페이백은 출력 — 세 용어가 같은 한 화면에서 답을 받는다.
   cac: "ltv-cac",
   ltv: "ltv-cac",
@@ -224,7 +230,13 @@ const GLOSSARY_PRIMARY_CALCULATOR = {
 // 글은 대부분 인라인 예시가 1차다. 계산기는 글의 핵심 요약 밑 한 줄로만 붙인다.
 // 지표 글: 네이버 검색어에 "cpa roas로 계산"·"cvr cac"가 실제로 있었고(2026-09 서치어드바이저),
 // 요약이 CPA→ROAS 환산을 예로 든다. 숫자 몇 개로 답을 얻은 뒤 본문 예시·CSV로 넘어간다.
+const BLOG_INLINE_CALCULATOR = { "roas-improvement": "roas" };
+export const inlineCalculatorForBlog = slug => BLOG_INLINE_CALCULATOR[slug] || null;
+
 const BLOG_PRIMARY_CALCULATOR = {
+  ...BLOG_INLINE_CALCULATOR,
+  "uplift-holdout-guide": "uplift",
+  "incrementality-measurement": "uplift",
   "performance-marketing-metrics": "cpa-roas-converter",
 };
 

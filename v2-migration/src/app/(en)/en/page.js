@@ -5,15 +5,16 @@ import LandingPage from "@/components/LandingPage";
 import HomeReading from "@/components/HomeReading";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
+import { buildRootMetadata } from "@/lib/siteMetadata";
 
 // EN 랜딩("/en") — KR 홈(app/[[...slug]] home)과 **동일한 셸**로 통일(브랜드·헤더
 // 액션·is-home 스타일 일치). 예전엔 EnLandingHeader(브랜드만·EN토글 없음)를 써 KR과
 // 구조가 달랐던 버그 수정. 셸을 en/layout.js로 빼지 않고 page.js에 인라인하는 이유는
 // 그대로(중첩 레이아웃이 /en/blog에 겹쳐 씌워지는 것 방지).
 export async function generateMetadata() {
-  const title = "Growth Opt Playbook | Performance Marketing Decision Workspace";
-  const description =
-    "Use a campaign CSV to explain performance changes, choose the next action, and review the actual outcome in a free browser-based decision workspace.";
+  const rootMetadata = buildRootMetadata("en");
+  const title = rootMetadata.title.default;
+  const description = rootMetadata.description;
   const canonical = `${SITE_URL}/en`;
   return {
     // absolute: 이 페이지 title이 이미 브랜드 접미사를 포함하므로 layout.js의

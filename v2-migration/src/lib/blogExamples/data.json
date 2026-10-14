@@ -1309,6 +1309,35 @@
   "spark": null,
   "note": null
  },
+ "marketing-analysis-example": {
+  "toolId": "5-21",
+  "source": "weekly-report-campaigns.csv",
+  "ko": {
+   "headline": "설치당 비용이 200원 올랐고, 그중 200원이 Example channel에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,000원 → 1,200원. 비교 기간: 2026-08-31–2026-09-06 / 2026-09-07–2026-09-13."
+  },
+  "en": {
+   "headline": "Cost per install rose by ₩200, and ₩200 of it came from Example channel.",
+   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,000 → ₩1,200. Comparison periods: 2026-08-31–2026-09-06 / 2026-09-07–2026-09-13."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Example channel",
+     "en": "Example channel"
+    },
+    "value": 200,
+    "display": {
+     "ko": "+200원",
+     "en": "+₩200"
+    },
+    "highlight": true,
+    "suffix": "100%"
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
  "marketing-mix-modeling": {
   "toolId": "5-25",
   "source": "demo",

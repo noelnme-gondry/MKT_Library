@@ -48,6 +48,15 @@
 - 도치 인사 안내는 데이터 준비 영역에서 요청해 열 수 있게 하며 홈을 자동으로 가리지 않는다. 업로드·매핑·실행 게이트와 동일 데이터 전달 계약은 그대로 유지한다.
 - EN has equivalent CSV, question and sample entry points, persistent content/workspace navigation and on-demand Dochi help. Existing data gates, storage, settings and exports remain available.
 
+### 1.1b 검색 주제와 분석 진입 (2026-10-14)
+
+- 핵심 검색 주제는 **퍼포먼스 마케팅**과 **마케팅 분석**이다. `/compare`는 마케팅 분석의 질문·필요 데이터·방법·실행 경로를 묶는 대표 페이지이고, `/blog/performance-marketing-analysis-order`는 퍼포먼스 마케팅의 목표 설정·지표 확인·분석·재검토 순서를 설명한다. 기존 URL을 유지하고 서로 연결한다. EN도 같은 역할을 제공한다. 공용 탐색의 이름은 “마케팅 분석” / “Marketing analysis”로 맞춘다.
+- 검색 소개: KO “퍼포먼스 마케팅을 위한 무료 마케팅 분석 도구” / EN “Free marketing analysis tools for performance marketing”. 분석 실행은 무료이며 CSV는 브라우저에서 처리한다. 성과 개선이나 검색 순위 상승을 보장하지 않는다.
+- `/compare`의 질문 선택은 공개 합성 데이터로 계산한 성과 변동·포화도 예시와 직접 입력하는 ROAS 계산을 보여준다. 예시는 실제 고객 성과나 미래 성과 보장이 아니다. 포화도는 배분 결과가 아니라 예산 검토 전의 추정 근거로 표시한다. 결과 옆에 데이터 조건·해석 한계·해당 분석 진입을 함께 둔다. / Question selection shows computed synthetic variance and saturation examples plus an editable ROAS calculation. Samples are neither customer outcomes nor future guarantees. Saturation is estimated evidence before budget review, not an allocation result; keep requirements, limits and the matching analysis entry beside the result.
+- `/blog/marketing-analysis-example`은 한 CSV의 합계·캠페인별 변화·판단 보류·다음 검토를 따라가는 마케팅 분석 실습 글이다. `/compare`의 방법 선택 및 퍼포먼스 마케팅 대표 글과 상호 연결하며, KO/EN에서 같은 공개 예제를 재현한다. / The marketing analysis walkthrough follows totals, campaign changes, withheld conclusions and a next review using the same public CSV in both languages.
+- 분석 입구는 질문 → 필요한 데이터 → 확인할 결과 → 해당 분석 순서로 보여 준다. 예시는 실제 계산값과 합성 데이터 표시를 함께 두고, 예시 보기와 내 CSV 분석을 구분한다. / Entry points connect a question, required data, expected output and the matching analysis; calculated synthetic examples remain distinct from analysis of the user's CSV.
+- ROAS 글에서는 광고비와 귀속 매출로 ROAS를 직접 계산한 뒤 채널별 예산 분석으로 연결한다. ROAS는 매출÷광고비이며 이익률·증분 효과가 아니다. 광고비 0이나 누락·음수·비정상 입력은 계산 불가다. / The ROAS article calculates attributed revenue divided by ad spend before linking to channel budget analysis; this is neither profit nor causal lift. Zero spend and missing, negative or invalid inputs are uncomputable.
+
 ### 1.2 승인 소개문 (그대로 복사해 사용)
 
 판매자 표시 정보(2026-09-09 사용자 제공, 2026-09-14 제공 이미지의 주소 원문 반영): 상호 공드리공작소 · 대표자 신기훈 · 사업자등록번호 856-07-03210 · 주소 서울특별시 동대문구 천호대로41길 26, 402호(용두동, 천우네오젠) · 고객센터 010-8829-9034 · 이메일 gondry.montauk@gmail.com. 주소는 사용자가 제공한 이미지의 원문을 전사했다. 통신판매업 신고번호는 미제공이며 임의 생성하지 않는다. KO/EN 모두 법적 이름과 주소 원문을 보존한다. 코드 사본은 `src/lib/sellerFacts.js`가 소유한다.
@@ -270,6 +279,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 버튼은 다음 화면에서 볼 내용을 말한다. 글과 샘플의 지표가 다르거나 사전 점검 그림을 쓰면 그 범위를 같은 자리에서 밝힌다. / Button copy describes the destination. Disclose different metrics or prerequisite previews beside the example.
 - 모든 발행 글의 진입점은 글별 확인 내용과 다음 행동을 함께 보여 준다. 예시 분석은 글과 연결되는 확인 내용을 상단·본문 초반에서 공유하고 지표 차이를 클릭 전에 밝힌다. 두 질문 점검은 글별 점검 제목과 응답 뒤 이어질 자료를 안내한다. / Every published article pairs a topic-specific check with its next action. Sample entries share their scope at entry and early in the body, disclosing metric differences before the click; two-question entries name their check and the follow-up resource.
 - 본문 이동·샘플 시도·샘플 결과 조회·실파일 선택·실제 분석은 별도 계측한다. 샘플은 실제 분석 활성화와 합산하지 않는다. / Measure section jumps, sample attempts, sample result views, file selection and real analysis separately. Sample use is not real-data activation.
+
+### 파일 없이 하는 업리프트 계산 (2026-10-14)
+
+- 업리프트 계산기는 실험군·대조군에 배정된 전체 인원과 전환 인원을 받아 전환율 차이(%p)와 상대 업리프트(%)를 계산한다. 같은 기간·전환 정의로 집계한 고유 인원을 사용하며, 각 그룹의 전환 인원은 전체 인원을 넘을 수 없다. / The uplift calculator uses assigned participants and unique converters in treatment and control to calculate the conversion-rate difference (percentage points) and relative uplift (%). Use the same observation window and conversion definition; converters cannot exceed participants.
+- 기본 숫자는 예시임을 입력 옆에 표시한다. 빈 값·잘못된 인원은 계산하지 않으며, 대조군 전환율이 0이면 상대 업리프트는 계산 불가로 표시하고 절대 차이는 유지한다. / Label default numbers as an example. Reject missing or invalid counts. With zero control conversions, retain the absolute difference and mark relative uplift unavailable.
+- 결과는 관측 차이이며 유의성·광고의 인과 효과를 판정하지 않는다. 결과 옆에서 한계를 밝히고 증분 분석의 설계·불확실성 점검으로 연결한다. 입력 숫자·결과값은 전송하지 않으며, 사용자가 값을 변경해 유효한 결과가 나온 경우에만 계산기 사용 이벤트를 기록한다. / Results are observed differences, not significance or causal-effect verdicts. State this beside the result and link to incrementality analysis for design and uncertainty checks. Never send input or result values; record calculator use only after a user edit produces a valid result.
 
 ### 5.1.0 결과 읽기와 보조 안내 (2026-09-23)
 

@@ -30,6 +30,7 @@ const WEEKLY_REPORT_PRACTICE = {
 // Editorial examples: one file and equivalent reading instructions for both locales.
 // Numeric examples are verified against these files by editorialExamples.test.js.
 export const BLOG_PRACTICES = {
+  "marketing-analysis-example": WEEKLY_REPORT_PRACTICE,
   "marketing-report-sheets-bigquery": WEEKLY_REPORT_PRACTICE,
   "weekly-marketing-report-template": {
     ...WEEKLY_REPORT_PRACTICE,

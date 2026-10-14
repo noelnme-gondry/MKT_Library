@@ -10,6 +10,7 @@ import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
 import { BLOG_SELF_CHECKS } from "@/lib/blogSelfCheck";
 import BlogConversionEntry from "./BlogConversionEntry";
 import { BLOG_CONVERSION, blogConversionFor, blogExampleFormId } from "@/lib/blogConversion";
+import { inlineCalculatorForBlog } from "@/lib/contentToolRegistry";
 import { blogSelfCheckNext } from "@/lib/blogSelfCheckNext";
 import { blogSituationCheckFor } from "@/lib/blogSituationCheck";
 import { idToSlug } from "@/lib/routeMap";
@@ -24,9 +25,10 @@ describe("topic-specific article entry", () => {
       const copy = blogConversionFor(slug, locale);
       const { container, unmount } = render(<BlogConversionEntry slug={slug} locale={locale} sample />);
       const preview = screen.getByText(copy.preview);
-      const button = screen.getByRole("button", { name: copy.action });
+      const calculator = inlineCalculatorForBlog(slug);
+      const button = screen.getByRole(calculator ? "link" : "button", { name: copy.action });
       expect(preview.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(button.getAttribute("form")).toBe(blogExampleFormId(slug));
+      expect(button.getAttribute(calculator ? "href" : "form")).toBe(calculator ? "#blog-practice" : blogExampleFormId(slug));
       if (copy.note) {
         const note = screen.getByText(copy.note);
         expect(note.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

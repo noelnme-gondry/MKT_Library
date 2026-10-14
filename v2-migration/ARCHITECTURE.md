@@ -190,6 +190,7 @@ v2-migration/
   홈은 `#dochi-upload`와 `/weekly-review`를 주요 진입점으로 둔다. `WeeklyReviewScreen`의 `ReviewLoop`가 비교·결정·다음 검토를 연결하며, 도구의 결정 기록 링크는 `#wr-history`를 열어 저장한 결정으로 바로 이동한다. 리뷰 업로더는 `showToolGuide={false}`로 대시보드 전용 안내를 숨긴다.
 - **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나이고, 그 화면은 이제 `/weekly-review`의 접기 섹션 안에서 렌더된다.
 - **수학/통계 → `src/utils/*Math.js`** (수학 변경 시 대응 `*.test.js` 골든 확인 — 원칙적으로 변경 금지).
+- **파일 없는 계산기 → `lib/calculators.js`**에서 한·영 카피·입력·공개 경로를 파생한다. `utils/upliftCalculator.js`는 배정 인원·고유 전환 인원의 관측 차이만 계산하며 기존 증분 추론 엔진과 분리한다. `CalculatorWorkbench`의 `calculator_used`는 유효한 사용자 입력 뒤에만 발생하고 숫자는 전송하지 않는다.
 - **도구 UI → `src/components/tools/<도구>.jsx`** (§2 표에서 route→파일).
 - **대시보드(5-2) 탭 → `src/components/dashboard/<Tab>.jsx`** (viz·scorecard·pacing·anomaly·ltv·cohort·funnel·segment·seasonality).
 - **전역 상태·IA → `src/store/useDataStore.js`** / **라우트 → `src/lib/routeMap.js`**.
@@ -233,3 +234,5 @@ v2-migration/
 - `lib/blogPractice.js`의 선택적 `comparison` → `BlogCsvAnalysis` → store `analysisHandoff` → `CampaignPvm`; 편집 예시 그림도 같은 기간을 사용한다. 사용자 업로드와 다른 원본 참조에는 적용하지 않는다.
 - `lib/templateCatalog.js`는 필수 역할과 대체 열을 `csvTemplate`·`TOOL_REQUIRED_FIELDS`에서 파생한다. KR/EN 템플릿 상세 layout은 공용 셸과 `main-content`를 제공한다.
 - `lib/sopHighlight.js`는 원본 코드를 한 번 토큰화한 뒤 escape한다. 생성된 span을 다시 치환하지 않아 코드 복사 내용이 유지된다.
+
+- `lib/marketingAnalysisHub.js` owns the `/compare` search-entry questions, data requirements and KO/EN copy; `MarketingAnalysisHub` preserves method guides and links to matching tools. `EditorialLayout` supplies the shared shell for comparison and calculator routes. `contentToolRegistry.inlineCalculatorForBlog` selects in-article calculators; ROAS uses the existing metric-registry formula and never sends inputs to analytics.

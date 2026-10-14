@@ -2,6 +2,7 @@ import { AUTHOR } from "@/lib/authorProfile";
 // 블로그의 "짧은 답"·적용 범위·검토 정보를 원고와 분리한 편집 레지스트리.
 // 검색 메타와 CTA를 섞지 않고, SSR 본문과 JSON-LD가 동일한 답변을 쓰게 한다.
 const KO_ANSWERS = {
+  "marketing-analysis-example": "마케팅 분석은 같은 기준으로 집계한 비용과 성과를 비교하고, 다음에 확인할 대상과 행동을 정하는 과정입니다. 이 실습에서는 비용 70만→84만 원, 설치 700건 유지로 CPI가 1,000→1,200원이 되는 변화를 계산하고 캠페인 A를 먼저 점검합니다. 합성 예제이며 광고의 인과효과나 수익성을 증명하지 않습니다.",
   "simpson-paradox-conversion-rate": "심슨의 역설은 캠페인별 전환율이 모두 올라도 물량이 전환율 낮은 캠페인으로 옮겨 가면 전체 전환율이 떨어지는 현상입니다. A 10%→11%, B 2%→2.5%여도 설치 비중이 80:20에서 25:75로 바뀌면 전체는 8.4%에서 4.6%로 떨어집니다. 변화를 물량 이동(−4.4%p)과 캠페인 안의 변화(+0.9%p)로 나눠 보고하세요.",
   "user-churn-survival-analysis": "유저 이탈 시점은 해지한 사람만 평균하지 말고 아직 남아 있는 사람을 포함한 생존곡선으로 분석합니다. 10명 중 5명이 해지한 예시에서 해지자 평균은 2.8개월이지만 생존곡선의 중앙값은 5개월입니다. 월별 이탈 위험이 높아지는 달보다 한 발 앞서 개입하세요.",
   "weekly-marketing-report-template": "주간 광고 성과 보고서 템플릿은 비교 조건, 관측된 변화, 확인할 가설, 결정과 다음 검토일을 함께 기록합니다. 합성 예제에서 비용은 700,000원에서 840,000원으로 늘고 설치는 700건으로 같아 설치당 비용이 1,000원에서 1,200원으로 상승합니다. 이것만으로 운영 원인을 확정하지 않습니다.",
@@ -58,6 +59,7 @@ const KO_ANSWERS = {
 };
 
 const EN_ANSWERS = {
+  "marketing-analysis-example": "Marketing analysis compares cost and outcomes on consistent definitions, then identifies what to investigate and do next. This synthetic CSV walkthrough raises spend from KRW 700,000 to 840,000 with installs unchanged at 700: CPI rises from 1,000 to 1,200. Investigate campaign A first; this does not establish profitability or causal advertising effects.",
   "simpson-paradox-conversion-rate": "Simpson's paradox is when every campaign's conversion rate rises but the total falls because volume moved to a lower-converting campaign. With A at 10% to 11% and B at 2% to 2.5%, shifting install share from 80:20 to 25:75 drops the total from 8.4% to 4.6%. Report the change as a volume shift (−4.4 pp) and change within campaigns (+0.9 pp).",
   "user-churn-survival-analysis": "Analyze user churn timing with a survival curve that keeps users who have not left yet, instead of averaging only those who churned. In a ten-user example with five cancellations, the churned-only average is 2.8 months but the survival median is 5 months. Act a step ahead of the month where churn risk rises.",
   "weekly-marketing-report-template": "A weekly marketing report template records comparison conditions, observed changes, hypotheses, decisions and review dates. In this synthetic example, spend rises from KRW 700,000 to 840,000 while installs stay at 700, raising CPI from 1,000 to 1,200. These observations do not establish the operational cause.",

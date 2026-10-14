@@ -17,9 +17,9 @@ export const SERP_TITLE_EXPERIMENTS = Object.freeze([
     controlTitle: "업리프트(Uplift) 뜻 | 광고 순수 증가분",
     candidateTitle: "업리프트(Uplift) 뜻과 계산법: 절대·상대 리프트 차이",
     changedFields: Object.freeze(["title"]),
-    // 검색어의 일반 뜻·광고 의미를 구분하고 설명·본문·FAQ를 보강했다.
-    // 제목은 control 그대로이며 새 편집 전 표본으로 제목 실험을 열지 않는다.
-    lastMaterialChange: "2026-10-08",
+    // 파일 없는 계산기를 상단 행동·본문에 연결했다. 제목은 control 그대로이며
+    // 새 본문·행동 연결 이전 표본으로 제목 실험을 열지 않는다.
+    lastMaterialChange: "2026-10-14",
     status: "collecting_baseline",
   }),
   Object.freeze({
@@ -31,9 +31,9 @@ export const SERP_TITLE_EXPERIMENTS = Object.freeze([
     controlTitle: "인크리멘탈 뜻 | Incrementality·증분성",
     candidateTitle: "인크리멘탈 뜻·인크리멘탈리티 뜻 | Incrementality 증분성 측정법",
     changedFields: Object.freeze(["title"]),
-    // incremental과 incrementality를 구분하고 설명·본문·FAQ를 보강했다.
-    // 제목은 control 그대로 — 위 uplift 항목과 같은 이유다.
-    lastMaterialChange: "2026-10-08",
+    // 업리프트 계산기를 1차 행동으로 연결했다. 제목은 control 그대로이며
+    // 이전 방문 경로의 표본과 새 기준선을 섞지 않는다.
+    lastMaterialChange: "2026-10-14",
     status: "collecting_baseline",
   }),
 ]);

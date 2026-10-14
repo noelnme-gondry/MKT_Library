@@ -44,6 +44,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `review_history_opened` | 리뷰 상단의 저장된 결정 바로가기 선택 | `placement=review_header`, `locale` |
 | `weekly_review_export` | 보고서 복사 완료 또는 인쇄 요청 | `download_type`, `state=completed|requested`, `interaction_source`, `locale` |
 | `calculator_entry_clicked` | 홈 또는 `/start`에서 마케팅 지표 계산기 선택 | `interaction_source=landing|start`, `placement`, `locale` |
+| `calculator_used` | 사용자가 입력을 변경한 뒤 유효한 계산 결과가 나온 첫 시점. 기본 예시의 자동 계산·불완전한 입력은 제외. 페이지 런타임에서 계산기·언어별 1회이며 입력 숫자·결과값은 보내지 않는다 | `tool_id`(후속 분석 도구), `content_slug`(계산기 slug), `content_type=calculator`, `placement=calculator_input`, `state=calculated`, `locale` |
 | `diagnose_entry_clicked` | 홈 또는 `/start`에서 성과 문제 진단 선택 | `interaction_source=landing|start`, `placement`, `locale` |
 | `data_import_start` | CSV/XLSX 선택 또는 Google Sheets 불러오기 시작 | `tool_id`, `interaction_source`, `locale` |
 | `data_import_success` | CSV/XLSX/Sheets 파싱 성공 | `tool_id`, `row_count`, `column_count`, `mapped_count`, `locale` |
@@ -123,6 +124,11 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
   - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
 - 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
+- 콘텐츠→계산기: `blog_tool_cta_clicked(tool_id=calculator)` → `journey_page_viewed(scope=calculator)` → `calculator_used` → `blog_tool_cta_clicked(content_type=calculator)` → `tool_view`. 콘텐츠 클릭의 `content_slug`는 글·용어, 사용 이벤트의 `content_slug`는 계산기다. 사용자·세션 순서를 기준으로 연결하고 이름이 같은 문자열끼리 합산하지 않는다. 입력 변경은 예시 조작일 수도 있으므로 실제 데이터 분석 활성화로 세지 않는다. 배포 후 실제 수신을 별도로 확인한다.
+- 핵심 검색 진입(`/compare`): 실제 보이는 질문별 CTA는 `blog_cta_viewed`, 도구 선택은 `blog_tool_cta_clicked`에 `content_type=compare`, `content_slug=marketing-analysis`, `placement=analysis_question`을 보낸다. 직접 선택한 도구·언어에만 기존 30분 귀속을 적용한다. 계산기·`/start` 경로를 도구의 직접 전환으로 세지 않는다.
+- `/compare` 안의 ROAS 입력·계산 후 도구 클릭은 `content_type=compare`, `content_slug=marketing-analysis`, `placement=analysis_preview`로 원래 진입을 유지한다. `calculator_used`는 계산기·진입 콘텐츠·언어별 첫 유효 입력 변경만 센다. 예시 질문 전환이나 기본값 노출은 사용·활성화로 기록하지 않는다. 입력값은 전송하지 않는다.
+- 블로그의 `blog_section_opened(state=own_csv)`는 업로드 영역으로 이동한 클릭일 뿐이다. ROAS 글의 `state=calculator`는 본문 계산기로 이동한 클릭이다. 업로드·분석 완료로 세지 않는다.
+- 배포 전후 비교는 GSC의 ‘퍼포먼스 마케팅’, ‘마케팅 분석’ 검색어군별 노출·클릭·평균 게재순위를 해당 랜딩 페이지별로 보고, GA의 Organic Search 랜딩별 `real_result_viewed` 사용자 비율을 별도로 본다. GSC 검색어와 GA 개인 사용자를 직접 연결할 수 없으므로 키워드별 전환율로 단정하지 않는다. 샘플 결과(`blog_sample_result_viewed`)·계산기 사용·실제 데이터 분석을 각각 보고한다. 작은 표본은 건수도 병기한다.
 - 가져오기 실패: `data_import_start` → `data_import_failed(state별)`
 - 분석 차단: `data_import_success` → `analysis_blocked(state별)`
 - 판단→재방문: `decision_record_added` → `decision_inbox_viewed` → `decision_review_completed`

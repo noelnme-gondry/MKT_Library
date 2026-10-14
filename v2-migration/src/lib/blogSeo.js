@@ -1,6 +1,7 @@
 // 검색 의도에 맞춘 블로그 표기층. 원고 파일을 다시 쓰지 않고도 제목·요약을
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
+  "marketing-analysis-example": "마케팅 분석 방법: CSV 한 장으로 따라 하는 실무 예제",
   "simpson-paradox-conversion-rate": "심슨의 역설: 캠페인은 다 올랐는데 전체 전환율이 떨어질 때",
   "user-churn-survival-analysis": "유저 이탈 시점 분석: 생존곡선으로 떠나는 때 찾기",
   "weekly-marketing-report-template": "주간 광고 성과 보고서 템플릿: 숫자에서 다음 행동까지",
@@ -45,7 +46,7 @@ const KO_TITLES = {
   "offline-ad-online-impact": "TV·오프라인 광고의 온라인 효과 측정법",
   "performance-marketer-skills": "퍼포먼스 마케터 필요 역량: 실무 스킬 쌓는 순서",
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표 총정리: CTR·CVR·CPI·CPA·ROAS 보는 순서",
-  "performance-marketing-analysis-order": "퍼포먼스 마케팅 데이터 분석: 가진 데이터로 뭘 먼저 볼까",
+  "performance-marketing-analysis-order": "퍼포먼스 마케팅이란? 목표·지표·분석부터 운영 개선까지",
   "postback-integration-guide": "포스트백 오류 진단: 설치 0·전환 누락 원인 찾기",
   "retargeting-reengagement-guide": "리타겟팅 성과가 좋아 보이는 이유: UA 혼입 진단",
   "roas-improvement": "ROAS 하락 원인과 개선 방법: 예산 줄이기 전 볼 4가지",
@@ -56,6 +57,7 @@ const KO_TITLES = {
 };
 
 const EN_TITLES = {
+  "marketing-analysis-example": "Marketing Analysis: A Practical CSV Walkthrough",
   "simpson-paradox-conversion-rate": "Simpson's Paradox: Every Campaign Improved, Yet Conversion Fell",
   "user-churn-survival-analysis": "User Churn Timing: Find When Users Leave With Survival Curves",
   "weekly-marketing-report-template": "Weekly Marketing Report Template: From Metrics to Decisions",
@@ -76,7 +78,7 @@ const EN_TITLES = {
   "multicollinearity-mmm-guide": "Multicollinearity Before MMM: How to Read High VIF",
   "performance-marketer-skills": "Performance Marketer Skills: What to Learn, In Order",
   "performance-marketing-metrics": "Performance Marketing Metrics: Read CTR, CVR, CPA, and ROAS in Order",
-  "performance-marketing-analysis-order": "Performance Marketing Analysis: Choose the Right Method",
+  "performance-marketing-analysis-order": "Performance Marketing: Goals, Metrics and Analysis",
   "aha-moment-retention": "How to Find the Aha Moment: Early Actions and Retention",
   "apple-search-ads-guide": "Apple Search Ads Keyword Optimization: Terms, Negatives, Bids",
   "asa-keyword-expansion": "ASA Keyword Expansion: When to Promote Discovery to Exact",
@@ -131,7 +133,7 @@ const KO_H1 = {
   "funnel-dropoff-analysis": "전환율이 낮을 때 어디부터 개선해야 할까?",
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표, 어떤 순서로 봐야 할까?",
   "roas-improvement": "ROAS가 떨어졌을 때 무엇부터 봐야 할까?",
-  "performance-marketing-analysis-order": "내 데이터로 어떤 분석부터 할 수 있을까?",
+  "performance-marketing-analysis-order": "퍼포먼스 마케팅, 목표와 지표를 분석으로 연결하는 순서",
   "incrementality-measurement": "광고가 실제로 만든 전환은 얼마일까?",
   "attribution-data-mismatch": "GA4와 광고 매체의 전환수가 왜 다를까?",
   "store-conversion-drop-diagnosis": "앱스토어 전환율이 떨어졌을 때 어디를 봐야 할까?",
@@ -158,7 +160,7 @@ const EN_H1 = {
   "funnel-dropoff-analysis": "Where Should You Fix a Low Conversion Rate?",
   "performance-marketing-metrics": "Which Marketing Metric Should You Read First?",
   "roas-improvement": "What Should You Check When ROAS Falls?",
-  "performance-marketing-analysis-order": "Which Analysis Can Your Data Actually Support?",
+  "performance-marketing-analysis-order": "Performance Marketing: From Goals and Metrics to Analysis",
   "incrementality-measurement": "How Much of That Conversion Did Ads Actually Create?",
   "attribution-data-mismatch": "Why Don't GA4 and Your Ad Platform Agree?",
   "store-conversion-drop-diagnosis": "Where to Look When App Store Conversion Falls",

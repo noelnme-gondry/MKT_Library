@@ -140,12 +140,12 @@ describe("answer link placement", () => {
     );
     expect(container.querySelector(".content-action-panel")).toBeNull();
     const link = container.querySelector(".content-answer__action a");
-    expect(link?.getAttribute("href")).toBe(locale === "en" ? "/en/tools/budget-allocation" : "/tools/budget-allocation");
+    expect(link?.getAttribute("href")).toBe(locale === "en" ? "/en/calculator/roas" : "/calculator/roas");
 
     clickWithoutNavigation(link);
     expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
-      tool_id: "5-3",
-      placement: "article_answer",
+      tool_id: "calculator",
+      placement: "article_answer_calculator",
       locale,
     }));
   });
@@ -264,5 +264,19 @@ describe("glossary calculator-first CTA", () => {
     expect(PRIMARY_CALCULATOR_MAPS.glossary.ecpi).toBeUndefined();
     const { container } = render(<ContentActionPanel term={{ slug: "ecpi" }} />);
     expect(container.querySelector(".content-action-panel__cta")?.getAttribute("href")).toBe("/dashboard");
+  });
+});
+
+describe("content answer calculator links", () => {
+  const cases = Object.entries(PRIMARY_CALCULATOR_MAPS).flatMap(([type, registry]) =>
+    Object.entries(registry).flatMap(([slug, calculator]) =>
+      ["ko", "en"].map((locale) => [type, slug, calculator, locale])));
+
+  it.each(cases)("%s/%s opens %s from the %s answer", (type, slug, calculator, locale) => {
+    const content = type === "glossary" ? { term: { slug } } : { post: { slug } };
+    render(<ContentActionPanel {...content} locale={locale} placement="article_answer" />);
+    const link = screen.getByRole("link");
+    expect(link.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/calculator/${calculator}`);
+    expect(link.textContent).toContain(getCalculator(calculator, locale).name);
   });
 });
