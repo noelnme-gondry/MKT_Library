@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { measureDesignRules } from "./support/designRules";
 
 for (const locale of ["ko", "en"]) {
-  test(`mobile sample entry and readable evidence (${locale})`, async ({ page }) => {
+  test(`mobile sample entry and readable evidence (${locale})`, { tag: "@mobile-only" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     const prefix = locale === "en" ? "/en" : "";
     await page.goto(prefix || "/");

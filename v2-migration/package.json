@@ -14,6 +14,8 @@
     "test": "vitest run --project golden",
     "test:smoke": "vitest run --project smoke",
     "test:all": "vitest run",
+    "test:changed": "vitest run --changed origin/main",
+    "test:related": "vitest related --run",
     "test:e2e": "playwright test",
     "test:e2e:desktop": "playwright test --project=desktop-1440",
     "test:e2e:headed": "playwright test --project=desktop-1440 --headed"

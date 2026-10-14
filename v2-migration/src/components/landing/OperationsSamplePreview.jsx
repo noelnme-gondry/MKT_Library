@@ -37,6 +37,10 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   const date = index => sample.dates.at(index).slice(5).replace("-", ".");
   const pct = value => `${value > 0 ? "+" : ""}${fmtPct(value)}`;
   const tone = value => value > 0 ? "bad" : value < 0 ? "good" : "neutral";
+  const showBudget = () => {
+    setView("budget");
+    tabsRef.current.querySelectorAll('[role="tab"]')[1].focus();
+  };
   const creativeColumns = [
     { key: "creative", label: tr("소재", "Creative"), fmt: name => <span className="operations-sample-creative__name"><strong>{name}</strong></span> },
     { key: "cpr", label: tr("CPI · 기존 대비", "CPI · vs established"), align: "right", fmt: (value, row) => <span className="operations-sample-creative__result"><strong>{money(value)}</strong><small data-tone={tone(row.vsEstablishedPct)}>{row.vsEstablishedPct == null ? tr("비교 불가", "Not comparable") : pct(row.vsEstablishedPct / 100)}</small></span> },
@@ -52,9 +56,18 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
     </div>
     <div className="operations-sample-preview__body">
     <section className="operations-sample-preview__campaigns" role="tabpanel" id={`${id}-panel-campaigns`} aria-labelledby={`${id}-tab-campaigns`} tabIndex={0} hidden={view !== "campaigns"}>
-    <h3 id="home-campaign-title" className="sr-only">{tr("캠페인별 설치 단가", "Campaign cost per install")}</h3>
+    <div className="home-preview-story">
+    <h3 id="home-campaign-title">{tr("전체 평균 뒤의 캠페인 차이", "Look beyond the overall average")}</h3>
     <div className="operations-sample-preview__metric"><span>{tr("전체 CPI", "Portfolio CPI")}</span>
       <strong>{money(sample.previous.cpr)} → {money(sample.current.cpr)}</strong><b data-tone={tone(change)}>{pct(change)}</b></div>
+    <p>{tr("캠페인을 선택하면 최근 7일의 변화와 일별 추세를 함께 볼 수 있습니다.", "Select a campaign to see its seven-day change alongside its daily trend.")}</p>
+    <div className="home-preview-story__selection" aria-live="polite" aria-atomic="true">
+      <h4>{campaign.name}</h4>
+      <p>{tr("최근 CPI", "Recent CPI")} <strong>{money(campaign.current.cpr)}</strong></p>
+      <p>{tr("직전 7일 대비", "Versus the prior seven days")} <strong data-tone={tone(campaign.changePct)}>{pct(campaign.changePct / 100)}</strong></p>
+    </div>
+    </div>
+    <div className="home-preview-evidence">
     <figure className="operations-sample-chart" aria-label={tr("캠페인 일별 CPI 추세와 직전·최근 비교", "Campaign daily CPI trend and period comparison")}>
       <figcaption className="home-trend-heading"><strong>{campaign.name}</strong><b data-tone={tone(campaign.changePct)}>{tr("최근 7일", "Recent 7 days")} {pct(campaign.changePct / 100)}</b>
         <div className="home-trend-window" role="group" aria-label={tr("그래프 범위", "Chart window")}>
@@ -77,9 +90,11 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
       </div>)}</dl>
     </figure>
     <p className="home-sample-context">{tr("캠페인 이름을 눌러 추세를 바꿔 보세요. CPI는 낮을수록 효율적입니다.", "Select a campaign name to explore its trend. Lower CPI is better.")}</p>
+    </div>
+    <button type="button" className="home-preview-story__next" onClick={showBudget}>{tr("같은 예산으로 조정안 보기", "Explore a plan for the same budget")}</button>
     </section>
     <section className="operations-sample-preview__budget" role="tabpanel" id={`${id}-panel-budget`} aria-labelledby={`${id}-tab-budget`} tabIndex={0} hidden={view !== "budget"}>
-      <h3 id="home-budget-title" className="sr-only">{tr("동일 예산의 조정안", "A plan for the same budget")}</h3>
+      <h3 id="home-budget-title">{tr("같은 예산을 다르게 나누면", "Put the same budget to a different plan")}</h3>
       {sample.plan.ok ? <>
         <dl className="operations-sample-budget__metrics">
           <div><dt>{tr("하루 총 예산", "Total daily budget")}</dt><dd>{money(sample.plan.totalBudget)}</dd></div>
@@ -94,7 +109,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
       </> : <p role="status">{tr("이 데이터에서는 예산 조정안을 추정할 수 없습니다.", "A budget plan cannot be estimated from this data.")}</p>}
     </section>
     <section className="operations-sample-preview__creatives" role="tabpanel" id={`${id}-panel-creatives`} aria-labelledby={`${id}-tab-creatives`} tabIndex={0} hidden={view !== "creatives"}>
-      <h3 id="home-creative-title" className="sr-only">{tr("새로 관측된 소재", "First-observed creatives")}</h3>
+      <h3 id="home-creative-title">{tr("새 소재, 같은 캠페인의 기존 소재와 비교", "New creatives, compared within the same campaign")}</h3>
       <p className="operations-sample-creative__summary">{tr(`첫 관측 소재 ${sample.newCreatives.length}개`, `${sample.newCreatives.length} first-observed creatives`)}</p>
       <DataTable columns={creativeColumns} rows={sample.newCreatives} rowKey={row => row.id} ariaLabel={tr("첫 관측 소재의 설치 단가와 기존 소재 비교", "First-observed creative CPI versus established creatives")} />
       <p className="operations-sample-creative__scroll-hint">{tr("표를 옆으로 밀어 전체 항목을 확인하세요.", "Scroll the table sideways to see all columns.")}</p>

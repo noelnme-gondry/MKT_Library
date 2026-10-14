@@ -27,7 +27,7 @@ tools:
 
 1. 요청 → 모호하면 `AskUserQuestion`(2~4 옵션 + 트레이드오프).
 2. Read → Edit/Write. **관련 없는 파일·코드 전체 덮어쓰기·들여쓰기 변경 절대 금지, Delta만.**
-3. **검증 필수**: `npm run test:all`(vitest golden+smoke) · `npm run lint`(eslint 0) · 필요 시 `npm run build`. 순수함수 밖(렌더 분기·상태 배선)은 골든이 못 잡으므로 스모크나 재현 스크립트로 보강(AGENTS.md §7).
+3. **영향 범위별 검증 필수**: `AGENTS.md §6.1`을 따른다. 작은 스타일·카피·국소 수정은 관련 테스트·수정 파일 lint·필요한 화면 확인으로 종료한다. 기능 추가·여러 영역의 동작 변경·변경량이 많은 큰 변경에만 전체 검사를 실행한다. build는 배포 산출물 확인이 필요할 때만 실행하며, 작업 마지막이라는 이유로 전체 검사를 반복하지 않는다. 렌더 분기·상태 배선은 관련 스모크나 재현으로 보강한다.
    **preview MCP 스크린샷·스크롤 육안검증은 생략** — Gondry님이 브라우저에서 직접 확인(§6.1).
 4. `git add <명시 파일>` + commit(Co-Authored-By).
 5. **동기화 및 main 직접 push 금지** — 시작 전 `git fetch`/`status` 확인, 리모트와 다르면 "pull?" 묻기. 최신 main에서 단명 브랜치 → PR → 머지 후 삭제(§6.1).
@@ -93,7 +93,7 @@ tools:
 
 # 마지막 체크 (모든 커밋 직전)
 
-- [ ] `npm run test:all` 통과 / `npm run lint` 0
+- [ ] `AGENTS.md §6.1`에 따른 관련 검사 통과 / 큰 변경일 때만 전체 검사 / 실행·생략 범위 명시
 - [ ] conflict marker 없음
 - [ ] `git add` 명시 파일만 / 사용자 요청 범위 안
 - [ ] 외부 노출 변경이면 KR·EN 함께(§2.11)

@@ -34,7 +34,7 @@ function inputSuffix(type, locale) {
   return locale === "en" ? "currency" : "원";
 }
 
-export default function CalculatorWorkbench({ slug, locale = "ko", entry = null }) {
+export default function CalculatorWorkbench({ slug, locale = "ko", entry = null, showToolLink = true }) {
   const calculator = getCalculator(slug, locale);
   const [values, setValues] = useState(() => Object.fromEntries(
     calculator.inputs.map((input) => [input.id, input.defaultValue]),
@@ -69,7 +69,7 @@ export default function CalculatorWorkbench({ slug, locale = "ko", entry = null 
     });
     observer.observe(target);
     return () => observer.disconnect();
-  }, [calculator.toolId, locale, contentSlug, contentType, placement, result]);
+  }, [calculator.toolId, locale, contentSlug, contentType, placement, result, showToolLink]);
 
   return (
     <section className="calculator-workbench" aria-label={isEn ? "Calculator inputs and result" : "계산기 입력과 결과"}>
@@ -119,7 +119,7 @@ export default function CalculatorWorkbench({ slug, locale = "ko", entry = null 
               <span>{isEn ? "Formula" : "계산식"}</span>
               <code>{calculator.formula}</code>
             </div>
-            <Link ref={toolLinkRef} href={toolHref} onClick={() => trackProductEvent("blog_tool_cta_clicked", eventParams)}>{calculator.toolCta} <b aria-hidden>→</b></Link>
+            {showToolLink && <Link ref={toolLinkRef} href={toolHref} onClick={() => trackProductEvent("blog_tool_cta_clicked", eventParams)}>{calculator.toolCta} <b aria-hidden>→</b></Link>}
           </>
         ) : (
           <p>{calculator.inputError || (isEn ? "Check the inputs. Percentages must leave a positive margin and all denominators must be above zero." : "입력값을 확인하세요. 이익률은 0보다 커야 하고, 목표 이익률은 매출총이익률보다 낮아야 합니다.")}</p>

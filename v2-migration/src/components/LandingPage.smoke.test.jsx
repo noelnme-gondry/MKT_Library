@@ -114,6 +114,8 @@ describe("LandingPage render smoke", () => {
       expect(node.querySelector("[data-tone]").dataset.tone).toBe(currentCpi > priorCpi ? "bad" : "good");
       fireEvent.click(node.querySelector("button"));
       expect(document.querySelector(".home-trend-heading > strong").textContent).toBe(name);
+      expect(document.querySelector(".home-preview-story__selection h4").textContent).toBe(name);
+      expect(document.querySelector(".home-preview-story__selection").textContent).toContain(fmtCurrency(currentCpi, { currency: "KRW", precise: true }));
     }
     expect(document.querySelector(".operations-sample-chart__legend").textContent).toContain("09.30–10.06");
   });
@@ -138,7 +140,9 @@ describe("LandingPage render smoke", () => {
     const brief = prepareOperationsBrief({ rows: getMappedRows(data), periods, metric: "installs", mappedFields: Object.values(data.mapping) });
     const plan = planOperationsBudget(brief, { changeLimit: 0.2, currency: "KRW" });
     expect(plan.ok).toBe(true);
-    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }));
+    fireEvent.click(getByRole("button", { name: locale === "en" ? "Explore a plan for the same budget" : "같은 예산으로 조정안 보기", exact: true }));
+    expect(document.activeElement).toBe(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }));
+    expect(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }).getAttribute("aria-selected")).toBe("true");
     const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
     const metrics = [...document.querySelectorAll(".operations-sample-budget__metrics dd")];
     const recent = data.raw.filter(row => row.Date >= periods.current.start && row.Date <= periods.current.end);
