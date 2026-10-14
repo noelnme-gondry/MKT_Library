@@ -18,7 +18,10 @@ export default function MarketingAnalysisHub({ locale = "ko" }) {
     <section className="analysis-hub-hero brand-hero" aria-labelledby="analysis-hub-title">
     <div className="brand-hero__stage">
     <div className="analysis-hub-intro">
+    <div className="brand-hero__heading">
     <h1 id="analysis-hub-title">{copy.title}</h1>
+    <HeroArtwork />
+    </div>
     <p className="compare-page__lead">{copy.intro}</p>
     <div className="analysis-hub-entry">
       <Link className="btn primary" href="#analysis-examples">{locale === "en" ? "Explore the examples" : "예시로 분석해 보기"}</Link>
@@ -26,7 +29,6 @@ export default function MarketingAnalysisHub({ locale = "ko" }) {
     </div>
     <p className="analysis-hub-assurance">{locale === "en" ? "Free analysis without signing up. CSVs stay in your browser." : "가입 없이 무료 분석. CSV는 브라우저에서 처리합니다."}</p>
     </div>
-    <HeroArtwork />
     </div>
     <MarketingAnalysisPreview locale={locale} examples={Object.fromEntries(MARKETING_ANALYSIS_TASKS.filter(task => !task.calculator).map(task => [task.slug, blogExamples[task.slug]]))} />
     </section>

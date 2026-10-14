@@ -196,10 +196,13 @@ export default function LandingPage({ locale = "ko", reading }) {
         <div className="dc-hero__copy brand-hero__stage">
           <header className="dc-hero__intro">
           <div className="dc-hero__message">
+          <div className="brand-hero__heading">
           <h1 id="dc-hero-title">
             <span>{T.title}</span>{" "}
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
+          <HeroArtwork />
+          </div>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
           </div>
           <div className="dc-hero__entry">
@@ -221,7 +224,6 @@ export default function LandingPage({ locale = "ko", reading }) {
           <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
           </div>
           </header>
-          <HeroArtwork />
         </div>
         <OperationsSamplePreview locale={lang} />
       </section>
