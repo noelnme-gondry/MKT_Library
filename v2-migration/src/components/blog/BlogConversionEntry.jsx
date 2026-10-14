@@ -5,6 +5,7 @@ import { blogConversionFor, blogExampleFormId } from "@/lib/blogConversion";
 import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
 import { blogSelfCheckNext } from "@/lib/blogSelfCheckNext";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { inlineCalculatorForBlog } from "@/lib/contentToolRegistry";
 
 export function useBlogCtaView(slug, locale, placement, toolId) {
   const ref = useRef(null);
@@ -36,6 +37,7 @@ export function BlogSampleButton({ slug, locale = "ko", placement = "article_ent
   const [busy] = useBlogJourneyBusy();
   const preparing = useAppStore(s => s.projectSwitching || (s.decisionPersistenceEnabled && !s.projectsReady && !s.projectError));
   const copy = blogConversionFor(slug, locale);
+  if (inlineCalculatorForBlog(slug)) return <a className="btn primary" href="#blog-practice" onClick={() => trackProductEvent("blog_section_opened", { content_slug: slug, content_type: "blog", locale, placement, state: "calculator" })}>{copy.action}</a>;
   return <button type="submit" form={blogExampleFormId(slug)} className="btn primary" data-placement={placement} disabled={disabled || busy || preparing}>
     {busy ? (locale === "en" ? "Loading…" : "불러오는 중…") : copy?.action || (locale === "en" ? "Open example results" : "예시 결과 보기")}
   </button>;
@@ -45,13 +47,14 @@ export default function BlogConversionEntry({ slug, locale = "ko", sample, toolI
   const copy = blogConversionFor(slug, locale);
   const check = sample ? null : blogSelfCheckFor(slug, locale);
   const next = sample ? null : blogSelfCheckNext(slug, locale);
-  const ref = useBlogCtaView(slug, locale, "article_entry", toolId);
+  const ref = useBlogCtaView(slug, locale, "article_entry", inlineCalculatorForBlog(slug) ? "calculator" : toolId);
   return <div ref={ref} className="blog-conversion-entry">
     {sample ? <>
       <p className="blog-conversion-entry__preview">{copy?.preview}</p>
       {copy?.note && <p>{copy.note}</p>}
       <BlogSampleButton slug={slug} locale={locale} />
-      <p>{en ? "Try the analysis with sample data. Free, with no sign-in or file needed." : "가입 없이, 파일 없이. 샘플 결과부터 확인하세요."}</p>
+      {!inlineCalculatorForBlog(slug) && <a className="blog-conversion-entry__own-data" href="#blog-practice" onClick={() => trackProductEvent("blog_section_opened", { content_slug: slug, content_type: "blog", tool_id: toolId, locale, placement: "article_entry", state: "own_csv" })}>{en ? "Run this analysis with my CSV" : "내 CSV로 같은 분석하기"}</a>}
+      <p>{inlineCalculatorForBlog(slug) ? (en ? "Enter your totals in the article. No signup or file required." : "본문에서 합계 숫자만 입력하세요. 가입이나 파일은 필요 없습니다.") : (en ? "Try the example or choose your CSV in the article. Free, without signing in." : "샘플을 열거나 본문에서 내 CSV를 선택하세요. 가입 없이 무료로 분석합니다.")}</p>
     </> : <>
       <p className="blog-conversion-entry__preview">{check?.title}</p>
       <a className="btn primary" href="#blog-self-check" onClick={() => trackProductEvent("blog_section_opened", { content_slug: slug, content_type: "blog", placement: "article_entry", state: "self_check", locale })}>{en ? "Check with two questions" : "두 질문으로 점검하기"}</a>

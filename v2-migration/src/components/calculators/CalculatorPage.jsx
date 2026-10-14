@@ -33,7 +33,7 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
       <section className="calculator-explainer">
         <div>
           <span>{isEn ? "HOW TO READ IT" : "결과 읽는 법"}</span>
-          <h2>{isEn ? "Use the answer as a decision boundary" : "계산값을 판단 기준으로 쓰세요"}</h2>
+          <h2>{calculator.guideTitle || (isEn ? "Use the answer as a decision boundary" : "계산값을 판단 기준으로 쓰세요")}</h2>
         </div>
         <div className="calculator-explainer__rows">
           {calculator.guide.map(([label, description]) => (

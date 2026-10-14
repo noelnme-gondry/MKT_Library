@@ -7,12 +7,28 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import { classifyStoreShift, decomposeStoreConversion } from "@/utils/asoStoreMath";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
 import { qualifyAsaRecommendations } from "@/utils/asaRecommendationQuality";
+import { calculateMarketingMetric } from "./calculators";
 
 function load(name, toolId) {
   const csv = Papa.parse(fs.readFileSync(path.join(process.cwd(), "public/examples", name), "utf8"), { header: true, skipEmptyLines: true });
   expect(csv.errors).toEqual([]);
   return getMappedRows(prepareDatasetForTool({ raw: csv.data, headers: csv.meta.fields, toolId }));
 }
+it("reproduces marketing analysis totals and the performance-marketing profitability example", () => {
+  const parsed = Papa.parse(fs.readFileSync(path.join(process.cwd(), "public/examples/weekly-report-campaigns.csv"), "utf8"), { header: true, skipEmptyLines: true });
+  expect(parsed.errors).toEqual([]);
+  const total = rows => rows.reduce((sum, row) => ({ cost: sum.cost + Number(row.cost), installs: sum.installs + Number(row.installs) }), { cost: 0, installs: 0 });
+  const before = total(parsed.data.filter(row => row.date < "2026-09-07"));
+  const after = total(parsed.data.filter(row => row.date >= "2026-09-07"));
+  expect(before).toEqual({ cost: 700000, installs: 700 });
+  expect(after).toEqual({ cost: 840000, installs: 700 });
+  const campaignA = total(parsed.data.filter(row => row.date >= "2026-09-07" && row.campaign_id === "A"));
+  expect(campaignA).toEqual({ cost: 420000, installs: 280 });
+  expect(campaignA.cost / campaignA.installs).toBe(1500);
+  expect(calculateMarketingMetric("roas", { adSpend: 1000000, revenue: 3000000 }).primary).toBe(3);
+  expect(calculateMarketingMetric("break-even-roas", { grossMarginPct: 25, variableFeePct: 0 }).primary).toBe(4);
+  expect(3000000 * 0.25 - 1000000).toBe(-250000);
+});
 it("reproduces the ASO article from real export-shaped headers", () => {
   const rows = load("aso-mix-only.csv", "5-27").map((row) => ({ date: row.date, source: row.store_source, views: row.product_page_views, installs: row.installs }));
   const result = decomposeStoreConversion(rows.filter((row) => row.date < "2026-08-03"), rows.filter((row) => row.date >= "2026-08-03"));

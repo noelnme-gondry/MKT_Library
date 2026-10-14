@@ -111,6 +111,7 @@ export default function Header({ locale = "ko" }) {
   // 독립 SEO 리소스도 routeMap 밖. KR/EN 리터럴 라우트를 함께 제공한다.
   const isTemplates = cleanPath === "/templates";
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
+  const isCompare = cleanPath === "/compare" || cleanPath.startsWith("/compare/");
   const isDiagnose = cleanPath === "/diagnose";
   const isDataGuide = cleanPath === "/data-guide";
   const isWeeklyReport = cleanPath === "/weekly-report";
@@ -184,6 +185,7 @@ export default function Header({ locale = "ko" }) {
           {isBlog && <><span className="sep">/</span><Link href={blogHref} className="current current--section">{locale === "en" ? "Blog" : "블로그"}</Link></>}
           {isTemplates && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Templates" : "템플릿"}</span></>}
           {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Metric calculators" : "지표 계산기"}</Link></>}
+          {isCompare && <><span className="sep">/</span><Link href={locale === "en" ? "/en/compare" : "/compare"} className="current current--section">{locale === "en" ? "Marketing analysis" : "마케팅 분석"}</Link></>}
           {isDataGuide && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Data requirements" : "필요한 데이터 양식"}</span></>}
           {isDiagnose && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Diagnosis" : "문제 진단"}</span></>}
           {(isWeeklyReport || isWeeklyReview) && (

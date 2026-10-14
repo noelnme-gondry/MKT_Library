@@ -26,6 +26,7 @@ export default function SearchTopicHub({ locale = "ko", compact = false }) {
     <div className="search-topic-hub__intro">
       <h2>{isEn ? "Turn this question into a decision" : "지금 읽는 문제를 내 데이터로 확인하세요"}</h2>
       <p>{isEn ? "Every guide and definition leads to a matching free analysis tool. No sign-up; raw data stays in your browser." : "글과 용어의 다음 단계는 도구 실행입니다. 회원가입 없이, 원본 데이터는 브라우저 안에서만 처리합니다."}</p>
+      <p><Link href={`${isEn ? "/en" : ""}/compare`}>{isEn ? "Marketing analysis: choose a question and method" : "마케팅 분석: 질문에 맞는 방법과 도구 고르기"}</Link></p>
     </div>
     <div className="search-topic-hub__grid">
       {topics.map((topic, index) => <Link key={topic.href} href={topic.href} className="search-topic-hub__card">

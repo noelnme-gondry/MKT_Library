@@ -5,7 +5,7 @@ seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The outcome difference between treatment and control; interpreting it as incremental ad impact requires a valid design"
 description: "Uplift means an increase. In an ad experiment, 8% versus 5% is 3 percentage points of absolute lift or 60% relative lift. See formulas and design limits."
 date: "2026-08-09"
-updated: "2026-10-08"
+updated: "2026-10-14"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
@@ -44,6 +44,8 @@ At 8% for treatment and 5% for the holdout, absolute uplift is 3 percentage poin
 [Incrementality](/glossary/incrementality) sits one layer above. Uplift is the difference itself; incrementality asks whether that difference may be credited to advertising at all. Without random assignment or an appropriate quasi-experimental design, the difference alone does not establish incremental ad impact.
 
 ![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
+
+Use the [uplift calculator](/calculator/uplift) to check both differences from participant and converter counts, without a file. Replace the default example of 80 and 50 converters per 1,000 participants with your numbers. The calculator shows observed differences, not statistical significance or causal ad effects.
 
 ## Why it matters
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import sitemap, { contentLastModified } from "./sitemap";
 import { EN_READY_GUIDE_IDS, EN_READY_UNLISTED_IDS, EN_READY_TOOL_IDS, SITE_URL, idToPath } from "@/lib/routeMap";
 import { getPublicRouteLastModified } from "@/lib/publicationDates";
+import { CALCULATOR_ORDER } from "@/lib/calculators";
 
 describe("sitemap", () => {
   it("prefers a truthful content update date over the publication date", () => {
@@ -66,10 +67,7 @@ describe("sitemap", () => {
     for (const path of [
       "/calculator",
       "/en/calculator",
-      "/calculator/ltv-cac",
-      "/en/calculator/ltv-cac",
-      "/calculator/ab-test-sample-size",
-      "/en/calculator/ab-test-sample-size",
+      ...CALCULATOR_ORDER.flatMap((slug) => [`/calculator/${slug}`, `/en/calculator/${slug}`]),
       "/diagnose",
       "/en/diagnose",
     ]) {

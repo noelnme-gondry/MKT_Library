@@ -103,3 +103,5 @@ Upload a CSV to the free [operations dashboard](/dashboard), confirm its mapping
 And don't forget what we said earlier: a benchmark like LTV:CAC of 3:1 varies by industry. Your own data's trend is a far more accurate compass than someone else's benchmark.
 
 If a number suddenly spikes somewhere in this chain, we've laid out where to look first, step by step, in our [ad performance diagnosis](/blog/ad-performance-diagnosis).
+
+For the wider workflow, see [performance marketing from goals to analysis](/blog/performance-marketing-analysis-order). To match a question and dataset to a tool, use [marketing analysis methods and tools](/compare).

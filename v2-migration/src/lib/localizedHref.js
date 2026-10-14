@@ -4,6 +4,7 @@ import { hasEnVersion, resolvePathToId } from "@/lib/routeMap";
 // switching and Markdown link localization all use this list so an EN prefix is
 // never added to a route that does not exist.
 export const EN_BLOG_SLUGS = new Set([
+  "marketing-analysis-example",
   "simpson-paradox-conversion-rate",
   "user-churn-survival-analysis",
   "weekly-marketing-report-template",
@@ -71,6 +72,7 @@ export const EN_GLOSSARY_SLUGS = new Set([
 
 export function localizedHref(href, locale = "ko") {
   if (locale !== "en" || !href || !href.startsWith("/") || href.startsWith("/en/")) return href;
+  if (/^\/compare(?:[/?#]|$)/.test(href)) return `/en${href}`;
   if (href === "/blog" || href === "/glossary" || href === "/templates" || href === "/diagnose" || href === "/weekly-review" || href === "/weekly-report" || href === "/growth-funnel" || href === "/calculator" || href.startsWith("/calculator/")) return `/en${href}`;
   if (href.startsWith("/blog/")) {
     const slug = href.slice("/blog/".length).split(/[?#]/)[0];
@@ -86,6 +88,7 @@ export function localizedHref(href, locale = "ko") {
 
 export function englishSwitchHref(pathname) {
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
+  if (/^\/compare(?:[/?#]|$)/.test(cleanPath)) return `/en${cleanPath}`;
   if (cleanPath === "/templates" || cleanPath === "/diagnose" || cleanPath === "/weekly-review" || cleanPath === "/weekly-report" || cleanPath === "/growth-funnel" || cleanPath === "/calculator" || cleanPath.startsWith("/calculator/")) return `/en${cleanPath}`;
   if (cleanPath === "/blog") return "/en/blog";
   if (cleanPath.startsWith("/blog/tag/")) return "/en/blog";

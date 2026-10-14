@@ -154,3 +154,5 @@ To repeat this check next week, open [Weekly Review](/en/weekly-review), analyze
 Ad performance decline is not a single-creative problem. It connects measurement, budget allocation, auctions, creative, and the landing experience. Keep this sequence as a team checklist: **validate data → isolate scope → split mix and efficiency → diagnose the funnel**.
 
 For recurring checks, use the [operations dashboard](/dashboard) and [campaign performance variance analysis](/tools/campaign-variance) to inspect channel movement and mix-versus-efficiency contribution. Your data is processed in the browser only.
+
+For the wider workflow, see [performance marketing from goals to analysis](/blog/performance-marketing-analysis-order). To match a question and dataset to a tool, use [marketing analysis methods and tools](/compare).

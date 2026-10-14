@@ -1,6 +1,7 @@
 import { STATS } from "@/utils/abTestMath";
 import { LTVCAC_MATH } from "@/utils/ltvMath";
 import { METRIC_BY_ID } from "@/utils/metrics/metricRegistry";
+import { calculateObservedUplift } from "@/utils/upliftCalculator";
 
 export const CALCULATOR_ORDER = [
   "ltv-cac",
@@ -11,9 +12,26 @@ export const CALCULATOR_ORDER = [
   "cpa-roas-converter",
   "required-cvr",
   "budget-pacing",
+  "uplift",
+  "roas",
 ];
 
 const COMMON = {
+  roas: {
+    toolId: "5-3",
+    toolHref: "/tools/budget-allocation",
+    inputs: [{ id: "adSpend", type: "currency", defaultValue: 1000000 }, { id: "revenue", type: "currency", defaultValue: 3000000 }],
+  },
+  uplift: {
+    toolId: "5-23",
+    toolHref: "/tools/incrementality",
+    inputs: [
+      { id: "treatmentUsers", type: "people", defaultValue: 1000 },
+      { id: "treatmentConversions", type: "people", defaultValue: 80 },
+      { id: "controlUsers", type: "people", defaultValue: 1000 },
+      { id: "controlConversions", type: "people", defaultValue: 50 },
+    ],
+  },
   "ltv-cac": {
     toolId: "5-2",
     toolHref: "/dashboard",
@@ -94,6 +112,46 @@ const COMMON = {
 
 const COPY = {
   ko: {
+    roas: {
+      name: "ROAS 계산기", title: "ROAS 계산기 | 광고비와 매출로 광고 수익률 계산", eyebrow: "광고 수익률",
+      description: "광고비와 귀속 매출을 입력해 ROAS를 %와 배수로 계산하세요. 가입이나 파일 없이 확인하고 채널별 예산 분석으로 이어갑니다.",
+      summary: "광고비 1원에 귀속된 매출을 확인합니다. 같은 통화와 집계 기간을 사용하세요.",
+      labels: { adSpend: "광고비", revenue: "귀속 매출" }, primaryLabel: "ROAS", secondaryLabel: "매출 대비 광고비 비중",
+      formula: "ROAS = 귀속 매출 ÷ 광고비 × 100", exampleNote: "기본값은 광고비 100만 원·매출 300만 원의 예시입니다. 내 합계로 바꿔 계산하세요.",
+      resultNote: "매출 기준의 비율입니다. 이익률이나 광고가 추가로 만든 매출을 뜻하지 않습니다.", unavailableSecondary: "계산 불가: 매출이 0입니다",
+      inputError: "광고비는 0보다 크게, 매출은 0 이상으로 입력하세요. 빈칸은 계산하지 않습니다.",
+      caveat: "매체마다 귀속 기간과 중복 전환 처리 방식이 다를 수 있습니다. 원가·수수료·환불을 반영한 수익성과 증분 효과는 별도로 확인하세요.",
+      toolCta: "채널별 CSV로 예산 배분 분석하기", guideTitle: "ROAS를 다음 결정에 쓰기 전 확인할 것",
+      guide: [["300% = 3배", "광고비 1원당 귀속 매출이 3원이라는 뜻입니다. 순이익이 3원이라는 뜻은 아닙니다."], ["기간과 매출 정의", "광고비와 매출의 기간·통화·귀속 기준을 맞추고 최근 전환 집계가 끝났는지 확인합니다."], ["예산을 옮기기 전", "채널별 매출과 지출 변화, 이익률을 함께 확인합니다. 현재 ROAS가 다음 증액의 ROAS를 보장하지는 않습니다."]],
+      faq: [["ROAS가 높으면 이익도 높은가요?", "원가·수수료·반품 등이 빠져 있으므로 ROAS만으로 이익을 판단할 수 없습니다. 매출총이익률로 손익분기 기준도 확인하세요."], ["매출이 0이면 어떻게 계산하나요?", "광고비가 양수라면 ROAS는 0%입니다. 매출 대비 광고비 비중은 분모가 0이므로 계산 불가로 표시합니다."]],
+    },
+    uplift: {
+      name: "업리프트 계산기",
+      eyebrow: "실험군·대조군 비교",
+      title: "업리프트 계산기 | 전환율 차이·상대 증가율",
+      description: "실험군·대조군의 전체 인원과 전환 인원으로 전환율 차이(%p)와 상대 업리프트(%)를 계산합니다. 파일·가입 없이 관측 차이를 확인하세요.",
+      summary: "전환율 차이는 %p, 대조군 대비 상대 변화는 %로 읽습니다.",
+      labels: { treatmentUsers: "실험군 전체 인원", treatmentConversions: "실험군 전환 인원", controlUsers: "대조군 전체 인원", controlConversions: "대조군 전환 인원" },
+      primaryLabel: "전환율 차이 (실험군 − 대조군)",
+      secondaryLabel: "상대 업리프트",
+      formula: "전환율 = 전환 인원 ÷ 전체 인원 · 상대 업리프트 = 전환율 차이 ÷ 대조군 전환율",
+      exampleNote: "기본 숫자는 실험군 80/1,000명, 대조군 50/1,000명의 예시입니다. 같은 기간·전환 정의로 집계한 고유 인원을 입력하세요.",
+      resultNote: "관측 차이이며 유의성·광고의 인과 효과를 판정하지 않습니다.",
+      unavailableSecondary: "계산 불가: 대조군 전환율 0%",
+      inputError: "전체 인원은 1명 이상, 전환 인원은 0명 이상인 정수로 입력하세요. 전환 인원은 각 그룹의 전체 인원을 넘을 수 없습니다.",
+      guideTitle: "전환율 차이와 광고 효과를 구분하세요",
+      caveat: "광고의 인과 효과로 해석하려면 무작위 배정, 그룹 간 비교 가능성, 관측 기간과 오염 여부를 확인해야 합니다. 이 계산기는 신뢰구간이나 통계적 유의성을 계산하지 않습니다.",
+      toolCta: "증분 분석에서 설계·불확실성 확인",
+      guide: [
+        ["8%와 5%의 차이", "절대 차이는 3%p, 대조군 대비 상대 업리프트는 60%입니다. 60%p 증가로 읽지 마세요."],
+        ["분모는 배정된 전체 인원", "실험군도 실제 광고를 본 사람만 추리지 않고 배정된 전체 인원을 사용합니다. 각 사람의 전환 여부를 한 번만 셉니다."],
+        ["양수·음수·0", "관측된 차이의 방향일 뿐입니다. 양수라고 효과가 입증되거나, 0이라고 효과가 없다고 결론 낼 수 없습니다."],
+      ],
+      faq: [
+        ["업리프트와 인크리멘탈은 같은 뜻인가요?", "업리프트는 대조군 대비 차이를 나타내는 방식입니다. 이 차이를 인크리멘탈(증분) 효과로 해석할 수 있는지는 실험 설계와 불확실성을 따로 확인해야 합니다."],
+        ["대조군 전환이 0이면 어떻게 계산하나요?", "전환율 차이(%p)는 계산할 수 있습니다. 상대 업리프트는 0으로 나누어야 하므로 계산 불가로 표시합니다."],
+      ],
+    },
     "ltv-cac": {
       name: "LTV:CAC 계산기",
       eyebrow: "수익성 단위경제",
@@ -267,6 +325,46 @@ const COPY = {
     },
   },
   en: {
+    roas: {
+      name: "ROAS calculator", title: "ROAS calculator | Ad spend and attributed revenue", eyebrow: "Advertising returns",
+      description: "Calculate ROAS as a percentage and multiple from ad spend and attributed revenue, then continue to channel budget analysis. No file or signup required.",
+      summary: "Check attributed revenue per unit of ad spend. Use the same currency and reporting window.",
+      labels: { adSpend: "Ad spend", revenue: "Attributed revenue" }, primaryLabel: "ROAS", secondaryLabel: "Ad spend as a share of revenue",
+      formula: "ROAS = attributed revenue ÷ ad spend × 100", exampleNote: "Defaults are an example: 1,000,000 spend and 3,000,000 revenue. Replace them with your totals.",
+      resultNote: "This is a revenue ratio, not profit margin or revenue caused by advertising.", unavailableSecondary: "Unavailable: revenue is zero",
+      inputError: "Enter ad spend above zero and revenue of zero or more. Blank inputs cannot be calculated.",
+      caveat: "Platforms may use different attribution windows and conversion deduplication. Check profitability after costs, fees and refunds, and assess incrementality separately.",
+      toolCta: "Analyze budget allocation with a channel CSV", guideTitle: "Before using ROAS for a decision",
+      guide: [["300% = 3×", "Each unit of ad spend has three units of attributed revenue. That is not three units of profit."], ["Align definitions", "Match reporting periods, currency and attribution rules, and check conversion maturity."], ["Before moving budget", "Review channel revenue, spend variation and margins. Current ROAS does not guarantee the return on extra spend."]],
+      faq: [["Does high ROAS mean high profit?", "ROAS excludes product costs, fees and returns. Use gross margin to review the break-even threshold too."], ["What if revenue is zero?", "With positive spend, ROAS is 0%. Spend as a share of revenue is unavailable because its denominator is zero."]],
+    },
+    uplift: {
+      name: "Uplift calculator",
+      eyebrow: "Treatment and control comparison",
+      title: "Uplift calculator | Absolute and relative conversion lift",
+      description: "Calculate the conversion-rate difference in percentage points and relative uplift from treatment and control participant counts. No file or signup required.",
+      summary: "Read the conversion-rate difference in percentage points and the relative change versus control in percent.",
+      labels: { treatmentUsers: "Treatment participants", treatmentConversions: "Treatment converters", controlUsers: "Control participants", controlConversions: "Control converters" },
+      primaryLabel: "Rate difference (treatment − control)",
+      secondaryLabel: "Relative uplift",
+      formula: "Rate = converters ÷ participants · Relative uplift = rate difference ÷ control rate",
+      exampleNote: "Default numbers are an example: 80/1,000 in treatment and 50/1,000 in control. Enter unique people using the same observation window and conversion definition.",
+      resultNote: "These are observed differences, not significance or causal-effect verdicts.",
+      unavailableSecondary: "Unavailable: control conversion rate is 0%",
+      inputError: "Enter whole numbers: at least one participant and zero or more converters per group. Converters cannot exceed participants.",
+      guideTitle: "Distinguish a rate difference from an ad effect",
+      caveat: "A causal interpretation requires checking random assignment, comparable groups, the observation window and contamination. This calculator does not estimate confidence intervals or statistical significance.",
+      toolCta: "Check design and uncertainty in incrementality analysis",
+      guide: [
+        ["8% versus 5%", "The absolute difference is 3 percentage points and relative uplift is 60%. This is not an increase of 60 percentage points."],
+        ["Use all assigned participants", "Do not restrict treatment to people who actually saw an ad. Count each person's conversion status once."],
+        ["Positive, negative or zero", "The sign describes an observed difference. A positive value does not prove an effect, and zero does not establish no effect."],
+      ],
+      faq: [
+        ["Are uplift and incrementality the same?", "Uplift expresses a difference versus control. Whether that difference represents an incremental effect depends on the study design and uncertainty."],
+        ["What if control has no conversions?", "The absolute rate difference can still be calculated. Relative uplift would require division by zero, so it is marked unavailable."],
+      ],
+    },
     "ltv-cac": {
       name: "LTV:CAC calculator",
       eyebrow: "Unit economics",
@@ -406,6 +504,26 @@ const finite = (value) => {
 };
 
 export function calculateMarketingMetric(slug, values = {}) {
+  if (slug === "roas") {
+    const inputs = [values.adSpend, values.revenue];
+    if (inputs.some(value => !["number", "string"].includes(typeof value) || String(value).trim() === "")) return null;
+    const [cost, revenue] = inputs.map(finite);
+    if (!(cost > 0) || !(revenue >= 0)) return null;
+    const primary = METRIC_BY_ID.roas.compute({ cost, revenue });
+    const secondary = revenue > 0 ? cost / revenue : null;
+    if (!Number.isFinite(primary) || (secondary !== null && !Number.isFinite(secondary))) return null;
+    return { primary, secondary, primaryFormat: "roas", secondaryFormat: "percent" };
+  }
+  if (slug === "uplift") {
+    const result = calculateObservedUplift(values);
+    return result ? {
+      primary: result.absoluteLift,
+      secondary: result.relativeLift,
+      primaryFormat: "percentagePoints",
+      secondaryFormat: "percent",
+    } : null;
+  }
+
   if (slug === "ltv-cac") {
     const ltv = finite(values.ltv);
     const cac = finite(values.cac);
