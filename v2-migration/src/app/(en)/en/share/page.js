@@ -1,4 +1,5 @@
 import SharedDecision from "@/components/SharedDecision";
+import EditorialLayout from "@/components/EditorialLayout";
 
 export const metadata = {
   title: "Shared decision",
@@ -7,5 +8,5 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <SharedDecision locale="en" />;
+  return <EditorialLayout locale="en"><main id="main-content" tabIndex="-1"><SharedDecision locale="en" /></main></EditorialLayout>;
 }

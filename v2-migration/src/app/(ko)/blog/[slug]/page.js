@@ -7,6 +7,7 @@ import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import { primaryCalculatorForContent } from "@/lib/contentToolRegistry";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
+import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
@@ -143,7 +144,7 @@ export default async function BlogPostPage({ params }) {
   const selfCheck = inline ? null : blogSelfCheckFor(post.slug, "ko");
 
   return (
-    <BlogJourneyProvider><div className="content-article">
+    <BlogJourneyProvider><div className="content-article blog-article" data-design-exempt="nested: 블로그 읽기 면 안의 표·실습·저자 정보는 각각 기능이 있는 구역이다">
       <BlogReadTracker slug={post.slug} />
       <script
         type="application/ld+json"
@@ -184,6 +185,7 @@ export default async function BlogPostPage({ params }) {
         </div>
       </header>
 
+      <PartnerAdSlot placement="blog-byline" />
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
         {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} example={example} postTitle={post.title} /> : selfCheck ? <div id="blog-self-check" tabIndex={-1}><BlogSelfCheck slug={post.slug} /></div> : article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}

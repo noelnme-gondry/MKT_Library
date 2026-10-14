@@ -1,4 +1,5 @@
 import TaskTemplatePaths from "@/components/TaskTemplatePaths";
+import EditorialLayout from "@/components/EditorialLayout";
 import SourceExportGuide from "@/components/ds/SourceExportGuide";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { SITE_URL } from "@/lib/routeMap";
@@ -50,7 +51,7 @@ export default function EnglishTemplatesPage() {
   const checklists = ["taxonomy", "postback", "media"];
   const publishedGroups = GROUPS;
   return (
-    <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <EditorialLayout locale="en"><main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Marketing report samples and CSV templates</h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
@@ -70,7 +71,6 @@ export default function EnglishTemplatesPage() {
         </section>
       ))}
       <section className="template-checklists" aria-labelledby="template-checklist-title">
-        <span>OPERATIONS CHECKLISTS</span>
         <h2 id="template-checklist-title">Make the pre-launch checks repeatable</h2>
         <p>Download the key QA steps from the operating guides as Markdown, then paste them into Notion, a document, or an issue.</p>
         <div>
@@ -81,6 +81,6 @@ export default function EnglishTemplatesPage() {
         <h2>Frequently asked questions</h2>
         {FAQ.map(([question, answer]) => <section data-information-section="" key={question} className="blog-faq-item"><header data-information-heading="">{question}</header><div className="blog-faq-item-answer">{answer}</div></section>)}
       </section>
-    </main>
+    </main></EditorialLayout>
   );
 }

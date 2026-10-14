@@ -20,6 +20,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
 import MyAccountMenu from "./MyAccountMenu";
 import { TutorialHeaderButton, VideoHelpButton } from "./VideoTutorialHelp";
+import { PartnerAdDisclosure, PartnerAdRail } from "@/components/ads/PartnerAdSlot";
 
 const HEADER_COPY = {
   ko: {
@@ -163,7 +164,7 @@ export default function Header({ locale = "ko" }) {
   const meta = currentRouteId === "home" ? null : findMeta(currentRouteId);
 
   return (
-    <header className="topbar operator-header" role="banner">
+    <><header className="topbar operator-header" role="banner">
       <div className="topbar-context">
         <button
           type="button"
@@ -297,6 +298,6 @@ export default function Header({ locale = "ko" }) {
           <MyAccountMenu locale={locale} />
         </div>
       </div>
-    </header>
+    </header><PartnerAdDisclosure locale={locale} /><PartnerAdRail locale={locale} /></>
   );
 }

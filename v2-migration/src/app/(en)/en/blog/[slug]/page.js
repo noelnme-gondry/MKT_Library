@@ -7,6 +7,7 @@ import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import { primaryCalculatorForContent } from "@/lib/contentToolRegistry";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
+import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
@@ -140,7 +141,7 @@ export default async function EnBlogPostPage({ params }) {
   const selfCheck = inline ? null : blogSelfCheckFor(post.slug, "en");
 
   return (
-    <BlogJourneyProvider><div className="content-article">
+    <BlogJourneyProvider><div className="content-article blog-article" data-design-exempt="nested: Tables, practice tools and author information keep their own purpose within the article surface">
       <BlogReadTracker slug={post.slug} locale="en" />
       <script
         type="application/ld+json"
@@ -177,6 +178,7 @@ export default async function EnBlogPostPage({ params }) {
         </div>
       </header>
 
+      <PartnerAdSlot placement="blog-byline" locale="en" />
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
         {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} example={example} postTitle={post.title} locale="en" /> : selfCheck ? <div id="blog-self-check" tabIndex={-1}><BlogSelfCheck slug={post.slug} locale="en" /></div> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}

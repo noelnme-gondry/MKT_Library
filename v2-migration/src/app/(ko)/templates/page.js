@@ -1,4 +1,5 @@
 import TaskTemplatePaths from "@/components/TaskTemplatePaths";
+import EditorialLayout from "@/components/EditorialLayout";
 import SourceExportGuide from "@/components/ds/SourceExportGuide";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { SITE_URL } from "@/lib/routeMap";
@@ -100,7 +101,7 @@ export default function TemplatesPage() {
   const checklists = ["taxonomy", "postback", "media"];
   const publishedGroups = GROUPS;
   return (
-    <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <EditorialLayout><main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()) }}
@@ -144,7 +145,6 @@ export default function TemplatesPage() {
       ))}
 
       <section className="template-checklists" aria-labelledby="template-checklist-title">
-        <span>운영 문서 템플릿</span>
         <h2 id="template-checklist-title">배포 전에 빠뜨리지 않는 체크리스트</h2>
         <p>가이드의 핵심 검수 항목만 마크다운으로 분리했습니다. 노션·문서·이슈에 그대로 붙여 팀의 완료 기준으로 쓰세요.</p>
         <div>
@@ -161,6 +161,6 @@ export default function TemplatesPage() {
           </section>
         ))}
       </section>
-    </main>
+    </main></EditorialLayout>
   );
 }

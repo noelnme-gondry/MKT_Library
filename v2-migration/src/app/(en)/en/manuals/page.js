@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EditorialLayout from "@/components/EditorialLayout";
 
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -37,7 +38,7 @@ const MANUALS = [
 
 export default function Page() {
   return (
-    <section className="manuals-page">
+    <EditorialLayout locale="en"><main id="main-content" tabIndex="-1" className="manuals-page">
       <span className="manuals-page__eyebrow">Methodology</span>
       <h1>Analysis methodology manuals</h1>
       <p className="manuals-page__lead">
@@ -63,6 +64,6 @@ export default function Page() {
       <p className="manuals-page__note">
         Manuals are updated alongside the tool&rsquo;s current calculation. When citing, please include this page URL.
       </p>
-    </section>
+    </main></EditorialLayout>
   );
 }

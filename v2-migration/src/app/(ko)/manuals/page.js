@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EditorialLayout from "@/components/EditorialLayout";
 
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -39,7 +40,7 @@ const MANUALS = [
 
 export default function Page() {
   return (
-    <section className="manuals-page">
+    <EditorialLayout><main id="main-content" tabIndex="-1" className="manuals-page">
       <span className="manuals-page__eyebrow">방법론 문서</span>
       <h1>분석 방법론 매뉴얼</h1>
       <p className="manuals-page__lead">
@@ -65,6 +66,6 @@ export default function Page() {
       <p className="manuals-page__note">
         문서는 도구의 현재 계산 방식과 함께 갱신됩니다. 인용하실 때는 이 페이지 주소를 함께 적어주세요.
       </p>
-    </section>
+    </main></EditorialLayout>
   );
 }

@@ -1,4 +1,5 @@
 import SharedDecision from "@/components/SharedDecision";
+import EditorialLayout from "@/components/EditorialLayout";
 
 // 결론 공유 링크 수신 화면. 요약 문구가 URL 쿼리에 실려 오므로 색인 대상이 아니며
 // sitemap·RSS에도 넣지 않는다(routeMap 밖 독립 페이지, /templates와 동일 패턴).
@@ -9,5 +10,5 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <SharedDecision locale="ko" />;
+  return <EditorialLayout><main id="main-content" tabIndex="-1"><SharedDecision locale="ko" /></main></EditorialLayout>;
 }

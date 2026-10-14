@@ -1,4 +1,5 @@
 import WeeklyReport from "@/components/WeeklyReport";
+import EditorialLayout from "@/components/EditorialLayout";
 import { SITE_URL } from "@/lib/routeMap";
 
 export const metadata = {
@@ -8,6 +9,5 @@ export const metadata = {
 };
 
 export default function WeeklyReportPage() {
-  return <WeeklyReport />;
+  return <EditorialLayout><WeeklyReport /></EditorialLayout>;
 }
-
