@@ -4,7 +4,8 @@ import { PARTNER_AD_FORMATS, PARTNER_TRACKING_CODE } from "./partnerAds";
 // 쿠팡 자식 프레임의 출처를 보존해 SDK의 postMessage 출처 검사를 통과시킨다.
 // srcdoc/앱 URL에 이 권한을 부여하면 앱에 접근할 수 있으므로 사용하지 않는다.
 export const PARTNER_FRAME_SANDBOX = "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox";
-export const PARTNER_FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline' https://ads-partners.coupang.com; style-src 'unsafe-inline'; frame-src https://ads-partners.coupang.com; connect-src https://logs-partners.coupang.com; img-src https://logs-partners.coupang.com; base-uri 'none'; form-action 'none'";
+// g.js는 partners.coupangcdn.com/widget/g/의 SDK로 302 이동한다.
+export const PARTNER_FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline' https://ads-partners.coupang.com https://partners.coupangcdn.com; style-src 'unsafe-inline'; frame-src https://ads-partners.coupang.com; connect-src https://logs-partners.coupang.com; img-src https://logs-partners.coupang.com; base-uri 'none'; form-action 'none'";
 
 // 고정된 세 규격만 선택하며 현재 페이지 URL·분석 데이터는 받지 않는다.
 export function partnerAdDocument(format) {
