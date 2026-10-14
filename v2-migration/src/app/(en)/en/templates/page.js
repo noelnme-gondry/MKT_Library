@@ -71,7 +71,6 @@ export default function EnglishTemplatesPage() {
         </section>
       ))}
       <section className="template-checklists" aria-labelledby="template-checklist-title">
-        <span>OPERATIONS CHECKLISTS</span>
         <h2 id="template-checklist-title">Make the pre-launch checks repeatable</h2>
         <p>Download the key QA steps from the operating guides as Markdown, then paste them into Notion, a document, or an issue.</p>
         <div>

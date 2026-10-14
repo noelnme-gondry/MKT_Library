@@ -145,7 +145,6 @@ export default function TemplatesPage() {
       ))}
 
       <section className="template-checklists" aria-labelledby="template-checklist-title">
-        <span>운영 문서 템플릿</span>
         <h2 id="template-checklist-title">배포 전에 빠뜨리지 않는 체크리스트</h2>
         <p>가이드의 핵심 검수 항목만 마크다운으로 분리했습니다. 노션·문서·이슈에 그대로 붙여 팀의 완료 기준으로 쓰세요.</p>
         <div>
