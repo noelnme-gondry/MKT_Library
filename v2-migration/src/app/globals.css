@@ -5572,7 +5572,7 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .analysis-preview__chart p, .analysis-preview__caption { font-size: var(--fs-xs); }
 .analysis-preview__caption { margin: 20px 0 0; }
 .analysis-preview__next { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); gap: 28px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle); }
-.analysis-preview__next h3 { margin: 0; font-size: var(--fs-base); color: var(--text-primary); }
+.analysis-preview__next h3 { margin: 0; font-size: var(--fs-md); color: var(--text-primary); }
 .analysis-preview__next p { margin: 8px 0 0; font-size: var(--fs-sm); }
 .analysis-preview__next .analysis-preview__limit { color: var(--text-muted); font-size: var(--fs-xs); }
 .analysis-preview__actions { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; }

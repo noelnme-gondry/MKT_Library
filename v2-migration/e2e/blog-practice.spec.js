@@ -3,7 +3,8 @@ import { JSDOM } from "jsdom";
 import { expect, test } from "@playwright/test";
 import { BLOG_PRACTICES, blogPracticeFor } from "../src/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
-import { PUBLISHED_BLOG_TOOL_MAP } from "../src/lib/contentToolRegistry";
+import { PUBLISHED_BLOG_TOOL_MAP, inlineCalculatorForBlog } from "../src/lib/contentToolRegistry";
+import { getCalculator } from "../src/lib/calculators";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
 import { blogSelfCheckFor } from "../src/lib/blogSelfCheck";
@@ -14,7 +15,7 @@ import { buildBlogPracticeDownload } from "../src/lib/blogPracticeData";
 // One real browser handoff per distinct generated dataset family; coverage of
 // every published article (including exclusions) is checked separately below.
 const generatedCases = [...new Map(Object.keys(BLOG_INSIGHT_PLACEMENTS)
-  .filter(slug => !BLOG_PRACTICES[slug])
+  .filter(slug => !BLOG_PRACTICES[slug] && !inlineCalculatorForBlog(slug))
   .map(slug => [blogPracticeFor(slug).demoGroup, slug])).values()];
 
 for (const locale of ["ko", "en"]) {
@@ -46,17 +47,45 @@ for (const locale of ["ko", "en"]) {
         }
       }
       dom.window.close();
-      // 모든 글: CSV로 확인할 수 있으면 예시 결과(A), 없으면 30초 점검(D) — 그리고 글 끝 상황 확인(B).
+      // CSV 예시·합계 계산·30초 점검 중 글의 실제 실습 계약을 검증한다.
       const eligible = Boolean(BLOG_INSIGHT_PLACEMENTS[slug]);
+      const calculator = inlineCalculatorForBlog(slug);
       expect(html.includes('id="blog-practice"'), slug).toBe(eligible);
-      expect(html.includes("blog-example__headline"), slug).toBe(eligible);
+      expect(html.includes("blog-example__headline"), slug).toBe(eligible && !calculator);
+      expect(html.includes("calculator-workbench"), slug).toBe(Boolean(calculator));
       expect(html.includes('id="blog-self-check"'), slug).toBe(!eligible);
       expect(html.includes("blog-check--situation"), slug).toBe(true);
-      if (eligible) expect(html, slug).toContain(`${locale === "en" ? "/en" : ""}/templates/`);
+      if (eligible && !calculator) expect(html, slug).toContain(`${locale === "en" ? "/en" : ""}/templates/`);
+      if (calculator) expect(html, slug).toContain(`${locale === "en" ? "/en" : ""}${getCalculator(calculator, locale).toolHref}`);
     }
     expect(checkedCitations).toBeGreaterThan(0);
   });
-  for (const slug of ["incrementality-measurement", "apple-search-ads-guide", "roas-improvement", "ad-creative-testing"]) {
+  test(`inline ROAS calculation and budget handoff (${locale})`, async ({ page }) => {
+    const en = locale === "en", slug = "roas-improvement", prefix = en ? "/en" : "";
+    const calculator = getCalculator(inlineCalculatorForBlog(slug), locale);
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+    await page.goto(`${prefix}/blog/${slug}`);
+    const trust = page.locator(".editorial-trust--compact");
+    await expect(trust).toBeVisible();
+    await expect(trust.locator("a")).toHaveCount(getPostBySlug(slug, locale).sources.length);
+    const entry = page.locator(".blog-conversion-entry").getByRole("link", { name: blogConversionFor(slug, locale).action, exact: true });
+    await expect(entry).toHaveAttribute("href", "#blog-practice");
+    expect((await entry.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await entry.click();
+    const panel = page.locator("#blog-practice");
+    await expect(panel).toBeInViewport();
+    await panel.getByLabel(calculator.labels.adSpend).fill("200");
+    await panel.getByLabel(calculator.labels.revenue).fill("500");
+    await expect(panel.locator(".calculator-result__primary")).toContainText("250% · 2.50×");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await panel.getByRole("link", { name: calculator.toolCta }).click();
+    await expect(page).toHaveURL(`${prefix}${calculator.toolHref}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+  for (const slug of ["incrementality-measurement", "apple-search-ads-guide", "ad-creative-testing"]) {
     test(`direct demo and keyboard sources (${locale}/${slug})`, async ({ page }) => {
       const en = locale === "en";
       const errors = [];
