@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import PlatformExportGuide, { platformExportNames } from "@/components/PlatformExportGuide";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
+import TemplatePreparationNotes from "@/components/TemplatePreparationNotes";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getTemplatePage, TEMPLATE_PAGE_SLUGS } from "@/lib/templateCatalog";
@@ -88,6 +89,7 @@ export default async function Page({ params }) {
       {page.roleMapping && <p>Choose a numeric outcome and at least one numeric feature after uploading. Feature names here are examples; your own columns can fill these roles. Aha outcomes must be 0/1. Missing values, sample size and variation are checked separately before estimation.</p>}
       {page.toolId === "5-23" && <p>This template is for the holdout method: include both exposed and holdout groups. For switch-on or switch-off analysis, use a date column and a numeric outcome, select the cutoff, and provide observations on both sides. Confirm the study design in the tool.</p>}
 
+      <TemplatePreparationNotes toolId={page.toolId} locale="en" />
       <PlatformExportGuide toolId={page.toolId} locale="en" />
 
       <h2>Filling it in</h2>

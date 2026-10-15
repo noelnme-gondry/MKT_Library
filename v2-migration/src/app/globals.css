@@ -11792,7 +11792,7 @@ b, strong { font-weight: 700; }
 .app .content .dochi-result-workspace__global-controls > strong, .app .content .dochi-result-workspace__global-controls .analysis-control-group__label { font-size: var(--fs-base); font-weight: 400; color: var(--text-secondary); }
 /* 17) 제목은 본문보다 작을 수 없다 — 하단 마감 영역의 12~13px 소제목이 14px 본문 위에 있었다.
    글자 네 단: h1 26 · h2 20 · h3/h4 16 · 본문 14~16. e2e/design-rules가 16px 미만 제목을 찾는다. */
-.app .content .tool-outro :is(.tool-connections__head, .tool-evidence__header) h2 { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.app .content :is(.tool-outro, .tool-next-step-panel) :is(.tool-connections__head, .tool-evidence__header) h2 { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0; text-transform: none; }
 .app .content :is(.tool-longform__body, .tool-longform__faq) h3,
 .app .content :is(.project-handoff, .template-checklist-card) h3,
 .app .content .tool-index__stage-title, .app .content .event-log__subtitle,

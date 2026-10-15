@@ -2,6 +2,9 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
+import { renderToStaticMarkup } from "react-dom/server";
+import { TOOL_SEARCH_CONTENT_IDS, getToolSearchContent, hasInlineToolReference } from "@/lib/toolSearchContent";
+import { getToolGuide } from "@/utils/toolGuide";
 
 import ToolPageOutro from "@/components/ToolPageOutro";
 
@@ -47,7 +50,7 @@ it("분석 전에는 프로젝트 이어가기 칸을 자리까지 비운다", (
   expect(screen.getByRole("button",{name:"분석 방법과 참고 자료"})).toBeTruthy();
 });
 
-for (const locale of ["ko", "en"]) for (const toolId of ["5-21", "5-22", "5-3", "5-2"]) {
+for (const locale of ["ko", "en"]) for (const toolId of ["5-22", "5-2"]) {
   it(`keeps ${toolId} next step short and opens references on demand (${locale})`, () => {
     useAppStore.setState(useAppStore.getInitialState(), true);
     const { container } = render(<ToolPageOutro toolId={toolId} locale={locale} evidenceLinks={LINKS} withConnections />);
@@ -62,3 +65,27 @@ for (const locale of ["ko", "en"]) for (const toolId of ["5-21", "5-22", "5-3", 
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 }
+
+for (const locale of ["ko", "en"]) for (const toolId of TOOL_SEARCH_CONTENT_IDS.filter(hasInlineToolReference)) {
+  it(`includes ${toolId} method, input contract and evidence in HTML without opening a modal (${locale})`, () => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    const markup = renderToStaticMarkup(<ToolPageOutro toolId={toolId} locale={locale} evidenceLinks={LINKS} withConnections />);
+    const doc = new DOMParser().parseFromString(markup, "text/html");
+    const content = getToolSearchContent(toolId, locale);
+    expect(doc.querySelectorAll(".tool-longform")).toHaveLength(1);
+    expect(doc.querySelectorAll(".tool-evidence")).toHaveLength(1);
+    for (const [, paragraph] of content.sections) expect(doc.body.textContent).toContain(paragraph);
+    for (const need of getToolGuide(toolId, locale).needs.filter(field => field.required)) expect(doc.body.textContent).toContain(need.label);
+    for (const { q, a } of content.faq) {
+      expect(doc.body.textContent).toContain(q);
+      expect(doc.body.textContent).toContain(a);
+    }
+    expect(doc.querySelector('[role="dialog"]')).toBeNull();
+    expect(doc.querySelector('a[href="/blog/guide-one"]')).not.toBeNull();
+  });
+}
+
+it("limits the inline rollout to the three reviewed public tools, never saved results", () => {
+  expect(TOOL_SEARCH_CONTENT_IDS.filter(hasInlineToolReference).sort()).toEqual(["5-18-mmm", "5-21", "5-3"]);
+  for (const id of ["projects", "account", "dochi-result", "weekly-review", "storage"]) expect(hasInlineToolReference(id)).toBe(false);
+});

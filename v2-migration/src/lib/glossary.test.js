@@ -19,7 +19,7 @@ describe("glossary entity and SEO titles", () => {
   it("keeps the English entity name separate from its question-form SEO title", () => {
     const term = getTermBySlug("uplift", "en");
     expect(term.term).toBe("Uplift");
-    expect(term.seoTitle).toBe("What Is Uplift? Measure Incremental Ad Impact with a Holdout");
+    expect(term.seoTitle).toBe("Uplift Meaning and Formula: Rate Difference and Relative Lift");
   });
 
   it("keeps Korean search spelling variants on the matching definitions", () => {

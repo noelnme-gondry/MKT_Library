@@ -1,5 +1,5 @@
 import { getResponseSubtoolContent } from "./responseSubtoolContent";
-import { ROUTES, isRoutePublished } from "./routeMap";
+import { ROUTES, isRoutePublished, isRouteIndexable } from "./routeMap";
 import { REPORT_SEARCH_CONTENT } from "./attributionReports/content";
 
 // 도구 라우트의 검색 진입면 콘텐츠(SSOT).
@@ -58,38 +58,38 @@ const CONTENT = {
       eyebrow: "도구 사용 가이드",
       title: "성과가 왜 변했는지, 물량·효율·믹스로 나눠 보세요",
       question: "CPA가 올랐는데 원인을 어떻게 찾나요?",
-      answer: "변화를 물량·효율·믹스 세 항으로 나눠서 봅니다.",
+      answer: "CPA·CPI 변화를 결과 비중 이동(Mix)과 단가 변화(Rate)로 나눠서 봅니다.",
       outputs: ["변동을 만든 상위 캠페인", "믹스 vs 효율 분해", "채널→캠페인→소재 드릴다운"],
-      lead: "성과 변동 분석은 두 기간의 차이를 잔차 없이 분해합니다. 결과가 늘었을 때 그것이 더 많이 써서인지, 효율이 좋아져서인지, 예산 비중이 옮겨가서인지를 채널·캠페인·소재 단계로 내려가며 확인합니다.",
+      lead: "성과 변동 분석은 두 기간의 지출·단가 차이를 잔차 없이 분해합니다. 지출 변화는 결과량·단가·결과 비중으로, CPA·CPI 변화는 단가와 결과 비중으로 나눠 채널·캠페인·소재 단계에서 확인합니다. 분해 항목은 변동의 구성이지 인과관계의 증명이 아닙니다.",
       detailsLabel: "분해 방식과 읽는 순서 보기",
       sections: [
         ["언제 써야 하나", "주간 CPA가 올랐는데 원인을 특정하지 못할 때, 특정 채널을 늘렸는데 전체 효율이 나빠졌을 때, 보고에 '무엇 때문에'를 적어야 할 때 사용합니다. 최소한 기간을 나눌 수 있는 날짜와 비용·결과 컬럼이 필요합니다."],
-        ["무엇을 계산하나", "가장 작은 단위(채널×캠페인×소재×일)에서 한 번만 분해한 뒤 상위 단계로 합산하므로, 어느 단계에서 보든 합이 어긋나지 않습니다. 믹스 효과의 비중은 비용 비중이 아니라 결과 비중이며, 전체 평균 대비로 중심화해 '비싼 쪽으로 예산이 쏠렸는지'를 부호로 읽을 수 있게 했습니다."],
+        ["무엇을 계산하나", "가장 작은 단위(채널×캠페인×소재×일)에서 한 번만 분해한 뒤 상위 단계로 합산하므로, 어느 단계에서 보든 합이 어긋나지 않습니다. 믹스 효과의 비중은 비용 비중이 아니라 결과 비중이며, 전체 평균 대비로 중심화해 '단가가 비싼 쪽으로 결과 비중이 옮겨갔는지'를 부호로 읽을 수 있게 했습니다."],
         ["결과를 어떻게 쓰나", "상위 변동 요인 3개를 먼저 보고, 효율 악화가 원인이면 소재·타겟을, 믹스 이동이 원인이면 예산 배분을 검토합니다. 분해는 회계적 항등식이므로 '무엇이 얼마나 기여했는지'는 정확하지만 '왜 그렇게 됐는지'는 설명하지 않습니다."],
       ],
       faq: [
         { q: "믹스 효과의 '비중'은 비용 비중인가요?", a: "아닙니다. 결과(전환 건수) 비중입니다. 효율이 좋아진 항목은 비용이 줄어도 결과 비중은 늘 수 있어 비용 비중으로 읽으면 숫자가 틀린 것처럼 보입니다." },
         { q: "단계별 합계가 서로 다르지 않나요?", a: "다르지 않습니다. 최소 단위에서 한 번만 분해하고 상위는 단순 합산하므로 채널·캠페인·소재 어느 단계에서도 합이 일치합니다." },
-        { q: "이 분해로 원인을 확정할 수 있나요?", a: "없습니다. 변동을 세 항으로 정확히 나눌 뿐이며, 그 변화를 만든 이유(입찰·경쟁·시즌)는 별도 확인이 필요합니다." },
+        { q: "이 분해로 원인을 확정할 수 있나요?", a: "없습니다. 지출 변화는 물량·효율·믹스로, CPA·CPI 변화는 Mix·Rate로 분해합니다. 항들의 합은 전체 변화와 일치하지만 그 변화를 만든 이유(입찰·경쟁·시즌)는 별도 확인이 필요합니다." },
       ],
     },
     en: {
       eyebrow: "Tool guide",
       title: "Split the change into volume, efficiency, and mix",
       question: "How do I find why CPA went up?",
-      answer: "Split the change into volume, efficiency, and mix.",
+      answer: "Split CPA or CPI changes into outcome-share movement (mix) and unit-cost changes (rate).",
       outputs: ["Top movers", "Mix vs efficiency split", "Channel to creative drill-down"],
-      lead: "Campaign variance analysis decomposes the gap between two periods without residuals. It separates whether an outcome moved because you spent more, because efficiency changed, or because budget share shifted—down through channel, campaign, and creative.",
+      lead: "Campaign variance analysis decomposes spend and unit-cost changes between two periods without residuals. Spend changes split into outcome volume, unit cost and outcome share; CPA or CPI changes split into unit cost and outcome share, down through channel, campaign and creative. These terms describe the change, not its causal origin.",
       detailsLabel: "See the decomposition method and reading order",
       sections: [
         ["When to use it", "Use it when weekly CPA rises without an obvious cause, when scaling one channel worsened overall efficiency, or when a report needs a defensible 'because of this'. You need a date column plus cost and outcome columns."],
-        ["What it calculates", "Decomposition runs once at the finest grain (channel × campaign × creative × day) and rolls up, so totals reconcile at every level. Mix weight uses outcome share, not cost share, and is centered on the overall average so the sign shows whether budget moved toward expensive units."],
+        ["What it calculates", "Decomposition runs once at the finest grain (channel × campaign × creative × day) and rolls up, so totals reconcile at every level. Mix weight uses outcome share, not cost share, and is centered on the overall average so the sign shows whether outcome share moved toward units with higher costs per outcome."],
         ["How to act", "Read the top three movers first. Efficiency losses point to creative and targeting; mix shifts point to allocation. The decomposition is an accounting identity: it states how much each term contributed, not why it happened."],
       ],
       faq: [
         { q: "Is the mix 'share' a cost share?", a: "No, it is outcome share. A unit that improved efficiency can show a lower cost share and a higher outcome share, which looks wrong if read as spend." },
         { q: "Do totals differ between levels?", a: "No. The decomposition happens once at the finest grain and rolls up by summation, so channel, campaign, and creative totals reconcile." },
-        { q: "Does this prove the cause?", a: "No. It attributes the change exactly to three terms; the underlying reason (bidding, competition, seasonality) still needs separate verification." },
+        { q: "Does this prove the cause?", a: "No. Spend changes split into volume, efficiency and mix; CPA or CPI changes split into mix and rate. The terms reconcile to the total change, but the underlying reason (bidding, competition, seasonality) still needs separate verification." },
       ],
     },
   },
@@ -217,39 +217,39 @@ const CONTENT = {
   "5-3": {
     ko: {
       eyebrow: "도구 사용 가이드",
-      title: "평균 효율이 아니라 다음 돈의 한계 효율로 예산을 옮기세요",
+      title: "평균 효율 가중과 한계효용 배분을 관측 지출 범위에서 비교하세요",
       question: "예산을 채널별로 얼마씩 나눠야 하나요?",
-      answer: "추가 1원의 효율이 채널마다 같아지는 지점까지 옮깁니다.",
+      answer: "총예산·목표 효율을 정하고 평균 효율 가중 또는 한계효용 그리디 배분을 비교합니다.",
       outputs: ["채널별 권장 배분액", "재배분 시 예상 결과", "지출-성과 곡선"],
-      lead: "예산 배분은 지금 가장 좋아 보이는 채널에 돈을 몰아주는 기능이 아닙니다. 채널별 반응곡선과 현재 지출 위치를 바탕으로, 다음 예산 단위가 어디에서 가장 나은 결과를 낼지 비교하는 시뮬레이션입니다.",
+      lead: "예산 배분은 채널별 관측 지출 상한 안에서 총예산을 나누는 시뮬레이션입니다. 기본인 안정적 효율 가중은 최근 평균 효율로 비중을 정하고, 한계효용 그리디는 추가 예산의 추정 효율로 배분합니다. 반응곡선은 과거 관측에 기반하므로 미래 성과나 인과 효과를 보장하지 않습니다.",
       detailsLabel: "계산 기준과 안전한 사용법 보기",
       sections: [
         ["언제 써야 하나", "월·주 예산을 다시 나눌 때, 특정 채널 증액 요청을 검토할 때, 평균 CPA나 ROAS는 좋아 보이지만 포화가 걱정될 때 사용합니다. 지출·결과가 기간별로 충분히 쌓인 채널일수록 반응곡선의 참고 가치가 높습니다."],
-        ["무엇을 계산하나", "현재 지출 근처에서 추가 예산이 만들 것으로 추정되는 결과를 비교합니다. 따라서 평균 효율이 좋더라도 이미 포화 구간이면 우선순위가 낮아질 수 있고, 평균은 평범해도 아직 여력이 남은 채널이 후보가 될 수 있습니다. 결과는 과거 관측 기반 시뮬레이션이지 미래 보장이 아닙니다."],
+        ["무엇을 계산하나", "기본인 안정적 효율 가중은 최근 평균 효율로 배분 비중을 정하고 반응곡선은 채널별 상한에 반영합니다. 한계효용 그리디는 추가 예산의 추정 효율로 배분하므로 평균 효율이 좋아도 포화 구간에서는 우선순위가 낮아질 수 있습니다. 두 방식 모두 과거 관측 기반 시뮬레이션이지 미래 보장이 아닙니다."],
         ["결과를 어떻게 쓰나", "추천 금액을 한 번에 전액 적용하지 말고 작은 단위로 나눠 적용한 뒤 실제 CPA·ROAS와 예상 범위를 비교하세요. 카니발라이제이션 의심 채널은 증액 전 먼저 통제 실험을 검토해야 합니다. 신규 채널·캠페인처럼 관측치가 적은 곳은 모델 결과보다 실험 예산으로 취급하세요."],
       ],
       faq: [
         { q: "추천 배분을 그대로 적용해도 되나요?", a: "한 번에 전액 적용하는 것은 권장하지 않습니다. 과거 관측 기반 시뮬레이션이므로 작은 단위로 옮기고 실제 결과를 예상 범위와 비교하며 조정하세요." },
-        { q: "왜 평균 효율이 가장 좋은 채널에 예산을 다 주지 않나요?", a: "판단 기준이 한계 효율이기 때문입니다. 이미 포화된 채널은 다음 1원의 성과가 평균보다 나빠 우선순위가 내려갈 수 있습니다." },
+        { q: "왜 평균 효율이 가장 좋은 채널에 예산을 다 주지 않나요?", a: "채널별 관측 지출 상한을 적용하기 때문입니다. 기본인 안정적 효율 가중은 최근 평균 효율로 비중을 정하며 한계효율을 최적화하지 않습니다. 추가 예산의 추정 효율로 나누려면 한계효용 그리디를 선택하세요." },
         { q: "관측된 적 없는 큰 예산도 계산되나요?", a: "관측 지출 범위를 크게 벗어나면 추정 신뢰도가 급격히 떨어집니다. 도구는 채널별 관측 최대 지출을 넘지 않도록 제한을 두고 계산합니다." },
       ],
     },
     en: {
       eyebrow: "Tool guide",
-      title: "Move budget by marginal efficiency, not average efficiency",
+      title: "Compare average-efficiency weighting and marginal allocation within observed spend",
       question: "How much budget should each channel get?",
-      answer: "Shift until the next unit of spend is equally efficient everywhere.",
+      answer: "Compare average-efficiency weighting and marginal greedy allocation under spend caps.",
       outputs: ["Recommended split", "Projected result", "Spend-response curve"],
-      lead: "Budget allocation compares the likely outcome from the next unit of spend at each channel's current position. It is not a rule to concentrate budget in the channel with the best average result.",
+      lead: "Budget allocation simulates a split within each channel's observed spend cap. The default stable-efficiency weighting uses recent average efficiency, while marginal greedy allocation uses estimated returns on additional spend. Historical response curves do not guarantee future outcomes or causal effects.",
       detailsLabel: "See calculation logic and safeguards",
       sections: [
         ["When to use it", "Use it for weekly or monthly reallocations, scale-up reviews, and saturation checks. Response curves are more useful when each channel has enough historical spend and outcome variation."],
-        ["What it estimates", "The tool compares estimated incremental outcomes near current spend. A channel with strong average efficiency can rank lower when it is near saturation, while a moderate channel can rank higher when headroom remains. It is a historical simulation, not a guarantee."],
+        ["What it estimates", "The default stable-efficiency weighting uses recent average efficiency for allocation shares and response curves for channel caps. Marginal greedy allocation uses estimated returns on additional spend, so a channel with strong average efficiency can rank lower near saturation. Both are historical simulations, not guarantees."],
         ["How to act", "Apply recommendations in small steps, then compare actual CPA or ROAS with the estimated range. Check cannibalization before increasing a suspect channel, and treat sparse new channels as an experiment budget rather than a model-led scale decision."],
       ],
       faq: [
         { q: "Can I apply the recommended split as-is?", a: "Applying the full move at once is not recommended. It is a simulation from historical observations, so shift in small steps and compare actuals against the estimated range." },
-        { q: "Why not give everything to the best average-efficiency channel?", a: "Because the decision uses marginal efficiency. A saturated channel produces a worse next unit than its average suggests, which lowers its priority." },
+        { q: "Why not give everything to the best average-efficiency channel?", a: "Each channel is capped by observed spend. The default stable-efficiency weighting uses recent average efficiency, not a marginal optimum. Select marginal greedy allocation to allocate by the estimated return on additional spend." },
         { q: "Can it plan budgets far above anything observed?", a: "Reliability drops sharply outside the observed spend range, so the tool constrains recommendations to stay within each channel's observed maximum spend." },
       ],
     },
@@ -666,6 +666,12 @@ export const TOOL_SEARCH_CONTENT_IDS = ROUTES
 export function getToolSearchContent(toolId, locale = "ko") {
   const localeKey = locale === "en" ? "en" : "ko";
   return CONTENT[toolId]?.[localeKey] || getResponseSubtoolContent(toolId, localeKey) || null;
+}
+
+// 검색 진입을 우선 점검한 세 도구만 기존 참고 내용을 본문에 둔다.
+// 개인 결과·작업 공간에는 확장하지 않는다. 내용 자체는 기존 SSOT를 재사용한다.
+export function hasInlineToolReference(toolId) {
+  return ["5-3", "5-21", "5-18-mmm"].includes(toolId) && isRouteIndexable(toolId);
 }
 
 // FAQPage JSON-LD용 목록. 도구가 답하는 핵심 질문을 **첫 항목**으로 올린다 —

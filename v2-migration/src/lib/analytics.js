@@ -27,12 +27,17 @@ let hasRecordedFirstActivation = false;
 const EDITORIAL_JOURNEY_KEY = "gop:editorial-journey";
 const EDITORIAL_JOURNEY_TTL = 30 * 60 * 1000;
 const EDITORIAL_FUNNEL_EVENTS = new Set([
+  "tool_view",
   "data_import_start", "data_import_success", "data_import_failed",
   "data_profile_completed", "mapping_confirmed", "analysis_started", "analysis_completed", "analysis_blocked",
   "analysis_result_viewed", "dochi_mapping_confirmed", "decision_record_added", "decision_review_completed",
   "weekly_review_viewed", "weekly_review_completed", "weekly_review_blocked",
   "weekly_decision_saved", "weekly_review_export",
   "weekly_review_result_viewed", "real_result_viewed",
+  // 결과 활용도 글→도구 연결을 잇는다. 시도·실패를 성공으로 집계하지 않는다.
+  "result_download_attempted", "result_downloaded", "result_download_failed",
+  "project_review_saved", "decision_review_opened",
+  "report_brief_copied", "decision_follow_up_saved",
 ]);
 
 // 공개 글 식별자만 저장한다. 도구 ID는 정규화 전에 비교하여 MMM과 추세를
@@ -50,6 +55,7 @@ function withEditorialJourney(name, params) {
         storage.setItem(EDITORIAL_JOURNEY_KEY, JSON.stringify({
           content_slug: params.content_slug, content_type: params.content_type,
           locale: params.locale, tool_id: params.tool_id, createdAt: Date.now(),
+          ...(typeof params.placement === "string" && /^[a-z_]{1,64}$/.test(params.placement) ? { placement: params.placement } : {}),
         }));
       }
     } else if (name === "blog_sample_result_viewed" || (EDITORIAL_FUNNEL_EVENTS.has(name) && params.source !== "demo")) {
@@ -60,7 +66,11 @@ function withEditorialJourney(name, params) {
       if (!Number.isFinite(age) || age < 0 || age > EDITORIAL_JOURNEY_TTL) {
         storage.removeItem(EDITORIAL_JOURNEY_KEY);
       } else if (journey.tool_id === params.tool_id && journey.locale === params.locale) {
-        return { ...params, content_slug: journey.content_slug, content_type: journey.content_type };
+        return {
+          ...params, content_slug: journey.content_slug, content_type: journey.content_type,
+          // 도착 이벤트에서만 클릭 위치를 잇는다. 결과 카드의 placement는 보존한다.
+          ...(name === "tool_view" && journey.placement ? { placement: journey.placement } : {}),
+        };
       }
     }
   } catch { /* 저장소 없이도 기존 집계 이벤트는 유지한다. */ }

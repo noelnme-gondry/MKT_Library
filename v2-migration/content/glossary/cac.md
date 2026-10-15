@@ -1,11 +1,11 @@
 ---
 term: "CAC (Customer Acquisition Cost)"
-seoTitle: "CAC 뜻과 계산 | Customer Acquisition Cost"
+seoTitle: "Customer Acquisition Cost(CAC) 뜻 | 고객 획득과 비용 계산"
 searchTitleTerms: ["CAC", "Customer Acquisition Cost"]
 shortDef: "고객 한 명을 획득하는 데 든 비용 — 획득 비용 ÷ 획득 고객 수"
 description: "Customer acquisition은 고객 획득 과정, CAC는 고객 한 명의 획득 비용입니다. 둘의 차이와 비용 범위·분모별 예시를 봅니다."
 date: "2026-07-18"
-updated: "2026-10-08"
+updated: "2026-10-15"
 sources:
   - title: "Shopify: What is customer acquisition?"
     url: "https://www.shopify.com/blog/customer-acquisition"
@@ -29,7 +29,7 @@ faq:
 
 ## 한 줄로
 
-획득에 쓴 총비용 ÷ 획득한 고객 수 — CAC(Customer Acquisition Cost, 고객 획득 비용)는 고객 한 명을 데려오는 데 든 돈입니다. 분모를 뭘로 잡느냐에 따라 값이 크게 달라져요.
+Customer acquisition은 신규 고객을 얻는 과정이고, CAC(Customer Acquisition Cost)는 신규 고객 한 명을 얻는 데 든 비용입니다. CAC는 같은 범위의 획득 비용을 신규 고객 수로 나누며, 비용에 무엇을 넣고 누구를 고객으로 세는지에 따라 값이 달라집니다.
 
 ## Customer acquisition 뜻과 CAC의 차이
 

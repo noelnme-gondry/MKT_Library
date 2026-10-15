@@ -15,8 +15,8 @@ import { SITE_URL } from "@/lib/routeMap";
  * 리팩토링에서 가장 조용히 썩는 자산이다 — 크롤러는 링크주스를 404로 흘려보내고,
  * 화면에서는 눌러보기 전까지 멀쩡해 보인다.
  *
- * 유효 목적지는 **sitemap에서 파생**한다(routeMap·블로그·용어집·compare·템플릿·
- * 계산기를 이미 전부 포함). 손으로 쓴 화이트리스트를 두면 그 목록이 다음 버그가 된다.
+ * 공개 목적지는 sitemap에서 파생한다. 개인 작업 화면은 noindex여도 링크할 수
+ * 있으므로 실제 정적 페이지 파일과 noindex 선언으로 확인한다(색인 여부 ≠ 존재 여부).
  */
 
 const CONTENT_DIRS = ["content/blog", "content/blog-en", "content/glossary", "content/glossary-en"];
@@ -58,7 +58,9 @@ describe("원고 내부 링크", () => {
     const broken = [];
     for (const [href, files] of contentLinks) {
       const target = stripLocale(href);
-      if (!sitemapPaths.has(target)) broken.push(`${href} <- ${[...files].join(", ")}`);
+      const page = path.join(process.cwd(), "src/app/(ko)", target, "page.js");
+      const privatePageExists = fs.existsSync(page) && /robots:\s*\{\s*index:\s*false/.test(fs.readFileSync(page, "utf8"));
+      if (!sitemapPaths.has(target) && !privatePageExists) broken.push(`${href} <- ${[...files].join(", ")}`);
     }
     expect(broken, `실재하지 않는 링크:\n${broken.join("\n")}`).toEqual([]);
   });

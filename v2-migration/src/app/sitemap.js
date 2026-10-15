@@ -106,12 +106,8 @@ export default function sitemap() {
   ];
 
   // routeMap 밖의 독립 페이지. 색인 가능한 canonical 페이지가 sitemap에서
-  // 누락되지 않게 주간 리뷰 KO/EN과 법적 고지 페이지를 명시한다.
+  // 누락되지 않게 법적 고지 페이지를 명시한다. 개인 리뷰·보고서는 noindex다.
   const standaloneEntries = [
-    { url: `${BASE}/weekly-review`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/en/weekly-review`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/weekly-report`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/en/weekly-report`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/en/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, changeFrequency: "yearly", priority: 0.3 },

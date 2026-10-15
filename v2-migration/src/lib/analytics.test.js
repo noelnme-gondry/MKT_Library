@@ -72,16 +72,20 @@ describe("privacy-safe product analytics", () => {
       file_name: "secret.csv", raw_value: "private",
     });
     expect(JSON.stringify([...values.values()])).not.toMatch(/secret|private|file_name/);
-    for (const name of ["data_import_success", "analysis_completed", "analysis_result_viewed", "decision_record_added", "decision_review_completed"]) {
+    for (const name of ["tool_view", "data_import_success", "analysis_completed", "analysis_result_viewed", "decision_record_added", "decision_review_completed", "result_download_attempted", "result_downloaded", "result_download_failed", "project_review_saved", "decision_review_opened", "report_brief_copied", "decision_follow_up_saved"]) {
       trackProductEvent(name, route);
       expect(window.gtag.mock.lastCall[2].content_slug).toBe("apple-search-ads-guide");
     }
     for (const params of [{ ...route, tool_id: "5-27" }, { ...route, locale: "en" }, { ...route, source: "demo" }]) {
-      trackProductEvent("analysis_completed", params);
-      expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+      for (const name of ["tool_view", "analysis_completed", "result_downloaded", "project_review_saved"]) {
+        trackProductEvent(name, params);
+        expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+      }
     }
     clock.mockReturnValue(1_802_000);
     trackProductEvent("analysis_completed", route);
+    expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+    trackProductEvent("result_downloaded", route);
     expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
     expect(values.size).toBe(0);
     clock.mockRestore();

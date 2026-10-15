@@ -1,10 +1,10 @@
 ---
 term: "Holdout Test"
 seoTitle: "Holdout Test: Measuring an Ad's Real Effect"
-shortDef: "Randomly withholding ads from part of an audience to measure true incrementality"
+shortDef: "Randomly assigning users or regions and withholding the tested campaign to estimate incrementality"
 description: "A holdout test randomly withholds ads from part of an audience and compares outcomes. Why it is needed and how to read the result honestly."
 date: "2026-07-18"
-updated: "2026-08-26"
+updated: "2026-10-15"
 slug: "holdout-test"
 keywords: "holdout test, holdout meaning, incrementality test, ad holdout experiment"
 category: "Measurement & Methodology"
@@ -15,22 +15,22 @@ sources:
 draft: false
 faq:
   - q: "How large should the holdout group be?"
-    a: "Too small and you cannot distinguish the difference; too large and you give up revenue. Aim for the smallest group that can resolve the effect size you expect — the fewer conversions a campaign produces, the larger both the holdout and the window must be."
+    a: "A small holdout can lack precision, while a larger one can increase the opportunity cost of withholding ads. Set its size from the target effect, baseline conversion rate, power and duration. Attributed revenue from withheld advertising is not automatically lost revenue."
   - q: "How long should a holdout test run?"
     a: "Longer than the purchase cycle. If conversions arrive days later and you run for a week, the exposed group is compared while its outcomes are still maturing. Set the end date before you start and do not move it on interim results."
   - q: "Can incrementality be measured without a holdout?"
     a: "You can estimate it from before-and-after comparisons or a time-series baseline, but those cannot separate other changes in the same window. Use them as estimates and stop short of calling them causal."
   - q: "How do you read a holdout result?"
-    a: "The gap in conversion rate between the two groups is the uplift. 8% in the exposed group against 5% in the holdout is 3pp of uplift. An interval crossing zero means not yet distinguishable rather than no effect. Holdout share has no universal answer; derive it from the minimum detectable effect, conversion volume, duration, and opportunity cost."
+    a: "In an individually randomized experiment, 8% in the assigned treatment group versus 5% in the holdout gives 3pp absolute uplift. Use the assigned population specified by the design, without selecting afterward on actual exposure. An interval crossing zero leaves the direction unresolved; it does not prove no effect. Regional experiments require inference at the assignment level."
 ---
 
 ## In one line
 
-Randomly split users or regions into two groups, withhold ads from one of them entirely, and compare. That design is a holdout test.
+A holdout test randomly assigns users or regions and withholds the tested campaign from one group to compare outcomes. Define the scope of withheld ads and exposure to other campaigns before starting.
 
 ## Why it's needed
 
-Observational data alone can't prove an ad caused a lift in conversions. Comparing a group that saw the ad against a group that genuinely didn't is the only way to confirm real [incrementality](/glossary/incrementality).
+A simple observed difference cannot establish that an ad caused a lift. Random assignment helps construct a baseline for estimating [incrementality](/glossary/incrementality). Selecting participants afterward based on actual exposure can introduce selection bias.
 
 ## How to interpret it
 

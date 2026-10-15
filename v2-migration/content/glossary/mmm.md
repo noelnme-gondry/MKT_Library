@@ -4,6 +4,7 @@ seoTitle: "MMM 뜻 | 채널 기여도를 회귀로 나누는 법"
 shortDef: "채널별 지출과 성과의 관계를 시계열로 모델링해 기여도를 추정하는 방법"
 description: "MMM은 채널 지출과 성과의 관계를 시계열로 모델링해 기여를 추정합니다. 언제 쓸 수 있고 못 쓰는지."
 date: "2026-08-17"
+updated: "2026-10-15"
 slug: "mmm"
 keywords: "MMM, MMM 뜻, 마케팅 믹스 모델링, marketing mix modeling, 채널 기여도, 미디어 믹스, 애드스톡, 기여도 분해"
 category: "측정·분석 방법론"
@@ -49,4 +50,4 @@ faq:
 
 ## 더 깊게 보려면
 
-MMM의 전제와 해석 범위는 [마케팅 믹스 모델링 글](/blog/marketing-mix-modeling)에서, 공선성 진단은 [다중공선성 가이드](/blog/multicollinearity-mmm-guide)에서 다룹니다. 실제 주간 패널로 돌려보려면 [마케팅 반응 분석](/tools/marketing-response)을 쓰면 됩니다.
+MMM의 전제와 해석 범위는 [마케팅 믹스 모델링 글](/blog/marketing-mix-modeling)에서, 공선성 진단은 [다중공선성 가이드](/blog/multicollinearity-mmm-guide)에서 다룹니다. 실제 주간 패널은 [채널 기여도(MMM) 도구](/tools/mmm-contribution)에 넣고 기여 추정치·불확실성·식별 조건을 함께 확인하세요.

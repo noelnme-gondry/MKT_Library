@@ -3,6 +3,7 @@ import EditorialLayout from "@/components/EditorialLayout";
 import { SITE_URL } from "@/lib/routeMap";
 
 export const metadata = {
+  robots: { index: false, follow: true },
   title: "Weekly performance report builder",
   description: "Collect conclusions and key figures from analysis tools into a Markdown or PDF weekly report.",
   alternates: { canonical: `${SITE_URL}/en/weekly-report`, languages: { ko: `${SITE_URL}/weekly-report` } },

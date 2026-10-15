@@ -4,6 +4,7 @@ seoTitle: "What Is ARPU? And How It Differs from ARPPU"
 shortDef: "Revenue over a period divided by the total number of users"
 description: "ARPU is revenue divided by all users. How it differs from ARPPU, why a rising ARPU can mislead, and how it feeds an LTV estimate."
 date: "2026-08-17"
+updated: "2026-10-15"
 slug: "arpu"
 keywords: "ARPU, ARPU meaning, ARPPU, average revenue per user, ARPDAU, revenue per user, LTV calculation"
 category: "Basic Metrics"
@@ -29,7 +30,7 @@ The names are close but the denominators differ.
 - ARPU = revenue ÷ all users
 - ARPPU = revenue ÷ paying users
 
-In an app with a 3% payer rate, ARPPU lands around 30× ARPU. The two lead to completely different conclusions, so check which one a report is actually showing.
+With the same revenue, period and population, ARPPU ÷ ARPU = all users ÷ paying users. At a 3% payer rate, 1 ÷ 0.03 ≈ 33.33×. Pair monthly revenue with deduplicated users from that month and specify whether users means registered or active users. Summing daily active users does not give monthly unique users.
 
 They answer different questions: ARPU is the profitability of the whole user pool, ARPPU is how much payers spend.
 

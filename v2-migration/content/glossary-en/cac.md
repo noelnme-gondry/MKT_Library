@@ -5,7 +5,7 @@ searchTitleTerms: ["CAC", "Customer Acquisition Cost"]
 shortDef: "Cost of acquiring one customer — total acquisition spend divided by customers acquired"
 description: "Customer acquisition is the process; CAC is the cost per new customer. Compare the two, follow the funnel, and calculate CAC with a consistent denominator."
 date: "2026-07-18"
-updated: "2026-10-08"
+updated: "2026-10-15"
 sources:
   - title: "Shopify: What is customer acquisition?"
     url: "https://www.shopify.com/blog/customer-acquisition"
@@ -29,7 +29,7 @@ faq:
 
 ## In one line
 
-Total acquisition spend ÷ customers acquired. CAC (Customer Acquisition Cost) is what one customer cost you, and what you count as a "customer" in the denominator changes the number a lot.
+Customer acquisition is the process of gaining new customers; CAC (Customer Acquisition Cost) is the cost of acquiring one new customer. Divide acquisition costs by new customers within the same scope, and state which costs and customers you count.
 
 ## Customer acquisition versus customer acquisition cost
 

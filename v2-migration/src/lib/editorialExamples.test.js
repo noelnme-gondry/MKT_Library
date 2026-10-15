@@ -8,12 +8,23 @@ import { classifyStoreShift, decomposeStoreConversion } from "@/utils/asoStoreMa
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
 import { qualifyAsaRecommendations } from "@/utils/asaRecommendationQuality";
 import { calculateMarketingMetric } from "./calculators";
+import { METRIC_BY_ID } from "@/utils/metrics/metricRegistry";
 
 function load(name, toolId) {
   const csv = Papa.parse(fs.readFileSync(path.join(process.cwd(), "public/examples", name), "utf8"), { header: true, skipEmptyLines: true });
   expect(csv.errors).toEqual([]);
   return getMappedRows(prepareDatasetForTool({ raw: csv.data, headers: csv.meta.fields, toolId }));
 }
+it("reproduces the published Korean metric and uplift examples with existing engines", () => {
+  expect(METRIC_BY_ID.cpi.compute({ cost: 5000000, denom: 5000 })).toBe(1000);
+  expect(calculateMarketingMetric("roas", { adSpend: 5000000, revenue: 15000000 }).primary).toBe(3);
+  const uplift = calculateMarketingMetric("uplift", { treatmentUsers: 1000, treatmentConversions: 80, controlUsers: 1000, controlConversions: 50 });
+  expect(uplift.primary).toBeCloseTo(0.03, 12);
+  expect(uplift.secondary).toBeCloseTo(0.6, 12);
+  const arpu = METRIC_BY_ID.arpu.compute({ revenue: 3000000, denom: 1000 });
+  const arppu = METRIC_BY_ID.arppu.compute({ revenue: 3000000, purchases: 30 });
+  expect(arppu / arpu).toBeCloseTo(100 / 3, 12);
+});
 it("reproduces marketing analysis totals and the performance-marketing profitability example", () => {
   const parsed = Papa.parse(fs.readFileSync(path.join(process.cwd(), "public/examples/weekly-report-campaigns.csv"), "utf8"), { header: true, skipEmptyLines: true });
   expect(parsed.errors).toEqual([]);
