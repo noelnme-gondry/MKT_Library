@@ -16,6 +16,10 @@ describe("contact author profile", () => {
     expect(payload.mainEntity["@type"]).toBe("Person");
     expect(payload.mainEntity.description).toBe(AUTHOR[locale].bio);
     expect(payload.mainEntity.jobTitle).toBe(AUTHOR[locale].role);
+    // Google ProfilePage는 dateModified를 DateTime으로 요구한다. 날짜만 쓰면
+    // Search Console이 "datetime 값이 잘못됨"으로 표시한다(2026-10 경고).
+    expect(payload.dateModified).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})$/);
+    expect(Number.isNaN(Date.parse(payload.dateModified))).toBe(false);
     unmount();
   });
 });
