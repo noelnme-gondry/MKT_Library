@@ -99,7 +99,8 @@ export function profilePageNode(locale = "ko") {
     url: `${SITE_URL}${path}`,
     name: lang === "en" ? `About the operator of ${AUTHOR.name}` : `${AUTHOR.name} 운영자 소개`,
     inLanguage: lang === "en" ? "en" : "ko-KR",
-    dateModified: "2026-09-02",
+    // ProfilePage는 DateTime을 요구한다 — 날짜만 쓰면 Search Console이 잘못된 값으로 본다.
+    dateModified: "2026-09-02T00:00:00+09:00",
     mainEntity: authorNode(lang),
   };
 }
