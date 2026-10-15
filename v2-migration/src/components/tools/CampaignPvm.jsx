@@ -97,7 +97,7 @@ const PVM_COPY_EN = {
       "This decomposition is arithmetically exact but does not prove causation (association only). Because it's decomposed once at the finest unit (channel × campaign × creative) and rolled up, the channel, campaign, and creative views always nest exactly (sums match).",
     causationCallout:
       "This shows association, not causation. Channel, campaign, and creative are all decomposed once at the finest unit (channel × campaign × creative) and summed, so the three views always nest exactly.",
-    explainerMix: "The change from budget mix shifting toward channels that are cheaper/more expensive than average.",
+    explainerMix: "The change from result share shifting toward channels that are cheaper/more expensive than average.",
     explainerRate: (ml) => `The change from the channel's own ${ml} changing.`,
     shareHeader: "Result Share (P1→P2)",
     shareHeaderTitle: "The share of total results (conversions) this item accounts for — not a cost share.",
@@ -132,7 +132,7 @@ const PVM_COPY_EN = {
       "This decomposition is arithmetically exact but does not prove causation (association only). Because it's decomposed once at the finest unit (traffic source × category × content) and rolled up, the traffic-source, category, and content views always nest exactly (sums match).",
     causationCallout:
       "This shows association, not causation. Traffic source, category, and content are all decomposed once at the finest unit (traffic source × category × content) and summed, so the three views always nest exactly.",
-    explainerMix: "The change from publishing/exposure mix shifting toward traffic sources that are cheaper/more expensive than average.",
+    explainerMix: "The change from result share shifting toward traffic sources that are cheaper/more expensive than average.",
     explainerRate: (ml) => `The change from the traffic source's own ${ml} changing.`,
     shareHeader: "Traffic Share (P1→P2)",
     shareHeaderTitle: "The share of total traffic (visits/PV) this item accounts for — not a cost share.",
@@ -1141,7 +1141,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         {th("COST (P1→P2)", "cost")}
         {th(`${ml} (P1→P2)`, "cpa")}
         {th(C.shareHeader, "share", C.shareHeaderTitle)}
-        {th(tr("MIX (비중 이동)", "MIX (share shift)"), "mix", tr("예산 비중 이동(믹스) 효과 — 이 단계 값은 하위 셀 믹스의 합과 동일(롤업)", "Budget-share (mix) shift effect — at this level it equals the sum of sub-cell mix effects (rollup)"))}
+        {th(tr("MIX (비중 이동)", "MIX (share shift)"), "mix", tr("결과 비중 이동(믹스) 효과 — 이 단계 값은 하위 셀 믹스의 합과 동일(롤업)", "Result-share (mix) shift effect — at this level it equals the sum of sub-cell mix effects (rollup)"))}
         {th(tr("RATE (순수 단가)", "RATE (pure unit price)"), "rate", tr("순수 단가 변동 (Rate)", "Pure unit-price change (Rate)"))}
         {th(tr("MIX (하위합)", "MIX (sub-total)"), "subMix", tr("하위 세그먼트 합산 믹스 효과", "Sum of mix effects across sub-segments"))}
         {th(tr("RATE (하위합)", "RATE (sub-total)"), "subRate", tr("하위 세그먼트 합산 레이트 효과", "Sum of rate effects across sub-segments"))}

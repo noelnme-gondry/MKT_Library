@@ -133,7 +133,7 @@ export const PVM_COPY = {
     causationCallout:
       "association(연관)일 뿐 인과를 증명하지 않습니다. 채널·캠페인·소재 모두 최소 단위(채널×캠페인×소재)에서 한 번 분해 후 합산해 세 보기는 항상 정확히 중첩됩니다.",
     // §2 Mix·Rate 설명
-    explainerMix: "예산 비중이 평균보다 비싼/싼 채널로 옮겨가며 생긴 변화.",
+    explainerMix: "결과 비중이 평균보다 비싼/싼 채널로 옮겨가며 생긴 변화.",
     explainerRate: (ml) => `채널 자체 ${ml}가 변해서 생긴 변화.`,
     // 표 헤더 — 결과 비중
     shareHeader: "결과 비중 (P1→P2)",
@@ -173,7 +173,7 @@ export const PVM_COPY = {
       "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 유입경로×카테고리×콘텐츠 최소 단위에서 한 번 분해 후 합산하므로 유입경로·카테고리·콘텐츠 보기는 항상 정확히 중첩됩니다(Σ 일치).",
     causationCallout:
       "association(연관)일 뿐 인과를 증명하지 않습니다. 유입경로·카테고리·콘텐츠 모두 최소 단위(유입경로×카테고리×콘텐츠)에서 한 번 분해 후 합산해 세 보기는 항상 정확히 중첩됩니다.",
-    explainerMix: "발행·노출 비중이 평균보다 비싼/싼 유입경로로 옮겨가며 생긴 변화.",
+    explainerMix: "결과 비중이 평균보다 비싼/싼 유입경로로 옮겨가며 생긴 변화.",
     explainerRate: (ml) => `유입경로 자체 ${ml}가 변해서 생긴 변화.`,
     shareHeader: "트래픽 비중 (P1→P2)",
     shareHeaderTitle:
