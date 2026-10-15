@@ -19,7 +19,7 @@ export const SERP_TITLE_EXPERIMENTS = Object.freeze([
     changedFields: Object.freeze(["title"]),
     // 인과로 단정하던 제목과 본문을 함께 교정했다. 제목 단독 실험이 아니다.
     // 배포 시 실제 공개일로 갱신하고 그 이후의 새 기준선을 수집한다.
-    lastMaterialChange: "2026-10-15",
+    lastMaterialChange: "2026-10-16",
     status: "collecting_baseline",
   }),
   Object.freeze({
@@ -33,7 +33,7 @@ export const SERP_TITLE_EXPERIMENTS = Object.freeze([
     changedFields: Object.freeze(["title"]),
     // 검색어와 첫 답변을 함께 정리했다. 이번 수정을 제목 단독 효과로 평가하지 않는다.
     // 배포 시 실제 공개일로 갱신하고 이전 본문 표본과 섞지 않는다.
-    lastMaterialChange: "2026-10-15",
+    lastMaterialChange: "2026-10-16",
     status: "collecting_baseline",
   }),
 ]);
