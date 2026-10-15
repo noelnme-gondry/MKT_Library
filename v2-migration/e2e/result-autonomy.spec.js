@@ -270,7 +270,19 @@ for (const locale of ["ko", "en"]) {
     await expect(next.locator(".tool-connection-card")).toHaveCount(2);
     await expect(next.locator(".tool-connections__more")).toHaveCount(0);
     await expect(page.getByText(en ? "Additional variance evidence" : "추가 변동 근거", { exact: true })).toHaveCount(0);
-    const trigger = next.getByRole("button", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
+    // 공개 검색 진입 도구는 같은 참고 자료를 본문에서 바로 읽을 수 있어야 한다.
+    const reference = next.getByRole("region", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
+    await expect(reference.locator(".tool-longform")).toHaveCount(1);
+    await expect(reference).toContainText(en ? "Required data:" : "필요한 데이터:");
+    await expect(reference.locator(".tool-longform__faq")).toBeVisible();
+    await expect(next.getByRole("button", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true })).toHaveCount(0);
+    const inlineAccessibility = await new AxeBuilder({ page }).include(".tool-outro__section--reference").analyze();
+    expect(inlineAccessibility.violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+
+    // 나머지 도구의 모달·키보드 복귀 계약도 계속 검증한다.
+    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    const trigger = page.locator(".tool-next-step-panel").getByRole("button", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
     await expect(dialog).toBeVisible();
