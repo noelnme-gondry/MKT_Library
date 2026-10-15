@@ -83,7 +83,7 @@ export const TOOL_GUIDE = {
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-21": {
-    when: "성과가 변한 원인을 물량(Volume)·효율(Efficiency)·믹스(Mix)로 무잔차 분해합니다(왜 CPA가 올랐나?).",
+    when: "지출 변화는 물량·효율·믹스로, CPA·CPI 변화는 결과 비중(Mix)과 단가(Rate)로 나눕니다. 변동의 구성은 확인할 수 있지만 인과 원인을 확정하지는 않습니다.",
     grain: "1행 = 하루 × 채널 × 캠페인 × 소재(가장 잘게)",
     needs: [
       { col: "date", label: "날짜", why: "기간 비교(전 vs 후)", required: true },
@@ -423,7 +423,7 @@ export const TOOL_GUIDE_EN = {
     example: "date,channel,cost,impressions,clicks,installs,revenue_d7\n2024-01-01,Google UAC,850000,420000,9800,720,5400000\n2024-01-01,Meta AAP,610000,510000,7200,540,3900000\n2024-01-02,Google UAC,880000,430000,10100,735,5600000",
   },
   "5-21": {
-    when: "Decompose a performance change into volume, efficiency, and mix effects with zero residual (why did CPA go up?).",
+    when: "Split spend changes into volume, efficiency and mix, and CPA or CPI changes into outcome share (Mix) and unit cost (Rate). These terms describe the change without establishing its causal origin.",
     grain: "1 row = 1 day × channel × campaign × creative (finest grain)",
     needs: [
       { col: "date", label: "Date", why: "Period comparison (before vs. after)", required: true },

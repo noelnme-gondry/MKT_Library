@@ -176,6 +176,15 @@ describe("Incrementality render smoke", () => {
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
+  it.each(["ko", "en"])("keeps supporting holdout explanations conditional (%s)", (locale) => {
+    seed(buildIncrSuppressionDemo());
+    const { container } = render(<Incrementality locale={locale} />);
+    const text = container.textContent;
+    expect(text).not.toMatch(/\(이득\)|\(profitable\)|균형\)했다는 증거|evidence the two groups were comparable/);
+    expect(text).toContain(locale === "en" ? "does not establish profitability" : "이익 여부를 뜻하지 않습니다");
+    expect(text).toContain(locale === "en" ? "does not establish comparability" : "비교 가능성을 입증하지는 않습니다");
+  });
+
   it("preserves article sample data and provenance on entry", () => {
     const articleSample = { ...buildIncrSuppressionDemo(), fileName: "article-holdout.csv", importSource: "demo" };
     seed(articleSample);

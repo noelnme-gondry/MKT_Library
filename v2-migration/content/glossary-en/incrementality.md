@@ -1,11 +1,11 @@
 ---
 term: "Incrementality"
 searchTitleTerms: ["Incrementality"]
-seoTitle: "Incrementality Meaning: How to Measure Ad Lift"
+seoTitle: "Incremental vs Incrementality: Meaning and Ad Measurement"
 shortDef: "The pure additional performance an ad actually caused"
 description: "Incremental means increasing in steps. In ads, incrementality asks what would not happen without advertising. See the difference, conversion lift and iCPA."
 date: "2026-07-18"
-updated: "2026-10-08"
+updated: "2026-10-15"
 slug: "incrementality"
 keywords: "incrementality, incrementality meaning, incremental meaning, incremental conversions, incrementality measurement, incrementality testing"
 category: "Measurement & Methodology"
@@ -29,9 +29,9 @@ faq:
 
 ## Incremental meaning versus incrementality
 
-Incremental generally means increasing in steps or increments. In advertising, incremental conversions are additional conversions that would not have happened without the ads. More conversions than last month alone do not establish incremental ad impact.
+Incremental means increasing in steps or increments; in advertising measurement, incrementality refers to outcomes added compared with what would have happened without the ads. A month-over-month increase or attributed conversions alone cannot establish this increment.
 
-Incrementality asks what advertising added compared with its absence. A hundred conversions does not mean advertising caused a hundred conversions. The aim is to estimate the additional outcomes after allowing for those who would have converted anyway.
+A hundred conversions does not mean advertising caused a hundred conversions. The aim is to estimate the additional outcomes after allowing for those who would have converted anyway.
 
 ```
 Incremental conversions = observed conversions with ads − expected conversions without ads

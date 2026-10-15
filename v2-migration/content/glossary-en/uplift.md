@@ -1,11 +1,11 @@
 ---
 term: "Uplift"
 searchTitleTerms: ["Uplift"]
-seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
+seoTitle: "Uplift Meaning and Formula: Rate Difference and Relative Lift"
 shortDef: "The outcome difference between treatment and control; interpreting it as incremental ad impact requires a valid design"
 description: "Uplift means an increase. In an ad experiment, 8% versus 5% is 3 percentage points of absolute lift or 60% relative lift. See formulas and design limits."
 date: "2026-08-09"
-updated: "2026-10-14"
+updated: "2026-10-15"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
@@ -29,17 +29,17 @@ faq:
 
 ## Uplift meaning in advertising
 
-Uplift generally means an increase. In an advertising experiment, uplift is the outcome difference between a group assigned to advertising and a control assigned to have that advertising withheld.
+Uplift means an increase and, in an ad experiment, refers to the outcome difference between treatment and control. Conversion rates of 8% and 5% give a 3 percentage point absolute gap and 60% relative lift. This observed difference alone is not a causal ad effect.
 
 Interpreting this difference as incremental ad impact requires checking random assignment, aligned observation windows and interference between groups. A sales increase after launching ads alone does not establish incremental ad impact.
 
 ```
-Absolute uplift = exposed conversion rate − holdout conversion rate
+Absolute uplift = assigned treatment conversion rate − holdout conversion rate
 Relative uplift = absolute uplift ÷ holdout conversion rate
-Incremental conversions = absolute uplift × addressable audience
+Estimated incremental conversions = absolute uplift × assigned treatment population (with a valid design)
 ```
 
-At 8% for treatment and 5% for the holdout, absolute uplift is 3 percentage points and relative uplift is 3pp ÷ 5% = 60%. Absolute uses `pp`, relative uses `%`, so the same test produces different numbers. The examples below are hypothetical calculations, not benchmarks or observed campaign results.
+Use `pp` for the absolute difference and `%` for the relative increase. The examples below are hypothetical calculations, not benchmarks or observed campaign results.
 
 [Incrementality](/glossary/incrementality) sits one layer above. Uplift is the difference itself; incrementality asks whether that difference may be credited to advertising at all. Without random assignment or an appropriate quasi-experimental design, the difference alone does not establish incremental ad impact.
 
@@ -49,9 +49,9 @@ Use the [uplift calculator](/calculator/uplift) to check both differences from p
 
 ## Why it matters
 
-Not every conversion in an exposed group is caused by the ad — some of those people (brand searchers, repeat buyers) would have converted regardless. Uplift isolates the piece that's genuinely incremental.
+Not every conversion in an exposed group is caused by the ad — some of those people (brand searchers, repeat buyers) would have converted regardless. A valid comparison design allows uplift to estimate what advertising added. A simple group difference can also contain selection bias or differences in other conditions.
 
-The standard way to measure it is a [holdout test](/glossary/holdout-test): randomly split users into an exposed group and a holdout group that sees no ads, then compare conversion rates.
+The standard way to measure it is a [holdout test](/glossary/holdout-test): randomly assign users to a treatment group eligible for advertising and a holdout where the tested ads are withheld, then compare conversion rates.
 
 ## Why CPA/ROAS alone isn't enough
 
@@ -59,13 +59,13 @@ CPA and ROAS relate cost to outcomes counted under an attribution rule. They do 
 
 ## How is uplift calculated?
 
-Start with the conversion-rate difference between a randomized exposed group and holdout group. If the exposed group converts at 8% and the holdout at 5%, **absolute uplift is 3 percentage points**, while **relative uplift is (8%−5%)÷5%=60%**. Those are different units and should be labelled as `pp` and `%` in a report.
+Start with the conversion-rate difference between a randomly assigned treatment group and holdout group. If the treatment group converts at 8% and the holdout at 5%, **absolute uplift is 3 percentage points**, while **relative uplift is (8%−5%)÷5%=60%**. Those are different units and should be labelled as `pp` and `%` in a report.
 
 | Metric | Calculation | Example |
 | --- | --- | --- |
-| Absolute uplift | Exposed rate − holdout rate | 3pp |
+| Absolute uplift | Assigned treatment rate − holdout rate | 3pp |
 | Relative uplift | Absolute gap ÷ holdout rate | 60% |
-| Incremental conversions | Absolute uplift × exposed population | Depends on population |
+| Estimated incremental conversions | Absolute uplift × assigned treatment population | Depends on design and assigned population |
 
 If assignment was not randomized, or the groups differ in audience or timing, that difference alone is not proof of ad impact. Use the [Incrementality Analysis tool](/tools/incrementality) to choose a holdout, launch, or shutdown method that matches your data.
 

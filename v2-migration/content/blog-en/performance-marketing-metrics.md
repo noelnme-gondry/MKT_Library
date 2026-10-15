@@ -2,18 +2,23 @@
 title: "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS"
 description: "Start with CTR, CVR, CPA, and ROAS, then connect CPM, CPC, CPI, and LTV:CAC into one chain to locate the actual performance problem."
 date: "2026-07-27"
-updated: "2026-09-09"
+updated: "2026-10-15"
 slug: "performance-marketing-metrics"
 keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained"
 tags: ["Metrics Basics", "Performance Marketing"]
 draft: false
+sources:
+  - title: "Google Ads: Average CPA definition"
+    url: "https://support.google.com/google-ads/answer/6396841?hl=en"
+  - title: "Google Ads: About conversion values"
+    url: "https://support.google.com/google-ads/answer/13064207?hl=en"
 faq:
   - q: "How are CPM, CPC, CPI, and CPA different?"
     a: "They are costs attached to different funnel stages. CPM is cost per 1,000 impressions, CPC is cost per click, CPI is cost per install, and CPA is cost per action such as signup or purchase."
   - q: "How are ROAS and LTV:CAC different?"
     a: "ROAS divides revenue in a defined window by ad spend. LTV:CAC divides lifetime value by acquisition cost; margin, cost scope, and cohort definitions can differ too, so it is not simply longer-window ROAS."
   - q: "What does low CPA but weak ROAS mean?"
-    a: "Acquisition is relatively cheap, so the likely issue is after conversion: too few purchases, a low average order value, or revenue arriving outside the ROAS window."
+    a: "Check order value and purchase conversion alongside conversion definitions, revenue windows, lag, audience mix and tracking gaps. This pattern alone does not rule out an upstream advertising issue."
   - q: "What if CPA and ROAS look good but LTV:CAC is weak?"
     a: "Check repeat purchase and retention alongside cohort mix, margins, acquisition-cost scope, and lifetime-value assumptions. This is not a confirmed retention diagnosis."
   - q: "In what order should I review performance metrics?"

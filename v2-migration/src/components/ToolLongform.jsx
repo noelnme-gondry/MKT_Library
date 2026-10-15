@@ -1,4 +1,5 @@
-import { getToolSearchContent } from "@/lib/toolSearchContent";
+import { getToolSearchContent, hasInlineToolReference } from "@/lib/toolSearchContent";
+import { getToolGuide } from "@/utils/toolGuide";
 
 // 분석 종료 경계선은 `ToolPageOutro`가 소유한다. 여기서는 참고 자료 한 덩어리만
 // 담당하고, 바깥 묶음 박스 안에서는 자기 테두리를 그리지 않는다(박스 중첩 방지).
@@ -6,6 +7,7 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
   const localeKey = locale === "en" ? "en" : "ko";
   const sectionTitle = localeKey === "en" ? "Method and FAQ" : "판단 기준과 FAQ";
   const content = getToolSearchContent(toolId, localeKey);
+  const needs = hasInlineToolReference(toolId) ? getToolGuide(toolId, localeKey)?.needs.filter(field => field.required).map(field => field.label) : null;
   if (!content) return null;
 
   return <section className="tool-longform" aria-labelledby={`tool-longform-${toolId}`}>
@@ -15,6 +17,7 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
     {content.question && content.answer ? <div className="tool-longform__answer">
       <p className="tool-longform__question">{content.question}</p>
       <p>{content.answer}</p>
+      {needs?.length > 0 && <p>{localeKey === "en" ? "Required data: " : "필요한 데이터: "}{needs.join(" · ")}</p>}
     </div> : null}
     <section data-information-section="" className="tool-longform__disclosure">
       <header data-information-heading="" className="tool-longform__summary">

@@ -4,6 +4,7 @@ seoTitle: "What Is MMM? Marketing Mix Modeling Explained"
 shortDef: "Modelling channel spend against outcomes over time to estimate each channel's contribution"
 description: "MMM models channel spend and outcomes over time to estimate contribution. What it needs to work, and the conditions where it cannot be trusted."
 date: "2026-08-17"
+updated: "2026-10-15"
 slug: "mmm"
 keywords: "MMM, marketing mix modeling, media mix modeling, channel contribution, adstock, saturation curve, incrementality vs MMM"
 category: "Measurement & Methodology"
@@ -49,4 +50,4 @@ Use it to form hypotheses, and confirm with a [holdout test](/glossary/holdout-t
 
 ## Go deeper
 
-MMM's assumptions and interpretation limits are covered in [marketing mix modeling](/blog/marketing-mix-modeling); collinearity diagnosis in the [multicollinearity guide](/blog/multicollinearity-mmm-guide). To run it on your own weekly panel, use [marketing response analysis](/tools/marketing-response).
+MMM's assumptions and interpretation limits are covered in [marketing mix modeling](/blog/marketing-mix-modeling); collinearity diagnosis in the [multicollinearity guide](/blog/multicollinearity-mmm-guide). Run your weekly panel in the [MMM contribution tool](/tools/mmm-contribution) and read contribution estimates alongside uncertainty and identification conditions.

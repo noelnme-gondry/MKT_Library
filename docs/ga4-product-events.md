@@ -24,7 +24,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `blog_check_answered` | 글 안 점검에 답을 끝냄(30초 점검은 두 문항 모두, 상황 확인은 선택 1회) | `content_slug`, `content_type`, `placement=self_check\|situation_check`, `state=yy\|yn\|ny\|nn\|option_1..3`, `locale` |
 | `blog_arrival_action` | 블로그 예시에서 도구로 넘어온 첫 줄(도착 줄)에서 선택 | `tool_id`, `content_slug`, `content_type`, `placement=blog_arrival`, `state=use_my_csv\|back_to_article`, `locale` |
 | `blog_bridge_dismissed` | 블로그 읽기 바를 닫음(그 방문 동안 다시 뜨지 않음) | `content_slug`, `content_type`, `interaction_source`, `placement=reading_bar`, `state=session`, `locale` |
-| `tool_view` | 분석 도구 URL 진입 | `tool_id`, `interaction_source=route`, `locale` |
+| `tool_view` | 분석 도구 URL 진입. 같은 도구·언어의 콘텐츠 CTA 클릭 후 30분 안이면 글과 클릭 위치를 연결 | `tool_id`, `interaction_source=route`, `locale`, 조건부 `content_slug`, `content_type`, `placement`(클릭한 CTA 위치) |
 | `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
 | `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
@@ -55,9 +55,9 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `analysis_blocked` | 필수 매핑·데이터 조건 때문에 분석할 수 없는 상태 진입 | `tool_id`, `interaction_source`, `state`, 집계 개수, `locale` |
 | `analysis_completed` | 결과 또는 정직한 추정 불가 상태 생성 | `tool_id`, `analysis_type`, `result_state`, `locale` |
 | `dashboard_tab_view` | 대시보드 탭 선택 | `tool_id`, `tab_name` |
-| `result_download_attempted` | 다운로드 버튼을 누른 순간(게이트 판정 **전**) | `tool_id`, `download_type`, `source`, `state=free\|paid`, `locale` |
-| `result_downloaded` | 파일 생성·다운로드 요청 성공 | `tool_id`, `download_type`, `source`, `state=free\|paid`, `locale` |
-| `result_download_failed` | 파일 생성이 예외로 실패 | `tool_id`, `download_type`, `source`, `state=실패 사유`, `locale` |
+| `result_download_attempted` | 다운로드 버튼을 누른 순간(게이트 판정 **전**) | `tool_id`, `download_type`, `interaction_source`, `state=free\|paid`, `locale` |
+| `result_downloaded` | 파일 생성·다운로드 요청 성공 | `tool_id`, `download_type`, `interaction_source`, `state=free\|paid`, `locale` |
+| `result_download_failed` | 파일 생성이 예외로 실패 | `tool_id`, `download_type`, `interaction_source`, `state=실패 사유`, `locale` |
 | `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 또는 예시 링크(`?example=1`) 진입 | `tool_id`, `interaction_source=landing|csv_guide|start|tool|example_link`, `placement`, `locale` |
 | `analysis_result_viewed` | 결과 행동 카드가 실제 viewport에 노출 | `tool_id`, `interaction_source`, `analysis_type`, `result_state`, `placement=result_action_card`, `locale` |
 | `real_result_viewed` | **활성화.** 위 이벤트 중 `interaction_source≠demo` 이고 `result_state=ready` 인 경우만 파생. 같은 도구·언어는 페이지 세션당 1회(도치 작업대와 도구 카드가 같은 계산을 보여도 1회). 실패·보류·샘플은 포함하지 않는다. GA 주요 이벤트 후보 | `tool_id`, `interaction_source`, `analysis_type`, `result_state=ready`, `placement`, `locale`, (`content_slug`·`content_type` — 30분 귀속 안) |
@@ -79,6 +79,14 @@ CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 분석 시작·완료·결과 노출·과거 결과 노출·차단 이벤트는 브라우저 메모리의 비식별
 해시로 같은 언어·입력·분석 설정의 중복을 막는다. 같은 결과에서 “다시 분석”만 누른
 경우 시작 분모도 늘리지 않는다. 해시 생성에 쓴 원본 문자열과 해시 자체는 GA에 전송하지 않는다.
+
+### 시작과 완료를 같은 실행 건수로 나누지 않는 이유
+
+2026-10-15 대시보드(5-2) 경로와 렌더 테스트를 대조했다. `CsvUploader`의 시작은 입력 서명당 한 번이며, `Dashboard`와 `ResultActionCard`의 완료 키에는 필터·분석 설정도 들어간다. 따라서 필터 변경으로 새 결과가 나오면 시작 추가 없이 완료가 추가될 수 있다. 같은 결과의 탭 전환·재마운트는 같은 브라우저 런타임에서 중복 제거되지만, 새로고침하면 메모리 키가 초기화된다. 복원된 분석 상태나 블로그 샘플은 업로더 실행 버튼을 거치지 않고 결과로 진입할 수도 있다. 완료에는 `ready` 외에 보류·추정 불가도 포함된다.
+
+직접 빈 도구 진입은 `tool_view`일 뿐 실행이 아니다. 예제는 `interaction_source=demo`, 실제 CSV는 `csv`(또는 실제 가져오기 방식), 수기 도구는 `manual`로 구분한다. 블로그 샘플의 자동 결과를 실제 CSV 시작 누락으로 보정하지 않는다. 같은 세션·도구·분석 유형에서 시작 이후 `ready` 결과가 보였는지 순서 자료로 확인하고, 집계 이벤트 수·사용자 수를 나눈 값을 완료율로 쓰지 않는다. GA로 실행 ID를 보내지 않으므로 개별 재계산의 1:1 시작→완료 매칭은 현재 추정 불가다.
+
+콘텐츠 CTA 노출과 클릭은 동일 `content_slug`·`placement`·`locale`를 맞춘다. 이번 보완은 `tool_view`에 그 글과 클릭 위치를 이어 주며, 결과 카드의 기존 `placement=result_action_card`는 덮어쓰지 않는다. 이는 최근 CTA 클릭 연결이지 GA 유입 출처나 최초 랜딩을 바꾸는 기능이 아니다. 30분 만료·다른 도구·다른 언어·CTA 없는 직접 진입에는 연결하지 않는다. 기존 이벤트의 과거 값은 소급 생성하지 않는다.
 
 ## GA4에서 등록할 이벤트 범위
 
@@ -178,3 +186,28 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
   섞일 수 있어 절대 싣지 않는다(§2.2).
 - 정적 설명서 PDF 링크는 분석 결과가 아니므로 이 경로를 쓰지 않는다
   (`DOWNLOAD_TELEMETRY_EXEMPT` 표식 + 사유로만 통과한다).
+
+## 한국 검색 → 계산 → 결과 활용 (2026-10-15)
+
+국가는 GA4 `Country=South Korea`로 필터한다. `locale=ko`는 UI 언어이므로 국가를 대신하지 않는다. 한국 방문 중 영어 페이지 사용도 별도 행으로 유지한다. 랜딩 페이지와 세션 source/medium을 기준으로 같은 세션의 아래 단계를 비교하며 이벤트 수의 단순 나눗셈을 전환율로 부르지 않는다.
+
+| 단계 | 집계 조건 | 제외·주의 |
+|---|---|---|
+| 랜딩 | 세션의 Landing page + query string, 세션 source/medium | 내부 `page_view`를 새 랜딩으로 세지 않기 |
+| 도구 진입·시작 | `tool_view` → `data_import_start` → `analysis_started` | 진입·업로드·실행을 한 단계로 합치지 않기 |
+| 계산 성공 | `analysis_completed`, `result_state=ready` | `insufficient`·`blocked`는 완료 이벤트여도 성공 제외 |
+| 결과 확인 | `real_result_viewed` | 예제는 `blog_sample_result_viewed`; 기본 예제 자동 계산과 구분 |
+| 파일 없는 계산 | `calculator_used`, `state=calculated` | 사용자가 유효 입력을 바꾼 경우. CSV 분석 퍼널과 별도 |
+| 결과 활용 대리 지표 | `result_downloaded`의 `state=free\|paid`, `report_brief_copied`, `decision_record_added`, `project_review_saved`, `decision_follow_up_saved` | 생성·복사·저장 성공이지 실제 업무 적용·성과 개선의 증거는 아님 |
+
+`result_download_attempted`와 `result_download_failed`는 성공에 합산하지 않는다. 정적 설명서 클릭(`interaction_source=manual`, 성공 state 없음)도 결과 다운로드에서 제외한다. 검토 창을 연 `decision_review_opened`는 활용 의향 단계다.
+
+글 CTA에서 시작한 `content_slug/content_type` 연결을 다운로드 시도·성공·실패, 검토 열기·저장, 보고서 복사·후속 결정 저장까지 확장했다. 기존 30분 TTL·동일 도구·동일 언어 조건을 유지한다. `interaction_source=demo`는 실제 데이터 퍼널에서 제외한다. 이 연결은 CTA 경로만 포함하며 모든 본문 링크나 교차 도구 이동을 완전하게 추적하지 않는다. MMM 계열 이벤트는 기존 `5-18` 집계가 있으므로 `page_path`로 하위 도구를 구분하고, 정확한 ID가 다른 CTA는 억지로 연결하지 않는다.
+
+유입 분류는 GA4의 **세션** source/medium을 보존한다. 내부 위치·CSV 형식은 `interaction_source`로 보내며 `source`·`utm_source`로 새로 덮어쓰지 않는다. 코드에서 이 분리를 확인했지만 과거 `csv/blog/weekly_review/subscription_page` 유입의 원인을 모두 입증한 것은 아니다. GTM·확장 측정의 현재 설정과 실제 수신은 배포 후 DebugView에서 확인해야 한다. 로컬 검증은 운영 GA에 보내지 않는다.
+
+- Google: `google / organic`. Google AI 관련 노출은 Search Console의 별도 관측 항목이며 웹 노출에 더하지 않는다. GA 세션만으로 일반 검색과 Google AI 클릭을 구분하지 않는다.
+- 네이버: `naver / organic`과 `m.naver.com / referral`은 별도로 보관한다. 후자를 자동으로 검색 세션으로 재분류하지 않는다.
+- 확인 가능한 AI 추천: 실제 수신된 외부 referrer 호스트가 ChatGPT·Perplexity·Gemini·Copilot 서비스와 일치하는 경우에만 해당 서비스 추천으로 기록한다. `perplexity / (not set)`처럼 이름만 있고 근거가 없는 행은 미확인으로 둔다. 직접 방문은 AI로 추정하지 않는다.
+
+GA4 사용자 정의 차원(`content_slug`, `content_type`, `tool_id`, `interaction_source`, `result_state`, `locale`)의 등록·보존 기간과 BigQuery 연결 여부는 이번 코드 검증에서 미확인이다. 설정 변경은 하지 않았다. GSC 클릭과 GA 세션, 쿼리 합과 페이지 합, AI 노출 합의 차이는 필터·범위·시간대·누락을 확인하기 전 보정하지 않는다. 제목과 본문을 동시에 바꾼 이번 작업은 제목만의 A/B 실험이 아니며, 실제 배포일 이후 동일 국가·기기·순위 구간의 28일 창부터 관찰한다.

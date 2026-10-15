@@ -728,7 +728,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {series && win?.hasPre && (
         <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-          <strong>{tr("그룹 균형 확인 (홀드아웃 전):", "Group balance check (before holdout):")}</strong> {tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("시작 전엔 거의 같음 → 두 그룹이 비교 가능(균형)했다는 증거.", "Nearly identical before the start → evidence the two groups were comparable (balanced).") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}
+          <strong>{tr("그룹 균형 확인 (홀드아웃 전):", "Group balance check (before holdout):")}</strong> {tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("사전 전환율 차이가 작게 관측됐지만, 이것만으로 두 그룹의 비교 가능성을 입증하지는 않습니다.", "The observed pre-period rate difference is small; this alone does not establish comparability.") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}
         </p></div></div>
       )}
 
@@ -748,18 +748,18 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       {series && isWindowOrderValid && (
         <div style={{ marginTop: "14px" }}>
           <FigureHead level={3} title={tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")} target={() => document.getElementById("incr-suppression-chart")} fileName="incrementality_holdout_daily" locale={locale} />
-          <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
+          <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)의 두 그룹 전환율 차이를 확인합니다. 사전 추세와 동시 변경도 함께 점검하세요. 선의 간격만으로 광고의 인과효과를 확정할 수는 없습니다.", "Compare group conversion rates during the holdout period (between the orange vertical lines), together with pre-period trends and concurrent changes. The gap alone does not establish a causal ad effect.")}</p>
           <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
         </div>
       )}
 
       {r && (
         <div className="callout" style={{ marginTop: "14px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-          <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고 효과의 추정치입니다.</>, <>Even the group that didn&apos;t see ads during the holdout period had some natural conversions. Subtracting that, <strong>{fmtNum(inc)} incremental conversions</strong> is the estimated effect. A causal interpretation requires valid design conditions.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("광고비보다 증분 매출이 큼(이득).", "Incremental revenue exceeds ad spend (profitable).") : tr("증분 기준 광고비가 매출보다 큼.", "Ad spend exceeds incremental revenue.")}</>}
+          <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>대상 광고를 제외하도록 배정한 홀드아웃 그룹의 전환율을 비교 기준으로 삼은 <strong>증분 전환 추정치 {fmtNum(inc)}건</strong>입니다. 실제 배정·오염·추적 조건이 확인되지 않으면 탐색적 차이로 해석합니다.</>, <>Using the conversion rate of the group assigned to withhold the target ads gives an estimate of <strong>{fmtNum(inc)} incremental conversions</strong>. Treat it as an exploratory difference unless assignment, contamination and tracking conditions are verified.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("추정 증분 매출이 광고비 이상입니다. 마진과 다른 비용을 반영하지 않아 이익 여부를 뜻하지 않습니다.", "Estimated incremental revenue is at least as large as ad spend. This excludes margins and other costs and does not establish profitability.") : tr("추정 증분 매출이 광고비보다 작습니다. 추정의 불확실성과 설계 조건을 함께 확인하세요.", "Estimated incremental revenue is below ad spend. Check uncertainty and design conditions alongside this estimate.")}</>}
         </p></div></div>
       )}
       <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-        <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(<>홀드아웃이 <strong>무작위 분할</strong>이고, 홀드아웃 前 두 그룹이 균형(위 확인)일 때만 인과로 해석됩니다. 표본이 적으면 신뢰도가 떨어집니다.</>, <>This can only be interpreted causally if the holdout is a <strong>random split</strong> and the two groups were balanced before the holdout (see above). Confidence drops with a small sample.</>)}
+        <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(<>인과 해석에는 <strong>무작위 배정</strong>뿐 아니라 관측 단위, 기간 전체의 중복 집계, 광고 노출 오염, 동시 변경과 추적 조건을 확인해야 합니다. 사전 차이가 작거나 설계 조건을 입력했다는 사실만으로 인과효과가 검증되지는 않습니다.</>, <>A causal interpretation requires checking <strong>random assignment</strong>, observation units, duplicate counts across the full period, exposure contamination, concurrent changes and tracking. A small pre-period difference or a design declaration alone does not verify causality.</>)}
       </p></div></div>
     </section>
   );

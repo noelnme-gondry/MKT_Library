@@ -87,7 +87,17 @@ describe("sitemap covers every routable page in app/", () => {
   // catch-all([[...slug]]·[...slug])과 동적 세그먼트([slug])는 routeMap·발행
   // 콘텐츠에서 파생되므로 여기서 별도로 세지 않는다. noindex를 선언한 페이지도 제외.
   // projects is a compatibility redirect into the canonical weekly-review workspace.
-  const NOINDEX_SEGMENTS = new Set(["growth-funnel", "share", "projects"]);
+  const NOINDEX_SEGMENTS = new Set(["growth-funnel", "share", "projects", "weekly-review", "weekly-report"]);
+
+  it("keeps personal review/report workspaces noindex and outside discovery", () => {
+    const urls = new Set(sitemap().map(entry => entry.url));
+    for (const locale of ["ko", "en"]) for (const slug of ["weekly-review", "weekly-report"]) {
+      const prefix = locale === "en" ? "/en" : "";
+      const file = path.join(process.cwd(), "src/app", locale === "en" ? "(en)/en" : "(ko)", slug, "page.js");
+      expect(fs.readFileSync(file, "utf8")).toMatch(/robots:\s*\{\s*index:\s*false,\s*follow:\s*true\s*\}/);
+      expect(urls.has(`${SITE_URL}${prefix}/${slug}`)).toBe(false);
+    }
+  });
 
   function collectRoutes(dir, prefix = "") {
     const found = [];

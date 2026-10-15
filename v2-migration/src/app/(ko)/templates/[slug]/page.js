@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import PlatformExportGuide, { platformExportNames } from "@/components/PlatformExportGuide";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
+import TemplatePreparationNotes from "@/components/TemplatePreparationNotes";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getTemplatePage, TEMPLATE_PAGE_SLUGS } from "@/lib/templateCatalog";
@@ -88,6 +89,7 @@ export default async function Page({ params }) {
       {page.roleMapping && <p>업로드 후 숫자 성과 1개와 숫자 행동·요소 1개 이상을 선택하세요. 행동·요소 열 이름은 예시이며 내 컬럼으로 바꿔 역할을 지정할 수 있습니다. Aha 목표값은 0/1이어야 합니다. 결측값·표본 수·값의 변동 조건은 계산 전에 별도로 검사합니다.</p>}
       {page.toolId === "5-23" && <p>이 양식은 통제군 방식용입니다. exposed와 holdout 양쪽 그룹이 필요합니다. 신규 켜기·종료 방식은 날짜와 숫자 성과 열을 준비하고 전환일과 전후 관측을 지정하세요. 도구에서 실험 설계도 확인해야 합니다.</p>}
 
+      <TemplatePreparationNotes toolId={page.toolId} locale="ko" />
       <PlatformExportGuide toolId={page.toolId} locale="ko" />
 
       <h2>작성할 때 주의할 점</h2>

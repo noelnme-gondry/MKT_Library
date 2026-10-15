@@ -2,11 +2,16 @@
 title: "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지"
 description: "CTR·CVR·CPA·ROAS 네 개로 시작해 CPM·CPC·CPI·LTV:CAC까지 사슬로 연결하고, 문제 위치를 찾는 실무 가이드."
 date: "2026-07-27"
-updated: "2026-09-09"
+updated: "2026-10-15"
 slug: "performance-marketing-metrics"
 keywords: "퍼포먼스 마케팅 지표, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, CPM, CPC, CPI CPA 차이, 광고 비용 지표, 마케팅 지표 기초, 주니어 마케터, 앱 마케팅 지표, UA 마케팅, 마케팅 지표 계산법"
 tags: ["지표 기초", "퍼포먼스 마케팅"]
 draft: false
+sources:
+  - title: "Google Ads: Average CPA definition"
+    url: "https://support.google.com/google-ads/answer/6396841?hl=en"
+  - title: "Google Ads: About conversion values"
+    url: "https://support.google.com/google-ads/answer/13064207?hl=en"
 faq:
   - q: "CPM·CPC·CPI·CPA는 뭐가 다른가요?"
     a: "퍼널의 다른 단계에 붙는 비용이에요. CPM은 노출 1,000회당, CPC는 클릭당, CPI는 설치당, CPA는 가입·구매 같은 행동당 비용이에요. 뒤로 갈수록 돈 되는 행동에 가깝고, 앞 단계 지표는 원인을 알려주는 진단용이에요."
@@ -75,7 +80,7 @@ CPI, CPA, ROAS, LTV, CAC… 리포트를 열면 알파벳이 우수수 쏟아지
 
 앞단까지 한 줄로 이어보면 이래요(숫자는 이해를 돕기 위한 예시예요). 광고비 1,000만 원으로 노출 500만 회면 CPM 2,000원. 그중 5만 회 클릭이면 CTR 1%, CPC 200원. 클릭한 사람 중 5,000명이 설치하면 CPI 2,000원. 그중 500명이 가입하면 CPA 2만 원. 이렇게 세워두면 어느 단계에서 비용이 얼마나 붙는지 한눈에 보여요.
 
-이게 중요한 이유는, **CPM·CTR·CVR은 CPA의 산술적 구성 요소**이기 때문이에요. CPA가 높을 때 CPM이 높으면 매체 경쟁·타겟 단가 문제, CTR이 낮으면 소재·타겟 문제, 전환율이 낮으면 랜딩·[퍼널](/blog/funnel-dropoff-analysis) 문제예요. 결과만 보고는 소재를 갈지 타겟을 바꿀지 못 정해요.
+이게 중요한 이유는, **CPM·CTR·CVR은 CPA의 산술적 구성 요소**이기 때문이에요. CPA가 높을 때 CPM이 높으면 매체 경쟁·타겟 단가를, CTR이 낮으면 소재·타겟을, 전환율이 낮으면 랜딩·[퍼널](/blog/funnel-dropoff-analysis)을 점검할 수 있습니다. 이는 원인을 확정하는 규칙이 아니라 확인할 가설을 좁히는 순서입니다.
 
 최적화 기준도 목표에 따라 달라져요. 인지도 캠페인이면 CPM·도달, 트래픽이면 CPC, 앱 설치면 CPI, 매출·가입이면 CPA(또는 [ROAS](/blog/roas-improvement)) 기준으로요. 다만 초반 지표(CPI)로만 최적화하면 "싸게 깔았는데 아무도 안 사는" 유저를 대량으로 데려올 수 있어요. 가능하면 돈 되는 행동 기준으로 내려가세요. CPI가 싸다고 좋은 게 아니라, 그 유저가 [남고(리텐션)](/blog/cohort-analysis-guide) 사는지까지 봐야 진짜 효율이에요.
 
