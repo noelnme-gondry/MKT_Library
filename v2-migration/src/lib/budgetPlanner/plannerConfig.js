@@ -4,7 +4,8 @@
 
 export const PLANNER_LEVELS = Object.freeze(["country", "platform", "channel", "campaign_name", "adgroup_name", "creative_id"]);
 export const PLANNER_VERDICTS = Object.freeze(["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"]);
-export const PLANNER_NODE_STATES = Object.freeze(["INSUFFICIENT", "EXTRAPOLATING", "DRIFT_WORSE", "DRIFT_BETTER", "LEARNING_TRANSITION", "IN_RANGE"]);
+// INSUFFICIENT = 배분 곡선 자체가 없음 · UNVERIFIED = 곡선은 있지만 최근 소진을 과거 범위와 비교할 이력이 없음.
+export const PLANNER_NODE_STATES = Object.freeze(["INSUFFICIENT", "UNVERIFIED", "EXTRAPOLATING", "DRIFT_WORSE", "DRIFT_BETTER", "LEARNING_TRANSITION", "IN_RANGE"]);
 const STATE_POLICIES = ["hold", "decrease_only", "recent_regime", "freeze", "normal"];
 const POOLING_STEPS = ["campaign_bucket", "mergeIntoSmallest", "excludeAndReport"];
 
@@ -103,6 +104,7 @@ export const PLANNER_CONFIG = deepFreeze({
     locked: [],
     statePolicy: {
       INSUFFICIENT: "hold",
+      UNVERIFIED: "normal",
       EXTRAPOLATING: "decrease_only",
       DRIFT_WORSE: "recent_regime",
       DRIFT_BETTER: "recent_regime",

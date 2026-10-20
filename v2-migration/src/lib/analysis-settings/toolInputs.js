@@ -3,7 +3,7 @@ import { FOLLOWUP_TOOL_SPECS } from "@/lib/recipe/followupSpecs";
 // Only user-entered options. Never persist results, signatures or approval flags.
 export const TOOL_INPUT_KEYS = {
   "5-2": ["recipeSteps"],
-  "5-3": ["recipeSteps", "analysisRange", "planningBasis", "targetValue", "budgetPeriod", "budget", "recentDays", "allocMode", "holdLowConfidence", "trendType", "weightMode", "outlierMethod", "outlierStrength"],
+  "5-3": ["recipeSteps", "analysisRange", "planningBasis", "targetValue", "budgetPeriod", "budget", "recentDays", "allocPace", "holdLowConfidence", "trendType", "weightMode", "outlierMethod", "outlierStrength"],
   // recipeSteps = 명령 입력창 칩(레시피 단계). 예전 세 키는 옛 저장 설정을 읽기 위해 남긴다.
   "5-21": ["metricOverride", "weekBasis", "lookback", "recipeSteps"],
   "5-22": ["satState", "recipeSteps"],

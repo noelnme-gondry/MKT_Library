@@ -158,8 +158,7 @@ describe("BudgetAllocation render smoke", () => {
     fit.mockRestore();
   });
 
-  it("greedy mode says when it shows the plan that starts from the current split", () => {
-    // 샘플은 0원부터 채우는 그리디가 지금보다 나쁜 안을 내는 데이터다(결과 화면 5-3과 같은 샘플).
+  it("switches between the next-step plan and the target allocation on the same planner", () => {
     const csv = buildSampleJourney("ko");
     useAppStore.setState({
       currentRouteId: "5-3",
@@ -168,11 +167,13 @@ describe("BudgetAllocation render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-3");
     render(<BudgetAllocation />);
-    const greedy = [...document.querySelectorAll(".alloc-mode-toggle button")].find((button) => button.textContent === "한계효용 그리디");
-    expect(greedy).toBeTruthy();
-    act(() => greedy.click());
-    expect(greedy.getAttribute("aria-pressed")).toBe("true");
-    expect(document.body.textContent).toContain("현재 배분을 기준으로 조정한 안입니다");
+    const buttons = [...document.querySelectorAll(".alloc-mode-toggle button")];
+    expect(buttons.map((button) => button.textContent)).toEqual(["이번 실행안", "목표 배분"]);
+    expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("하루 증액 20%·감액 30% 안에서만");
+    act(() => buttons[1].click());
+    expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("단계적으로 다가가세요");
     // 결과 작업대와 같은 핵심 그림(지금 하루 예산 ↔ 바꾼 안)이 결론 카드 바로 뒤에 온다.
     const figure = document.querySelector(".tool-core-figure .result-shift");
     expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();

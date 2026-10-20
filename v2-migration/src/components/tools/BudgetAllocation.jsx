@@ -38,7 +38,7 @@ import AllocationResultWorkspace from "@/components/tools/AllocationResultWorksp
 import DataTable from "@/components/ds/DataTable";
 import { allocationCadence, prepareAllocationObservations, allocationHistory } from "@/utils/allocationObservations";
 import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
-import { allocationDeltaPlan } from "@/utils/allocationDeltaPlan";
+import { allocationAt, deltaAllocationAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { allocationCostWorkbook } from "@/lib/analysis-export/allocationCostWorkbook";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -49,17 +49,13 @@ import {
   getRowGroupKey,
   allocParseNum,
   allocFmtNum,
-  calculateAllocationModeC,
-  calculateAllocationModeB,
   computeAllocSummary,
-  computeAllocScenarios,
-  getAllocationEvidenceLimits,
-  buildAllocationFrontier,
   isAllocationFullyFunded,
   selectBudgetForTarget,
 } from "@/utils/budgetAllocTool";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
+const EMPTY_ALLOCATION = Object.freeze({ items: [], unallocated: 0, totalAllocated: 0, lockedTotal: 0, overspent: false });
 
 /* objective → 내부 metric 매핑 + 라벨/방향 (index.html ALLOC_OBJECTIVES 이식) */
 const ALLOC_OBJECTIVES = {
@@ -247,21 +243,21 @@ export function buildAllocationModels(byChannel, adv, modelOverrides = {}) {
   return models;
 }
 
-// Reuse the selected fit and allocator with the same budget in each half.
-// This diagnostic does not change the primary allocation or its math.
-export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency }) {
+// 같은 예산을 두 기간에 각각 플래너로 다시 배분한다. 주 배분과 그 계산은 바꾸지 않는 진단이다.
+export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocPace = "paced", currency, cadence = "daily" }) {
   const periods = splitObservationPeriods(rows);
   const budgetEvidence = [];
   const results = periods.map((period) => {
     const byChannel = buildByChannel(period.rows, unitField, effectiveMetric);
-    const modelsMap = buildAllocationModels(byChannel, adv, groupModels);
     const historyByCh = Object.fromEntries([...byChannel.keys()].map((name) => [name, allocationHistory(period.rows, unitField, name, effectiveMetric, { recentDays })]));
-    const limits = getAllocationEvidenceLimits({ modelsMap });
-    const common = { modelsMap, totalBudget: plannedDailyBudget, maxSpends: limits.maxSpends, overrides: holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {}, currency };
     const currentSpends = Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0]));
-    const allocation = allocMode === "b" ? calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currentSpends }) : calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh });
-    const funded = !limits.unavailableChannels.length && plannedDailyBudget <= limits.maxBudget && isAllocationFullyFunded({ allocation, budget: plannedDailyBudget, currency });
-    budgetEvidence.push({ maxSupportedBudget: limits.maxBudget, allocatedBudget: allocation.items.reduce((sum, item) => sum + item.cost, 0), budgetFeasible: funded, unavailableModels: limits.unavailableChannels.length });
+    const planner = prepareAllocationPlanner(period.rows, { unitField, metric: effectiveMetric, adv, groupModels, cadence, currentSpends });
+    const modelsMap = planner.ok ? planner.modelsMap : new Map();
+    const holds = holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {};
+    const limits = planner.ok ? plannerEvidence(planner, { pace: allocPace, holds }) : { maxBudget: 0, minBudget: 0 };
+    const allocation = planner.ok ? allocationAt(planner, plannedDailyBudget, { pace: allocPace, holds }).allocation : { items: [], totalAllocated: 0, unallocated: plannedDailyBudget };
+    const funded = planner.ok && plannedDailyBudget >= limits.minBudget - 1e-6 && plannedDailyBudget <= limits.maxBudget + 1e-6 && isAllocationFullyFunded({ allocation, budget: plannedDailyBudget, currency });
+    budgetEvidence.push({ maxSupportedBudget: limits.maxBudget, allocatedBudget: allocation.items.reduce((sum, item) => sum + item.cost, 0), budgetFeasible: funded, unavailableModels: [...modelsMap.values()].filter((model) => !model).length });
     return new Map([...modelsMap].map(([name, model]) => {
       const cost = allocation.items.find((item) => item.channel === name)?.cost;
       const current = historyByCh[name]?.totalCost;
@@ -283,7 +279,7 @@ export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, 
 /* 산점도(점+추세선) Chart.js datasets 빌더 — Step2(단일 단위) · Step3(다중 채널) 공유.
    index.html renderAllocatorScatter 이식(§7 render-throw는 주입식 harness 대신 두 호출부 모두 이 함수를 거치므로
    여기서 한 번만 검증하면 됨). perAdv(ch)로 채널/단위별 trendType override를 줄 수 있음(Step2 개별 모델 선택). */
-export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normalizeMode: nmode, perAdv, colorOf, isRoas = false } = {}) {
+export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normalizeMode: nmode, perAdv, colorOf, isRoas = false, fitOf } = {}) {
   const datasets = [];
   const trendInfo = [];
   channels.forEach((ch, i) => {
@@ -293,7 +289,8 @@ export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normaliz
     const color = colorOf ? colorOf(ch, i) : CHART_THEME.series[i % CHART_THEME.series.length];
     const chAdv = perAdv ? perAdv(ch) : adv;
 
-    const fit = fitChannel(pts, chAdv);
+    // fitOf가 주는 곡선(배분 엔진이 실제로 쓰는 곡선)이 있으면 그것을 그린다 — 다시 맞추면 화면과 계산이 갈린다.
+    const fit = fitOf?.(ch) || fitChannel(pts, chAdv);
     const kept = fit ? fit.kept : pts;
     if (kept.length < 2) return;
 
@@ -419,8 +416,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const [budgetAutoDefaulted, setBudgetAutoDefaulted] = useState(false); // 최초 진입 시 최근 일예산 합계로 1회 채움
   const { recentDays: recentDays } = recipeControl.controls;
   const { recentDays: setRecentDays } = recipeControl.setters;
-  const { allocMode: allocMode } = recipeControl.controls;
-  const { allocMode: setAllocMode } = recipeControl.setters; // c | b
+  // 실행 방식: 이번 실행안(하루 변경폭 제한) | 목표 배분(변경폭 제한 없음). 둘 다 같은 플래너·곡선을 쓴다.
+  const { allocPace } = recipeControl.controls;
+  const { allocPace: setAllocPace } = recipeControl.setters; // paced | full
   // 적합이 얇은 채널로 예산을 옮기지 않는다(§8.6 입증책임 비대칭 · product-ssot D-14).
   // 신뢰도는 이미 R²와 데이터 점 수로 계산하고 있었지만 **표시만** 하고 배분에는
   // 쓰지 않았다 — 가장 불확실한 추정치로 돈을 옮기는 상태였다. 기본 ON.
@@ -643,13 +641,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const lowerCountryGroups = useMemo(() => buildAllocationChartCountries(rows, "allocation", unitField, byChannel), [rows, unitField, byChannel]);
   const lowerChartEntities = useMemo(() => new Set(lowerCountryGroups.filter(([country]) => lowerChartCountries == null || lowerChartCountries.has(country)).flatMap(([, entities]) => [...entities])), [lowerCountryGroups, lowerChartCountries]);
   const lowerScopeLabel = lowerCountryGroups.filter(([country]) => lowerChartCountries == null || lowerChartCountries.has(country)).map(([country]) => country || tr("국가 미지정", "Unspecified")).join(" · ") || tr("선택 없음", "None selected");
-  // Step 2에서 확정한 채널별 모델을 Step 3의 실제 분배에도 그대로 사용한다.
-  // 이전에는 검증 산점도만 override를 반영해, "Linear로 확정"해도 자동 모델로
-  // 예산이 계산되는 화면-계산 불일치가 있었다.
-  const modelsMap = useMemo(
-    () => buildAllocationModels(byChannel, adv, groupModels),
-    [byChannel, adv, groupModels],
-  );
   // 최근 N일 채널별 히스토리 요약 (모든 metric 동시 산출) — 진단/결론/총합계/이전평균 공유
   const historyByCh = useMemo(() => {
     const out = {};
@@ -660,11 +651,21 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     }
     return out;
   }, [byChannel, rows, unitField, effectiveMetric, recentDays]);
-  // 한계효용 그리디(B)는 0원부터 쌓아 지금보다 나쁜 안을 낼 수 있다. 지금 하루 지출을 넘기면
-  // 엔진이 지금에서 출발한 안과 비교해 많은 쪽을 쓴다(결과 화면과 같은 경로).
+  // 대상별 현재 일 지출(최근 N일 평균). 배분 엔진의 일 변경폭 기준이자 화면의 "현재" 값 — 한 곳에서만 센다.
   const currentSpends = useMemo(
     () => Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0])),
     [historyByCh],
+  );
+
+  // 배분 엔진 = 계층형 플래너(lib/budgetPlanner). 곡선·범위 적합성·원인 진단·백테스트를 한 번 준비하고,
+  // 예산을 바꿀 때는 배분만 다시 한다. Step 2에서 확정한 단위별 모형도 여기서 그대로 쓴다.
+  const planner = useMemo(
+    () => (rows.length ? prepareAllocationPlanner(rows, { unitField, metric: effectiveMetric, adv, groupModels, cadence, currentSpends }) : { ok: false, code: "NO_USABLE_ROWS" }),
+    [rows, unitField, effectiveMetric, adv, groupModels, cadence, currentSpends],
+  );
+  const modelsMap = useMemo(
+    () => (planner.ok ? planner.modelsMap : new Map([...byChannel.keys()].map((name) => [name, null]))),
+    [planner, byChannel],
   );
 
   // 저신뢰 채널을 현재 지출에 고정한다. 엔진의 잠금 경로(overrides)를 그대로 쓰므로
@@ -678,13 +679,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const dimension = unitField === "country" ? tr("국가", "Country") : unitField === "campaign_name" ? tr("캠페인", "Campaign") : tr("채널", "Channel");
     const grouped = [{ label: groupByPlatform ? `OS × ${dimension}` : dimension, data: rows, overrides: groupModels }];
     if (groupByPlatform) grouped.push({ label: `${dimension} (${tr("OS 합산", "all OS")})`, data: rows.map(row => ({ ...row, platform: "" })), overrides: {} });
-    return grouped.map(group => {
-      const models = Object.fromEntries(ALLOCATION_PREDICTION_METRICS.map(field => [field, allocationModelMap(allocationPointMap(group.data, unitField, field), adv, group.overrides)]));
+    return grouped.map((group, index) => {
+      // 배분 단위·현재 목표 지표의 곡선은 화면의 배분 엔진(플래너)과 같은 곡선을 싣는다 — 엑셀의 Cost 입력 예측이 화면과 갈리지 않게.
+      const models = Object.fromEntries(ALLOCATION_PREDICTION_METRICS.map(field => [field, index === 0 && field === effectiveMetric && planner.ok ? planner.modelsMap : allocationModelMap(allocationPointMap(group.data, unitField, field), adv, group.overrides)]));
       const names = new Set(Object.values(models).flatMap(map => [...map.keys()]));
       const history = Object.fromEntries([...names].map(name => [name, allocationHistory(group.data, unitField, name, effectiveMetric, { recentDays })]));
       return { label: group.label, models, history };
     });
-  }, [rows, groupByPlatform, groupModels, unitField, adv, effectiveMetric, recentDays, tr]);
+  }, [rows, groupByPlatform, groupModels, unitField, adv, effectiveMetric, recentDays, planner, tr]);
 
   // 채널/캠페인별이면 국가를 단일로 강제(0·복수·무효 → 최고지출 국가). index.html normalizeAllocCountryFilter 이식.
   // 이벤트 기반: 단위 변경 시 호출(effect 내 setState 회피).
@@ -770,24 +772,27 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       ),
     [historyByCh],
   );
+  // 대상별 상·하한: 관측 최대 지출(외삽 없음)·∩형 꼭짓점·실행 방식의 일 변경폭·상태 규칙·저신뢰 고정.
+  // 곡선이 없는 대상은 현재 지출로 고정되므로 계획 전체를 막지 않는다.
   const evidenceLimits = useMemo(
-    () => getAllocationEvidenceLimits({ modelsMap }),
-    [modelsMap],
+    () => (planner.ok
+      ? plannerEvidence(planner, { pace: allocPace, holds: lowConfidenceHolds })
+      : { maxSpends: {}, minSpends: {}, maxBudget: 0, minBudget: 0, unavailableChannels: [...modelsMap.keys()], heldWithoutCurve: [] }),
+    [planner, allocPace, lowConfidenceHolds, modelsMap],
   );
   const budgetRange = useMemo(() => {
     const minUnit = currency === "USD" ? 0.01 : 10;
     const fallback = observedDailyBudget > 0 ? observedDailyBudget : dailyBudget;
     const max = Math.max(minUnit * 2, evidenceLimits.maxBudget || fallback || minUnit * 20);
-    // 목표 달성 가능성이 작은 예산에만 있어도 frontier가 놓치지 않도록, 전역 입력의
-    // 하한은 통화 최소단위로 둔다. frontier는 하단 로그 + 상단 선형 간격을 함께 쓴다.
-    const min = minUnit;
+    // 하한은 대상별 감액 한도의 합이다. 그보다 작은 예산은 하한을 지키며 나눌 수 없다.
+    const min = Math.min(max, Math.max(minUnit, evidenceLimits.minBudget || 0));
     const rawStep = max / 160;
     const step =
       currency === "USD"
         ? Math.max(0.01, Math.round(rawStep * 100) / 100)
         : Math.max(10, Math.round(rawStep / 10) * 10);
     return { min, max, step, minUnit };
-  }, [currency, dailyBudget, evidenceLimits.maxBudget, observedDailyBudget]);
+  }, [currency, dailyBudget, evidenceLimits.maxBudget, evidenceLimits.minBudget, observedDailyBudget]);
 
   // CPI/CPA/ROAS 목표의 초기값은 데이터에서 읽되, 사용자가 값을 고르면 그 값을
   // 보존한다. 목표 slider는 frontier 범위 안에서만 움직여 0/무한 목표를 만들지 않는다.
@@ -814,32 +819,26 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       evidenceLimits.unavailableChannels.length > 0 ||
       !(evidenceLimits.maxBudget > 0)
     ) return [];
-    return buildAllocationFrontier({
-      modelsMap,
+    return plannerFrontier(planner, {
       minBudget: budgetRange.min,
       maxBudget: budgetRange.max,
       metric: effectiveMetric,
-      mode: allocMode,
-      maxSpends: evidenceLimits.maxSpends,
-      extrapolateMode: "1.0",
-      currency,
       historyByCh,
-      currentSpends,
       steps: 49,
+      pace: allocPace,
+      holds: lowConfidenceHolds,
     });
   }, [
     planningBasis,
     evidenceLimits.unavailableChannels.length,
     evidenceLimits.maxBudget,
-    evidenceLimits.maxSpends,
-    modelsMap,
+    planner,
     budgetRange.min,
     budgetRange.max,
     effectiveMetric,
-    allocMode,
-    currency,
+    allocPace,
     historyByCh,
-    currentSpends,
+    lowConfidenceHolds,
   ]);
   const targetRange = useMemo(() => {
     const values = targetFrontier.map((point) => point.value).filter((value) => Number.isFinite(value) && value > 0);
@@ -881,25 +880,29 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     targetPlan?.status === "met" || targetPlan?.status === "cap_reached";
   const hasCompleteEvidence =
     evidenceLimits.unavailableChannels.length === 0 && evidenceLimits.maxBudget > 0;
+  // 입력 칸은 통화 최소 단위로 반올림해 저장하므로 그보다 작은 차이는 같은 금액으로 본다.
   const budgetEvidenceEpsilon = Math.max(
-    currency === "USD" ? 0.000001 : 0.001,
+    budgetRange.minUnit,
     budgetRange.max * Number.EPSILON * 16,
   );
   const hasBudgetOutsideEvidence =
     planningBasis === "budget" && dailyBudget > budgetRange.max + budgetEvidenceEpsilon;
+  // 이번 실행안은 대상별 감액 한도가 있다. 그 합보다 작은 예산은 한도를 지키며 나눌 수 없다.
+  const hasBudgetBelowEvidence =
+    planningBasis === "budget" && dailyBudget > 0 && dailyBudget < budgetRange.min - budgetEvidenceEpsilon;
   const isPlanActionable =
     planningBasis === "target"
       ? isTargetPlanActionable
-      : hasCompleteEvidence && !hasBudgetOutsideEvidence && dailyBudget > 0;
+      : hasCompleteEvidence && !hasBudgetOutsideEvidence && !hasBudgetBelowEvidence && dailyBudget > 0;
   const plannedDailyBudget =
     planningBasis === "target"
       ? isTargetPlanActionable
         ? targetPlan?.candidate?.budget || 0
         : 0
-      : hasBudgetOutsideEvidence
+      : hasBudgetOutsideEvidence || hasBudgetBelowEvidence
         ? 0
         : hasCompleteEvidence
-          ? dailyBudget
+          ? Math.min(budgetRange.max, Math.max(budgetRange.min, dailyBudget))
           : 0;
   // 목표 역산은 반응 곡선의 일 단위 지출을 기준으로만 정직하게 비교한다. 예산 입력
   // 모드에서 선택한 월/일 표시 설정은 target 모드 결과의 단위를 바꾸지 않는다.
@@ -935,7 +938,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       const cap = evidenceLimits.maxBudget > 0 ? evidenceLimits.maxBudget : Infinity;
       // 표시 자릿수로 반올림하면 상한을 살짝 넘을 수 있어 내림한다(원 1원 · 달러 1센트).
       const unit = currency === "USD" ? 100 : 1;
-      const seed = Math.floor(Math.min(observedDailyBudget, cap) * unit) / unit;
+      // 고정·감액 한도 때문에 나눌 수 있는 최소 예산이 지금 합계보다 클 수 있다 — 그때는 하한으로 올린다.
+      const floor = Math.ceil((evidenceLimits.minBudget || 0) * unit) / unit;
+      const seed = Math.min(Math.floor(cap * unit) / unit, Math.max(floor, Math.floor(Math.min(observedDailyBudget, cap) * unit) / unit));
       setBudget(formatBudgetInput(budgetPeriod === "monthly" ? seed * 30 : seed, currency));
       setBudgetAutoDefaulted(true);
     }
@@ -949,51 +954,33 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (hasData && step === 3) applyBudgetDefault();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasData, step, observedDailyBudget, evidenceLimits.maxBudget]);
+  }, [hasData, step, observedDailyBudget, evidenceLimits.maxBudget, evidenceLimits.minBudget]);
 
   // 배분 결과 (mode C / B). target 모드는 미리 만든 안전 frontier의 선택 결과를
   // 재사용하므로 slider 이동 때 모델을 다시 25회 계산하지 않는다.
-  const allocation = useMemo(() => {
-    if (planningBasis === "target") {
-      return isTargetPlanActionable
-        ? targetPlan?.candidate?.allocation || { items: [], unallocated: 0, totalAllocated: 0, lockedTotal: 0, overspent: false }
-        : { items: [], unallocated: 0, totalAllocated: 0, lockedTotal: 0, overspent: false };
-    }
-    if (!(plannedDailyBudget > 0))
-      return { items: [], unallocated: 0, totalAllocated: 0, lockedTotal: 0, overspent: false };
-    const common = {
-      modelsMap,
-      totalBudget: plannedDailyBudget,
-      maxSpends: evidenceLimits.maxSpends,
-      overrides: lowConfidenceHolds,
-    };
-    if (allocMode === "b")
-      return calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currency, currentSpends });
-    return calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh, currency });
-  }, [
-    planningBasis,
-    targetPlan,
-    isTargetPlanActionable,
-    modelsMap,
-    plannedDailyBudget,
-    allocMode,
-    currency,
-    effectiveMetric,
-    historyByCh,
-    evidenceLimits.maxSpends,
-    lowConfidenceHolds,
-    currentSpends,
-  ]);
+  // 최종 배분과 그 배분의 요일별 성과 예측. 목표 모드는 사다리에서 고른 예산으로 같은 계산을 다시 한다.
+  const plannerPlan = useMemo(() => {
+    const budgetForPlan = planningBasis === "target"
+      ? (isTargetPlanActionable ? targetPlan?.candidate?.budget || 0 : 0)
+      : plannedDailyBudget;
+    if (!planner.ok || !(budgetForPlan > 0)) return { allocation: EMPTY_ALLOCATION, forecast: null };
+    return allocationAt(planner, budgetForPlan, { pace: allocPace, holds: lowConfidenceHolds, withForecast: true });
+  }, [planningBasis, isTargetPlanActionable, targetPlan, plannedDailyBudget, planner, allocPace, lowConfidenceHolds]);
+  const allocation = plannerPlan.allocation;
+  const planForecast = plannerPlan.forecast;
 
-  const deltaAllocation = useMemo(() => allocationDeltaPlan({ modelsMap, currentSpends: [...modelsMap.keys()].some(name => !historyByCh[name]) ? {} : currentSpends, totalBudget: plannedDailyBudget, maxSpends: evidenceLimits.maxSpends, overrides: lowConfidenceHolds, currency }), [modelsMap, currentSpends, plannedDailyBudget, evidenceLimits.maxSpends, lowConfidenceHolds, currency, historyByCh]);
+  const deltaAllocation = useMemo(
+    () => (planner.ok && plannedDailyBudget > 0 ? deltaAllocationAt(planner, plannedDailyBudget, { pace: allocPace, holds: lowConfidenceHolds }) : { items: [], totalAllocated: 0, unallocated: null, overspent: false, blocked: true }),
+    [planner, plannedDailyBudget, allocPace, lowConfidenceHolds],
+  );
   const strategyRows = useMemo(() => [
     { name: tr("기존 유지 + 증감분", "Keep current + budget delta"), plan: deltaAllocation },
-    { name: tr("전체 재배분", "Reallocate full budget"), plan: allocation },
+    { name: allocPace === "full" ? tr("목표 배분", "Target allocation") : tr("이번 실행안", "Next-step plan"), plan: allocation },
   ].map(({ name, plan }) => {
     const known = !plan.blocked && plan.items.length > 0;
     const results = known ? plan.items.reduce((sum, item) => sum + item.results, 0) : null;
     return { name, cost: known ? plan.totalAllocated : null, results, cpr: known && results > 0 ? plan.totalAllocated / results : null, unallocated: known ? plan.unallocated : null, state: !known ? tr("제약·곡선 확인 필요", "Check constraints and curves") : plan.overspent ? tr("목표 예산 초과", "Over target budget") : plan.unallocated > 1e-8 ? tr("미배분 있음", "Unallocated budget") : tr("관측 범위 시나리오", "Observed-range scenario") };
-  }), [deltaAllocation, allocation, tr]);
+  }), [deltaAllocation, allocation, allocPace, tr]);
   const isAllocationFullyFundedPlan = isAllocationFullyFunded({
     allocation,
     budget: plannedDailyBudget,
@@ -1166,30 +1153,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   }, [allocation.items, effectiveMetric, historyByCh, currency, tr]);
 
   // What-if 시나리오 데이터
-  const allScenarios = useMemo(() => {
-    if (!(plannedDailyBudget > 0)) return [];
-    return computeAllocScenarios({
-      includeItems: true,
-      modelsMap,
-      dailyBudget: plannedDailyBudget,
-      metric: effectiveMetric,
-      mode: allocMode,
-      maxSpends: evidenceLimits.maxSpends,
-      extrapolateMode: "1.0",
-      currency,
-      historyByCh,
-      currentSpends,
-    });
-  }, [
-    modelsMap,
-    plannedDailyBudget,
-    effectiveMetric,
-    allocMode,
-    evidenceLimits.maxSpends,
-    currency,
-    historyByCh,
-    currentSpends,
-  ]);
+  const allScenarios = useMemo(
+    () => (planner.ok && plannedDailyBudget > 0 ? plannerScenarios(planner, plannedDailyBudget, { pace: allocPace, holds: lowConfidenceHolds, includeItems: true }) : []),
+    [planner, plannedDailyBudget, allocPace, lowConfidenceHolds],
+  );
 
   const scenarios = useMemo(() => allocationScenarioView(allScenarios, lowerChartCountries == null ? null : lowerChartEntities), [allScenarios, lowerChartCountries, lowerChartEntities]);
 
@@ -1302,6 +1269,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       normalizeMode: nmode,
       isRoas: isRoasView,
       colorOf: ch => CHART_THEME.series[ranked.indexOf(ch) % CHART_THEME.series.length],
+      // 배분 단위 보기에서는 배분 엔진이 실제로 쓰는 곡선(요일 보정 점·곡선)을 그린다.
+      fitOf: chartUnit === "allocation" ? (ch) => modelsMap.get(ch) || undefined : undefined,
     });
 
     const ctx = chartRef.current.getContext("2d");
@@ -1393,7 +1362,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         chartInstance.current.destroy();
       }
     };
-  }, [step, hasData, chartByChannel, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels, hiddenBlocks, setChartChannels]);
+  }, [step, hasData, chartByChannel, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels, hiddenBlocks, setChartChannels, chartUnit, modelsMap]);
 
   // What-if 시나리오 차트 (예산 배수 → 예상 결과수 곡선). index.html renderAllocScenarioChart 이식.
   useEffect(() => {
@@ -1653,7 +1622,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           }
           summary={
             <p>
-              {tr("채널/캠페인 단위의 예산 배분 및 한계효용(Greedy Optimization) 시뮬레이션", "Channel/campaign-level budget allocation and marginal-utility (greedy optimization) simulation")}
+              {tr("채널/캠페인 단위의 예산 배분 · 한계효율과 실행 제약 시뮬레이션", "Channel/campaign-level budget allocation with marginal efficiency and execution limits")}
             </p>
           }
           toc={[{ id: "s-filter", title: tr("분석 단위", "Analysis unit") }]}
@@ -2134,7 +2103,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   // §5 배분 점검 스트립 데이터 (index.html renderAllocVerifyStrip 이식)
   const verify = (() => {
     if (items.length < 2) return null;
-    const mode = allocMode;
     const rowsV = items.map((it) => {
       const h = historyByCh[it.channel];
       let eff = null;
@@ -2157,61 +2125,23 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         : roas
           ? `${(r.roasV * 100).toFixed(0)}%`
           : fmtCostMetric(r.cpr, effectiveMetric, currency);
-    let head = "",
-      body = "",
-      tone = "good";
-    if (mode === "b") {
-      tone = "neutral";
-      head = tr("한계효용 기준 배분", "Marginal-utility allocation");
-      const zeros = rowsV.filter((r) => r.zero).map((r) => r.ch);
-      body = tr(
-        `그리디(고급)는 평균 효율이 아니라 '추가 1원이 만드는 효과(한계효율)' 기준으로 배분합니다 — 평균 ${metricLabel} 순서와 달라도 정상입니다.` +
-          (zeros.length ? ` 추가 투입 효과가 없어 0 배분된 채널: ${zeros.join(", ")}.` : ""),
-        `Greedy (advanced) allocates based on 'the effect of one more unit of spend (marginal efficiency)', not average efficiency — it's normal for this to differ from the average ${metricLabel} order.` +
-          (zeros.length ? ` Channels allocated 0 because extra spend has no additional effect: ${zeros.join(", ")}.` : "")
-      );
-    } else {
-      const free = rowsV.filter((r) => r.eff != null && !r.zero);
-      const sorted = [...free].sort((a, b) => a.eff - b.eff || (a.ch < b.ch ? -1 : 1));
-      const inv = [];
-      for (let i = 0; i < sorted.length - 1; i++) {
-        if (sorted[i + 1].alloc > sorted[i].alloc * 1.001) inv.push([sorted[i], sorted[i + 1]]);
-      }
-      if (free.length < 2) {
-        tone = "neutral";
-        head = tr("점검 생략", "Check skipped");
-        body = tr(
-          "비교 가능한 채널이 부족합니다. 표와 곡선 근거를 함께 확인하세요.",
-          "There are not enough comparable channels. Review the table and curve evidence together."
-        );
-      } else if (inv.length === 0) {
-        tone = "good";
-        head = tr("✓ 효율 순서대로 배분됨", "✓ Allocated in efficiency order");
-        body = tr(
-          `제약 없는 채널은 효율(${metricLabel})이 좋을수록 예산이 더 갔습니다 — 절대 CPR 가중이 정상 작동 중.`,
-          `For unconstrained channels, better efficiency (${metricLabel}) got more budget — absolute CPR weighting is working as expected.`
-        );
-      } else {
-        tone = "bad";
-        head = tr("⚠ 효율↔배분 역전", "⚠ Efficiency↔allocation reversal");
-        body = tr(
-          inv
-            .slice(0, 2)
-            .map(
-              ([b, w]) =>
-                `${w.ch}(${effLbl(w)})가 ${b.ch}(${effLbl(b)})보다 효율이 낮은데 예산이 더 많습니다`,
-            )
-            .join(" · ") + `. 곡선 형태·관측 최대 지출 상한 때문에 생긴 결과인지 근거를 확인하세요.`,
-          inv
-            .slice(0, 2)
-            .map(
-              ([b, w]) =>
-                `${w.ch} (${effLbl(w)}) has more budget than ${b.ch} (${effLbl(b)}) despite being less efficient`,
-            )
-            .join(" · ") + `. Check whether curve shape or the observed-spend ceiling explains this result.`
-        );
-      }
-    }
+    // 배분 엔진(플래너)은 한계효율 + 실행 제약으로 나눈다. 평균 효율 순서와 다른 것은 정상이고,
+    // 제약에 걸린 대상은 무엇에 걸렸는지 이름으로 말한다(같은 실패 문구를 행마다 반복하지 않는다).
+    const zeros = rowsV.filter((r) => r.zero).map((r) => r.ch);
+    const bound = items.filter((it) => it.binding && it.binding !== "max_daily_decrease" && it.binding !== "max_daily_increase").length;
+    const paced = items.filter((it) => it.binding === "max_daily_decrease" || it.binding === "max_daily_increase").length;
+    const tone = "neutral";
+    const head = tr("한계효율·실행 제약 기준 배분", "Marginal efficiency with execution limits");
+    const body = tr(
+      `추가 1원이 만드는 결과(한계효율)가 큰 대상부터 채웁니다 — 평균 ${metricLabel} 순서와 달라도 정상입니다.` +
+        (paced ? ` 하루 변경폭 한도에 걸린 대상 ${paced}개.` : "") +
+        (bound ? ` 관측 상한·상태 규칙·고정에 걸린 대상 ${bound}개.` : "") +
+        (zeros.length ? ` 0 배분: ${zeros.join(", ")}.` : ""),
+      `Fills the targets whose next unit of spend produces the most results (marginal efficiency) — differing from the average ${metricLabel} order is expected.` +
+        (paced ? ` ${paced} target(s) at the daily change limit.` : "") +
+        (bound ? ` ${bound} target(s) at an observed ceiling, state rule or hold.` : "") +
+        (zeros.length ? ` Allocated 0: ${zeros.join(", ")}.` : ""),
+    );
     return { head, body, tone, note: "" };
   })();
 
@@ -2775,14 +2705,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       )}
 
       {canStorePlan && <PeriodSensitivityPanel
-        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
+        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocPace, currency, cadence, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
         locale={locale}
         variant="allocation"
         baselineDays={recentDays}
         periods={splitObservationPeriods(rows)}
         budgetLabel={fmtCurrency(plannedDailyBudget, currency)}
         formatMoney={number => fmtCurrency(number, currency)}
-        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency })}
+        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocPace, currency, cadence })}
       />}
 
       {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
@@ -2896,7 +2826,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         toc={step3Toc.filter(item => !hiddenBlocks.includes(item.id))}
         stickyFilter={step3StickyFilter}
       >
-      <AllocationPreviewNotice csvData={csvData} locale={locale} recentDays={recentDays} allocMode={allocMode} holdLowConfidence={holdLowConfidence} range={activeRange} excluded={observations.excluded.length} currency={currency} />
+      <AllocationPreviewNotice csvData={csvData} locale={locale} recentDays={recentDays} allocPace={allocPace} holdLowConfidence={holdLowConfidence} range={activeRange} excluded={observations.excluded.length} currency={currency} />
       <section className="allocation-data" aria-label={tr("데이터·매핑", "Data & mapping")}><CsvUploader toolId="5-3" locale={locale} /></section>
       <section className="block prism-driver" id="s-controls" aria-labelledby="prism-driver-title">
         <p className="allocation-observation-note">
@@ -2938,7 +2868,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <div className="prism-driver__label-row">
               <label htmlFor="prism-total-budget">{tr(`총 ${budgetPeriod === "monthly" ? "월" : "일"}예산`, `Total ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget`)}</label>
               <output className="prism-driver__readout" htmlFor="prism-total-budget">
-                {fmtCurrency(budgetPeriod === "monthly" ? budgetSliderValue * 30 : budgetSliderValue, currency)}
+                {/* 입력한 금액을 그대로 보인다. 가능 범위 밖이면 슬라이더만 끝에 멈추고 아래 안내가 이유를 말한다. */}
+                {fmtCurrency(budgetPeriod === "monthly" ? (dailyBudget > 0 ? dailyBudget : budgetSliderValue) * 30 : (dailyBudget > 0 ? dailyBudget : budgetSliderValue), currency)}
               </output>
             </div>
             <input
@@ -2985,15 +2916,22 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             ) : hasBudgetOutsideEvidence ? (
               <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
                 {tr(
-                  `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 관측 지출 상한 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}을 넘습니다. 이 금액 전체에 대한 자동 실행안은 만들지 않았습니다. 상한 안으로 낮추거나 추가 데이터를 쌓은 뒤 다시 계산하세요.`,
-                  `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} exceeds the observed-spend ceiling of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}. PRISM has not created an executable plan for the full amount. Lower it within the ceiling or collect more data and recalculate.`,
+                  `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 나눌 수 있는 최대 금액 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}(대상별 관측 지출 상한${allocPace === "paced" ? "·하루 증액 한도" : ""})을 넘습니다. 이 금액 전체에 대한 자동 실행안은 만들지 않았습니다. ${allocPace === "paced" ? "더 크게 늘리려면 '목표 배분'으로 최종 목표를 보고 여러 번에 나눠 늘리세요." : "상한 안으로 낮추거나 추가 데이터를 쌓은 뒤 다시 계산하세요."}`,
+                  `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} exceeds the largest splittable amount of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)} (per-target observed-spend ceilings${allocPace === "paced" ? " and the daily increase limit" : ""}). PRISM has not created an executable plan for the full amount. ${allocPace === "paced" ? "To grow further, view the end state with Target allocation and increase in several steps." : "Lower it within the ceiling or collect more data and recalculate."}`,
+                )}
+              </p>
+            ) : hasBudgetBelowEvidence ? (
+              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+                {tr(
+                  `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 나눌 수 있는 최소 금액 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)}보다 작습니다(대상별 현재 지출 고정${allocPace === "paced" ? "·하루 감액 한도" : ""}). 이 금액에 대한 자동 실행안은 만들지 않았습니다. ${allocPace === "paced" ? "더 크게 줄이려면 '목표 배분'으로 최종 목표를 보고 여러 번에 나눠 줄이세요." : "최소 금액 이상으로 입력하거나 고정 설정을 확인하세요."}`,
+                  `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} is below the smallest splittable amount of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)} (held targets${allocPace === "paced" ? " and the daily decrease limit" : ""}). PRISM has not created an executable plan for this amount. ${allocPace === "paced" ? "To cut further, view the end state with Target allocation and decrease in several steps." : "Enter at least the minimum or review the holds."}`,
                 )}
               </p>
             ) : hasPartiallyAllocatedPlan ? (
               <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
                 {tr(
-                  `현재 배분 방식은 일 ${fmtCurrency(allocation.totalAllocated, currency)}만 자동 배분하고 ${fmtCurrency(allocation.unallocated, currency)}은 남깁니다. 전액을 실행할 수 있는 계획이 아니므로 저장하지 않았습니다. 전역 예산을 낮추거나 안정적 효율 가중 방식을 선택해 다시 계산하세요.`,
-                  `The current allocation method can automatically allocate only ${fmtCurrency(allocation.totalAllocated, currency)} per day and leaves ${fmtCurrency(allocation.unallocated, currency)} unallocated. Because this is not a fully executable plan, it cannot be saved. Lower the global budget or choose stable efficiency weighting and recalculate.`,
+                  `현재 실행 방식은 일 ${fmtCurrency(allocation.totalAllocated, currency)}만 자동 배분하고 ${fmtCurrency(allocation.unallocated, currency)}은 남깁니다. 전액을 실행할 수 있는 계획이 아니므로 저장하지 않았습니다. 전역 예산을 낮추거나 실행 방식·고정 설정을 확인해 다시 계산하세요.`,
+                  `The current execution pace can automatically allocate only ${fmtCurrency(allocation.totalAllocated, currency)} per day and leaves ${fmtCurrency(allocation.unallocated, currency)} unallocated. Because this is not a fully executable plan, it cannot be saved. Lower the global budget or review the execution pace and holds, then recalculate.`,
                 )}
               </p>
             ) : null}
@@ -3074,36 +3012,28 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         </div>
 
         <section data-information-section="" className="prism-driver__method">
-          <header data-information-heading="">{tr("배분 방식과 관측 지출 상한", "Allocation method and observed-spend ceilings")}</header>
+          <header data-information-heading="">{tr("실행 방식과 지출 상한", "Execution pace and spend limits")}</header>
           <div>
-            <div className="alloc-mode-toggle" role="group" aria-label={tr("배분 방식", "Allocation method")}>
-              <button type="button" className={allocMode === "c" ? "active" : ""} aria-pressed={allocMode === "c"} onClick={() => setAllocMode("c")}>{tr("안정적 효율 가중", "Stable efficiency weighting")}</button>
-              <button type="button" className={allocMode === "b" ? "active" : ""} aria-pressed={allocMode === "b"} onClick={() => setAllocMode("b")}>{tr("한계효용 그리디", "Marginal-utility greedy")}</button>
+            <div className="alloc-mode-toggle" role="group" aria-label={tr("실행 방식", "Execution pace")}>
+              <button type="button" className={allocPace === "paced" ? "active" : ""} aria-pressed={allocPace === "paced"} onClick={() => setAllocPace("paced")}>{tr("이번 실행안", "Next-step plan")}</button>
+              <button type="button" className={allocPace === "full" ? "active" : ""} aria-pressed={allocPace === "full"} onClick={() => setAllocPace("full")}>{tr("목표 배분", "Target allocation")}</button>
             </div>
-            {/* 두 방식의 차이를 말하지 않으면 "안정적 효율 가중"이 한계효율까지
-                본다고 오해된다. 곡선은 `getAllocationEvidenceLimits`가 채널별 상한
-                (관측 최대 지출 · ∩형 꼭짓점)으로 반영하지만, 상한 안에서 나누는
-                비율은 최근 평균 CPR의 역수다 — 한계효율이 떨어지는 구간에서도
-                평균이 좋으면 계속 배분된다. */}
-            <div className="allocation-method-details" aria-label={tr("배분 방식 설명", "About the allocation method")}>
+            {/* 두 방식은 같은 곡선·같은 상태 규칙(관측 상한·학습 보호·저신뢰 고정)을 쓰고
+                하루 변경폭 제한만 다르다. 무엇이 같고 무엇이 다른지 말하지 않으면 두 숫자가
+                다른 엔진에서 나온 것처럼 읽힌다. */}
+            <div className="allocation-method-details" aria-label={tr("실행 방식 설명", "About the execution pace")}>
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 10px" }}>
-              {allocMode === "c"
+              {allocPace === "paced"
                 ? tr(
-                  "안정적 효율 가중은 최근 평균 효율(CPR)에 비례해 나눕니다. 수확체감 곡선은 채널별 상한(관측 최대 지출·∩형 곡선의 꼭짓점)으로 반영되며, 그 상한 안에서 나누는 비율에는 쓰이지 않습니다 — 한계효율이 떨어지는 구간에서도 평균이 좋으면 계속 배분됩니다. 나누는 비율까지 한계효율로 정하려면 한계효용 그리디를 쓰세요.",
-                  "Stable efficiency weighting splits budget in proportion to recent average efficiency (CPR). The diminishing-returns curve sets each channel's ceiling (observed maximum spend, and the vertex for an inverted-U curve) but does not shape the split below that ceiling — a channel keeps receiving budget while its average looks good, even where its marginal efficiency is falling. Use marginal-utility greedy to let marginal efficiency drive the split too.",
+                  `추가 1원이 만드는 결과(한계효율)가 큰 대상부터 채우되, 대상마다 하루 증액 ${Math.round((planner.ok ? planner.cfg.optimizer.maxDailyIncrease : 0.2) * 100)}%·감액 ${Math.round((planner.ok ? planner.cfg.optimizer.maxDailyDecrease : 0.3) * 100)}% 안에서만 바꿉니다. 한 번에 크게 바꾸면 매체 학습이 다시 시작될 수 있어서입니다. 채널별 한도는 설정(config)에서 다를 수 있습니다.`,
+                  `Fills the targets whose next unit of spend produces the most results (marginal efficiency), changing each target by at most +${Math.round((planner.ok ? planner.cfg.optimizer.maxDailyIncrease : 0.2) * 100)}% / −${Math.round((planner.ok ? planner.cfg.optimizer.maxDailyDecrease : 0.3) * 100)}% per day, because large jumps can restart platform learning. Per-channel limits can differ in the config.`,
                 )
                 : tr(
-                  "한계효용 그리디는 마지막 1원이 만드는 결과(한계효율)가 큰 채널부터 채웁니다. 평균 효율 순서와 달라도 정상입니다 — 포화된 채널은 평균이 좋아도 뒤로 밀립니다.",
-                  "Marginal-utility greedy fills the channel whose next unit of spend produces the most results. It can disagree with average-efficiency ranking — a saturated channel drops back even when its average looks good.",
+                  "하루 변경폭 제한 없이 같은 곡선으로 나눈 최종 목표입니다. 한 번에 옮기지 말고 '이번 실행안'으로 단계적으로 다가가세요. 관측 상한·학습 보호·저신뢰 고정은 그대로 적용합니다.",
+                  "The end-state split from the same curves without the daily change limit. Approach it step by step with the next-step plan rather than in one move. Observed ceilings, learning protection and low-confidence holds still apply.",
                 )}
             </p>
             </div>
-              {/* 0원부터 쌓으면 규모가 커져야 싸지는 채널을 못 고른다. 엔진이 지금 배분에서
-                  출발한 안을 골랐다면 그 사실을 말한다 — 이름과 다른 방식의 결과를 조용히 내지 않는다. */}
-              {allocMode === "b" && allocation.source === "from_current" ? <p className="allocation-method-note">{tr(
-                "현재 배분을 기준으로 조정한 안입니다. 비교한 안 중 예상 성과가 더 많습니다.",
-                "This plan adjusts the current allocation. It has more expected outcomes than the alternative evaluated.",
-              )}</p> : null}
             {/* 자동 판정은 조용하면 안 된다 — 무엇을 왜 고정했는지 말하고 뒤집을 수
                 있어야 사용자가 판단을 되찾는다(§8.8 · product-ssot D-14). */}
             <div className="alloc-hold-low">
@@ -3227,8 +3157,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 rows: [["strategy", "daily_cost", "predicted_results", "cost_per_result", "unallocated", "state"], ...strategyRows.map(row => [row.name, row.cost, row.results, row.cpr, row.unallocated, row.state])],
               }],
               method: {
-                name: allocMode === "c" ? "absolute-cpr-weighting" : "marginal-utility-greedy",
-                version: "budget-allocation-v1",
+                name: allocPace === "full" ? "planner-marginal-target" : "planner-marginal-paced",
+                version: `budget-planner-${planner.ok ? planner.configSignature : "unavailable"}`,
                 assumptions: [tr("채널별 현재값은 선택한 최근 기간의 일평균입니다.", "Current channel values are daily averages over the selected recent window.")],
                 limitations: exportLimitations([tr("COST_INPUT의 Cost만 바꾸면 현재 곡선으로 예측합니다. 곡선 재적합과 자동 예산 배분은 사이트에서 실행해야 합니다. 관측 연관 시뮬레이션이며 인과 증분이 아닙니다.", "Changing Cost in COST_INPUT predicts from the current fitted curves. Refit curves and rerun budget allocation on the site. This is an observational simulation, not causal incrementality.")], recipe.export.includeCaveats, locale),
               },
@@ -3263,62 +3193,54 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <ModalDialog open={methodOpen} onClose={() => setMethodOpen(false)} returnFocusRef={methodTrigger} ariaLabel={tr("계산 기준", "Calculation details")} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel">
         <header className="tool-reference-panel__head"><h2>{tr("계산 기준", "Calculation details")}</h2><button type="button" className="btn ghost" onClick={() => setMethodOpen(false)}>{tr("닫기", "Close")}</button></header>
         <p>{tr(
-          <><strong>안정적 효율 가중</strong>은 최근 평균 효율로 초기 비중을 정합니다. 실제 배분에는 채널별 관측 상한과 저신뢰 채널 유지 조건이 함께 적용됩니다. 기본 비중식:</>,
-          <><strong>Stable efficiency weighting</strong> starts from recent average efficiency. Actual allocation also applies channel-specific observed ceilings and low-confidence holds. Initial weighting formula:</>
+          "배분은 대상(채널·국가·캠페인)마다 지출→CPR 곡선을 맞춘 뒤, 추가 1원이 만드는 결과(한계효율)가 큰 대상부터 작은 단위로 채웁니다. 계산 순서:",
+          "Each target (channel, country or campaign) gets a spend→CPR curve, then budget is filled in small steps into the target whose next unit of spend produces the most results (marginal efficiency). Steps:",
         )}</p>
         <pre style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "12px", fontSize: "var(--fs-xs)", overflowX: "auto", lineHeight: 1.5 }}>
           <code>{tr(
-            `# 1) 채널별 합산
-channel_cost    = Σ cost
-channel_results = Σ conversions   # installs or pu_d7
+            `# 1) 요일 효과 걷어내기
+CPR_보정 = CPR / 요일계수[요일]      # 곡선 잔차에서 수렴까지 반복 추정
 
-# 2) 채널별 CPR (Cost Per Result)
-CPR = channel_cost / channel_results
+# 2) 대상별 곡선 (Linear·Log·Power·Poly2 중 R² 최고)
+CPR(지출) = f(지출)                  # 점이 부족하면 상위 채널 곡선을 지출 규모에 맞춰 차용
 
-# 3) Efficiency = 역수, 정규화
-efficiency = 1 / CPR
-weight     = efficiency_i / Σ efficiency
+# 3) 대상별 상·하한
+상한 = min(관측 최대 지출, ∩형 꼭짓점, 현재 × (1 + 하루 증액 한도))
+하한 = 현재 × (1 − 하루 감액 한도)
+상태 규칙: 관측 밖 지출 → 증액 금지 · 신규 소재 학습 중 → 변경폭 축소
+           곡선 없음·저신뢰 → 현재 지출 고정
 
-# 4) 배분
-allocation = total_budget × weight`,
-            `# 1) Sum per channel
-channel_cost    = Σ cost
-channel_results = Σ conversions   # installs or pu_d7
+# 4) 한계효율 그리디 (상·하한 안에서)
+다음 1단위 = 결과 증가가 가장 큰 대상`,
+            `# 1) Remove day-of-week effects
+CPR_adj = CPR / dow_factor[weekday]  # estimated from curve residuals until convergence
 
-# 2) CPR per channel (Cost Per Result)
-CPR = channel_cost / channel_results
+# 2) Curve per target (best R² of Linear, Log, Power, Poly2)
+CPR(spend) = f(spend)                # sparse targets borrow the parent channel's shape at their own spend scale
 
-# 3) Efficiency = inverse, normalized
-efficiency = 1 / CPR
-weight     = efficiency_i / Σ efficiency
+# 3) Bounds per target
+upper = min(observed max spend, ∩-curve vertex, current × (1 + daily increase limit))
+lower = current × (1 − daily decrease limit)
+State rules: spend outside history → no increase · new creative learning → narrower change
+             no curve or low confidence → hold current spend
 
-# 4) Allocation
-allocation = total_budget × weight`
+# 4) Marginal greedy (within bounds)
+next unit = target with the largest gain in results`,
           )}</code>
         </pre>
         <p style={{ marginTop: "1rem" }}>
           {tr(
-            <><strong>그리디 (고급·실험적, 모드 B)</strong>는 채널별로 Linear/Log/Poly2/Power 추세선을 적합하고, 작은 step 단위로 Δresults가 최대인 채널에 예산을 투입하는 방식. 관측 Cost 상한과 최신 데이터 가중치 옵션을 함께 적용합니다.</>,
-            <><strong>Greedy (advanced/experimental, Mode B)</strong> fits a Linear/Log/Poly2/Power trendline per channel and, in small steps, allocates budget to whichever channel has the largest Δresults. It applies the observed cost ceiling and an optional recency weighting.</>
+            "'목표 배분'은 3)의 하루 변경폭 한도만 빼고 같은 계산을 합니다. 성과 예측은 같은 곡선에 요일 계수를 다시 곱해 하루씩 쌓고, 범위는 과거 예측 오차의 분위수로 만듭니다.",
+            "Target allocation runs the same calculation without the daily change limit in step 3. The forecast multiplies the day-of-week factor back onto the same curve day by day; its range comes from quantiles of past prediction errors.",
           )}
         </p>
-        <div className="callout warning" style={{ marginTop: "0.75rem" }}>
-          <div className="ico">⚠</div>
-          <div className="body">
-            <strong>{tr("그리디 주의사항", "Greedy mode caution")}</strong>
-            <p>{tr(
-              <>채널별 spend 변동이 작거나 데이터가 적으면 곡선 적합이 불안정해져 추천이 편향될 수 있습니다. <strong>기본 추천은 절대 CPR/ROAS 가중</strong>을 권장합니다.</>,
-              <>If per-channel spend doesn&apos;t vary much or there&apos;s little data, curve fitting can become unstable and bias the recommendation. <strong>Absolute CPR/ROAS weighting is recommended as the default</strong>.</>
-            )}</p>
-          </div>
-        </div>
         <div className="callout info" style={{ marginTop: "1rem" }}>
           <div className="ico">i</div>
           <div className="body">
             <strong>{tr("주의", "Note")}</strong>
             <p>{tr(
-              "본 추천은 과거 데이터 기준입니다. 신규 채널 진입, 시장 변화, 매체 알고리즘 업데이트 시 재계산 필요. 절대 CPR/ROAS 가중은 데이터 부족·노이즈 채널에서도 안정적인 1차 권고를 제공합니다.",
-              "This recommendation is based on historical data. Recalculate when entering new channels, when the market shifts, or after ad-platform algorithm updates. Absolute CPR/ROAS weighting gives a stable first-pass recommendation even for data-sparse or noisy channels."
+              "관측된 비용·성과의 관계로 만든 시뮬레이션이며 인과 효과를 보장하지 않습니다. 매체는 효율 좋은 날 더 쓰므로 곡선은 실제 탄력성보다 완만하거나 가파를 수 있습니다. 신규 채널 진입·시장 변화·매체 알고리즘 업데이트 뒤에는 다시 계산하세요.",
+              "This is a simulation from observed cost-performance relationships, not a causal guarantee. Platforms spend more on good days, so the curve can be flatter or steeper than the true elasticity. Recalculate after new channels, market shifts or ad-platform algorithm updates.",
             )}</p>
           </div>
         </div>

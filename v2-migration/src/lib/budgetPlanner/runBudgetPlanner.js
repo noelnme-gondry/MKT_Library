@@ -91,9 +91,11 @@ export function preparePlanner(mappedRows, { configPatch = {}, asOf: asOfInput, 
     const exclude = excludeOf(key);
     const creative = lifecycle.byNode.get(key);
     const trendType = trendOverrideOf?.(node.path) || undefined;
-    const conformity = assessConformity(node, nodeCfg, { asOf, parent: parentCurveAt(pKey, addDays(asOf, -nodeCfg.conformity.recentDays)), learningDates: creative?.learningDates, exclude, trendType });
-    const policy = nodeCfg.optimizer.statePolicy[conformity.state];
+    const judged = assessConformity(node, nodeCfg, { asOf, parent: parentCurveAt(pKey, addDays(asOf, -nodeCfg.conformity.recentDays)), learningDates: creative?.learningDates, exclude, trendType });
+    const policy = nodeCfg.optimizer.statePolicy[judged.state];
     const curve = fitNodeCurve(node.days, nodeCfg, { to: asOf, exclude, parent: parentCurveAt(pKey, asOf), regimeMode: policy === "recent_regime" && nodeCfg.curve.regimeMode !== "manual" ? "auto" : undefined, trendType });
+    // 범위를 판정할 이력이 모자라도 전체 기간 곡선이 있으면 배분은 할 수 있다 — "판정 불가"와 "곡선 없음"을 가른다.
+    const conformity = judged.state === "INSUFFICIENT" && curve ? { ...judged, state: "UNVERIFIED" } : judged;
     const recentFrom = addDays(asOf, -6);
     const given = currentSpendOf?.(node.path);
     const current = Number.isFinite(given) && given >= 0 ? given : [...node.days].filter(([date]) => date >= recentFrom).reduce((acc, [, day]) => acc + day.cost, 0) / 7;

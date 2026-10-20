@@ -130,9 +130,10 @@ export function allocationAt(planner, budget, { pace = "paced", holds = {}, with
   const plan = planAllocation(nodes, budget, globalCfg);
   const items = plan.items.map((item) => {
     let results = item.predictedResults;
+    let cpr = item.predictedCpr;
     let resultsBasis = "curve";
     if (results == null) {
-      const cpr = recentCprOf(planner, item.key);
+      cpr = recentCprOf(planner, item.key);
       results = cpr ? item.proposed / cpr : 0;
       resultsBasis = cpr ? "recent_average" : "unknown";
     }
@@ -141,6 +142,7 @@ export function allocationAt(planner, budget, { pace = "paced", holds = {}, with
       plannerKey: item.key,
       cost: item.proposed,
       results,
+      cpr: cpr ?? null,
       resultsBasis,
       current: item.current,
       lower: item.lower,
