@@ -99,6 +99,7 @@ v2-migration/
 |---|---|---|
 | BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) · `allocationObservations` · `allocationModels` · `allocationRegime` · `allocationDeltaPlan` · `allocationConfidence` | 주간/D7·최근 구간·기존 유지 비교. `analysis-export/allocationCostWorkbook` → Cost 입력 수식 예측 |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
+| (계층형 예산 플래너 — 화면 미배선) | `lib/budgetPlanner/*` 진입 `runBudgetPlanner` · 규칙 SSOT `plannerConfig` | 요일 백피팅 곡선·범위 적합성·신규 소재 수명주기·PVM 연결·원인 판정·제약 배분·예측/백테스트. 기존 ALLOC_MATH·PVM_MATH·CREATIVE_* 재사용, 수정 없음. 스펙 `docs/hierarchical-budget-planner-spec.md` |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup. 별도 `efficiencyStages.js`가 집계 CPM·클릭·설치·가입 비율의 순서 평균 단가 기여를 계산하고 `PvmEfficiencyStages.jsx`가 단계별 전후 값·변화·기여를 표시 |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` + `creativePredictiveModel.js` + `lib/analysis/webr/randomForest.js`·`svm.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA). 독립 소재 grain으로 집계한 뒤 표본·변수 조건을 충족할 때만 RF/SVM을 같은 5-fold에서 비교하고, 채널 통제 후 전역 Shapley R²를 속성별로 배분한다. RF 중요도와 Shapley R²는 예측/설명력이며 방향·인과·개별 소재 SHAP이 아님 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve·`fisherExact2x2`(저전환 구간에서 판정 기준을 정확검정으로 이동)·`holmAdjust` |

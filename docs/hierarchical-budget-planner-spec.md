@@ -4,7 +4,7 @@
 반드시 다룰 것은 ① 지금 소진 중인 캠페인이 과거 cost–CPR 범위를 따르는가 ② 요일 ③ 예산·소재를 늘리거나 뺐을 때 성과 변화가 **예산 곡선 때문인지 소재 때문인지** ④ 그 결과로 나온 배분안과 성과 예측치.
 규칙성 임계값은 전부 config 하나에서 관리한다.
 
-> 상태: **설계만**. 구현 전 결정 6건(§10)이 남아 있다. 수학 엔진(`*Math.js`) 기존 골든은 건드리지 않고, 새 판단은 새 순수 모듈에 둔다.
+> 상태: **1단계(순수 계산 모듈 + 골든) 구현 완료, 화면 미배선** — §14. 결정 6건은 2026-10-20 추천안으로 확정(§10). 수학 엔진(`*Math.js`) 기존 골든은 건드리지 않고, 새 판단은 `v2-migration/src/lib/budgetPlanner/`에 둔다.
 
 ---
 
@@ -74,13 +74,15 @@ CSV(일 × 국가 × 플랫폼 × 채널 × 캠페인 × 광고그룹 × 소재)
 
 ### 추정
 1. 7일 중심 이동평균 대비 비율(ratio-to-moving-average)로 추세를 걷어낸다 — 성장 중인 계정에서 요일 효과가 추세에 오염되지 않게.
-2. CPR 요일 계수는 **곡선 잔차에서** 뽑는다(백피팅 2회, 결정론):
-   1회차 곡선 적합 → 잔차 `ln CPR − ln f(cost)`를 요일별 중앙값 → `f_cpr[d] = exp(중앙값)` → CPR을 나눠 2회차 적합.
+2. CPR 요일 계수는 **곡선 잔차에서** 뽑는다(백피팅, 결정론):
+   곡선 적합 → 잔차 `ln CPR − ln f(cost)`의 요일별 중앙값 → `f_cpr[d] = exp(중앙값)` → CPR을 나눠 다시 적합 → … 계수 변화가 `backfitTolerance` 아래가 될 때까지(최대 `backfitMaxIterations`).
    이렇게 해야 "토요일에 지출이 커서 CPR이 높은 것"과 "토요일이라 CPR이 높은 것"이 섞이지 않는다.
+   **실측**: 지출이 큰 요일과 CPR이 높은 요일이 겹치면 수렴이 느리다(2회 1.04 → 20회 1.317, 정답 1.3). 고정 2회로는 요일 효과 대부분이 곡선으로 샌다.
 3. **계층 수축**: `f_node[d] = (n_d · raw_d + K · f_parent[d]) / (n_d + K)` (`K = dow.shrinkK`), 부모는 채널 → 전체 순. 마지막에 7개 평균이 1이 되도록 정규화.
+   **수축은 예측에 쓰는 계수에만 건다.** 반복 중에 수축하면 위 겹침 상황에서 당겨진 몫을 곡선이 흡수해 예산 탄력성이 가팔라진다(지출 2배 CPR 비율 정답 1.231 → 1.417). 곡선은 수축하지 않은 계수로 맞추고 다시 맞추지 않는다.
 4. 요일당 표본 `dow.minPerDay` 미만이면 그 요일은 부모 값. 명절 주(`utils/krLunarHolidays`)는 추정에서 제외.
 
-요일 인덱스는 `getUTCDay()`(§7 함정). 기존 `anomalyMath` 요일 계수·`pacingMath.weekdayProfile`과 같은 정의를 쓰도록 공용 함수 하나로 뽑는다.
+요일 인덱스는 `getUTCDay()`(§7 함정). 기존 `anomalyMath`·`pacingMath`의 요일 계산을 `dowProfile`로 합치는 것은 후속 작업(§14) — 그 골든을 건드리지 않으려고 1단계에서는 분리해 두었다.
 
 ---
 
@@ -247,9 +249,9 @@ rate_i = s̄_i·(cpa2_i − cpa1_i)
 | 단계 | 규칙 |
 |---|---|
 | [B] 요일 | 노드에서 `LEARNING` 소재 지출 비중 ≥ `learningShareExclude`인 날은 CPR 요일 계수 추정에서 뺀다 |
-| [C] 곡선 | 같은 조건의 날은 가중치 `learningDayWeight`(기본 0 = 제외). 출시 배치 날짜는 `selectAllocationRegime`의 구간 경계 **후보**로 넘기되, 배치가 학습을 마치기 전엔 경계로 확정하지 않는다 |
+| [C] 곡선 | 같은 조건의 날은 `excludeLearningDays`(기본 true)면 학습에서 뺀다. 기존 곡선 엔진은 날짜별 가중치를 받지 않으므로 0/1만 정직하게 지킬 수 있어 켜기/끄기로 둔다. 출시 날짜를 `selectAllocationRegime`의 구간 경계 후보로 넘기는 것은 후속(§14) |
 | [D] 범위 적합성 | 최근 창에 그런 날이 있으면 `DRIFT_*` 대신 `LEARNING_TRANSITION` — 경보를 내지 않고 "신규 소재 학습 중"이라 말한다 |
-| [E] 피로 | `LEARNING`·`RAMPING`·`STALLED`는 피로 판정 제외. 피로 기준선은 **램프가 끝난 뒤** 구간에서 잡는다(첫날 고점 기준 금지). 신규 배치 출시 후 `cannibalWindowDays` 동안 **기존 소재의 노출·지출 감소는 피로 신호에서 뺀다** — 플랫폼이 신규 소재로 돌린 것이지 닳은 게 아니다. 이 기간 기존 소재 피로는 CTR·CVR만으로 본다 |
+| [E] 피로 | `LEARNING`·`RAMPING`·`STALLED`는 피로 판정 제외. 피로 기준선은 **램프가 끝난 뒤** 구간에서 잡는다(첫날 고점 기준 금지). 같은 노드에 큰 소재(`minCreativeShare` 이상)가 **들어오거나 빠진 뒤** `cannibalWindowDays` 동안 기존 소재 피로는 CTR로만 본다(노출·CPM 가중 0). **실측 정정**: 기존 지수는 노출 *감소*를 위험으로 세지 않는다 — 실제 오판은 큰 소재를 끈 직후 남은 소재의 노출 *급증*이다(테스트로 재현) |
 | [E] PVM | 6.5 규칙 4·5 |
 | [F] 배분 | 노드 지출의 `learningShareFreeze` 이상이 학습 중이면 그 노드 일예산 변경을 `learningFreezeChangePct` 이내로 묶는다(감액으로 학습을 리셋하지 않게). 배정 예산으로 학습을 못 끝내면 경고: 필요 일예산 ≈ `minResultsToJudge ÷ learningDays × CPR_prior` |
 | [F] 배분 | `LOSER`가 노드 지출의 `loserShareAlert` 이상이면 "소재 OFF 후 재배분" 안을 별도 시나리오로 낸다(자동 반영 안 함) |
@@ -333,154 +335,41 @@ result[n,t] = cost[n,t] / CPR[n,t]
 4. `version`을 분석 시그와 다운로드 README에 넣는다 — 같은 CSV + 같은 config = 같은 결과.
 5. 사용자 화면에서 고칠 수 있는 키와 개발자만 고치는 키를 `editable` 목록으로 가른다.
 
-### 9.2 스키마 (기본값은 출발점이며 실데이터 백테스트로 조정)
+### 9.2 스키마 — 정본은 코드
 
-```js
-// src/lib/budgetPlanner/plannerConfig.js
-export const PLANNER_CONFIG = Object.freeze({
-  version: "1.0.0",
+정본은 `v2-migration/src/lib/budgetPlanner/plannerConfig.js`의 `PLANNER_CONFIG`다. 문서에 사본을 두면 두 곳이 갈리므로(§7) 여기엔 절 구성만 적는다. 기본값은 출발점이며 실데이터 백테스트로 조정한다.
 
-  hierarchy: {
-    levels: ["country", "platform", "channel", "campaign_name", "adgroup_name", "creative_id"],
-    roles: { allocate: "campaign_name", constraint: ["country", "channel"], diagnose: ["adgroup_name", "creative_id"] },
-  },
+| 절 | 담는 것 |
+|---|---|
+| `hierarchy` | 레벨 순서, 역할(`allocate`·`constraint`·`diagnose`) |
+| `metric` | 결과 지표(`installs`·`actions`·`revenue_d7`), 보기(CPR·ROAS) |
+| `dow` | 요일 계수 기간·표본 하한·수축 강도·명절 제외·백피팅 최대 횟수/허용 오차 |
+| `curve` | 최소 점 수, 모형(`auto`=4종 중 R² 최고), 이상치, 최근성 가중, 구간 분리, 부모 차용 기준 |
+| `conformity` | 최근 창·z 기준·이탈 비율·중앙 잔차·외삽 허용·잔차 폭 하한(`minSigma`) |
+| `events` | 예산 변경 기준·소재 비중 기준·제거 판정 일수·진단 창(7일 배수) |
+| `diagnosis` | 대조군 범위·최소 대조군·노이즈 배수·판정 임계·우선순위 |
+| `pvm` | 최소 grain, rate 분할 순서, 진입·이탈 재라벨, 결과 0 처리 단계, 계획 대비 실적 기준 |
+| `creative` | 식별 범위·재출시 간격·학습 일수·출시 표본 하한·피로(`minAgeDays`·`cannibalWindowDays`)·`launch`(판정·정체·사전·프로파일) |
+| `optimizer` | 스텝·일 변경폭·외삽 여유·학습 하한·피로 증액 상한·그룹 비중·잠금·상태별 정책 |
+| `forecast` | 기간·지출 요일 분배·분위수·합산 방식·피로 시나리오 |
+| `backtest` | 보류 일수·최소 적중률 |
+| `overrides` | `channel`·`country_channel`(`국가|채널`) 덮어쓰기 — 허용 절만 |
+| `editable` | 화면에서 사용자가 고칠 수 있는 경로 |
 
-  metric: { result: "installs", view: "cpr" },        // "cpr" | "roas"
-
-  dow: {
-    enabled: true,
-    lookbackWeeks: 8,
-    minPerDay: 3,           // 요일당 최소 표본, 미만이면 부모 값
-    shrinkK: 4,             // 부모 쪽 수축 강도
-    excludeHolidays: true,
-    backfitIterations: 2,
-  },
-
-  curve: {
-    minPoints: 6,
-    models: ["Linear", "Log", "Power", "Poly2"],
-    outlier: { method: "iqr", strength: "standard" },
-    weightMode: "exponential", halfLifeDays: 30,
-    regimeMode: "auto",
-    borrowParentBelow: 6,   // 이 점 수 미만이면 부모 곡선 모양 차용
-  },
-
-  conformity: {
-    recentDays: 7,
-    zBand: 2.0,
-    breachShare: 0.5,
-    medianShift: 0.15,      // 로그 잔차 중앙값(≈15%)
-    extrapolationTol: 0.1,
-  },
-
-  events: {
-    budgetChangePct: 0.2,
-    minCreativeShare: 0.1,
-    removedAfterDays: 3,
-    windowDays: 7,
-  },
-
-  diagnosis: {
-    controlScope: "same_country_other_channels",
-    minControls: 2,
-    noiseMultiple: 1.0,
-    budgetDominant: 0.6,
-    creativeDominant: 0.5,
-    marketDominant: 0.5,
-    cvrDominant: 0.5,
-    newCreativeDominant: 0.5,
-    mixedFloor: 0.3,
-    priority: ["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"],
-  },
-
-  pvm: {
-    finestLevel: "auto",                         // 데이터에 있는 가장 낮은 레벨
-    rateSplitOrder: ["budget", "market", "creative"],
-    relabelEntryExit: true,                      // result1=0 → 신규 진입, result2=0 → 제외
-    zeroResultPooling: ["campaign_bucket", "mergeIntoSmallest", "excludeAndReport"],
-    reviewDowngradeAfter: 2,                     // 계획 대비 모형 오차가 연속 N회 크면 신뢰도 ↓
-    reviewErrorThreshold: 0.2,
-  },
-
-  creative: {
-    identityScope: "campaign",                   // "campaign" | "global"
-    relaunchGapDays: 14,
-    learningDays: 7,
-    minHistoricalLaunches: 3,
-    fatigue: { minAgeDays: 14, useRiskEngine: true, cannibalWindowDays: 7 },  // CREATIVE_CONFIG.fatigueRisk 재사용
-    launch: {
-      minResultsToJudge: 20,
-      rampStableGrowth: 0.15,                    // 7일 지출 증가율이 이 이하면 램프 종료
-      stallDays: 5, stallShare: 0.05, stallRateWarn: 0.3,
-      priorStrengthResults: 10,                  // 감마 사전의 강도(결과 건수 환산)
-      defaultLaunchPenalty: 1.3,                 // 출시 프로파일이 없을 때 기존 CPR 대비 배율
-      winMargin: 0.1, loseMargin: 0.15,
-      learningShareExclude: 0.3,                 // 이 비중 이상 학습 중인 날은 요일·곡선 학습에서 제외
-      learningDayWeight: 0,
-      learningShareFreeze: 0.3, learningFreezeChangePct: 0.1,
-      loserShareAlert: 0.2,
-      profileBuckets: [[0, 2], [3, 6], [7, 13]],
-      defaultLaunchProfile: { cprRatio: [1.6, 1.3, 1.1], spendShare: [0.1, 0.2, 0.25] },
-    },
-  },
-
-  optimizer: {
-    stepPct: 0.002,
-    maxDailyIncrease: 0.2,
-    maxDailyDecrease: 0.3,
-    extrapolationHeadroom: 0.1,
-    learningMinWeeklyResults: 0,      // 기본 끔, 채널별로 켬
-    creativeBlockedIncrease: 0.0,
-    groupShares: {},                  // { "country:KR": [0.4, 0.8] }
-    locked: [],
-    statePolicy: {
-      INSUFFICIENT: "hold",
-      EXTRAPOLATING: "decrease_only",
-      DRIFT_WORSE: "recent_regime",
-      DRIFT_BETTER: "recent_regime",
-      LEARNING_TRANSITION: "freeze",
-    },
-  },
-
-  forecast: {
-    horizonDays: 14,
-    spendPacing: "dow",
-    lowerQ: 0.1, upperQ: 0.9,
-    intervalAggregation: "comonotonic",
-    applyFatigue: false, fatiguePenalty: 0.15,
-  },
-
-  backtest: { holdoutDays: 14, minCoverage: 0.7 },
-
-  overrides: {
-    channel: {
-      Meta:   { optimizer: { learningMinWeeklyResults: 50, maxDailyIncrease: 0.2 } },
-      Google: { optimizer: { maxDailyIncrease: 0.3 } },
-    },
-    country_channel: {},
-  },
-
-  editable: [
-    "metric.result", "forecast.horizonDays", "optimizer.maxDailyIncrease", "optimizer.maxDailyDecrease",
-    "optimizer.groupShares", "optimizer.locked", "forecast.intervalAggregation",
-  ],
-});
-```
-
-`learningMinWeeklyResults: 50`, `maxDailyIncrease: 0.2`는 업계에서 흔히 쓰는 운영 가이드를 옮긴 예시값이다. 계정마다 다르므로 채널별 덮어쓰기로 둔다.
+`learningMinWeeklyResults: 50`(Meta), `maxDailyIncrease: 0.2`는 업계에서 흔히 쓰는 운영 가이드를 옮긴 예시값이다. 계정마다 다르므로 채널별 덮어쓰기로 둔다.
 
 ### 9.3 함수 계약
 ```js
-resolvePlannerConfig(base, userPatch)       // 병합 + 검증, 실패 시 { ok:false, errors:[{path, reason}] }
+resolvePlannerConfig(userPatch, base?)      // 병합 + 검증, 실패 시 { ok:false, errors:[{path, reason}] }
 configFor(cfg, { country, channel })        // 노드에 적용될 실효 config
 plannerConfigSignature(cfg)                 // 분석 시그에 포함
 ```
 
 ---
 
-## 10. 구현 전 결정할 것 (§2.7)
+## 10. 결정 (2026-10-20 사용자 확정 — 6건 모두 추천안)
 
-| # | 질문 | 선택지 | 추천 |
+| # | 질문 | 선택지 | 확정 |
 |---|---|---|---|
 | 1 | 어디에 붙이나 | A. 5-3 예산 배분 확장 / B. 새 도구(5-30) | **A** — 같은 효율 CSV 그룹, 곡선·배분 코드 재사용. [D][E]는 5-3 "확인" 탭과 5-22·9-6 링크로 |
 | 2 | 기본 배분 단위 | campaign / channel | **campaign** — 데이터가 얇으면 부모 곡선 차용으로 버틴다 |
@@ -502,19 +391,24 @@ plannerConfigSignature(cfg)                 // 분석 시그에 포함
 
 ## 12. 모듈 배치와 기존 코드 재사용
 
-| 새 모듈 (순수) | 내용 | 재사용 |
-|---|---|---|
-| `lib/budgetPlanner/plannerConfig.js` | §9 | — |
-| `utils/dowProfile.js` | §3 공용 요일 계수 | `anomalyMath`·`pacingMath`의 요일 정의를 여기로 수렴(기존 골든 byte-identical 확인) |
-| `utils/plannerHierarchy.js` | §2 계층 집계·부모 곡선 차용 | `getRowGroupKey`, `allocationPointMap` |
-| `utils/allocationConformity.js` | §5 | `fitAllocationChannel`, `predictSafeCpr` |
-| `utils/performanceChangeDiagnosis.js` | §6.1–6.4 | `CREATIVE_FATIGUE` |
-| `utils/plannerPvm.js` | §6.5 결과 0 묶음 → `PVM_MATH` 최소 grain 1회 → 롤업 → mix 분할·rate 분할·진입/이탈 재라벨, 계획 대비 실적 | `PVM_MATH`(수정 없음) |
-| `utils/creativeLifecycle.js` | §6.6 식별·상태·판정·출시 프로파일 | `CREATIVE_STATS.betaProbGreater`, `CREATIVE_CONFIG.bayes` |
-| `utils/plannerAllocate.js` | §7 제약 래퍼 | `calculateAllocationModeB`, `improveAllocationFromCurrent`, `allocationDeltaPlan` |
-| `utils/plannerForecast.js` | §8 | `predictSafeCpr`, `krLunarHolidays` |
+모두 `v2-migration/src/lib/budgetPlanner/` (순수 함수, 골든은 같은 폴더 `*.test.js`).
 
-**기존 `allocationMath.js`·`satMath.js`·`creativeMath.js` 수학은 수정하지 않는다.**
+| 모듈 | 내용 | 재사용 |
+|---|---|---|
+| `plannerConfig.js` | §9 기본값·검증·병합·노드 실효값·서명 | — |
+| `plannerStats.js` | 중앙값·MAD·분위수·날짜(UTC)·명절 | `krLunarHolidays` |
+| `plannerData.js` | §1·§2 행 정리(`parseNumeric`)·노드 키·일별 집계 | `parseNumeric` |
+| `dowProfile.js` | §3 요일 표본·수축·정규화 | — |
+| `plannerCurve.js` | §4 백피팅 곡선·부모 차용(같은 계열 변환 `scaleModel`) | `fitAllocationChannel`, `ALLOC_MATH` |
+| `conformity.js` | §5 | `plannerCurve` |
+| `creativeLifecycle.js` | §6.6 식별·상태·판정·출시 프로파일·학습일·피로 예외 | `CREATIVE_STATS.betaProbGreater`, `CREATIVE_FATIGUE`, `CREATIVE_CONFIG` |
+| `plannerPvm.js` | §6.5 결과 0 묶음 → `PVM_MATH.decompose` → mix·rate 분할·진입/이탈, 계획 대비 실적 | `PVM_MATH`(수정 없음) |
+| `changeDiagnosis.js` | §6.1–6.4 측정·시장 대조·판정 | `ALLOC_MATH` |
+| `plannerAllocate.js` | §7 상·하한·학습 하한·그룹 비중·바인딩 사유, 증감분만 안 | `calculateAllocationModeB`, `allocationDeltaPlan` |
+| `plannerForecast.js` | §8 일 예측·구간·신규 소재 혼합·백테스트 | `CREATIVE_STATS.stdNormalInv` |
+| `runBudgetPlanner.js` | 전체 실행(입력 → 진단·배분·예측·백테스트·PVM) | 위 전부 |
+
+**기존 `allocationMath.js`·`satMath.js`·`creativeMath.js`·`pvmMath.js` 수학은 수정하지 않았다.**
 
 ---
 
@@ -527,8 +421,31 @@ plannerConfigSignature(cfg)                 // 분석 시그에 포함
 | 원인 분해 | ① 증액만(곡선 고정) → `BUDGET_CURVE` ② 지출 고정·소재 CTR 하락 → `CREATIVE` ③ 전 채널 동시 CPM 상승 → `MARKET` ④ 예산·소재 같은 주 변경 → `INCONCLUSIVE`(혼재). **각 성분의 부호와 크기**를 단언(Simpson 함정, §7) |
 | 항등식 | 1단·퍼널·소재 분해 합 = 전체 Δln CPR (저장 정밀도 기준 tolerance) |
 | PVM 연결 | 7개 열 합 = ΔCPA / 캠페인 간 mix 합 = 캠페인 grain centering mix / 진입·이탈 재라벨 전후 합 불변 / 결과 0 소재가 있어도 `NOT_IDENTIFIED`로 멈추지 않음 / 캠페인 전체 결과 0이면 "결과 없는 지출" 줄이 뜸 |
-| 신규 소재 | ① 램프 중 소재가 피로로 안 잡힘(기존 `compositeIndex`는 잡는 것을 먼저 재현) ② 신규 투입 직후 기존 소재 노출 감소가 피로로 안 잡힘 ③ 데이터 첫날부터 있던 소재는 신규 아님 ④ 지출을 거의 못 받은 소재는 `STALLED`(LOSER 아님) ⑤ 초반 소수 전환으로 WINNER가 안 됨(사전 수축) ⑥ 학습 중 노드는 `DRIFT` 대신 `LEARNING_TRANSITION` ⑦ 출시 표본 부족 시 "가정값" 표시 |
+| 신규 소재 | ① 램프 중 소재가 피로로 안 잡힘(기존 `compositeIndex`는 잡는 것을 먼저 재현) ② 큰 소재를 끈 직후 남은 소재의 노출 급증이 피로로 안 잡힘(재현 포함), CTR이 실제로 떨어지면 잡힘 ③ 데이터 첫날부터 있던 소재는 신규 아님 ④ 지출을 거의 못 받은 소재는 `STALLED`(LOSER 아님) ⑤ 초반 소수 전환으로 WINNER가 안 됨(사전 수축) ⑥ 학습 중 노드는 `DRIFT` 대신 `LEARNING_TRANSITION` ⑦ 출시 표본 부족 시 "가정값" 표시 |
 | 배분 | 일 변경폭·학습 하한(0 또는 하한 이상, 중간값 없음)·외삽 상한·잠금이 지켜지는지. 제약 없음 + 동일 곡선 → 기존 5-3 결과와 일치 |
 | 예측 | 백테스트 적중률이 정답을 아는 합성 데이터에서 명목값 근처 |
 | config | 모르는 키·음수 비율·`lowerQ ≥ upperQ` 거절 / 채널 덮어쓰기 병합 순서 / 같은 입력+config → byte-identical |
 | 결정론 | `Math.random` 금지, 모든 정렬에 tiebreak |
+
+---
+
+## 14. 구현 현황 (2026-10-20)
+
+**1단계 완료 — 순수 계산 모듈 + 골든 61개.** `test:all` 5,385 통과·lint 통과. 핵심 규칙 5개(진입 재라벨·재분배 CTR 전용·예산 항·백피팅 반복·반복 중 수축 금지)는 일부러 끊어 해당 테스트가 실패하는 것을 확인했다.
+
+| 테스트 파일 | 지키는 것 |
+|---|---|
+| `plannerConfig.test.js` | 모르는 키·범위·관계 거절, 덮어쓰기 순서, 서명 |
+| `plannerCurve.test.js` | 요일 복원(수축 유무)·겹침에서 곡선 탄력성 보존·이동평균 표본·`scaleModel` 4계열·부모 차용·범위 적합성 5상태 |
+| `creativeLifecycle.test.js` | 나이 미상·재출시·정체·판정 전 종료·사전 수축·기준 없음·램프/재분배 피로 예외·학습일·출시 프로파일 leave-one-out |
+| `plannerPvm.test.js` | 무잔차·캠페인 간 mix 일치·rate 분할·Simpson·진입·결과 0 묶음/합치기/제외·계획 대비 실적 |
+| `runBudgetPlanner.test.js` | 원인 판정 ①~⑥·배분 제약·기존 엔진과 일치·그룹 비중·예측 구간·혼합 배율·백테스트·결정론·입력 오류 |
+
+**남은 일 (다음 단계)**
+
+1. **5-3 화면 배선** — `design.md` §6.0 절차, KO/EN, 320·980·1440. 결과 구성(배분안·예측·진단·PVM 표)은 그 단계에서 설계한다.
+2. **`daily_budget` 표준 필드 등록** — 결정 3. 엔진은 이미 읽는다(`plannerData`). 매핑 별칭·`TOOL_OPTIONAL_FIELDS["5-3"]`·플랫폼 export 가드(`platformExports.test.js`)는 화면 배선과 함께.
+3. **`adgroup_name`·`creative_id`·`impressions`·`clicks`를 5-3 선택 필드로** — 지금 5-3 계약에는 없다.
+4. 미구현 규칙: 학습 종료 필요 예산 경고(§6.6.4 [F]), 소재 OFF·신규 투입 시나리오 함수(§8.1 — 예산 ±X%는 `totalBudget`으로 이미 가능), 피로 예측일 → `fatigueFrom` 연결(§8), 출시일을 구간 경계 후보로(§6.6.4 [C]), `anomalyMath`·`pacingMath` 요일 계산 수렴(§3).
+5. 실데이터 백테스트로 config 기본값 조정.
+
