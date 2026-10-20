@@ -4,7 +4,7 @@
 반드시 다룰 것은 ① 지금 소진 중인 캠페인이 과거 cost–CPR 범위를 따르는가 ② 요일 ③ 예산·소재를 늘리거나 뺐을 때 성과 변화가 **예산 곡선 때문인지 소재 때문인지** ④ 그 결과로 나온 배분안과 성과 예측치.
 규칙성 임계값은 전부 config 하나에서 관리한다.
 
-> 상태: **설계만**. 구현 전 결정 4건(§10)이 남아 있다. 수학 엔진(`*Math.js`) 기존 골든은 건드리지 않고, 새 판단은 새 순수 모듈에 둔다.
+> 상태: **설계만**. 구현 전 결정 6건(§10)이 남아 있다. 수학 엔진(`*Math.js`) 기존 골든은 건드리지 않고, 새 판단은 새 순수 모듈에 둔다.
 
 ---
 
@@ -18,6 +18,8 @@ CSV(일 × 국가 × 플랫폼 × 채널 × 캠페인 × 광고그룹 × 소재)
   ├─ [C] 반응 곡선   — 배분 단위별 cost→CPR 곡선 (기존 ALLOC_MATH 재사용)
   ├─ [D] 범위 적합성 — 최근 소진이 곡선·관측 범위 안인가 (IN_RANGE / EXTRAPOLATING / DRIFT)
   ├─ [E] 변화 원인   — ΔCPR = 곡선 위 이동(예산) + 곡선 이동(소재·시장·퍼널)
+  │                    PVM이 "어느 노드·소재에서"를, 곡선이 "왜"를 맡는다 (§6.5)
+  │                    신규 소재는 상태(학습·램프·정체·판정)별 예외 처리 (§6.6)
   ├─ [F] 배분       — 한계 CPR 그리디 + 제약(학습 하한·일 변경폭·외삽 상한·진단 결과)
   └─ [G] 예측       — 요일별 일 예측 + 잔차 기반 구간 + 백테스트 오차
                          ↑
@@ -108,6 +110,7 @@ CSV(일 × 국가 × 플랫폼 × 채널 × 캠페인 × 광고그룹 × 소재)
 | `INSUFFICIENT` | 학습 점 < `curve.minPoints` | 판정 불가. 배분에서 "현행 유지" |
 | `EXTRAPOLATING` | 최근 cost 중앙값 > `xMax × (1 + extrapolationTol)` 또는 < `xMin × (1 − tol)` | 관측해 본 적 없는 지출 수준. 곡선 예측은 추정치 |
 | `DRIFT_WORSE` / `DRIFT_BETTER` | `|z| > zBand`인 날 비율 ≥ `breachShare` **그리고** 최근 잔차 중앙값이 같은 방향으로 `medianShift` 이상 | 같은 지출인데 CPR이 곡선에서 벗어남 → 곡선 자체가 움직였다 |
+| `LEARNING_TRANSITION` | 최근 창에 학습 중 소재 비중 ≥ `learningShareExclude`인 날이 있음(§6.6.4) | 신규 소재 학습 중 — 곡선 이탈 경보를 내지 않음 |
 | `IN_RANGE` | 나머지 | 히스토리 범위 안 |
 
 `DRIFT_*`가 뜨면 [E]가 원인을 찾고, 배분은 그 노드에 기존 `regimeMode:"auto"`(최근 구간 곡선)를 강제한다.
@@ -162,10 +165,104 @@ CPR은 요일 보정값, `c`는 구간 평균 일 지출. `c_R`이 B의 관측 �
 | `CREATIVE` | 노드 고유 이동 중 (CTR 하락 + 소재 mix + 피로) share ≥ `creativeDominant` | 소재 B 피로·신규 소재 C 학습 중 |
 | `MARKET` | 시장 공통분 share ≥ `marketDominant` | 같은 기간 다른 채널도 같이 나빠짐 |
 | `FUNNEL_POST_CLICK` | CVR 하락 share ≥ `cvrDominant` | 클릭 이후 전환이 떨어짐(랜딩·트래픽 확인) |
+| `NEW_CREATIVE_LEARNING` | 신규 소재 진입·학습분(§6.6) share ≥ `newCreativeDominant`이고 그 소재가 아직 `LEARNING` | 신규 소재 학습 중 — 일시적일 수 있음. 판정은 학습 종료 후 |
 | `MIXED` | 위 중 둘 이상이 각각 `mixedFloor` 이상 | 원인 여럿 |
 | `INCONCLUSIVE` | 변화가 `σ × noiseMultiple` 이내, 또는 이벤트 혼재 | 노이즈 범위 |
 
 판정 순서는 config `diagnosis.priority`. 이것은 **원인 후보**이지 인과 추정이 아니다 — 화면 문구도 "가능성이 큼"까지만(§8.6).
+
+### 6.5 PVM 연결 — "어디서"는 PVM, "왜"는 곡선
+
+**넣는다. 다만 별도 단계가 아니라 [E]의 뼈대로.** 6.1~6.2는 노드 하나의 CPR이 *왜* 변했는지를 보고, PVM(5-21 `PVM_MATH`)은 전체 CPR 변화가 *어느 노드·소재에서* 나왔는지를 무잔차로 나눈다. 둘을 이으면 한 표에서 "전체 CPA +12% 중 캠페인 X의 소재 B 피로가 +5%p"까지 내려간다.
+
+**규칙 1 — 최소 grain에서 한 번만, 그다음 롤업.** 단계마다 따로 분해하면 합이 안 맞는다(§7 함정). 최소 grain = 데이터에 있는 가장 낮은 레벨(보통 소재). 캠페인·채널 값은 롤업 합이다. 캠페인 grain으로 PVM을 따로 돌린 값과 캠페인별로 같다고 주장하지 않는다.
+
+**규칙 2 — 롤업한 mix를 둘로 가른다(무잔차).** 소재 i ∈ 캠페인 c, Bennet 평균 `cpā`:
+
+```
+mix_i = (cpā_i − C̄)·Δs_i
+      = (cpā_c − C̄)·Δs_i    → Σ_i∈c 하면 캠페인 간 비중 이동  = 예산 배분 효과
+      + (cpā_i − cpā_c)·Δs_i → 캠페인 안 소재 비중 이동        = 소재 ON/OFF·신규 투입 효과
+```
+`Σ_i∈c Δs_i = Δs_c`라 첫 항의 합은 캠페인 grain의 centering mix와 정확히 같다. `s`는 PVM 정의대로 **결과량 비중**이다(비용 비중 아님 — 라벨에 명시).
+
+**규칙 3 — rate를 곡선으로 가른다(무잔차, 순서 고정).** 캠페인 c의 곡선 기대 배율 `g_c = f_c(cost_R)/f_c(cost_B)`(요일 보정 포함), 시장 배율 `m`(대조군 6.2①):
+
+```
+rate_i = s̄_i·(cpa2_i − cpa1_i)
+       = s̄_i·cpa1_i·(g_c − 1)               → 예산 곡선
+       + s̄_i·cpa1_i·g_c·(m − 1)             → 시장
+       + s̄_i·(cpa2_i − g_c·m·cpa1_i)         → 소재·퍼널 (6.2②③으로 다시 해석)
+```
+순서(예산→시장→나머지)는 config `pvm.rateSplitOrder`. 순서를 바꾸면 항 크기가 달라지므로 순서를 결과에 남긴다.
+
+결과 표의 열: `캠페인 간 비중(예산)` · `캠페인 안 소재 비중` · `신규 진입` · `제외` · `예산 곡선` · `시장` · `소재·퍼널`. 합 = ΔCPA.
+
+**규칙 4 — 진입·이탈은 따로 센다.** 현재 엔진은 기준 기간에 없던 소재의 `cpa1`을 0으로 두므로(`calculateCpa` engineVal) 신규 소재 비용의 절반이 rate로 잡힌다 — "효율 악화"로 읽힌다. 엔진은 고치지 않고, 플래너가 롤업 후 **`result1 = 0`인 칸의 mix+rate 전체를 `신규 진입`으로, `result2 = 0`인 칸을 `제외`로 다시 라벨링**한다(합 불변). 진입 항목은 그 소재가 §6.6 상태 `LEARNING`이면 `NEW_CREATIVE_LEARNING` 판정의 근거가 된다.
+
+**규칙 5 — 결과 0 칸은 PVM 앞에서 묶는다.** `PVM_MATH`는 비용 > 0·결과 0 칸이 하나만 있어도 분해 전체를 `NOT_IDENTIFIED`로 멈춘다. 학습 중 신규 소재가 정확히 이 경우다. 플래너 전처리(`pvm.zeroResultPooling`):
+1. 같은 캠페인의 결과 0 소재를 `캠페인명 · 결과 0 소재 묶음` 하나로 합친다.
+2. 묶음도 결과 0이면 그 캠페인의 가장 작은 소재와 합친다(`mergeIntoSmallest`).
+3. 그래도 0이면(캠페인 전체 결과 0) 그 캠페인을 분해에서 빼고 **"결과 없는 지출 ₩N"을 별도 줄로** 보여 준다. 뺀 금액은 총 CPA에서도 빠지므로 화면에 "분해 대상 CPA"라고 이름을 바꿔 적는다.
+
+**계획 대비 실적 리뷰(§8.2)**: 같은 PVM을 "계획(예측) vs 실제"에 쓴다. mix = 계획한 비중과 실제 소진 비중의 차이(**실행 편차**), rate = 노드별 예측 CPR과 실제 CPR의 차이(**모형 오차**). 모형 오차가 반복해서 큰 노드는 다음 배분에서 `allocConfidence`를 한 단계 낮춘다(`pvm.reviewDowngradeAfter`회 연속).
+
+### 6.6 신규 소재 수명주기와 예외 처리
+
+피로도만 보면 신규 소재가 **세 군데서 틀리게** 읽힌다.
+- **PVM**: 결과 0이면 분해가 멈추고, 결과가 있어도 진입 비용 절반이 효율 악화로 잡힌다(6.5).
+- **피로도**: 기존 `CREATIVE_FATIGUE.compositeIndex`는 노출 증가를 위험으로 센다(`impressionWeight`). 막 노출이 늘어나는 신규 소재가 "피로"로 나온다. 초기 CTR이 원래 높다가 내려오는 것(신선도 감소)도 피로처럼 보인다.
+- **곡선·범위 적합성**: 학습 중 높은 CPR이 섞이면 노드 곡선이 위로 들리고 `DRIFT_WORSE`가 뜬다.
+
+그래서 소재마다 상태를 두고, 상태에 따라 각 단계가 그 소재를 어떻게 다룰지 정한다.
+
+#### 6.6.1 소재 식별과 나이
+- 키: `creative.identityScope` — `campaign`(기본, 같은 소재라도 캠페인이 다르면 별개) | `global`.
+- 출시일 = 첫 지출일. **데이터 첫날부터 지출 중이던 소재는 신규가 아니다** — 나이를 모르므로 `UNKNOWN_AGE`(기존 소재로 취급, 피로 판정만 나이 조건 없이).
+- `creative.relaunchGapDays`일 이상 무지출 뒤 다시 쓰면 재출시(나이 0부터). 같은 날 여러 개가 나오면 **배치**로 묶어 노드 전환은 배치 단위, 판정은 소재 단위.
+- 이름만 바꾼 동일 소재는 데이터로 알 수 없다 — 한계로 적는다.
+
+#### 6.6.2 상태
+
+| 상태 | 들어가는 조건 (config `creative.launch`) | 뜻 |
+|---|---|---|
+| `LEARNING` | 나이 < `learningDays` **또는** 누적 결과 < `minResultsToJudge` | 판정하지 않는다 |
+| `RAMPING` | 학습은 끝났지만 7일 지출 증가율 > `rampStableGrowth` | 노출이 아직 늘어나는 중 — 피로 판정 보류 |
+| `STALLED` | 나이 ≥ `stallDays`인데 노드 지출 비중 < `stallShare` | 플랫폼이 돈을 안 줌. **나쁜 소재가 아니라 판정 불가** |
+| `WINNER` / `PAR` / `LOSER` | 학습·램프 종료 후 6.6.3 비교 | 기존 소재 대비 |
+| `ENDED_UNJUDGED` | 위 판정 전에 꺼짐 | 판정 없이 종료 — 학습 이력(6.6.6)에도 넣지 않는다 |
+| `ESTABLISHED` / `UNKNOWN_AGE` | 그 외 | 일반 소재. 피로 판정 대상 |
+
+#### 6.6.3 신규 소재 판정 — 같은 날, 같은 노드의 기존 소재와 비교
+기간이 다르면 요일·시장이 섞이므로 **신규 소재가 지출한 날만** 골라 같은 노드 기존 소재와 비교한다.
+- CTR·CVR: 기존 `CREATIVE_STATS.betaProbGreater`(베타 사후, 결정론 격자). `P(신규 > 기존) ≥ bayes.promoteProb` → 강점, `≤ killProb` → 약점.
+- CPR: 결과를 지출에 대한 포아송으로 보고 감마 사전을 둔다(닫힌형, 결정론).
+  `사후 결과율 = (k + 결과) / (k·CPR_prior + 비용)`, `CPR_post = 1 / 사후 결과율`
+  `CPR_prior` = 그 노드의 과거 신규 소재 출시 프로파일(6.6.6), 없으면 기존 소재 CPR × `defaultLaunchPenalty`. `k` = `priorStrengthResults`(결과 몇 건만큼 사전을 믿을지).
+  초반 몇 건의 운 좋은 전환으로 "대박 소재"가 되는 것을 막는다.
+- `WINNER`: CPR_post ≤ 기존 × (1 − `winMargin`) / `LOSER`: ≥ 기존 × (1 + `loseMargin`) / 나머지 `PAR`.
+
+#### 6.6.4 단계별 예외 규칙
+
+| 단계 | 규칙 |
+|---|---|
+| [B] 요일 | 노드에서 `LEARNING` 소재 지출 비중 ≥ `learningShareExclude`인 날은 CPR 요일 계수 추정에서 뺀다 |
+| [C] 곡선 | 같은 조건의 날은 가중치 `learningDayWeight`(기본 0 = 제외). 출시 배치 날짜는 `selectAllocationRegime`의 구간 경계 **후보**로 넘기되, 배치가 학습을 마치기 전엔 경계로 확정하지 않는다 |
+| [D] 범위 적합성 | 최근 창에 그런 날이 있으면 `DRIFT_*` 대신 `LEARNING_TRANSITION` — 경보를 내지 않고 "신규 소재 학습 중"이라 말한다 |
+| [E] 피로 | `LEARNING`·`RAMPING`·`STALLED`는 피로 판정 제외. 피로 기준선은 **램프가 끝난 뒤** 구간에서 잡는다(첫날 고점 기준 금지). 신규 배치 출시 후 `cannibalWindowDays` 동안 **기존 소재의 노출·지출 감소는 피로 신호에서 뺀다** — 플랫폼이 신규 소재로 돌린 것이지 닳은 게 아니다. 이 기간 기존 소재 피로는 CTR·CVR만으로 본다 |
+| [E] PVM | 6.5 규칙 4·5 |
+| [F] 배분 | 노드 지출의 `learningShareFreeze` 이상이 학습 중이면 그 노드 일예산 변경을 `learningFreezeChangePct` 이내로 묶는다(감액으로 학습을 리셋하지 않게). 배정 예산으로 학습을 못 끝내면 경고: 필요 일예산 ≈ `minResultsToJudge ÷ learningDays × CPR_prior` |
+| [F] 배분 | `LOSER`가 노드 지출의 `loserShareAlert` 이상이면 "소재 OFF 후 재배분" 안을 별도 시나리오로 낸다(자동 반영 안 함) |
+| [G] 예측 | 6.6.5 |
+
+#### 6.6.5 신규 소재가 있는 노드의 예측
+노드 CPR = 기존 소재 곡선 예측과 신규 소재 예측의 **결과 가중 혼합**.
+- 신규 소재의 지출 비중은 과거 출시의 나이별 비중 중앙값(`share ramp`)을 따른다.
+- 신규 소재 CPR = `CPR_prior × launchProfile[나이 구간]`. 학습이 끝나면 6.6.3 사후 CPR로 바뀐다.
+- `STALLED` 비율이 과거 출시에서 `stallRateWarn` 이상이면 예측 옆에 "신규 소재가 노출을 못 받을 수 있음".
+
+#### 6.6.6 출시 프로파일 (과거 신규 소재에서 학습)
+노드(부족하면 채널 → 전체로 수축, §3과 같은 `shrinkK`)별로, 과거 신규 소재의 나이 구간(`profileBuckets`, 예: 0–2·3–6·7–13일)마다 `신규 CPR ÷ 같은 날 기존 소재 CPR`의 중앙값과 지출 비중 중앙값을 저장한다. 출시 표본이 `minHistoricalLaunches` 미만이면 config `defaultLaunchProfile`을 쓰고 **"가정값"**이라 표시한다. `ENDED_UNJUDGED`·`UNKNOWN_AGE`는 표본에서 뺀다.
 
 ---
 
@@ -189,6 +286,7 @@ CPR은 요일 보정값, `c`는 구간 평균 일 지출. `c_R`이 B의 관측 �
 | `EXTRAPOLATING` | 증액 금지, 감액만 허용 |
 | `DRIFT_*` | 최근 구간 곡선만 사용 |
 | `CREATIVE`(피로) | 증액 상한 `creativeBlockedIncrease` (소재 교체 전엔 늘려도 같은 소재가 더 빨리 닳는다) |
+| `LEARNING_TRANSITION` / `NEW_CREATIVE_LEARNING` | 변경폭 `learningFreezeChangePct` 이내, 학습 종료 필요 예산 경고(§6.6.4) |
 | `BUDGET_CURVE`(악화) | 정상 — 곡선이 이미 반영. 별도 처리 없음 |
 
 ### 7.3 출력
@@ -219,7 +317,10 @@ result[n,t] = cost[n,t] / CPR[n,t]
 |---|---|
 | 예산 ±X% | 같은 곡선에서 재배분·재예측 |
 | 소재 OFF | 그 소재를 빼고 노드 CPR을 남은 소재들의 결과 가중 CPR로 재계산(구성 효과만). 남은 소재의 증액분 효율은 모름 → 표시 |
-| 신규 소재 투입 | 그 노드의 과거 신규 소재 첫 `learningDays`일 CPR ÷ 노드 CPR 비율의 중앙값을 학습 구간 패널티로. 과거 신규 소재가 `creative.minHistoricalLaunches` 미만이면 "추정 불가" |
+| 신규 소재 투입 | §6.6.5·6.6.6 출시 프로파일로 나이 구간별 비중·CPR을 적용. 과거 출시가 `minHistoricalLaunches` 미만이면 `defaultLaunchProfile` + "가정값" 표시 |
+
+### 8.2 계획 대비 실적 리뷰
+기간이 끝나면 §6.5의 PVM으로 "계획 vs 실제"를 나눈다 — 실행 편차(계획과 다른 소진 비중)와 모형 오차(노드별 CPR 예측 오차). 모형 오차가 반복되는 노드는 신뢰도를 낮추고, 백테스트(§8)와 함께 config 임계값을 조정하는 근거로 쓴다.
 
 ---
 
@@ -287,14 +388,40 @@ export const PLANNER_CONFIG = Object.freeze({
     creativeDominant: 0.5,
     marketDominant: 0.5,
     cvrDominant: 0.5,
+    newCreativeDominant: 0.5,
     mixedFloor: 0.3,
-    priority: ["INCONCLUSIVE", "MARKET", "BUDGET_CURVE", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"],
+    priority: ["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"],
+  },
+
+  pvm: {
+    finestLevel: "auto",                         // 데이터에 있는 가장 낮은 레벨
+    rateSplitOrder: ["budget", "market", "creative"],
+    relabelEntryExit: true,                      // result1=0 → 신규 진입, result2=0 → 제외
+    zeroResultPooling: ["campaign_bucket", "mergeIntoSmallest", "excludeAndReport"],
+    reviewDowngradeAfter: 2,                     // 계획 대비 모형 오차가 연속 N회 크면 신뢰도 ↓
+    reviewErrorThreshold: 0.2,
   },
 
   creative: {
+    identityScope: "campaign",                   // "campaign" | "global"
+    relaunchGapDays: 14,
     learningDays: 7,
     minHistoricalLaunches: 3,
-    fatigue: { minAgeDays: 14, useRiskEngine: true },   // CREATIVE_CONFIG.fatigueRisk 재사용
+    fatigue: { minAgeDays: 14, useRiskEngine: true, cannibalWindowDays: 7 },  // CREATIVE_CONFIG.fatigueRisk 재사용
+    launch: {
+      minResultsToJudge: 20,
+      rampStableGrowth: 0.15,                    // 7일 지출 증가율이 이 이하면 램프 종료
+      stallDays: 5, stallShare: 0.05, stallRateWarn: 0.3,
+      priorStrengthResults: 10,                  // 감마 사전의 강도(결과 건수 환산)
+      defaultLaunchPenalty: 1.3,                 // 출시 프로파일이 없을 때 기존 CPR 대비 배율
+      winMargin: 0.1, loseMargin: 0.15,
+      learningShareExclude: 0.3,                 // 이 비중 이상 학습 중인 날은 요일·곡선 학습에서 제외
+      learningDayWeight: 0,
+      learningShareFreeze: 0.3, learningFreezeChangePct: 0.1,
+      loserShareAlert: 0.2,
+      profileBuckets: [[0, 2], [3, 6], [7, 13]],
+      defaultLaunchProfile: { cprRatio: [1.6, 1.3, 1.1], spendShare: [0.1, 0.2, 0.25] },
+    },
   },
 
   optimizer: {
@@ -311,6 +438,7 @@ export const PLANNER_CONFIG = Object.freeze({
       EXTRAPOLATING: "decrease_only",
       DRIFT_WORSE: "recent_regime",
       DRIFT_BETTER: "recent_regime",
+      LEARNING_TRANSITION: "freeze",
     },
   },
 
@@ -358,6 +486,8 @@ plannerConfigSignature(cfg)                 // 분석 시그에 포함
 | 2 | 기본 배분 단위 | campaign / channel | **campaign** — 데이터가 얇으면 부모 곡선 차용으로 버틴다 |
 | 3 | `daily_budget` 표준키 추가 | 추가 / 지출 변화로만 추정 | **추가(선택 필드)** — 예산 이벤트 탐지 정확도가 크게 다르다 |
 | 4 | 합산 구간 기본값 | comonotonic / independent | **comonotonic** — 좁은 구간이 틀리는 쪽이 더 해롭다 |
+| 5 | 소재 식별 범위 | 캠페인별 / 전 계정 공통 | **캠페인별** — 같은 소재라도 타깃이 다르면 학습·피로가 따로 간다 |
+| 6 | 결과 0 소재 처리(PVM) | 묶음→최소 소재 합치기→제외 / 바로 제외 | **묶음 먼저** — 바로 빼면 신규 소재 비용이 분해에서 통째로 사라진다 |
 
 ---
 
@@ -378,7 +508,9 @@ plannerConfigSignature(cfg)                 // 분석 시그에 포함
 | `utils/dowProfile.js` | §3 공용 요일 계수 | `anomalyMath`·`pacingMath`의 요일 정의를 여기로 수렴(기존 골든 byte-identical 확인) |
 | `utils/plannerHierarchy.js` | §2 계층 집계·부모 곡선 차용 | `getRowGroupKey`, `allocationPointMap` |
 | `utils/allocationConformity.js` | §5 | `fitAllocationChannel`, `predictSafeCpr` |
-| `utils/performanceChangeDiagnosis.js` | §6 | PVM Bennet(5-21), `CREATIVE_FATIGUE` |
+| `utils/performanceChangeDiagnosis.js` | §6.1–6.4 | `CREATIVE_FATIGUE` |
+| `utils/plannerPvm.js` | §6.5 결과 0 묶음 → `PVM_MATH` 최소 grain 1회 → 롤업 → mix 분할·rate 분할·진입/이탈 재라벨, 계획 대비 실적 | `PVM_MATH`(수정 없음) |
+| `utils/creativeLifecycle.js` | §6.6 식별·상태·판정·출시 프로파일 | `CREATIVE_STATS.betaProbGreater`, `CREATIVE_CONFIG.bayes` |
 | `utils/plannerAllocate.js` | §7 제약 래퍼 | `calculateAllocationModeB`, `improveAllocationFromCurrent`, `allocationDeltaPlan` |
 | `utils/plannerForecast.js` | §8 | `predictSafeCpr`, `krLunarHolidays` |
 
@@ -394,6 +526,8 @@ plannerConfigSignature(cfg)                 // 분석 시그에 포함
 | 범위 적합성 | 같은 곡선 데이터 → `IN_RANGE` / 곡선 ×1.4 이동 → `DRIFT_WORSE` / 지출 2배 → `EXTRAPOLATING` |
 | 원인 분해 | ① 증액만(곡선 고정) → `BUDGET_CURVE` ② 지출 고정·소재 CTR 하락 → `CREATIVE` ③ 전 채널 동시 CPM 상승 → `MARKET` ④ 예산·소재 같은 주 변경 → `INCONCLUSIVE`(혼재). **각 성분의 부호와 크기**를 단언(Simpson 함정, §7) |
 | 항등식 | 1단·퍼널·소재 분해 합 = 전체 Δln CPR (저장 정밀도 기준 tolerance) |
+| PVM 연결 | 7개 열 합 = ΔCPA / 캠페인 간 mix 합 = 캠페인 grain centering mix / 진입·이탈 재라벨 전후 합 불변 / 결과 0 소재가 있어도 `NOT_IDENTIFIED`로 멈추지 않음 / 캠페인 전체 결과 0이면 "결과 없는 지출" 줄이 뜸 |
+| 신규 소재 | ① 램프 중 소재가 피로로 안 잡힘(기존 `compositeIndex`는 잡는 것을 먼저 재현) ② 신규 투입 직후 기존 소재 노출 감소가 피로로 안 잡힘 ③ 데이터 첫날부터 있던 소재는 신규 아님 ④ 지출을 거의 못 받은 소재는 `STALLED`(LOSER 아님) ⑤ 초반 소수 전환으로 WINNER가 안 됨(사전 수축) ⑥ 학습 중 노드는 `DRIFT` 대신 `LEARNING_TRANSITION` ⑦ 출시 표본 부족 시 "가정값" 표시 |
 | 배분 | 일 변경폭·학습 하한(0 또는 하한 이상, 중간값 없음)·외삽 상한·잠금이 지켜지는지. 제약 없음 + 동일 곡선 → 기존 5-3 결과와 일치 |
 | 예측 | 백테스트 적중률이 정답을 아는 합성 데이터에서 명목값 근처 |
 | config | 모르는 키·음수 비율·`lowerQ ≥ upperQ` 거절 / 채널 덮어쓰기 병합 순서 / 같은 입력+config → byte-identical |
