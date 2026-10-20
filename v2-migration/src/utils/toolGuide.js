@@ -54,7 +54,7 @@ export const TOOL_GUIDE = {
     example: "date,channel,cost,impressions,clicks,installs,revenue_d7\n2024-01-01,Google UAC,850000,420000,9800,720,5400000\n2024-01-01,Meta AAP,610000,510000,7200,540,3900000\n2024-01-02,Google UAC,880000,430000,10100,735,5600000",
   },
   "5-3": {
-    when: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 채널·캠페인별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분안을 계산합니다.",
+    when: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 대상별 관측 최대 지출과 하루 변경폭 안에서 자동 배분안과 앞으로 14일 예상 성과를 계산하고, 최근 단가 변화가 예산 탓인지 소재·시장 탓인지 함께 진단합니다.",
     grain: "1행 = 하루 × 채널(또는 캠페인) 실적",
     needs: [
       { col: "date", label: "날짜", why: "곡선 적합에 필요한 시점", required: true },
@@ -62,9 +62,13 @@ export const TOOL_GUIDE = {
       { col: "channel 또는 campaign_name", label: "채널/캠페인", why: "배분 단위", required: true },
       { col: "installs 또는 actions", label: "전환", why: "반응 곡선의 Y축(성과)", required: true },
       { col: "revenue_d7", label: "매출", why: "ROAS 기준 배분·분배 후 예상 매출", required: false },
+      { col: "impressions·clicks", label: "노출·클릭", why: "단가 변화를 노출 단가·클릭률·전환율로 나눠 원인 진단", required: false },
+      { col: "adgroup_name·creative_id", label: "광고그룹·소재", why: "소재 상태(신규 학습·피로)와 소재별 단가 변화 분해", required: false },
+      { col: "daily_budget", label: "일예산 설정값", why: "예산을 바꾼 날을 정확히 잡아 원인 진단", required: false },
     ],
     prep: [
       "곡선 추정에 지출 변동이 있어야 함 — 매일 같은 금액이면 곡선이 안 나옴.",
+      "소재 행이 있으면 같은 날짜·대상의 소재별 행으로 올리세요. 합계는 자동으로 계산합니다.",
       "국가·채널이 섞이면 국가 1개로 강제됩니다(타국가 혼입 방지).",
     ],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-01,Meta AAP,610000,540,3900000\n2024-01-02,TikTok,430000,510,2600000",
@@ -524,7 +528,7 @@ export const TOOL_GUIDE_EN = {
     example: "date,group,conversions\n2024-04-01,treatment,200\n2024-04-01,control,180\n2024-05-20,treatment,120\n2024-05-20,control,182",
   },
   "5-3": {
-    when: "Set a total budget or target CPI, CPA, or ROAS to calculate a recommended total budget and automatic allocation without exceeding each channel/campaign's observed maximum spend.",
+    when: "Set a total budget or target CPI, CPA, or ROAS to get an automatic allocation within each target's observed maximum spend and daily change limit, a 14-day outcome forecast, and a diagnosis of whether recent unit-cost changes come from budget, creatives or the market.",
     grain: "1 row = 1 day × channel (or campaign) performance",
     needs: [
       { col: "date", label: "Date", why: "Time point needed to fit the curve", required: true },
@@ -532,9 +536,13 @@ export const TOOL_GUIDE_EN = {
       { col: "channel or campaign_name", label: "Channel/campaign", why: "Allocation unit", required: true },
       { col: "installs or actions", label: "Conversions", why: "Y-axis of the response curve", required: true },
       { col: "revenue_d7", label: "Revenue", why: "ROAS-based allocation & post-reallocation revenue estimate", required: false },
+      { col: "impressions·clicks", label: "Impressions & clicks", why: "Split unit-cost changes into CPM, CTR and CVR for the cause diagnosis", required: false },
+      { col: "adgroup_name·creative_id", label: "Ad group & creative", why: "Creative status (new-creative learning, fatigue) and per-creative change breakdown", required: false },
+      { col: "daily_budget", label: "Daily budget setting", why: "Detect the exact day a budget changed for the cause diagnosis", required: false },
     ],
     prep: [
       "Spend needs to vary across days for the curve to fit — a flat daily budget produces no curve.",
+      "If you have creative rows, upload one row per creative per day and target. Totals are computed automatically.",
       "Mixed countries get forced to a single country automatically (prevents cross-country contamination).",
     ],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-01,Meta AAP,610000,540,3900000\n2024-01-02,TikTok,430000,510,2600000",

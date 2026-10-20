@@ -110,6 +110,7 @@ CSV(일 × 국가 × 플랫폼 × 채널 × 캠페인 × 광고그룹 × 소재)
 | 판정 | 조건 (config) | 뜻 |
 |---|---|---|
 | `INSUFFICIENT` | 학습 점 < `curve.minPoints` | 판정 불가. 배분에서 "현행 유지" |
+| `UNVERIFIED` | 범위를 판정할 이전 구간이 모자라지만 전체 기간 곡선은 있음 | 범위 판정 불가 — 배분은 곡선으로 그대로 한다(`INSUFFICIENT`와 갈라야 짧은 이력이 계획 전체를 막지 않는다) |
 | `EXTRAPOLATING` | 최근 cost 중앙값 > `xMax × (1 + extrapolationTol)` 또는 < `xMin × (1 − tol)` | 관측해 본 적 없는 지출 수준. 곡선 예측은 추정치 |
 | `DRIFT_WORSE` / `DRIFT_BETTER` | `|z| > zBand`인 날 비율 ≥ `breachShare` **그리고** 최근 잔차 중앙값이 같은 방향으로 `medianShift` 이상 | 같은 지출인데 CPR이 곡선에서 벗어남 → 곡선 자체가 움직였다 |
 | `LEARNING_TRANSITION` | 최근 창에 학습 중 소재 비중 ≥ `learningShareExclude`인 날이 있음(§6.6.4) | 신규 소재 학습 중 — 곡선 이탈 경보를 내지 않음 |
@@ -167,6 +168,7 @@ CPR은 요일 보정값, `c`는 구간 평균 일 지출. `c_R`이 B의 관측 �
 | `CREATIVE` | 노드 고유 이동 중 (CTR 하락 + 소재 mix + 피로) share ≥ `creativeDominant` | 소재 B 피로·신규 소재 C 학습 중 |
 | `MARKET` | 시장 공통분 share ≥ `marketDominant` | 같은 기간 다른 채널도 같이 나빠짐 |
 | `FUNNEL_POST_CLICK` | CVR 하락 share ≥ `cvrDominant` | 클릭 이후 전환이 떨어짐(랜딩·트래픽 확인) |
+| `AUCTION_COST` | 노드 고유 이동 × 퍼널 중 CPM 몫 ≥ `cpmDominant` | 같은 클릭률·전환율인데 노출 단가가 오름(경매·입찰 경쟁 가능성) |
 | `NEW_CREATIVE_LEARNING` | 신규 소재 진입·학습분(§6.6) share ≥ `newCreativeDominant`이고 그 소재가 아직 `LEARNING` | 신규 소재 학습 중 — 일시적일 수 있음. 판정은 학습 종료 후 |
 | `MIXED` | 위 중 둘 이상이 각각 `mixedFloor` 이상 | 원인 여럿 |
 | `INCONCLUSIVE` | 변화가 `σ × noiseMultiple` 이내, 또는 이벤트 혼재 | 노이즈 범위 |
@@ -431,21 +433,23 @@ plannerConfigSignature(cfg)                 // 분석 시그에 포함
 
 ## 14. 구현 현황 (2026-10-20)
 
-**1단계 완료 — 순수 계산 모듈 + 골든 61개.** `test:all` 5,385 통과·lint 통과. 핵심 규칙 5개(진입 재라벨·재분배 CTR 전용·예산 항·백피팅 반복·반복 중 수축 금지)는 일부러 끊어 해당 테스트가 실패하는 것을 확인했다.
+**1단계 — 순수 계산 모듈 + 골든.** 핵심 규칙 5개(진입 재라벨·재분배 CTR 전용·예산 항·백피팅 반복·반복 중 수축 금지)는 일부러 끊어 해당 테스트가 실패하는 것을 확인했다.
 
-| 테스트 파일 | 지키는 것 |
+**2단계 — 5-3 배분 엔진 교체(사용자 결정: 플래너로 교체).** 5-3의 배분·한도·목표 사다리·시나리오·기간 민감도·결과 작업대 5-3 카드가 전부 플래너를 쓴다.
+
+| 부품 | 역할 |
 |---|---|
-| `plannerConfig.test.js` | 모르는 키·범위·관계 거절, 덮어쓰기 순서, 서명 |
-| `plannerCurve.test.js` | 요일 복원(수축 유무)·겹침에서 곡선 탄력성 보존·이동평균 표본·`scaleModel` 4계열·부모 차용·범위 적합성 5상태 |
-| `creativeLifecycle.test.js` | 나이 미상·재출시·정체·판정 전 종료·사전 수축·기준 없음·램프/재분배 피로 예외·학습일·출시 프로파일 leave-one-out |
-| `plannerPvm.test.js` | 무잔차·캠페인 간 mix 일치·rate 분할·Simpson·진입·결과 0 묶음/합치기/제외·계획 대비 실적 |
-| `runBudgetPlanner.test.js` | 원인 판정 ①~⑥·배분 제약·기존 엔진과 일치·그룹 비중·예측 구간·혼합 배율·백테스트·결정론·입력 오류 |
+| `runBudgetPlanner.preparePlanner` / `allocatePlanner` | 곡선·적합성·진단·백테스트는 한 번 준비하고, 예산을 바꿀 때는 배분만 다시 한다 |
+| `allocationAdapter` | 5-3 단위 키(`getRowGroupKey`) ↔ 플래너 노드 키. 실행 방식 `paced`(이번 실행안 — config 하루 증감 한도) / `full`(목표 배분 — 한도 없음). 관측 밖 지출 여유는 0(기존 5-3과 같은 관측 상한). 이름이 갈리는 행은 섞지 않고 `UNIT_KEY_CONFLICT`로 두 이름을 알린다. 주간 자료는 요일 보정을 끈다 |
+| `plannerLabels` | 상태·판정·제약·소재 상태·분해 열의 KO/EN 이름 한 곳. 제약 코드 전수는 `nodeBounds` 소스에서 파생해 검사한다 |
+| `AllocationPlannerPanels` | 배분안 탭: 기간 예측(요일 반영·백테스트 오차). 확인 탭: 대상별 상태·원인 후보, CPR 변화 분해(PVM), 소재 상태 |
+| 필드 | 5-3 선택 필드에 `adgroup_name`·`creative_id`·`daily_budget` 추가(가이드 KO/EN 포함) |
 
-**남은 일 (다음 단계)**
+화면 검토에서 나온 규칙: 상태 표가 "원인 없음"이라 말하는데 분해 표는 나머지 열이 크면 둘이 모순된다 — 노출 단가가 주도한 변화는 `AUCTION_COST`로 이름을 붙이고, 분해의 나머지 열은 "그 밖(소재·퍼널·노출 단가)"으로 부른다. 같은 제약이 모든 행에 걸리면 열 대신 한 문장으로 말한다. 실행안이 없으면 배분안의 세 보기가 모두 같은 문장으로 이유를 말한다.
 
-1. **5-3 화면 배선** — `design.md` §6.0 절차, KO/EN, 320·980·1440. 결과 구성(배분안·예측·진단·PVM 표)은 그 단계에서 설계한다.
-2. **`daily_budget` 표준 필드 등록** — 결정 3. 엔진은 이미 읽는다(`plannerData`). 매핑 별칭·`TOOL_OPTIONAL_FIELDS["5-3"]`·플랫폼 export 가드(`platformExports.test.js`)는 화면 배선과 함께.
-3. **`adgroup_name`·`creative_id`·`impressions`·`clicks`를 5-3 선택 필드로** — 지금 5-3 계약에는 없다.
-4. 미구현 규칙: 학습 종료 필요 예산 경고(§6.6.4 [F]), 소재 OFF·신규 투입 시나리오 함수(§8.1 — 예산 ±X%는 `totalBudget`으로 이미 가능), 피로 예측일 → `fatigueFrom` 연결(§8), 출시일을 구간 경계 후보로(§6.6.4 [C]), `anomalyMath`·`pacingMath` 요일 계산 수렴(§3).
-5. 실데이터 백테스트로 config 기본값 조정.
+**남은 일**
 
+1. 미구현 규칙: 학습 종료 필요 예산 경고(§6.6.4 [F]), 소재 OFF·신규 투입 시나리오 함수(§8.1 — 예산 ±X%는 이미 가능), 피로 예측일 → `fatigueFrom` 연결(§8), 출시일을 구간 경계 후보로(§6.6.4 [C]), `anomalyMath`·`pacingMath` 요일 계산 수렴(§3).
+2. 계획 대비 실적 리뷰(`reviewPlanVsActual`)를 `/weekly-review`에 배선.
+3. 실데이터 백테스트로 config 기본값 조정. config 덮어쓰기 화면은 아직 없다(코드 기본값만 쓴다).
+4. `daily_budget`은 엔진이 읽지만 플랫폼 export 별칭 검증(`platformExports.test.js`)은 실제 내보내기 파일을 받은 뒤에.

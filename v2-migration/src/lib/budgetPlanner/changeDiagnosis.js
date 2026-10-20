@@ -177,6 +177,7 @@ export function classifyNodeChange(measure, market, creative, cfg) {
     creative: creativeShareOfShift == null ? null : top.shift * creativeShareOfShift,
     newLearning: creative ? top.shift * creative.newLearningShare : null,
     postClick: funnelShares ? top.shift * funnelShares.cvr : null,
+    auction: funnelShares ? top.shift * funnelShares.cpm : null,
   };
   const noise = measure.sigmaPeriod != null && Math.abs(measure.total) <= d.noiseMultiple * measure.sigmaPeriod;
   const mixedEvents = measure.events.budget && measure.events.creatives.length > 0;
@@ -186,10 +187,11 @@ export function classifyNodeChange(measure, market, creative, cfg) {
     NEW_CREATIVE_LEARNING: () => (atLeast(evidence.newLearning, d.newCreativeDominant) ? "new_creative_learning" : null),
     MARKET: () => (atLeast(evidence.market, d.marketDominant) ? "market_wide_shift" : null),
     BUDGET_CURVE: () => (atLeast(evidence.budget, d.budgetDominant) ? "moved_along_curve" : null),
+    AUCTION_COST: () => (atLeast(evidence.auction, d.cpmDominant) ? "impression_cost_up" : null),
     CREATIVE: () => (atLeast(evidence.creative, d.creativeDominant) ? "creative_driven" : null),
     FUNNEL_POST_CLICK: () => (atLeast(evidence.postClick, d.cvrDominant) ? "post_click_conversion" : null),
     MIXED: () => {
-      const strong = ["budget", "market", "creative", "postClick"].filter((key) => atLeast(evidence[key], d.mixedFloor));
+      const strong = ["budget", "market", "auction", "creative", "postClick"].filter((key) => atLeast(evidence[key], d.mixedFloor));
       return strong.length >= 2 ? `mixed:${strong.join("+")}` : null;
     },
   };

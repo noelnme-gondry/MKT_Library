@@ -48,7 +48,7 @@ export function forecastPlan(plans, { startDate, cfg }) {
       continue;
     }
     const band = residualBand(plan.curve, cfg);
-    const total = { cost: 0, results: 0, lo: 0, hi: 0, extrapolatedDays: 0 };
+    const total = { cost: 0, results: 0, lo: 0, hi: 0, extrapolatedDays: 0, days: 0 };
     let predictable = true;
     if ((plan.launches || []).some((launch) => launch.profile.assumed)) assumedProfiles += 1;
     for (let t = 0; t < horizonDays; t += 1) {
@@ -70,7 +70,10 @@ export function forecastPlan(plans, { startDate, cfg }) {
       total.results += results;
       total.lo += lo;
       total.hi += hi;
-      if (cost > plan.curve.observed.xMax || cost < plan.curve.observed.xMin) total.extrapolatedDays += 1;
+      // 요일 분배로 하루 지출이 관측 끝을 살짝 넘는 것은 외삽으로 세지 않는다(범위 적합성과 같은 허용 오차).
+      const tol = cfg.conformity.extrapolationTol;
+      if (cost > plan.curve.observed.xMax * (1 + tol) || cost < plan.curve.observed.xMin * (1 - tol)) total.extrapolatedDays += 1;
+      total.days += 1;
       if (!daily.has(date)) daily.set(date, { date, dow, cost: 0, results: 0 });
       const day = daily.get(date);
       day.cost += cost;
@@ -102,7 +105,8 @@ export function forecastPlan(plans, { startDate, cfg }) {
     nodes,
     daily: [...daily.values()].sort((a, b) => a.date.localeCompare(b.date)),
     flags: {
-      extrapolatedNodes: nodes.filter((node) => node.extrapolatedDays > 0).length,
+      // 예측 기간의 절반 이상이 관측 밖인 대상만 "추정치"로 센다.
+      extrapolatedNodes: nodes.filter((node) => node.days > 0 && node.extrapolatedDays * 2 >= node.days).length,
       unpredictableNodes: nodes.filter((node) => !node.predictable).length,
       assumedLaunchProfiles: assumedProfiles,
     },

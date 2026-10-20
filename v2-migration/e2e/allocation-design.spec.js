@@ -84,10 +84,13 @@ for (const locale of ['ko', 'en']) {
     page.on('dialog', d => d.accept());
     await page.getByRole('button', { name: en ? /Finish verification/ : /검증 완료 및 예산 배분/ }).first().click();
     await expect(page.locator('#s-controls')).toBeVisible();
-    // Narrowing to one channel preserves the entered budget. Bring it within
-    // this scope's observed ceiling before expecting an executable plan.
+    // Narrowing to one channel preserves the entered budget. Bring it inside
+    // this scope's executable band — the observed ceiling above and, for the
+    // next-step pace, the daily decrease limit below — before expecting a plan.
     const ceiling = Number(await page.locator('#prism-total-budget').getAttribute('max'));
-    await page.locator('#prism-total-budget-exact').fill(String(Math.floor(ceiling * 0.8)));
+    const floor = Number(await page.locator('#prism-total-budget').getAttribute('min'));
+    expect(floor).toBeLessThan(ceiling);
+    await page.locator('#prism-total-budget-exact').fill(String(Math.round((floor + ceiling) / 2)));
     await page.locator('#prism-total-budget-exact').blur();
     await page.getByRole('radio', { name: en ? 'Full table' : '전체 배분표', exact: true }).click();
     await expect(page.locator('#s-table')).toBeVisible();

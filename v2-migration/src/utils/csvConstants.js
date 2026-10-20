@@ -1481,8 +1481,11 @@ export const TOOL_OPTIONAL_FIELDS = {
                   unlocks: "ROAS 시뮬레이션 + 분배 후 예상 매출 계산",
                 },
                 { key: "pu_d7", unlocks: "결제건수 기준 분배 (대안 metric)" },
-                { key: "impressions", unlocks: "노출 기반 시뮬레이션" },
-                { key: "clicks", unlocks: "클릭 기반 시뮬레이션" },
+                { key: "impressions", unlocks: "노출 기반 시뮬레이션 · 단가 변화의 노출 단가·클릭률·전환율 분해" },
+                { key: "clicks", unlocks: "클릭 기반 시뮬레이션 · 단가 변화의 클릭률·전환율 분해" },
+                { key: "adgroup_name", unlocks: "광고그룹까지 단가 변화 분해" },
+                { key: "creative_id", unlocks: "소재 상태(신규 학습·노출 확대·정체·판정·피로)와 소재별 단가 변화 분해" },
+                { key: "daily_budget", unlocks: "예산 변경 시점을 설정값으로 감지해 원인 진단 정확도 향상" },
               ],
               "5-22": [
                 {

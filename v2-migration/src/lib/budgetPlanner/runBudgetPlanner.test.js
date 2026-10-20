@@ -64,6 +64,20 @@ describe("원인 진단 — 예산인가 소재인가", () => {
     expect(diagnosis.verdict).toBe("CREATIVE");
   });
 
+  it("② 지출·클릭률·전환율은 같은데 노출 단가만 30% 오르면 AUCTION_COST(소재 탓이 아님)", () => {
+    const spend = (t, date) => (inR(date) || inB(date) ? 100000 : wavy(100000)(t));
+    // 노출 = 비용 ÷ CPM. R 주에 CPM이 1.3배 → 같은 비용으로 노출·클릭·설치가 1/1.3.
+    const auction = (t, date, cost) => {
+      const impressions = cost / (inR(date) ? 6.5 : 5);
+      return { impressions: String(impressions), clicks: String(impressions * 0.01) };
+    };
+    const out = runBudgetPlanner(curveRows({ path: path("Meta"), spend, a: 40, b: 0.3, jitter: 0.02, cprShift: (t, date) => (inR(date) ? 1.3 : 1), extra: auction }));
+    const { diagnosis } = nodeOf(out, "Meta");
+    expect(diagnosis).toMatchObject({ verdict: "AUCTION_COST", reason: "impression_cost_up" });
+    expect(diagnosis.evidence.auction).toBeGreaterThan(0.9);
+    expect(diagnosis.evidence.creative).toBeLessThan(0.1);
+  });
+
   it("③ 같은 국가 세 채널이 같은 주에 함께 나빠지면 MARKET", () => {
     const spend = (base) => (t, date) => (inR(date) || inB(date) ? base : wavy(base)(t));
     const rows = ["Meta", "Google", "TikTok"].flatMap((channel, i) => curveRows({

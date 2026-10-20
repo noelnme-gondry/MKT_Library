@@ -35,6 +35,7 @@ import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
 import { allocConfidence } from "@/utils/allocationConfidence";
 import AllocationResultWorkspace from "@/components/tools/AllocationResultWorkspace";
+import { PlannerChangeBreakdown, PlannerCreativeStatus, PlannerForecast, PlannerTargetStatus } from "@/components/tools/AllocationPlannerPanels";
 import DataTable from "@/components/ds/DataTable";
 import { allocationCadence, prepareAllocationObservations, allocationHistory } from "@/utils/allocationObservations";
 import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
@@ -2224,6 +2225,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const activeAllocationView = allocationView === "share" && hiddenBlocks.includes("s-bar") ? "changes" : allocationView;
   const activeCurveView = hiddenBlocks.includes(curveView === "efficiency" ? "s-scatter" : "s-response")
     ? (hiddenBlocks.includes("s-scatter") ? "response" : "efficiency") : curveView;
+  // 실행안이 없을 때 배분안의 세 보기(변경 요약·전체 배분표·비중)가 같은 문장으로 비어 있는 이유를 말한다.
+  const noPlanNote = <p>{tr("현재 입력으로 실행 가능한 배분안이 없습니다. 예산 범위와 확인 항목을 검토하세요.", "No actionable allocation is available for these inputs. Review the budget range and checks.")}</p>;
   const resultWorkspace = <AllocationResultWorkspace value={resultView} onChange={setResultView} locale={locale} panels={{
     allocation: <>
       <PillGroup className="allocation-result-subview" ariaLabel={tr("배분안 표시", "Allocation display")} value={activeAllocationView} onChange={setAllocationView} options={[
@@ -2241,9 +2244,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             locale={locale}
             currency={currency}
             downloadName="budget_shift"
-          /> : <p>{tr("현재 입력으로 실행 가능한 배분안이 없습니다. 예산 범위와 확인 항목을 검토하세요.", "No actionable allocation is available for these inputs. Review the budget range and checks.")}</p>}
+          /> : noPlanNote}
       </div>
       <div hidden={activeAllocationView !== "table"}>
+      {!showTable && noPlanNote}
       {showTable && (() => {
         // #3 이전(과거) 평균 컬럼 — 최근 N일 평균 일예산/결과/CPR + 전체 비중
         const prevByCh = {};
@@ -2463,6 +2467,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       </div>
       <div hidden={activeAllocationView !== "share"}>
+      {!canStorePlan && noPlanNote}
       {canStorePlan && <>
           <AllocationDistribution hidden={hiddenBlocks.includes("s-bar")} locale={locale} scopeLabel={lowerScopeLabel} controls={<AllocationChartCountries countries={lowerCountryGroups.map(([country]) => country)} selected={lowerChartCountries} onChange={setLowerChartCountries} locale={locale} />} rows={(() => {
             const channelsByEntity = new Map();
@@ -2479,12 +2484,24 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       </>}
 
       </div>
+      {/* 배분안 보기(요약·표·비중)와 무관하게 같은 배분의 기간 예측이 결론 쪽에 붙는다. */}
+      {canStorePlan && <PlannerForecast
+        forecast={planForecast}
+        backtest={planner.ok ? planner.backtest : null}
+        locale={locale}
+        resultLabel={unitLabel}
+        metricLabel={metricLabel}
+        resultIsMoney={roas}
+        fmtMoney={(value) => fmtCurrency(value, currency)}
+        fmtCount={(value) => formatNumberK(value)}
+        fmtUnitCost={(value) => fmtCostMetric(value, effectiveMetric, currency)}
+      />}
     </>,
     comparison: <>
       {plannedDailyBudget > 0 && (
         <section className="block" id="s-strategies" aria-labelledby="allocation-strategies-title">
           <h2 id="allocation-strategies-title">{tr("같은 예산의 두 실행안", "Two strategies at the same budget")}</h2>
-          <p>{tr("기존 유지안은 현재 채널 지출을 출발점으로 증감분만 조정합니다. 전체 재배분은 선택한 배분 방식으로 다시 나눕니다. 두 안 모두 같은 관측 상한·저신뢰 유지 조건을 적용합니다.", "The keep-current plan starts from current channel spend and changes only the budget delta. Full reallocation uses the selected allocation method. Both apply the same observed ceilings and low-confidence holds.")}</p>
+          <p>{tr("기존 유지안은 현재 지출을 출발점으로 예산 증감분만 효율 좋은 곳에 더하거나 뺍니다. 다른 안은 선택한 실행 방식으로 전체를 다시 나눕니다. 두 안 모두 같은 곡선·관측 상한·저신뢰 유지 조건을 씁니다.", "The keep-current plan starts from current spend and only adds or removes the budget delta where it is most efficient. The other plan re-splits the whole budget with the selected execution pace. Both use the same curves, observed ceilings and low-confidence holds.")}</p>
           <DataTable ariaLabel={tr("예산 실행안 비교", "Budget strategy comparison")} rows={strategyRows} columns={[
             { key: "name", label: tr("실행안", "Strategy") },
             { key: "cost", label: tr("일 비용", "Daily cost"), align: "right", fmt: value => fmtCurrency(value, currency) },
@@ -2689,6 +2706,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       {hiddenBlocks.includes("s-scatter") && hiddenBlocks.includes("s-response") && <p>{tr("곡선이 숨겨져 있습니다. 보기 설정에서 다시 표시할 수 있습니다.", "The curves are hidden. Show them again in the view settings.")}</p>}
     </>,
     checks: <>
+      {/* 지금 숫자가 왜 이런가 → 어디서(분해) → 소재. 배분 점검보다 먼저 읽는다. */}
+      <PlannerTargetStatus planner={planner} allocation={allocation} locale={locale} metricLabel={metricLabel} isRoas={roas} />
+      <PlannerChangeBreakdown planner={planner} locale={locale} metricLabel={metricLabel} isRoas={roas} fmtMoney={(value) => fmtCurrency(value, currency)} />
+      <PlannerCreativeStatus planner={planner} locale={locale} metricLabel={metricLabel} />
       {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
       {verify && plannedDailyBudget > 0 && items.length >= 2 && (
         <section data-information-section="" className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
@@ -2906,7 +2927,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 <button type="button" className={budgetPeriod === "monthly" ? "active" : ""} aria-pressed={budgetPeriod === "monthly"} onClick={() => changeBudgetPeriod("monthly")}>{tr("월", "Monthly")}</button>
               </span>
             </div>
-            {!hasCompleteEvidence ? (
+            {!planner.ok && planner.code === "UNIT_KEY_CONFLICT" ? (
+              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+                {tr(
+                  `같은 행이 배분 단위에서 서로 다른 이름으로 갈립니다(${planner.units.join(", ")}). 국가·채널 값이 비어 있는 행이 섞였는지 확인하거나 분배 단위를 바꾸세요. 섞어서 계산하지 않았습니다.`,
+                  `The same rows split into different allocation names (${planner.units.join(", ")}). Check for rows with empty country or channel values, or change the allocation unit. They were not merged.`,
+                )}
+              </p>
+            ) : !hasCompleteEvidence ? (
               <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
                 {tr(
                   `전역 자동 배분에는 선택 채널 전체의 반응 곡선이 필요합니다. 현재 ${evidenceLimits.unavailableChannels.length}개 채널의 곡선 검증이 필요해 실행·저장 가능한 추천안을 만들지 않았습니다.`,

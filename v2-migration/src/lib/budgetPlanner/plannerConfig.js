@@ -3,7 +3,7 @@
 // 실데이터 백테스트로 조정한다. 모르는 키·범위 밖 값은 조용히 무시하지 않고 거절한다.
 
 export const PLANNER_LEVELS = Object.freeze(["country", "platform", "channel", "campaign_name", "adgroup_name", "creative_id"]);
-export const PLANNER_VERDICTS = Object.freeze(["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"]);
+export const PLANNER_VERDICTS = Object.freeze(["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "AUCTION_COST", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"]);
 // INSUFFICIENT = 배분 곡선 자체가 없음 · UNVERIFIED = 곡선은 있지만 최근 소진을 과거 범위와 비교할 이력이 없음.
 export const PLANNER_NODE_STATES = Object.freeze(["INSUFFICIENT", "UNVERIFIED", "EXTRAPOLATING", "DRIFT_WORSE", "DRIFT_BETTER", "LEARNING_TRANSITION", "IN_RANGE"]);
 const STATE_POLICIES = ["hold", "decrease_only", "recent_regime", "freeze", "normal"];
@@ -53,9 +53,11 @@ export const PLANNER_CONFIG = deepFreeze({
     creativeDominant: 0.5,
     marketDominant: 0.5,
     cvrDominant: 0.5,
+    // 곡선이 설명하지 못한 단가 상승 중 노출 단가(CPM) 몫 — 경매·입찰 경쟁 가능성.
+    cpmDominant: 0.5,
     newCreativeDominant: 0.5,
     mixedFloor: 0.3,
-    priority: ["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"],
+    priority: ["INCONCLUSIVE", "NEW_CREATIVE_LEARNING", "MARKET", "BUDGET_CURVE", "AUCTION_COST", "CREATIVE", "FUNNEL_POST_CLICK", "MIXED"],
   },
 
   pvm: {
@@ -169,7 +171,7 @@ const ENUMS = {
 
 const FRACTIONS = new Set([
   "conformity.breachShare", "events.minCreativeShare",
-  "diagnosis.budgetDominant", "diagnosis.creativeDominant", "diagnosis.marketDominant", "diagnosis.cvrDominant",
+  "diagnosis.budgetDominant", "diagnosis.creativeDominant", "diagnosis.marketDominant", "diagnosis.cvrDominant", "diagnosis.cpmDominant",
   "diagnosis.newCreativeDominant", "diagnosis.mixedFloor",
   "optimizer.stepPct", "optimizer.maxDailyDecrease",
   "forecast.lowerQ", "forecast.upperQ", "backtest.minCoverage",
