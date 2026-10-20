@@ -44,8 +44,11 @@ export async function saveWorkspaceDataset({ group, fileName, sourceBlob, source
     savedAt: now,
     lastUsedAt: now,
   };
+  let transaction;
   try {
-    const transaction = db.transaction(["datasets", "meta"], "readwrite");
+    transaction = db.transaction(["datasets", "meta"], "readwrite");
+    const complete = transactionComplete(transaction);
+    complete.catch(() => {});
     const store = transaction.objectStore("datasets");
     const existing = await requestResult(store.getAll());
     const others = existing.filter(file => file.group !== entry.group);
@@ -64,8 +67,13 @@ export async function saveWorkspaceDataset({ group, fileName, sourceBlob, source
     if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
     meta.put({ ...project, lastUsedAt: now });
     store.put(entry);
-    await transactionComplete(transaction);
+    await complete;
     return summary(entry);
+  } catch (error) {
+    // A failed Blob/File write can leave WebKit's transaction pending.
+    // Roll back metadata as well and release subsequent read/write requests.
+    try { transaction?.abort(); } catch { /* Already completed or aborted. */ }
+    throw error;
   } finally {
     db.close();
   }

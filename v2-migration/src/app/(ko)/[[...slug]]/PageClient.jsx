@@ -11,18 +11,15 @@ import GlobalModals from "@/components/GlobalModals";
 import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
 import GuideIndex from "@/components/GuideIndex";
-import StartGate from "@/components/StartGate";
 import AnalysisDataGuide from "@/components/AnalysisDataGuide";
-import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
-import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
-import MyAccountPage from "@/components/MyAccountPage";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
+import StartGateIntroduction from "@/components/StartGateIntroduction";
 import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import { isAnalysisAdRoute } from "@/lib/partnerAds";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
@@ -31,6 +28,10 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
 // 초기 로딩이 느렸음. 각 도구는 해당 라우트 진입 시에만 청크 로드.
 const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>로딩 중…</div> });
+const StartGate = dynamic(() => import("@/components/StartGate"), { loading: () => <StartGateIntroduction pending /> });
+const ProjectsPage = dyn(() => import("@/components/ProjectsPage"));
+const WorkspaceStoragePage = dyn(() => import("@/components/WorkspaceStoragePage"));
+const MyAccountPage = dyn(() => import("@/components/MyAccountPage"));
 const OperationsPlanner = dyn(() => import("@/components/tools/OperationsPlanner"));
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));

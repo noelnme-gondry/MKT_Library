@@ -12173,6 +12173,9 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .pvm-stage-analysis__mobile-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
 .tool-next-step-panel { margin-top: 24px; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); }
 .tool-next-step-panel .tool-connections { margin: 0; }
+.tool-entry-summary { margin-bottom: 24px; }
+.app .content .tool-entry-summary h2 { margin: 0 0 8px; font-size: var(--fs-lg); font-weight: 700; line-height: 1.45; color: var(--text-primary); }
+.tool-entry-summary p { margin: 8px 0 0; font-size: var(--fs-md); font-weight: 400; line-height: 1.65; color: var(--text-secondary); }
 .tool-next-step-panel .tool-connections__head h2 { font-size: var(--fs-lg); }
 .tool-next-step-panel__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .tool-next-step-panel__actions .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }

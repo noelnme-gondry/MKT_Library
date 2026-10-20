@@ -1208,20 +1208,21 @@ export const useAppStore = create(persist((set, get) => ({
   // of setCsvData(EMPTY_SLICE()) directly.
   clearCsvGroup: async () => {
     const g = groupForRoute(get().currentRouteId);
+    const projectId = get().activeProjectId;
     let storageError = null;
     try {
-      await removeWorkspaceDataset(g);
+      await removeWorkspaceDataset(g, projectId);
     } catch (error) {
       storageError = error?.code || "WORKSPACE_STORAGE_UNKNOWN";
     }
-    set((state) => ({
+    set((state) => state.activeProjectId !== projectId ? {} : ({
       csvGroups: { ...state.csvGroups, [g]: EMPTY_SLICE() },
-      csvData: EMPTY_SLICE(),
+      csvData: state.activeDataGroup === g ? EMPTY_SLICE() : state.csvData,
       analyzedByGroup: { ...state.analyzedByGroup, [g]: null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: true },
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },
       analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
-      dochiAnalysisSession: null,
+      dochiAnalysisSession: state.activeDataGroup === g ? null : state.dochiAnalysisSession,
       workspaceDatasetSummaries: storageError
         ? state.workspaceDatasetSummaries
         : state.workspaceDatasetSummaries.filter((entry) => entry.group !== g),

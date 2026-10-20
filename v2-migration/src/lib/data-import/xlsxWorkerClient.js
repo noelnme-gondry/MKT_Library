@@ -4,13 +4,15 @@ import {
   assertXlsxFileSize,
 } from "./xlsxImportPolicy";
 
-export async function parseXlsxFile(file) {
+export async function parseXlsxFile(file, { signal } = {}) {
+  signal?.throwIfAborted();
   const fileSize = Number.isFinite(file?.size) ? file.size : null;
   if (fileSize != null) assertXlsxFileSize(fileSize);
   if (typeof Worker === "undefined") {
     throw new XlsxImportPolicyError("xlsx_worker_unavailable");
   }
   const arrayBuffer = await file.arrayBuffer();
+  signal?.throwIfAborted();
   assertXlsxFileSize(arrayBuffer.byteLength);
   return new Promise((resolve, reject) => {
     let worker;
@@ -20,21 +22,34 @@ export async function parseXlsxFile(file) {
       reject(new XlsxImportPolicyError("xlsx_worker_unavailable"));
       return;
     }
-    const timeout = setTimeout(() => {
+    const cleanup = () => {
+      clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
       worker.terminate();
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const timeout = setTimeout(() => {
+      cleanup();
       reject(new XlsxImportPolicyError("xlsx_timeout"));
     }, XLSX_IMPORT_LIMITS.timeoutMs);
+    signal?.addEventListener("abort", onAbort, { once: true });
     worker.onmessage = (event) => {
-      clearTimeout(timeout);
-      worker.terminate();
+      cleanup();
       if (event.data?.ok) resolve(event.data.sheets);
       else reject(new XlsxImportPolicyError(event.data?.code || "xlsx_parse_failed"));
     };
     worker.onerror = () => {
-      clearTimeout(timeout);
-      worker.terminate();
+      cleanup();
       reject(new XlsxImportPolicyError("xlsx_parse_failed"));
     };
-    worker.postMessage({ arrayBuffer }, [arrayBuffer]);
+    try {
+      worker.postMessage({ arrayBuffer }, [arrayBuffer]);
+    } catch {
+      cleanup();
+      reject(new XlsxImportPolicyError("xlsx_parse_failed"));
+    }
   });
 }

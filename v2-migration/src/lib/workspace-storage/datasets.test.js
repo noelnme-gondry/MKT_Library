@@ -30,11 +30,18 @@ describe("workspace dataset connection lifecycle", () => {
       delete: vi.fn(),
       clear: vi.fn(),
     };
-    transaction = { objectStore: vi.fn(() => store) };
+    transaction = { objectStore: vi.fn(() => store), abort: vi.fn() };
     db = { transaction: vi.fn(() => transaction), close: vi.fn() };
     dbMock.openWorkspaceDb.mockReset().mockResolvedValue(db);
     dbMock.requestResult.mockReset().mockResolvedValue([]);
     dbMock.transactionComplete.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("aborts a rejected file write so later storage operations are not left waiting", async () => {
+    dbMock.transactionComplete.mockRejectedValueOnce(new Error("Blob storage failed"));
+    await expect(saveWorkspaceDataset({ entitlement: activePro(), group: "efficiency", fileName: "data.csv", sourceBlob: new Blob(["a,b"]) })).rejects.toThrow("Blob storage failed");
+    expect(transaction.abort).toHaveBeenCalledOnce();
+    expect(db.close).toHaveBeenCalledOnce();
   });
 
   it.each([

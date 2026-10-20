@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
+import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 import { PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
@@ -88,6 +88,29 @@ describe("StartGate render smoke", () => {
       placement: "before_upload",
       locale: "ko",
     });
+  });
+
+  it.each(["ko", "en"])("preserves an example loaded before the delayed parent effect (%s)", (locale) => {
+    search = "example=1";
+    const originalUrl = window.location.href;
+    window.history.replaceState({}, "", `${locale === "en" ? "/en" : ""}/start?example=1`);
+    useAppStore.setState({ projectsReady: true, projectSwitching: false });
+    const hydrated = vi.spyOn(useAppStore.persist, "hasHydrated").mockReturnValue(true);
+    try {
+      const { rerender } = render(<StartGate locale={locale} />);
+      const sample = useAppStore.getState().csvGroups.efficiency;
+      expect(sample.fileName).toMatch(/^demo_/);
+      expect(sample.raw.length).toBeGreaterThan(0);
+      expect(useAppStore.getState().analyzedByGroup.efficiency).toBe(computeAnalyzeSig(sample));
+      search = "";
+      rerender(<StartGate locale={locale} />);
+      expect(useAppStore.getState().csvGroups.efficiency.raw).toBe(sample.raw);
+      act(() => useAppStore.getState().setCurrentRouteId("dochi-result"));
+      expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+    } finally {
+      hydrated.mockRestore();
+      window.history.replaceState({}, "", originalUrl);
+    }
   });
 
   it("keeps upload, calculator, diagnosis, and generic example equivalent in English", () => {

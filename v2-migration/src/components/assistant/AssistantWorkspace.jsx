@@ -18,11 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ANALYSIS_CATALOG, analysisCatalogEntry } from "@/lib/assistant/analysisCatalog";
 import { beginNextAnalysis, confirmAnalysis, createAnalysisQueue, markQueueStale, settleAnalysis } from "@/lib/assistant/analysisQueue";
 import { buildNaturalExperimentHandoff, detectBudgetInterruptionCandidates } from "@/lib/assistant/detectBudgetInterruptionCandidates";
-import { efficiencyAdapterFor, runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
-import { optimizationAdapterFor, runOptimizationAnalysis } from "@/lib/assistant/optimizationAnalysisAdapters";
-import { responseAdapterFor, runResponseAnalysis } from "@/lib/assistant/responseAnalysisAdapters";
-import { runSpecialAnalysis, specialAdapterFor } from "@/lib/assistant/specialAnalysisAdapters";
-import { runSubscriptionAnalysis, subscriptionAdapterFor } from "@/lib/assistant/subscriptionAnalysisAdapters";
+import { loadAnalysisRunner } from "@/lib/assistant/loadAnalysisRunner";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
@@ -799,35 +795,23 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   useEffect(() => {
     if (!activeQueueItem || queue?.signature !== queueSignature) return undefined;
     let cancelled = false;
-    const execute = () => {
+    const execute = async () => {
       if (cancelled) return;
       const eventKey = productEventKey("dochi_workspace", activeQueueItem.toolId, queueSignature, locale);
       const event = { tool_id: activeQueueItem.toolId, source: isDemoData(csvData) ? "demo" : "csv", placement: "dochi_workspace", analysis_type: productAnalysisType(activeQueueItem.toolId), locale };
       trackProductEventOnce("analysis_started", eventKey, event);
-      const efficiencyAdapter = efficiencyAdapterFor(activeQueueItem.toolId);
-      const optimizationAdapter = optimizationAdapterFor(activeQueueItem.toolId);
-      const responseAdapter = responseAdapterFor(activeQueueItem.toolId);
-      const specialAdapter = specialAdapterFor(activeQueueItem.toolId);
-      const subscriptionAdapter = subscriptionAdapterFor(activeQueueItem.toolId);
-      const adapter = efficiencyAdapter || optimizationAdapter || responseAdapter || specialAdapter || subscriptionAdapter;
-      if (!adapter) {
-        trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "adapter_unavailable" });
-        setQueue((current) => current?.signature === queueSignature
-          ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_pending" })
-          : current);
-        setAnnouncement(C.adapterPendingDetail);
-        return;
-      }
       try {
-        const run = efficiencyAdapter
-          ? runEfficiencyAnalysis
-          : optimizationAdapter
-            ? runOptimizationAnalysis
-            : responseAdapter
-              ? runResponseAnalysis
-              : specialAdapter
-                ? runSpecialAnalysis
-                : runSubscriptionAnalysis;
+        const run = await loadAnalysisRunner(activeQueueItem.toolId);
+        // 청크를 받는 동안 입력·매핑이 바뀌거나 화면을 떠났으면 오래된 계산을 시작하지 않는다.
+        if (cancelled) return;
+        if (!run) {
+          trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "adapter_unavailable" });
+          setQueue((current) => current?.signature === queueSignature
+            ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_pending" })
+            : current);
+          setAnnouncement(C.adapterPendingDetail);
+          return;
+        }
         const prepared = prepareAnalysisHandoff({ ...csvData, mapping: mappingsByTool[activeQueueItem.toolId] }, activeQueueItem.toolId);
         const preflight = executionPreflight(prepared, activeQueueItem.toolId, locale);
         const computedResult = preflight.status === "blocked" ? createAnalysisResult({
@@ -856,6 +840,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           : current);
         setAnnouncement(result.verdict.headline);
       } catch {
+        if (cancelled) return;
         trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "calculation_error" });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_error" })

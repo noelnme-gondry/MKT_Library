@@ -16,6 +16,7 @@ import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
 import { CHART_FONT_STACK, CHART_THEME as GLOBAL_CHART_THEME } from "@/utils/chartUtils";
 import HelpTip from "@/components/ds/HelpTip";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+import { csvCell, csvText, trustedCsvFormula } from "@/utils/download";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -1637,12 +1638,10 @@ export function CommaNumberInput({ value, onCommit, style, placeholder, disabled
 
 /* ── CSV helpers (§7 CRLF+BOM, RFC4180 quoting) — index _mmmDownload/q 이식 ── */
 export function csvQ(s) {
-  s = String(s == null ? "" : s);
-  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  return csvCell(s);
 }
 export function csvSafeLiteral(s) {
-  const value = String(s == null ? "" : s);
-  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return csvText(String(s == null ? "" : s), { allowNumericText: false });
 }
 export function csvNum(v, d = 2) {
   return v == null || !isFinite(v) ? "" : (+v).toFixed(d);
@@ -2406,6 +2405,10 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
     : tx(`${livePlatforms[0] || "OS"} 예측`, `${livePlatforms[0] || "OS"} forecast`);
   const lines = [];
   const push = (row) => lines.push(row.map(csvQ).join(","));
+  // 데이터 표의 계산 열만 신뢰한다. 기간·채널·모델 이름은 공용 텍스트 보호를 거친다.
+  const pushFormulaRow = (row, firstFormulaColumn) => push(row.map((value, column) =>
+    column >= firstFormulaColumn && typeof value === "string" && value.startsWith("=")
+      ? trustedCsvFormula(value) : value));
   push([
     tx("# 도구", "# Tool"),
     isPaidOrganicLive
@@ -2775,7 +2778,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         : model.futureUpperMargins?.[futureIndex]
           ?? model.futureMargins?.[futureIndex]
           ?? 0;
-      push([
+      pushFormulaRow([
         index + 1,
         csvSafeLiteral(isHistory ? model.histLabels[index] : model.futLabels[futureIndex]),
         isHistory ? "history" : "forecast",
@@ -2790,7 +2793,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         ...hill,
         ...logs,
         ...spend,
-      ]);
+      ], 4);
     }
     tables.push({
       model,
@@ -2843,7 +2846,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
           const label = isHistory
             ? organic.model.histLabels.at(-(historyLength - index))
             : organic.model.futLabels[index - historyLength];
-          push([
+          pushFormulaRow([
             csvSafeLiteral(label),
             isHistory ? "history" : "forecast",
             isHistory ? `=D${organicRow}+D${paidRow}` : "",
@@ -2854,7 +2857,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
             `=MAX(0,E${paidRow})`,
             isHistory ? "" : `=MAX(0,H${organicRow}+H${paidRow})`,
             isHistory ? "" : `=MAX(D${rowNumber},I${organicRow}+I${paidRow})`,
-          ]);
+          ], 2);
         }
         return {
           platform,
@@ -2901,7 +2904,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
           ? platformTables[0].labels.at(-(historyLength - index))
           : platformTables[0].futureLabels[index - historyLength];
         const sumRefs = (column) => refs.map((row) => `${column}${row}`).join("+");
-        push([
+        pushFormulaRow([
           csvSafeLiteral(label),
           isHistory ? "history" : "forecast",
           isHistory ? `=${sumRefs("C")}` : "",
@@ -2912,7 +2915,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
           `=${sumRefs("H")}`,
           isHistory ? "" : `=${sumRefs("I")}`,
           isHistory ? "" : `=${sumRefs("J")}`,
-        ]);
+        ], 2);
       }
     }
   } else if (fc.isAdditiveTotal && tables.length === 2) {
@@ -2930,7 +2933,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         return { actual: `D${row}`, prediction: `E${row}`, organic: `F${row}`, performance: `G${row}`, lower: `H${row}`, upper: `I${row}` };
       });
       const label = isHistory ? tables[0].model.histLabels.at(-(historyLength - index)) : tables[0].model.futLabels[index - historyLength];
-      push([
+      pushFormulaRow([
         csvSafeLiteral(label),
         isHistory ? "history" : "forecast",
         isHistory ? `=${refs.map((ref) => ref.actual).join("+")}` : "",
@@ -2939,7 +2942,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         `=${refs.map((ref) => ref.performance).join("+")}`,
         isHistory ? "" : `=${refs.map((ref) => ref.lower).join("+")}`,
         isHistory ? "" : `=${refs.map((ref) => ref.upper).join("+")}`,
-      ]);
+      ], 2);
     }
   }
   return lines;
@@ -2973,7 +2976,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
         period,
         segment,
         actual ?? "",
-        hasParts ? `=E${rowNumber}+F${rowNumber}` : fitted ?? "",
+        hasParts ? trustedCsvFormula(`=E${rowNumber}+F${rowNumber}`) : fitted ?? "",
         hasParts ? organic : "",
         hasParts ? performance : "",
         lower ?? "",
@@ -3345,6 +3348,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
         ...adcells,
         ...spend,
       ]
+        .map((value, column) => column >= 4 && typeof value === "string" && value.startsWith("=") ? trustedCsvFormula(value) : value)
         .map(csvQ)
         .join(","),
     );

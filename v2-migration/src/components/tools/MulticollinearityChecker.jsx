@@ -7,7 +7,7 @@ import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
-import { downloadCsv } from "@/utils/download";
+import { csvBody, downloadCsv } from "@/utils/download";
 import { useAppStore } from "@/store/useDataStore";
 import { buildVifSpendPanel } from "@/lib/analysis-router/vifReadiness";
 import { getMappedRows } from "@/utils/dashboardAggregator";
@@ -68,23 +68,13 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
   } : null;
   const resultHeadline = verdict === "ok" ? tr("MMM 진행 가능 · 해석은 신중하게", "MMM can proceed · interpret cautiously") : verdict === "warn" ? tr("주의 · 채널 분리 변동 권장", "Warning · create independent variation") : verdict === "severe" ? tr("중단 · 현재 데이터로 기여도 분리 금지", "Stop · do not separate contribution") : verdict === "not_applicable" ? tr("계산 불가 · 변동 채널 2개 필요", "Not computable · two varying channels required") : tr("데이터 추가 필요", "Need more data");
   const downloadVifCsv = () => {
-    const cell = (value) => {
-      const text = String(value ?? "");
-      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-    };
-    const lines = [["channel", "vif"], ...vifRows.map((row) => [row.channel, Number.isFinite(row.vif) ? row.vif : row.vif === Infinity ? "Infinity" : "not_computable"])]
-      .map((line) => line.map(cell).join(","));
-    downloadCsv(`\uFEFF${lines.join("\r\n")}`, "vif-multicollinearity");
+    downloadCsv(csvBody(["channel", "vif"], vifRows.map((row) => [row.channel, Number.isFinite(row.vif) ? row.vif : row.vif === Infinity ? "Infinity" : "not_computable"])), "vif-multicollinearity");
   };
   // 상관은 화면에서 판정까지 하므로 내보내기도 판정 근거를 통째로 담는다 —
   // r만 있는 CSV는 받아봐야 "우연인지"를 다시 판단할 수 없다(§12.27).
   const downloadCorrelationCsv = () => {
-    const cell = (value) => {
-      const text = value == null ? "" : String(value);
-      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-    };
     const header = ["channel_a", "channel_b", "pearson_r", "spearman_r", "ci_low_95_pointwise", "ci_high_95_pointwise", "pearson_raw_p", "pearson_holm_p", "spearman_raw_p_approx", "spearman_holm_p_approx", "robustness", "moves_together"];
-    const lines = [header, ...(result?.pairs || []).map((row) => [
+    const rows = (result?.pairs || []).map((row) => [
       row.left,
       row.right,
       Number.isFinite(row.r) ? row.r : "",
@@ -97,8 +87,8 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
       Number.isFinite(row.spearmanHolmP) ? row.spearmanHolmP : "",
       row.robustness || "not_identified",
       Number.isFinite(row.r) ? (row.isSignificant ? "yes" : "no") : "not_computable",
-    ])].map((line) => line.map(cell).join(","));
-    downloadCsv(`\uFEFF${lines.join("\r\n")}\r\n`, "channel-correlation-holm");
+    ]);
+    downloadCsv(csvBody(header, rows), "channel-correlation-holm");
   };
   return <ToolPageShell toolId="5-25" locale={locale} titleLevel={0} title={tr("VIF 다중공선성 점검", "VIF Multicollinearity Check")} summary={<p>{tr("MMM을 돌리기 전에 채널별 지출이 서로 너무 같이 움직였는지 확인합니다. 숫자는 진단 신호이며, 공선성을 해결한 인과 추정은 아닙니다.", "Check whether channel spend moved too tightly together before running MMM. This is a diagnostic signal, not a causal fix.")}</p>}>
     <section className="block diagnostic-tool__rules" id="vif-setup"><h2 className="section-title">{tr("VIF 해석", "Reading VIF")}</h2><p>{tr(`VIF ${DIAG_THRESHOLDS.vifWarn} 미만은 관찰상 양호, ${DIAG_THRESHOLDS.vifWarn} 이상은 주의, ${DIAG_THRESHOLDS.vifSevere} 이상 또는 완전 공선(∞)은 심각입니다. 표본·변동 부족으로 계산할 수 없는 상태는 별도의 판단 보류입니다. 비용·채널·날짜가 필요합니다.`, `Below ${DIAG_THRESHOLDS.vifWarn} is observationally OK; ${DIAG_THRESHOLDS.vifWarn}+ is a warning; ${DIAG_THRESHOLDS.vifSevere}+ or perfect collinearity (∞) is severe. Insufficient observations or variation leave the diagnosis uncomputed and held separately. Date, channel, and spend are required.`)}</p></section>

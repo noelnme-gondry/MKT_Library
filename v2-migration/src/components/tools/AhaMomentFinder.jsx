@@ -18,6 +18,7 @@ import { showToast } from "@/utils/toast";
 import InfoPopover from "@/components/ds/InfoPopover";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
+import { csvBody } from "@/utils/download";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -164,10 +165,6 @@ function ahaSegmentColumns(colMap) {
  * 신뢰(자동선택 지점)라 여기선 학습셋 기준으로 통일(차트·드릴다운 구간표와 동일 기준).
  * (index.html downloadAhaCsv 계열: BOM + CRLF + text/csv;charset=utf-8, §7) */
 function downloadAhaCsv(sorted, cache) {
-  const q = (s) => {
-    s = String(s);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
   const header = [
     "action",
     "window",       // d1 / d7 / all
@@ -182,7 +179,7 @@ function downloadAhaCsv(sorted, cache) {
     "gated",        // 표본 부족으로 게이팅됐는지
     "is_optimal",   // 자동 선택된 최적(윈도우·k) 지점이면 1
   ];
-  const lines = [header.join(",")];
+  const lines = [header];
   const baseRate = cache?.baseRate || 0;
   const canSweep = cache && Array.isArray(cache.targets) && Array.isArray(cache.trainIdx);
   for (const r of sorted) {
@@ -209,15 +206,13 @@ function downloadAhaCsv(sorted, cache) {
             lift == null ? "" : lift.toFixed(4),
             s.gated ? "1" : "0",
             isOpt ? "1" : "0",
-          ]
-            .map(q)
-            .join(","),
+          ],
         );
       }
     }
   }
   const fileName = `aha_moment_${new Date().toISOString().slice(0, 10)}.csv`;
-  const content = "﻿" + lines.join("\r\n");
+  const content = csvBody(lines[0], lines.slice(1));
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -1,4 +1,5 @@
 "use client";
+import { csvCell } from "@/utils/download";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import RecipeBlock from "@/components/ds/RecipeBlock";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
@@ -431,13 +432,11 @@ function exportCreativeMetricsCSV(metrics, snapshotHash, version, locale = "ko")
         m.cta_style || "",
         m.duration_bucket || "",
       ]
-        .map((v) =>
-          /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v,
-        )
+        .map(csvCell)
         .join(","),
     );
   }
-  const blob = new Blob(["﻿" + lines.join("\n")], {
+  const blob = new Blob(["﻿" + lines.join("\r\n") + "\r\n"], {
     type: "text/csv;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);

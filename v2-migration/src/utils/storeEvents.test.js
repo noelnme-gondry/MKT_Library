@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import {
   alignEventsToAxis,
   EVENT_TYPES,
@@ -157,6 +159,23 @@ describe("eventsToCsv", () => {
   it("콤마·따옴표를 이스케이프한다", () => {
     const csv = eventsToCsv([{ date: "2026-03-21", label: 'A,B "C"', type: "other" }]);
     expect(csv).toContain('"A,B ""C"""');
+  });
+
+  it("blocks formulas in spreadsheet readers and restores only escaped fields on reimport", () => {
+    const events = [
+      { date: "2026-03-21", label: '=HYPERLINK("https://example.com","x")', type: "other", note: "＝1+1" },
+      { date: "2026-03-22", label: "'=literal apostrophe", type: "creative", note: "-user note" },
+    ];
+    const csv = eventsToCsv(events);
+    const sheet = XLSX.read(csv, { type: "string" }).Sheets.Sheet1;
+    expect(sheet.B2.f).toBeUndefined();
+    expect(sheet.D2.f).toBeUndefined();
+    expect(sheet.B2.v).toBe(`'${events[0].label}`);
+    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    expect(parsed.errors).toEqual([]);
+    expect(eventsFromEventRows(parsed.data)).toEqual(mergeEvents(events));
+    expect(eventsFromEventRows(Papa.parse(eventsToCsv(eventsFromEventRows(parsed.data)), { header: true, skipEmptyLines: true }).data))
+      .toEqual(mergeEvents(events));
   });
 });
 

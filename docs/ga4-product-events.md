@@ -93,6 +93,7 @@ CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 - `tool_id`
+- `tool_route_id`(5-18 하위 도구의 원래 공개 ID; 이벤트 범위)
 - `analysis_type`
 - `result_state`
 - `tab_name`
@@ -120,6 +121,8 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 첫 GA 스크립트가 아직 준비되지 않은 운영 화면의 이벤트는 표준 dataLayer 큐와 명시적 `send_to`를 사용한다([Google tag routing](https://developers.google.com/tag-platform/gtagjs/routing)). 로컬·미리보기에서 새 GA 전송 경로를 만들지 않고 광고 차단 우회도 하지 않는다.
 
 ### 관리자 설정과 코드 검증의 경계
+
+2026-10-20부터 마케팅 응답 하위 도구는 기존 `tool_id=5-18` 집계를 유지하면서 `tool_route_id`에 정규화 전 공개 ID를 추가한다. `5-18-mmm`, `5-18-trend`, `5-18-paid-organic`, `5-18-cannibal`, `5-18-forecast`만 코드에서 파생하며 임의 입력은 허용하지 않는다. 기존 중복 제거와 활성화 정의는 유지하므로 이 차원을 실행 ID나 독립 실행 건수로 해석하지 않는다. GA 맞춤 측정기준 등록과 실제 수신은 배포 후 확인해야 한다.
 
 `journey_entry`, `visit_type`, `placement`, `result_state`, `data_continuity`, `tool_id`, `interaction_source`, `locale`를 이벤트 범위 맞춤 측정기준으로 확인한다. GA 탐색은 비연속 단계(중간 페이지 이동 허용), 실데이터 `interaction_source != demo`, 코드 완료와 화면 노출을 분리한 퍼널로 구성한다. 저장 핵심 이벤트는 사용자가 저장한 두 이벤트만 후보이며 자동 집계 저장이나 단순 방문은 포함하지 않는다.
 

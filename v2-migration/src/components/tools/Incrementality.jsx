@@ -23,7 +23,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { trackProductEvent } from "@/lib/analytics";
-import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
+import { csvBody, downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
@@ -83,11 +83,9 @@ const looksDate = (v) => {
   return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
 };
 
-// CSV 셀 이스케이프(콤마·따옴표 §7).
-const qc = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
 // 라벨-값 2열 요약 CSV(BOM+CRLF §7). rows=[[label,value],...]
 function buildSummaryCsv(header, rows) {
-  return "﻿" + [header, ...rows.map((r) => r.map(qc).join(","))].join("\r\n") + "\r\n";
+  return csvBody(header, rows);
 }
 
 function aggregateDailyMetric(rows, dateCol, metricCol) {
@@ -512,7 +510,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       [tr("홀드아웃 기간", "Holdout period"), `${start} ~ ${end}`],
       [tr("그룹 균형(홀드아웃 前)", "Group balance (pre-holdout)"), win.balanced == null ? "—" : win.balanced ? tr("균형", "balanced") : tr("불균형 의심", "imbalance suspected")],
     ];
-    const csv = buildSummaryCsv(tr("지표,값", "Metric,Value"), csvRows);
+    const csv = buildSummaryCsv(tr(["지표", "값"], ["Metric", "Value"]), csvRows);
     const text =
       tr("# 증분 분석 — 통제군(홀드아웃) 요약\n\n", "# Incrementality — Control-group (holdout) summary\n\n") +
       `${headline}\n\n` +
@@ -953,7 +951,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       csvRows.push([tr("공통 날짜(전/후)", "Common dates (pre/post)"), `${r.did.pairedPreN}/${r.did.pairedPostN}`]);
       csvRows.push([tr("사전추세 검사", "Pretrend check"), tr(`위반 미탐지 (기울기 ${fmtNum(r.did.pretrend.slopePerDay, 2)}/일, p=${r.did.pretrend.pValue.toFixed(4)})`, `No violation detected (slope ${fmtNum(r.did.pretrend.slopePerDay, 2)}/day, p=${r.did.pretrend.pValue.toFixed(4)})`)]);
     }
-    const csv = buildSummaryCsv(tr("지표,값", "Metric,Value"), csvRows);
+    const csv = buildSummaryCsv(tr(["지표", "값"], ["Metric", "Value"]), csvRows);
     const text =
       (lost ? tr("# 증분 분석 — 종료(전후) 요약\n\n", "# Incrementality — Shutdown (pre/post) summary\n\n") : tr("# 증분 분석 — 신규 켜기(전후) 요약\n\n", "# Incrementality — New launch (pre/post) summary\n\n")) +
       `${headline}\n\n` +

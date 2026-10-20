@@ -1,10 +1,10 @@
 // 블로그 콘텐츠 로더 — 빌드타임 fs 기반 (SERVER 전용, 클라이언트에서 import 금지).
-// content/blog(-en)/*.md 를 gray-matter로 파싱 + marked로 HTML 렌더.
+// content/blog(-en)/*.md 의 YAML 메타데이터 파싱 + marked로 HTML 렌더.
 // SOP(JSON)와 완전 분리된 독립 파이프라인. routeMap(ROUTES)과 무관하게 fs만 읽음.
 // locale: "ko"(기본, content/blog) | "en"(content/blog-en) — 같은 slug로 KR/EN 짝 파일 매칭.
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import matter from "./frontmatter";
 import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";

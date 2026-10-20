@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { prepareDatasetForTool } from "./prepareDatasetForTool";
+import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
+import { prepareDatasetForTool, toolFieldKeys } from "./prepareDatasetForTool";
 
 describe("prepareDatasetForTool", () => {
   it("remaps one raw creative export for the fatigue tool", () => {
@@ -31,4 +32,13 @@ describe("prepareDatasetForTool", () => {
       expect.objectContaining({ sourceColumn: "Data Extracted At", canonicalKey: "subscription_observation_end_date" }),
     ]));
   });
+});
+
+it("resolves each tool field contract without relying on missing globals", () => {
+  for (const toolId of new Set([...Object.keys(TOOL_REQUIRED_FIELDS), ...Object.keys(TOOL_OPTIONAL_FIELDS)])) {
+    const required = (TOOL_REQUIRED_FIELDS[toolId] || []).flatMap(field => typeof field === "string" ? [field] : field.oneOf || []);
+    const optional = (TOOL_OPTIONAL_FIELDS[toolId] || []).map(field => field.key);
+    expect(toolFieldKeys(toolId)).toEqual([...new Set([...required, ...optional])]);
+  }
+  expect(toolFieldKeys("unknown")).toEqual([]);
 });

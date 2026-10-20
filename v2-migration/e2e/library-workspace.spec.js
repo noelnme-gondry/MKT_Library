@@ -9,18 +9,27 @@ for (const locale of ["ko", "en"]) {
   const en = locale === "en";
   const prefix = en ? "/en" : "";
   const tag = en ? " @light-en" : "";
-  test(`shared typography and interior layouts (${locale})${tag}`, async ({ page }) => {
+  test(`shared typography and interior layouts (${locale})${tag}`, async ({ context }) => {
     const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
     for (const route of ["/dashboard", "/weekly-review", "/blog", "/guide", "/guide/dev-collaboration", "/subscription"]) {
-      await page.goto(`${prefix}${route}`);
-      const heading = page.locator("h1").first();
-      await expect(heading).toBeVisible();
-      await page.evaluate(() => document.fonts.ready);
-      await expect(heading).toHaveCSS("font-family", /GOP Heading/i);
-      expect(await page.evaluate(() => [...document.fonts].some((font) => /GOP Heading/i.test(font.family) && font.status === "loaded")), route).toBe(true);
-      // Long SOP code tokens must wrap without making the entire page scroll.
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
+      // Inspect each entry in its own document. WebKit reports cancelled fetches
+      // from a document being replaced as page errors on rapid hard navigation.
+      const page = await context.newPage();
+      const onError = error => errors.push(error.message);
+      page.on("pageerror", onError);
+      try {
+        await page.goto(`${prefix}${route}`);
+        const heading = page.locator("h1").first();
+        await expect(heading).toBeVisible();
+        await page.evaluate(() => document.fonts.ready);
+        await expect(heading).toHaveCSS("font-family", /GOP Heading/i);
+        expect(await page.evaluate(() => [...document.fonts].some((font) => /GOP Heading/i.test(font.family) && font.status === "loaded")), route).toBe(true);
+        // Long SOP code tokens must wrap without making the entire page scroll.
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
+      } finally {
+        page.off("pageerror", onError);
+        await page.close();
+      }
     }
     expect(errors).toEqual([]);
   });
@@ -146,6 +155,9 @@ for (const locale of ["ko", "en"]) {
       await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
       await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
       await expect(page.locator(".sample-journey-scope")).toBeVisible();
+      // Returning renders the result shell before its analysis queue settles.
+      // Use the same readiness contract as the initial sample entry.
+      await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     }
   });
 
