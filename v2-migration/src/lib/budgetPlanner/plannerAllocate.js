@@ -19,8 +19,10 @@ export function nodeBounds(node) {
   const { cfg, current } = node;
   const opt = cfg.optimizer;
   const policy = opt.statePolicy[node.state] ?? "normal";
-  if (!node.curve) return { fixed: current, source: "no_curve" };
   if (opt.locked.includes(node.key)) return { fixed: current, source: "locked" };
+  // 호출 화면이 고정한 노드(예: 적합 신뢰도가 낮아 현재 지출 유지).
+  if (Number.isFinite(node.fixedCost) && node.fixedCost >= 0) return { fixed: node.fixedCost, source: node.fixedSource || "held" };
+  if (!node.curve) return { fixed: current, source: "no_curve" };
   if (policy === "hold") return { fixed: current, source: `state:${node.state}` };
 
   let lower = { value: current * (1 - opt.maxDailyDecrease), source: "max_daily_decrease" };
@@ -152,6 +154,7 @@ export function planAllocation(nodes, totalBudget, cfg) {
       lower: node.bounds.fixed ?? node.bounds.lower.value,
       upper: node.bounds.fixed ?? node.bounds.upper.value,
       binding,
+      fixed: node.bounds.fixed != null,
       conflict: Boolean(node.bounds.conflict),
       offCandidate: Boolean(node.bounds.offCandidate),
       predictedResults: cpr > 0 && proposed > 0 ? proposed / cpr : node.curve ? 0 : null,

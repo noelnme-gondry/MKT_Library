@@ -36,6 +36,7 @@ export const PLANNER_CONFIG = deepFreeze({
     weightMode: "exponential",
     halfLifeDays: 30,
     regimeMode: "auto",
+    regimeStart: "",
     borrowParentBelow: 6,
   },
 
@@ -156,7 +157,7 @@ const ENUMS = {
   "curve.outlier.method": ["none", "iqr", "modz"],
   "curve.outlier.strength": ["standard", "strong", "very_strong"],
   "curve.weightMode": ["none", "linear", "exponential"],
-  "curve.regimeMode": ["all", "auto"],
+  "curve.regimeMode": ["all", "auto", "manual"],
   "diagnosis.controlScope": ["same_country_other_channels", "all_other_nodes"],
   "pvm.finestLevel": ["auto", ...PLANNER_LEVELS],
   "creative.identityScope": ["campaign", "global"],
@@ -254,6 +255,9 @@ function validateResolved(cfg, errors) {
     if (!Array.isArray(value) || value.some((level) => !levels.includes(level))) errors.push({ path: `hierarchy.roles.${key}`, reason: "unknown_level" });
   }
 
+  const { regimeMode, regimeStart } = cfg.curve;
+  if (regimeStart !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(regimeStart)) errors.push({ path: "curve.regimeStart", reason: "iso_date_or_empty_required" });
+  if (regimeMode === "manual" && regimeStart === "") errors.push({ path: "curve.regimeStart", reason: "required_for_manual_regime" });
   if (!(cfg.forecast.lowerQ < cfg.forecast.upperQ)) errors.push({ path: "forecast.lowerQ", reason: "must_be_below_upperQ" });
   // 원인 진단은 B·R 두 창의 합계를 비교한다. 7일 배수여야 요일 구성이 같아 요일 효과가 상쇄된다.
   if (cfg.events.windowDays % 7 !== 0) errors.push({ path: "events.windowDays", reason: "multiple_of_7_required" });

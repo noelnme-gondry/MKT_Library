@@ -4,7 +4,7 @@ import { classifyNodeChange, creativeEvidenceFromPvm, diagnosisWindows, marketSh
 import { assessConformity } from "./conformity";
 import { dowFactorsFromSamples, NEUTRAL_DOW, ratioToMovingAverageSamples, withinLookback } from "./dowProfile";
 import { planAllocation, deltaOnlyPlan } from "./plannerAllocate";
-import { configFor, plannerConfigSignature, resolvePlannerConfig } from "./plannerConfig";
+import { configFor, mergePlannerConfig, plannerConfigSignature, resolvePlannerConfig } from "./plannerConfig";
 import { fitNodeCurve } from "./plannerCurve";
 import { ancestorKey, dailyByNode, deepestPresentLevel, normalizePlannerRows } from "./plannerData";
 import { backtestPlanner, forecastPlan } from "./plannerForecast";
@@ -32,10 +32,13 @@ function union(...sets) {
 }
 
 /**
+ * 1단계: 예산과 무관한 계산(곡선·범위 적합성·원인 진단·PVM·소재·백테스트). 비싼 쪽이라 한 번만 돌리고,
+ * 예산을 바꿀 때는 allocatePlanner만 다시 부른다(목표 역산·시나리오가 여러 예산을 훑는다).
  * @param {object[]} mappedRows 표준키 행(date·cost·결과·country·platform·channel·campaign_name·adgroup_name·creative_id·impressions·clicks·daily_budget)
- * @param {{configPatch?:object, totalBudget?:number, asOf?:string}} opts totalBudget 생략 시 현재 일예산 합
+ * @param {{configPatch?:object, asOf?:string, trendOverrideOf?:(path)=>string|undefined, currentSpendOf?:(path)=>number|undefined}} opts
+ *   trendOverrideOf: 노드별로 확정한 모형 계열 · currentSpendOf: 호출 화면이 이미 쓰는 "현재 일 지출"(두 곳에서 따로 세지 않게)
  */
-export function runBudgetPlanner(mappedRows, { configPatch = {}, totalBudget, asOf: asOfInput } = {}) {
+export function preparePlanner(mappedRows, { configPatch = {}, asOf: asOfInput, trendOverrideOf, currentSpendOf } = {}) {
   const resolved = resolvePlannerConfig(configPatch);
   if (!resolved.ok) return { ok: false, code: "INVALID_CONFIG", errors: resolved.errors };
   const cfg = resolved.config;
@@ -87,14 +90,17 @@ export function runBudgetPlanner(mappedRows, { configPatch = {}, totalBudget, as
     const pKey = parentKeyOf(node);
     const exclude = excludeOf(key);
     const creative = lifecycle.byNode.get(key);
-    const conformity = assessConformity(node, nodeCfg, { asOf, parent: parentCurveAt(pKey, addDays(asOf, -nodeCfg.conformity.recentDays)), learningDates: creative?.learningDates, exclude });
+    const trendType = trendOverrideOf?.(node.path) || undefined;
+    const conformity = assessConformity(node, nodeCfg, { asOf, parent: parentCurveAt(pKey, addDays(asOf, -nodeCfg.conformity.recentDays)), learningDates: creative?.learningDates, exclude, trendType });
     const policy = nodeCfg.optimizer.statePolicy[conformity.state];
-    const curve = fitNodeCurve(node.days, nodeCfg, { to: asOf, exclude, parent: parentCurveAt(pKey, asOf), regimeMode: policy === "recent_regime" ? "auto" : undefined });
+    const curve = fitNodeCurve(node.days, nodeCfg, { to: asOf, exclude, parent: parentCurveAt(pKey, asOf), regimeMode: policy === "recent_regime" && nodeCfg.curve.regimeMode !== "manual" ? "auto" : undefined, trendType });
     const recentFrom = addDays(asOf, -6);
-    const current = [...node.days].filter(([date]) => date >= recentFrom).reduce((acc, [, day]) => acc + day.cost, 0) / 7;
-    const measure = measureNodeChange(node, nodeCfg, { windows, parent: parentCurveAt(pKey, windows.B.to), exclude, creativeEntries: creative?.entries ?? [] });
+    const given = currentSpendOf?.(node.path);
+    const current = Number.isFinite(given) && given >= 0 ? given : [...node.days].filter(([date]) => date >= recentFrom).reduce((acc, [, day]) => acc + day.cost, 0) / 7;
+    const measure = measureNodeChange(node, nodeCfg, { windows, parent: parentCurveAt(pKey, windows.B.to), exclude, creativeEntries: creative?.entries ?? [], trendType });
     perNode.set(key, {
       node,
+      trendType,
       cfg: nodeCfg,
       conformity,
       curve,
@@ -175,25 +181,17 @@ export function runBudgetPlanner(mappedRows, { configPatch = {}, totalBudget, as
     });
   }
 
-  const budget = Number.isFinite(totalBudget) && totalBudget >= 0 ? totalBudget : allocationNodes.reduce((acc, node) => acc + node.current, 0);
-  const allocation = planAllocation(allocationNodes, budget, cfg);
-  const deltaPlan = deltaOnlyPlan(allocationNodes, budget, cfg);
-
-  const forecast = forecastPlan(allocation.items.map((item) => {
-    const data = perNode.get(item.key);
-    const launches = (lifecycle.byNode.get(item.key)?.entries ?? [])
-      .filter((entry) => !entry.ended && !entry.unknownAge && ["LEARNING", "RAMPING"].includes(entry.state))
-      .map((entry) => ({ age: entry.age, profile: entry.profile }));
-    return { key: item.key, label: item.label, cost: item.proposed, curve: data.curve, costDow: data.costDow, launches };
-  }), { startDate: addDays(asOf, 1), cfg });
-
   const backtest = backtestPlanner(nodes, (key, to) => {
     const node = nodes.get(key);
-    return fitNodeCurve(node.days, cfgOf(node.path), { to, exclude: excludeOf(key), parent: parentCurveAt(parentKeyOf(node), to) });
+    return fitNodeCurve(node.days, cfgOf(node.path), { to, exclude: excludeOf(key), parent: parentCurveAt(parentKeyOf(node), to), trendType: perNode.get(key).trendType });
   }, { asOf, cfg });
 
   return {
     ok: true,
+    cfg,
+    allocationNodes,
+    perNode,
+    lifecycle,
     configSignature: plannerConfigSignature(cfg),
     asOf,
     dataStart,
@@ -201,9 +199,6 @@ export function runBudgetPlanner(mappedRows, { configPatch = {}, totalBudget, as
     levels: { allocate: allocateLevel, parent: parentLevel, finest: finestLevel },
     windows,
     nodes: nodeSummaries,
-    allocation,
-    deltaPlan,
-    forecast,
     backtest,
     pvm,
     creatives: lifecycle.entries.map((entry) => ({
@@ -219,4 +214,44 @@ export function runBudgetPlanner(mappedRows, { configPatch = {}, totalBudget, as
       profileAssumed: entry.profile?.assumed ?? null,
     })),
   };
+}
+
+/** 예산 하나에 대한 배분(+선택적으로 예측). optimizerPatch는 실행 방식처럼 예산 단계에서 바꾸는 제약만 받는다. */
+export function allocatePlanner(ctx, totalBudget, { fixed = {}, optimizerPatch = null, withForecast = true } = {}) {
+  const nodes = plannerNodesFor(ctx, { fixed, optimizerPatch });
+  const globalCfg = optimizerPatch ? mergePlannerConfig(ctx.cfg, { optimizer: optimizerPatch }) : ctx.cfg;
+  const budget = Number.isFinite(totalBudget) && totalBudget >= 0 ? totalBudget : nodes.reduce((acc, node) => acc + node.current, 0);
+  const allocation = planAllocation(nodes, budget, globalCfg);
+  const deltaPlan = deltaOnlyPlan(nodes, budget, globalCfg);
+  const forecast = withForecast ? forecastAllocation(ctx, allocation) : null;
+  return { allocation, deltaPlan, forecast };
+}
+
+/** 배분 단계 노드: 실행 방식 제약(optimizerPatch)과 호출 화면의 고정값(fixed)을 입힌다. */
+export function plannerNodesFor(ctx, { fixed = {}, optimizerPatch = null, fixedSource = "held" } = {}) {
+  return ctx.allocationNodes.map((node) => ({
+    ...node,
+    cfg: optimizerPatch ? mergePlannerConfig(node.cfg, { optimizer: optimizerPatch }) : node.cfg,
+    fixedCost: Object.hasOwn(fixed, node.key) ? fixed[node.key] : undefined,
+    fixedSource,
+  }));
+}
+
+/** 배분 결과의 요일별 성과 예측. 학습·램프 중 신규 소재는 출시 프로파일만큼 비싸게 본다. */
+export function forecastAllocation(ctx, allocation) {
+  return forecastPlan(allocation.items.map((item) => {
+    const data = ctx.perNode.get(item.key);
+    const launches = (ctx.lifecycle.byNode.get(item.key)?.entries ?? [])
+      .filter((entry) => !entry.ended && !entry.unknownAge && ["LEARNING", "RAMPING"].includes(entry.state))
+      .map((entry) => ({ age: entry.age, profile: entry.profile }));
+    return { key: item.key, label: item.label, cost: item.proposed, curve: data.curve, costDow: data.costDow, launches };
+  }), { startDate: addDays(ctx.asOf, 1), cfg: ctx.cfg });
+}
+
+/** 한 번에 실행: 준비 + 배분 + 예측. totalBudget 생략 시 현재 일 지출 합. */
+export function runBudgetPlanner(mappedRows, { totalBudget, ...opts } = {}) {
+  const ctx = preparePlanner(mappedRows, opts);
+  if (!ctx.ok) return ctx;
+  const { cfg, allocationNodes, perNode, lifecycle, ...summary } = ctx;
+  return { ...summary, ...allocatePlanner(ctx, totalBudget) };
 }

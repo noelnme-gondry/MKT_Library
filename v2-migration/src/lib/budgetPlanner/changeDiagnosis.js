@@ -40,7 +40,7 @@ function budgetChanged(days, windows, totB, totR, windowDays, pct) {
  * @param {object} cfg 노드 실효 config
  * @param {{windows, parent?, exclude?, creativeEntries?:object[]}} opts
  */
-export function measureNodeChange(node, cfg, { windows, parent, exclude, creativeEntries = [] }) {
+export function measureNodeChange(node, cfg, { windows, parent, exclude, creativeEntries = [], trendType }) {
   const { windowDays } = cfg.events;
   const totB = sumDays(node.days, windows.B.from, windows.B.to);
   const totR = sumDays(node.days, windows.R.from, windows.R.to);
@@ -54,7 +54,7 @@ export function measureNodeChange(node, cfg, { windows, parent, exclude, creativ
   const cR = totR.cost / windowDays;
 
   // 곡선은 B까지만 학습한다 — R의 이동이 곡선에 흡수되면 "곡선 이동"이 0으로 보인다.
-  const curve = fitNodeCurve(node.days, cfg, { to: windows.B.to, exclude, parent });
+  const curve = fitNodeCurve(node.days, cfg, { to: windows.B.to, exclude, parent, trendType });
   let budget = null;
   let extrapolated = false;
   let sigmaPeriod = null;

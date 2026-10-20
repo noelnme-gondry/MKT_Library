@@ -8,7 +8,7 @@ import { addDays, dowOf, median } from "./plannerStats";
  * @param {object} cfg 노드 실효 config
  * @param {{asOf:string, parent?:object, learningDates?:Set<string>, exclude?:Set<string>}} opts
  */
-export function assessConformity(node, cfg, { asOf, parent, learningDates, exclude } = {}) {
+export function assessConformity(node, cfg, { asOf, parent, learningDates, exclude, trendType } = {}) {
   const { recentDays, zBand, breachShare, medianShift, extrapolationTol } = cfg.conformity;
   const recentStart = addDays(asOf, -(recentDays - 1));
   const trainEnd = addDays(recentStart, -1);
@@ -19,7 +19,7 @@ export function assessConformity(node, cfg, { asOf, parent, learningDates, exclu
     return { state: "LEARNING_TRANSITION", reason: "new_creative_learning", learningDays: learningInWindow.length, recentStart };
   }
 
-  const curve = fitNodeCurve(node.days, cfg, { to: trainEnd, exclude, parent });
+  const curve = fitNodeCurve(node.days, cfg, { to: trainEnd, exclude, parent, trendType });
   if (!curve) return { state: "INSUFFICIENT", reason: "too_few_history_points", recentStart };
 
   const recent = recentDates.map((date) => ({ date, ...node.days.get(date) })).filter((day) => day.cost > 0 && day.result > 0);

@@ -7,13 +7,14 @@ import { dowFactorsFromSamples, NEUTRAL_DOW } from "./dowProfile";
 import { addDays, dowOf, median, robustSigma } from "./plannerStats";
 
 function curveOptions(cfg) {
-  const { outlier, weightMode, halfLifeDays, regimeMode, trendType } = cfg.curve;
+  const { outlier, weightMode, halfLifeDays, regimeMode, regimeStart, trendType } = cfg.curve;
   return {
     outlierMethod: outlier.method,
     outlierStrength: outlier.strength,
     weightMode,
     halfLifeDays,
     regimeMode,
+    regimeStart,
     trendType: trendType === "auto" ? undefined : trendType,
   };
 }
@@ -156,11 +157,13 @@ function fitBorrowed(points, cfg, parent) {
  * 노드 곡선. 점이 충분하면 자체 적합, 부족하면 부모 모양 차용, 둘 다 안 되면 null(판정 불가).
  * @param {Map} days 노드 일별 합계
  * @param {object} cfg 노드 실효 config
- * @param {{to?:string, exclude?:Set<string>, parent?:object, regimeMode?:string}} opts
+ * @param {{to?:string, exclude?:Set<string>, parent?:object, regimeMode?:string, trendType?:string}} opts
+ *   trendType: 이 노드만 모형 계열을 고정한다(5-3 곡선 검증에서 사용자가 확정한 모형).
  */
-export function fitNodeCurve(days, cfg, { to, exclude, parent, regimeMode } = {}) {
+export function fitNodeCurve(days, cfg, { to, exclude, parent, regimeMode, trendType } = {}) {
   const points = curvePoints(days, { to, exclude });
-  const effective = regimeMode ? { ...cfg, curve: { ...cfg.curve, regimeMode } } : cfg;
+  const curvePatch = { ...(regimeMode ? { regimeMode } : {}), ...(trendType ? { trendType } : {}) };
+  const effective = Object.keys(curvePatch).length ? { ...cfg, curve: { ...cfg.curve, ...curvePatch } } : cfg;
   const threshold = Math.max(cfg.curve.minPoints, cfg.curve.borrowParentBelow);
   if (points.length >= threshold) {
     const own = fitOwn(points, effective, parent?.cprDow ?? NEUTRAL_DOW);
