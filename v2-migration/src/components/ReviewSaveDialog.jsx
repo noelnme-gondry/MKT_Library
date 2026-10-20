@@ -79,7 +79,7 @@ export function saveFailureState(code) {
   return (SAVE_FAILURE_STATES.has(code) ? code : "UNKNOWN").toLowerCase();
 }
 
-export default function ReviewSaveDialog({ locale = "ko", record, report, onSaved, onClose, onConfirm }) {
+export default function ReviewSaveDialog({ locale = "ko", record, report, onSaved, onClose, onConfirm, returnFocusRef }) {
   const en = locale === "en";
   const entitlement = useAppStore(state => state.entitlement);
   const [draftRecord] = useState(() => record ? { ...record, id: record.id || crypto.randomUUID() } : null);
@@ -150,7 +150,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
     setSession(await refreshAccount());
     setTrialGateOpen(false);
   }} />;
-  return <ModalDialog open onClose={() => { if (!busy) onClose(); }} ariaLabel={onConfirm ? (en ? "Save to My projects" : "내 프로젝트에 저장") : (en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기")} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>
+  return <ModalDialog open returnFocusRef={returnFocusRef} onClose={() => { if (!busy) onClose(); }} ariaLabel={onConfirm ? (en ? "Save to My projects" : "내 프로젝트에 저장") : (en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기")} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>
     <button type="button" className="review-save-dialog__close btn ghost" disabled={busy} onClick={onClose} aria-label={en ? "Close save dialog" : "저장 창 닫기"}>×</button>
     <h2>{saved ? (en ? "Saved to My projects" : "내 프로젝트에 저장했습니다") : onConfirm ? (en ? "Save to My projects" : "내 프로젝트에 저장") : (en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기")}</h2>
     {saved ? <>

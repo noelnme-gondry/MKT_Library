@@ -16,6 +16,7 @@ import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { REG_STATS } from "@/utils/regMath";
 import { chronologicalDate } from "@/lib/analysis/webr/validationSplit";
+import { csvBody } from "@/utils/download";
 import { useClientReady } from "@/lib/useClientReady";
 import { CHART_THEME } from "@/utils/chartUtils";
 import { buildDemoCsv } from "@/utils/demoData";
@@ -242,16 +243,15 @@ function analyzeSig(outcome, features, fileName) {
 
 /* 결과 CSV(BOM+CRLF, §7) — 검증 가능성(§9). */
 function downloadCoefCsv(rows) {
-  const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const head = ["element", "coefficient", "hc3_std_error", "hc3_t_value", "p_raw_two_sided_hc3", "p_bh_adjusted", "hc3_ci_low", "hc3_ci_high", "significant_bh_5pct"];
-  const lines = [head.join(",")];
+  const lines = [head];
   for (const r of rows) {
     lines.push([
       r.name, r.coef.toFixed(5), r.se.toFixed(5), r.t.toFixed(3),
       r.rawP.toFixed(5), r.p.toFixed(5), r.ciLo.toFixed(5), r.ciHi.toFixed(5), r.sig ? "1" : "0",
-    ].map(q).join(","));
+    ]);
   }
-  const content = "﻿" + lines.join("\r\n");
+  const content = csvBody(lines[0], lines.slice(1));
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

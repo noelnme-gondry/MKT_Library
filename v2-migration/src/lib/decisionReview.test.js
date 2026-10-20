@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import {
   DECISION_ACTION_KINDS,
   DECISION_REVIEW_COLUMNS,
@@ -23,6 +25,22 @@ import {
 } from "@/lib/decisionReview";
 
 describe("decision review CSV contract", () => {
+  it("protects spreadsheet formulas while preserving imported review text and numeric outcomes", () => {
+    const records = normalizeDecisionReviewRows([
+      { toolId: "5-3", action: "=1+1", learning: "@SUM(A1:A2)", actual: "-12.5%" },
+      { toolId: "5-3", action: "'=original text", learning: "＝1+1", actual: "-1,250" },
+    ]);
+    const csv = serializeDecisionReviewCsv(records);
+    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    expect(parsed.errors).toEqual([]);
+    expect(normalizeDecisionReviewRows(parsed.data)).toEqual(records);
+    const sheet = XLSX.read(csv, { type: "string" }).Sheets.Sheet1;
+    for (const column of ["action", "learning"]) {
+      const letter = XLSX.utils.encode_col(DECISION_REVIEW_COLUMNS.indexOf(column));
+      expect(sheet[`${letter}2`].f).toBeUndefined();
+      expect(sheet[`${letter}3`].f).toBeUndefined();
+    }
+  });
   it("compares sanitized summary values without inferring good or bad", () => {
     expect(decisionNumericComparison({ baseline: "CPA 5,240원", actual: "CPA 4,980원" })).toMatchObject({ delta: -260, changePct: -260 / 5240, isPercentPoint: false });
     const percentage = decisionNumericComparison({ baseline: "18.2%", actual: "15.0%" });

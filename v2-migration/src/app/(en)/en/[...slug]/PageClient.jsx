@@ -8,19 +8,15 @@ import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
-import StartGate from "@/components/StartGate";
 import AnalysisDataGuide from "@/components/AnalysisDataGuide";
-import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
-import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
-import MyAccountPage from "@/components/MyAccountPage";
-import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import GuideAnswer from "@/components/GuideAnswer";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
+import StartGateIntroduction from "@/components/StartGateIntroduction";
 import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import { isAnalysisAdRoute } from "@/lib/partnerAds";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
@@ -29,6 +25,11 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 여기 케이스는 미리 준비해도 안전 — hasEnVersion()이 registry에 없는 id는
 // redirect로 먼저 걸러내므로, 아직 번역 안 된 컴포넌트로는 절대 도달하지 않는다.
 const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div> });
+const StartGate = dynamic(() => import("@/components/StartGate"), { loading: () => <StartGateIntroduction locale="en" pending /> });
+const ProjectsPage = dyn(() => import("@/components/ProjectsPage"));
+const WorkspaceStoragePage = dyn(() => import("@/components/WorkspaceStoragePage"));
+const MyAccountPage = dyn(() => import("@/components/MyAccountPage"));
+const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResultWorkspace"));
 const OperationsPlanner = dyn(() => import("@/components/tools/OperationsPlanner"));
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));

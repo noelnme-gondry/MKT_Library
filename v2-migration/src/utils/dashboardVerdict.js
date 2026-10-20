@@ -1,5 +1,6 @@
 import { periodDays } from "@/lib/analysisPeriod";
 import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
+import { csvBody } from "./download";
 // 운영 대시보드(5-2/9-7) 결론 카드 + 다운로드 — 도구가 "계산한" 인사이트만 준다
 // (업로드 원천 데이터 되돌려주기 금지). WoW 최근 vs 직전 기간의 증감을 CPA·CPI·
 // CTR·CVR·ROAS·리텐션·이익까지 파생지표 전부 포함해 판정+표로 제공.
@@ -276,17 +277,11 @@ export function buildDashboardVerdict({
     }));
 
   // 다운로드 — 계산된 인사이트만(BOM+CRLF §7). 원천 업로드 데이터는 주지 않는다.
-  const qc = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
-  const csvHead = tr("지표,직전,최근,증감(WoW %)", "Metric,Prior,Recent,Change (WoW %)");
-  const csv =
-    "﻿" +
-    [
-      csvHead,
-      ...metricRows.map((m) =>
-        [qc(m.label), m.prev == null ? "" : m.csv(m.prev), m.recent == null ? "" : m.csv(m.recent), m.wow == null ? "" : (m.wow * 100).toFixed(1) + "%"].join(",")
-      ),
-    ].join("\r\n") +
-    "\r\n";
+  const csvHead = tr(["지표", "직전", "최근", "증감(WoW %)"], ["Metric", "Prior", "Recent", "Change (WoW %)"]);
+  const csv = csvBody(csvHead, metricRows.map(m => [
+    m.label, m.prev == null ? "" : m.csv(m.prev), m.recent == null ? "" : m.csv(m.recent),
+    m.wow == null ? "" : (m.wow * 100).toFixed(1) + "%",
+  ]));
 
   const text =
     tr(`# 운영 대시보드 핵심 요약 (${period})\n\n`, `# Operations Dashboard Summary (${period})\n\n`) +

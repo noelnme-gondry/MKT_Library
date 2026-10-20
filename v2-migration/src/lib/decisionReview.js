@@ -9,6 +9,7 @@ import { isRerunGoalMetric } from "@/lib/decisionGoals";
 import { serializeDecisionPlan, needsExplicitPlanReview } from "@/lib/decisionPlan";
 import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import { parseNumericStrict } from "@/utils/parseNumeric";
+import { reimportableCsvBody, restoreCsvRecord } from "@/utils/download";
 
 // v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
 // v8까지는 `action`이 자유 문자열이라 "예산 +15%"가 성공인지 판단할 근거가 없었다.
@@ -152,13 +153,6 @@ const FIELD_LIMITS = Object.freeze({
 });
 
 const FORECAST_TARGETS = new Set(["Traffic", "Regs", "React", "Purchasers", "Revenue"]);
-
-function safeCell(value) {
-  const text = String(value ?? "");
-  // Excel/Sheets가 사용자 입력을 수식으로 해석하지 않도록 보호한다.
-  const protectedText = /^[=+\-@]/.test(text) ? `'${text}` : text;
-  return `"${protectedText.replace(/"/g, '""')}"`;
-}
 
 function asText(value, limit = 1000) {
   const text = typeof value === "string" ? value.trim() : String(value ?? "").trim();
@@ -603,6 +597,7 @@ export function summarizeDecisionOutcomes(records = []) {
 
 export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+  row = restoreCsvRecord(row, DECISION_REVIEW_COLUMNS);
   const action = asText(field(row, "action"), FIELD_LIMITS.action);
   if (!action) return null;
   const actual = asText(field(row, "actual"), FIELD_LIMITS.actual);
@@ -683,5 +678,5 @@ export function sanitizeDecisionReviewRecords(records = []) {
 
 export function serializeDecisionReviewCsv(records = []) {
   const rows = normalizeDecisionReviewRows(records).map(record => DECISION_REVIEW_COLUMNS.map(column => record[column === "record_id" ? "id" : column.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())] ?? ""));
-  return `\uFEFF${[DECISION_REVIEW_COLUMNS, ...rows].map((row) => row.map(safeCell).join(",")).join("\r\n")}\r\n`;
+  return reimportableCsvBody(DECISION_REVIEW_COLUMNS, rows, { quoteAll: true });
 }

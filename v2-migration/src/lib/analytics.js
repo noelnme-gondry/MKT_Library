@@ -130,6 +130,11 @@ export function sanitizeProductEventParams(params = {}, name) {
   const safe = Object.fromEntries(Object.entries(params)
     .filter(([key, value]) => ALLOWED_PARAMS.has(key) && value != null)
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
+  // 기존 5-18 family 시계열은 유지하고, 정규화로 사라지던 공개 하위 도구만 구분한다.
+  // 호출자가 보내는 임의 문자열은 받지 않고 위 정규화가 인정한 ID에서만 파생한다.
+  if (safe.tool_id === "5-18" && typeof params.tool_id === "string" && params.tool_id !== safe.tool_id) {
+    safe.tool_route_id = params.tool_id;
+  }
   if (safe.gate_reason && !["price", "identity", "trust", "refund", "later"].includes(safe.gate_reason)) delete safe.gate_reason;
   if (safe.method && !["google", "email_link", "password", "unknown"].includes(safe.method)) delete safe.method;
   // 다운로드 결과·실패 사유는 열거형만 통과시킨다(downloadTelemetry).

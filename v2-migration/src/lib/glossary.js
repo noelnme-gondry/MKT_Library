@@ -1,11 +1,11 @@
 // 용어사전 콘텐츠 로더 — 빌드타임 fs 기반 (SERVER 전용, 클라이언트에서 import 금지).
-// content/glossary(-en)/*.md 를 gray-matter로 파싱 + marked로 HTML 렌더. blog.js와
+// content/glossary(-en)/*.md 의 YAML 메타데이터 파싱 + marked로 HTML 렌더. blog.js와
 // 동일한 파이프라인 패턴(§12.24)이되, 목적이 다름 — 블로그는 롱폼 가이드, 용어사전은
 // "OOO란" 단답형 짧은 정의 페이지. locale: "ko"(기본, content/glossary) | "en"
 // (content/glossary-en) — 같은 slug로 KR/EN 짝 파일 매칭(blog.js와 동일 규약).
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import matter from "./frontmatter";
 import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";

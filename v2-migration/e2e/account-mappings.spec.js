@@ -43,15 +43,17 @@ for (const en of [false, true]) {
     const context = await browser.newContext({ viewport: page.viewportSize(), storageState: { cookies: [], origins: [] } });
     const other = await context.newPage();
     try {
+      await other.bringToFront();
       await setup(other);
       await other.goto(`${prefix}/account`);
       await expect(other.locator(".account-mapping").getByRole("rowheader", { name: "custom_budget" })).toBeVisible();
       const csv = "Date,Channel,custom_budget,Installs\n2026-09-01,Meta,123456,20\n2026-09-02,Meta,654321,30";
       const posts = [];
       other.on("request", request => { if (request.method() === "POST") posts.push(request.postData() || ""); });
+      await other.goto(`${prefix}/dashboard`);
       for (const source of ["csv", "sheets"]) {
-        await other.goto(`${prefix}/dashboard`);
         const uploader = other.locator('.csv-uploader[data-hydrated="true"]').first();
+        await expect(uploader).toBeVisible();
         if (source === "csv") await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "private-source.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
         else {
           await other.locator(".header-utility-menu__trigger").click();

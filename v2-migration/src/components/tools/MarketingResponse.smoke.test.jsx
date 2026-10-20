@@ -16,6 +16,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getMmmInterpretationLimits } from "@/lib/mmmInterpretationLimits";
 import { render, fireEvent, act, waitFor, screen } from "@testing-library/react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import { csvQ } from "./marketingResponseModel";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingResponse, {
   MMM_EXPERIMENT_GEO_LONG_TEMPLATE_CSV,
@@ -943,6 +945,20 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).not.toContain("1,=1+1,history");
     expect(csv).toMatch(/=E\d+-G\d+/);
     expect(csv).toMatch(/=MAX\(0,\$B\$/);
+    const workbook = XLSX.read(lines.join("\r\n"), { type: "string" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const cells = Object.entries(sheet).filter(([key]) => !key.startsWith("!")).map(([, value]) => value);
+    expect(cells.some(cell => cell.v === "'=1+1" && !cell.f)).toBe(true);
+    expect(cells.some(cell => cell.f?.startsWith("MAX("))).toBe(true);
+    expect(cells.some(cell => cell.f?.includes("^$D$"))).toBe(true);
+  });
+
+  it("uses the shared CSV protection for channel and term labels", () => {
+    const label = '  =HYPERLINK("https://example.com","external")';
+    const workbook = XLSX.read(`label\r\n${csvQ(label)}\r\n`, { type: "string" });
+    const cell = workbook.Sheets[workbook.SheetNames[0]].A2;
+    expect(cell.f).toBeUndefined();
+    expect(cell.v).toBe(`'${label}`);
   });
 
   it("exports one editable Cost source that drives Organic halo, Paid levels, OS totals, and Total", () => {

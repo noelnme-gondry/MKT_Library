@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 const download = vi.hoisted(() => ({ csv: vi.fn() }));
-vi.mock("@/utils/download", () => ({ downloadCsv: download.csv }));
+vi.mock("@/utils/download", async (importOriginal) => ({ ...await importOriginal(), downloadCsv: download.csv }));
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
 
 import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";

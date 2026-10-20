@@ -1,7 +1,7 @@
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } from "./evaluateEligibility";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
-import { buildResponseAdapterColMap } from "@/lib/assistant/responseAnalysisAdapters";
-import { colMapMissing } from "@/components/tools/MmmColumnMapper";
+import { buildResponseAdapterColMap } from "@/lib/assistant/responseColumnMapping";
+import { colMapMissing } from "@/lib/data-import/mmmColumnMapping";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 
 // The same final input check serves direct-route handoff and queued execution.

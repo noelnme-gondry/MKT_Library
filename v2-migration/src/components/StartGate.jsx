@@ -17,65 +17,22 @@ import { DOCHI_HANDOFF_KEY } from "@/components/assistant/DochiHandoffMotion";
 import DecisionDataUpdateGuide from "@/components/ds/DecisionDataUpdateGuide";
 import { buildDatasetContinuitySnapshot, classifyDatasetContinuity, readDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { groupForRoute } from "@/lib/toolGroups";
+import { START_PAGE_COPY as COPY } from "@/lib/startPageCopy";
+import StartGateIntroduction from "./StartGateIntroduction";
+import { isExampleUrl } from "@/lib/exampleLink";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
 // 화면. "예시부터 둘러보기"를 고르면 demoDisabled=false로 되돌리고 대시보드 데모로.
-const COPY = {
-  ko: {
-    eyebrow: "내 데이터 분석",
-    title: "데이터를 올리면 첫 분석을 골라드립니다",
-    deck: "CSV나 Google Sheets의 컬럼과 기간을 브라우저에서 확인해 지금 실행 가능한 분석만 보여줍니다. 도구를 미리 고를 필요 없습니다.",
-    open: "이 분석 시작 →",
-    indexTitle: "할 수 있는 분석 전체",
-    indexTitleWithData: "이 파일로 할 수 있는 분석",
-    indexDeck: "판단 단계별로 묶었습니다. 눌러 보면 무엇이 나오고 어떤 데이터가 필요한지 볼 수 있어요.",
-    indexDeckWithData: "올리신 파일로 지금 되는 분석을 위에 모았습니다. 아래는 컬럼을 더 주면 되는 것들이에요.",
-    directEyebrow: "파일 없이 바로",
-    calculatorTag: "빠른 계산",
-    diagnoseTag: "원인 찾기",
-    brandTag: "브랜드 증분",
-    directTitle: "업로드하지 않고 시작할 수 있는 작업",
-    calculatorTitle: "마케팅 지표 계산기",
-    calculatorDesc: "LTV:CAC·ROAS·CPA·A/B 표본수를 숫자만 입력해 계산합니다.",
-    calculatorCta: "지표 바로 계산",
-    diagnoseLabel: "성과 문제 진단",
-    diagnoseDesc: "세 가지 질문으로 원인 후보와 먼저 확인할 분석을 찾습니다.",
-    diagnoseCta: "성과 문제 진단",
-    brandTitle: "브랜딩 성과 측정",
-    brandDesc: "대조군·일별 시계열·전후 데이터 중 준비된 수준에 맞춰 증분 측정 방식을 고릅니다.",
-    brandCta: "브랜드 증분 분석",
-  },
-  en: {
-    eyebrow: "Analyze my data",
-    title: "Upload data. Get the right first analysis.",
-    deck: "We inspect CSV or Google Sheets columns and date coverage in your browser, then show only the analyses you can run now. You do not need to choose a tool first.",
-    open: "Start this →",
-    indexTitle: "Every analysis you can run",
-    indexTitleWithData: "What you can run with this file",
-    indexDeck: "Grouped by the decision each one supports. Open one to see what it returns and what it needs.",
-    indexDeckWithData: "Analyses your file can run right now are grouped at the top; below are the ones that need more columns.",
-    directEyebrow: "START WITHOUT A FILE",
-    calculatorTag: "QUICK MATH",
-    diagnoseTag: "ROOT CAUSE",
-    brandTag: "BRAND LIFT",
-    directTitle: "Tasks you can run without uploading data",
-    calculatorTitle: "Marketing metric calculators",
-    calculatorDesc: "Calculate LTV:CAC, ROAS, CPA, and A/B sample size from a few numbers.",
-    calculatorCta: "Calculate a metric",
-    diagnoseLabel: "Diagnose performance",
-    diagnoseDesc: "Use three questions to find likely causes and the first analysis to check.",
-    diagnoseCta: "Diagnose performance",
-    brandTitle: "Measure brand-campaign lift",
-    brandDesc: "Choose an incrementality design based on whether you have a control group, dated series, or only before/after data.",
-    brandCta: "Analyze brand lift",
-  },
-};
 
 function StartGateContent({ locale = "ko" }) {
   const C = COPY[locale] || COPY.ko;
   const router = useRouter();
-  const browseMethods = useSearchParams().get("view") === "methods";
+  const searchParams = useSearchParams();
+  const browseMethods = searchParams.get("view") === "methods";
+  // 자식 CsvGuide가 먼저 예시를 열고 URL 파라미터를 지워도 최초 진입 의도는 유지한다.
+  // 지연 로드된 부모 effect가 그 직후 startMyData로 샘플을 지우면 결과 화면이 비게 된다.
+  const [isExampleEntry] = useState(() => isExampleUrl(searchParams.toString()));
   const [submittedInput, setSubmittedInput] = useState(null);
   const startMyData = useAppStore((s) => s.startMyData);
   const csvData = useAppStore((s) => s.csvData);
@@ -86,9 +43,9 @@ function StartGateContent({ locale = "ko" }) {
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
   useEffect(() => {
-    if (!browseMethods) startMyData();
+    if (!browseMethods && !isExampleEntry) startMyData();
     try { window.sessionStorage.removeItem(DOCHI_HANDOFF_KEY); } catch { /* Optional legacy handoff marker. */ }
-  }, [startMyData, browseMethods]);
+  }, [startMyData, browseMethods, isExampleEntry]);
 
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
@@ -151,8 +108,7 @@ function StartGateContent({ locale = "ko" }) {
 
   return (
     <>
-      <h1 className="page-title">{browseMethods ? (locale === "en" ? "Browse analyses" : "분석 방법 둘러보기") : (locale === "en" ? "Start with my data" : "내 데이터로 시작")}</h1>
-      <p className="page-deck">{browseMethods ? C.indexDeck : C.deck}</p>
+      <StartGateIntroduction locale={locale} browseMethods={browseMethods} />
       {!browseMethods && !hasSubmitted && <p className="start-operations-entry">{locale === "en" ? "Want a combined campaign, creative and budget plan?" : "캠페인·소재·예산을 한 번에 점검하려면"} <Link href={locale === "en" ? "/en/tools/operations-planner" : "/tools/operations-planner"}>{locale === "en" ? "Open operations planner →" : "운영 플래너로 시작 →"}</Link></p>}
       {!browseMethods && <JourneyProgress stage={hasSubmitted && eligibleIds?.length ? "analyze" : "prepare"} completed={hasSubmitted && eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
 
@@ -223,5 +179,5 @@ function StartGateContent({ locale = "ko" }) {
 }
 
 export default function StartGate(props) {
-  return <Suspense fallback={<p role="status">{props.locale === "en" ? "Loading workspace…" : "분석 화면을 준비하고 있습니다…"}</p>}><StartGateContent {...props} /></Suspense>;
+  return <Suspense fallback={<StartGateIntroduction locale={props.locale} pending />}><StartGateContent {...props} /></Suspense>;
 }

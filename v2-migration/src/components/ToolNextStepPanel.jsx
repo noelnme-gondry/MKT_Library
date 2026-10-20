@@ -5,6 +5,7 @@ import { BookOpen, FolderPlus, X } from "lucide-react";
 import ModalDialog from "@/components/ds/ModalDialog";
 import ToolConnections from "@/components/ToolConnections";
 import ToolLongform from "@/components/ToolLongform";
+import ToolEntrySummary from "@/components/ToolEntrySummary";
 import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
 import ProjectHandoffNote from "@/components/ProjectHandoffNote";
 import { hasInlineToolReference } from "@/lib/toolSearchContent";
@@ -18,6 +19,7 @@ export default function ToolNextStepPanel({ toolId, locale, evidenceLinks, hasHa
   const inlineReference = hasInlineToolReference(toolId);
   const open = (event, next) => { triggerRef.current = event.currentTarget; setPanel(next); };
   return <section className="tool-next-step-panel" aria-label={en ? "Next analysis" : "다음 분석"}>
+    {!inlineReference && <ToolEntrySummary toolId={toolId} locale={locale} />}
     <ToolConnections toolId={toolId} locale={locale} compact />
     <div className="tool-next-step-panel__actions">
       {!inlineReference && <button type="button" className="btn ghost" onClick={event => open(event, "references")}><BookOpen size={16} aria-hidden="true" />{references}</button>}

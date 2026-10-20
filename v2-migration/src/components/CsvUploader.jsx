@@ -348,6 +348,14 @@ export default function CsvUploader({
     return () => { window.removeEventListener("gop-account-changed", invalidate); window.removeEventListener("message", onLogin); };
   }, [locale]);
   const importTaskRef = useRef(0);
+  const importAbortRef = useRef(null);
+  const csvParserRef = useRef(null);
+  useEffect(() => () => {
+    importTaskRef.current += 1;
+    preparationRequestRef.current += 1;
+    importAbortRef.current?.abort();
+    csvParserRef.current?.abort();
+  }, []);
   const trackImportFailure = (source, state) => trackProductEvent("data_import_failed", {
     placement: analyticsPlacement,
     tool_id: eventToolId,
@@ -465,13 +473,21 @@ export default function CsvUploader({
     setImportAnnouncement("");
     setIsImporting(true);
     const taskId = ++importTaskRef.current;
+    preparationRequestRef.current += 1;
+    importAbortRef.current?.abort();
+    csvParserRef.current?.abort();
+    csvParserRef.current = null;
+    const controller = new AbortController();
+    importAbortRef.current = controller;
+    setPendingWorkbook(null);
+    setPendingWideImport(null);
     const isWorkbook = /\.xlsx?$/i.test(file.name);
     const source = isWorkbook ? "xlsx" : "csv";
     onImportStart?.({ fileName: file.name, source });
     trackProductEvent("data_import_start", { tool_id: eventToolId, source, placement: analyticsPlacement, locale });
     if (isWorkbook) {
       try {
-        const sheets = await parseXlsxFile(file);
+        const sheets = await parseXlsxFile(file, { signal: controller.signal });
         if (taskId !== importTaskRef.current) return;
         if (!sheets.length) {
           reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
@@ -499,23 +515,32 @@ export default function CsvUploader({
     try {
       parseInput = await prepareCsvParseInput(file);
     } catch (error) {
+      if (taskId !== importTaskRef.current) return;
       reportImportFailure({ message: csvImportErrorMessage(error?.code, locale), source, state: csvFailureState(error) });
       setIsImporting(false);
       return;
     }
-    // 취소는 아래 complete 콜백의 taskId 가드가 처리한다(여기서 조기 반환하면 취소 후
-    // 늦게 도착하는 워커 콜백 무시 경로가 사라진다).
+    if (taskId !== importTaskRef.current) return;
+    const parsedRows = [];
     Papa.parse(parseInput, {
       worker: true,
       skipEmptyLines: true,
+      chunkSize: 1024 * 1024,
+      chunk: (results, parser) => {
+        if (taskId !== importTaskRef.current) { parser.abort(); return; }
+        csvParserRef.current = parser;
+        for (const row of results.data || []) parsedRows.push(row);
+      },
       complete: async (results) => {
         if (taskId !== importTaskRef.current) return;
+        csvParserRef.current = null;
         try {
-          if (!results.data || results.data.length === 0) {
+          const table = parsedRows.length ? parsedRows : results?.data;
+          if (!table?.length) {
             reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
           }
-          const { headers, raw } = tableToRecords(results.data);
+          const { headers, raw } = tableToRecords(table);
           if (!headers.length || !raw.length) {
             reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
@@ -530,6 +555,7 @@ export default function CsvUploader({
       },
       error: (err) => {
         if (taskId !== importTaskRef.current) return;
+        csvParserRef.current = null;
         reportImportFailure({ message: T.parseError + err.message, source, state: "parse_error" });
         setIsImporting(false);
       },
@@ -583,6 +609,9 @@ export default function CsvUploader({
   const cancelActiveImport = () => {
     importTaskRef.current += 1;
     preparationRequestRef.current += 1;
+    importAbortRef.current?.abort();
+    csvParserRef.current?.abort();
+    csvParserRef.current = null;
     setIsImporting(false);
     setErrorMsg("");
     setImportAnnouncement("");

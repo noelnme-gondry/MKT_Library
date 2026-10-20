@@ -30,7 +30,7 @@
 ## 2. 절대 원칙 (NEVER 깨지 말 것)
 
 1. **v2 Next.js가 유일 런타임**: 레거시 `index.html` 단일 파일 앱은 Phase 8 컷오버로 **제거 완료**(git 히스토리 보존). 모든 작업은 `v2-migration/`에서 — `src/utils/*`(순수 수학 엔진, 골든 검증), `src/components/`(React), `src/store/`(Zustand). 루트에는 `docs/`·`supabase/`·`scripts/`와 본 하네스만 있다.
-2. **클라이언트 사이드 100%**: 사용자 CSV 브라우저 메모리에만. 서버 전송/저장 절대 금지.
+2. **원본 분석은 클라이언트 사이드 100%**: 사용자 CSV의 파싱·계산은 브라우저에서 수행하며 원본의 서버 전송/저장은 금지한다. 유효 Pro·기기 저장 설정에 따른 IndexedDB 보관(90일 미사용 정리)과 사용자가 선택한 결정 메모의 계정 보관은 `docs/product-ssot.md` F-04·§5.1.3의 서로 다른 계약이다.
 3. **Supabase service_role key 절대 요청·저장·언급 금지**. anon public key만 (RLS 보호).
 4. **main 직접 push 금지**. 단명 브랜치 → PR → squash merge 필수.
 5. **Force push to main 금지**. hook skip(`--no-verify`) 금지.
@@ -50,7 +50,7 @@
 
 ```
 Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 · Chart.js 4 · PapaParse 5
-gray-matter+marked (블로그 MD, 빌드타임·server 전용) · SheetJS (xlsx 워커)
+js-yaml+marked (블로그 MD, 빌드타임·server 전용) · SheetJS (xlsx 워커)
 v2-migration/
 ├─ src/utils/*.js        순수 통계엔진 (ESM export, vitest 골든) — 수학 절대 변경 금지
 ├─ src/components/       React (tools/·dashboard/·ds/·landing/·data-import/)

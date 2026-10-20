@@ -28,7 +28,8 @@ for (const en of [false, true]) {
     await pay.click();
     await expect.poll(() => page.evaluate(() => window.__niceCalls.length)).toBe(1);
     await expect(page.getByRole("button", { name: en ? "Processing…" : "처리 중…", exact: true })).toBeDisabled();
-    expect(await page.evaluate(() => window.__niceCalls[0])).toEqual({ method: "card", amount: 5900, language: en ? "EN" : "KO", returnUrl: `http://127.0.0.1:3100/api/payments/nicepay/return?locale=${en ? "en" : "ko"}` });
+    const returnUrl = new URL(`/api/payments/nicepay/return?locale=${en ? "en" : "ko"}`, page.url()).href;
+    expect(await page.evaluate(() => window.__niceCalls[0])).toEqual({ method: "card", amount: 5900, language: en ? "EN" : "KO", returnUrl });
     await expect(page.getByText(en ? /Payment confirmed\./ : /결제를 확인했습니다\./)).toHaveCount(0);
   });
 }

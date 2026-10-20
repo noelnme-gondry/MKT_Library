@@ -791,7 +791,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 | ID | 항목 | 완료 정의 |
 |---|---|---|
 | ~~D-09~~ | 탭 ARIA·키보드 계약 | ✅ **2026-08-19 완료**. 5개 tablist 중 **9-6 하나만** 계약이 통째로 빠져 있었다(화살표 키·`aria-controls`·로빙 tabindex·panel 연결 전부 없음) — 나머지 넷이 완비돼 있어 "탭은 되어 있다"로 보였다. 배선 후 `app/tabContract.test.js`가 전수로 강제한다 |
-| 🟡 D-10 | 모바일 실기기 검증 증거 부재 | **자동화 가능한 부분 완료(2026-08-19)**: `app/mobileTaskIntegrity.test.js`가 `@media (max-width ≤820px)` 블록에서 핵심 조작 셀렉터가 `display:none`으로 사라지지 않는지 CSS에서 파생해 검사한다(셀렉터의 **마지막 복합 선택자만** `:not()` 제거 후 대조 — `.dc-action-route:not(…) > span` 같은 오탐을 걸렀다). **남음**: 320/768/1440 실기기 회귀 체크는 릴리스 체크리스트 항목으로 사람이 한다. Playwright는 새 라이브러리라 확인 없이 추가하지 않았다(§11) |
+| 🟡 D-10 | 모바일 실기기 검증 증거 부재 | **현재 자동화**: `app/mobileTaskIntegrity.test.js`의 핵심 조작 CSS 가드와 `playwright.config.js`의 브라우저 검사가 있다. CI는 Chromium에서 첫 진입·업로드·결과·키보드·디자인 계약을 검사한다. 브라우저 뷰포트 에뮬레이션은 실기기 검증이 아니다. **남음**: Safari/iOS 등 실제 기기·보조기술의 조작·표시·저장소 동작을 릴리스 시 확인한다. 과거(2026-08-19)의 Playwright 미도입 결정은 현재 상태가 아니다. |
 | 🟡 D-11 | AEO/GEO 측정 | 대상은 `scripts/aeo-prompts.mjs`에서 파생한다(2026-09-14: KO 24 + EN 24). `docs/aeo-runs/README.md`에서 실행 원문·누락·보고서별 집계 계약을 관리한다. 실제 AI 응답과 Search Console Generative AI 보고서는 확보 전까지 미측정이다. 접근 가능 여부를 실제 인용 성과로 기록하지 않는다. |
 | ~~D-12~~ | 문서 드리프트 | ✅ **2026-08-19 완료**. `ARCHITECTURE.md`의 "단일 파일"은 `globals.css` 얘기라 드리프트가 아니었고, `worklog.md`의 index.html 언급도 과거 기록으로서 정확하다. 실제 위험은 **복사해 실행하라고 만든 핸드오프 프롬프트** 한 블록이 "단일 index.html SPA"를 현재형으로 말하던 것 — 시점 경고와 현재 진입점을 붙였다 |
 
