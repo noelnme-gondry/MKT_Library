@@ -80,5 +80,5 @@
 - 브랜치: `codex/full-improvements-20261020`.
 - 기준 커밋: `054d88bf81407f66aaf60264d02df6c00fa10184`. PR 준비 시 fetch한 `origin/main`과 같은 기준에서 구현·검증했다.
 - 보관 위치: `/Users/gondry/Desktop/MY Project/Library-full-improvements-20261020`.
-- 사용자가 2026-10-20 머지를 요청해 검증된 변경을 PR로 제출한다. 최종 머지·배포 상태는 연결된 PR과 배포 기록을 기준으로 확인한다. 원래 `Library` 폴더의 `codex/checkout-presentation` 브랜치와 기존 미추적 파일은 보존했다.
-- 검증 로그·지표·회귀 증거는 새 작업 폴더의 `v2-migration/test-results/improvements-20261020/`에 보관했다. 기존 gitignore에 따라 커밋 대상에서 제외된다.
+- 사용자 요청에 따라 [PR #968](https://github.com/noelnme-gondry/MKT_Library/pull/968)의 CI 전체 통과 후 2026-10-20 `main`에 squash 머지했다(`20ffc3a6`). 배포 상태는 배포 기록을 기준으로 확인한다. 원래 `Library` 폴더의 `codex/checkout-presentation` 브랜치와 기존 미추적 파일은 보존했다.
+- 검증 로그·지표·회귀 증거는 새 작업 폴더의 `.local-data/verification-20261020/improvements/`에 보관했다. Playwright의 출력 폴더 초기화와 분리했으며 기존 gitignore에 따라 커밋 대상에서 제외된다.

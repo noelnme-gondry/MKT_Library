@@ -10,7 +10,6 @@ import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
-import GuideIndex from "@/components/GuideIndex";
 import AnalysisDataGuide from "@/components/AnalysisDataGuide";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import LandingPage from "@/components/LandingPage";
@@ -28,6 +27,7 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
 // 초기 로딩이 느렸음. 각 도구는 해당 라우트 진입 시에만 청크 로드.
 const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>로딩 중…</div> });
+const GuideIndex = dyn(() => import("@/components/GuideIndex"));
 const StartGate = dynamic(() => import("@/components/StartGate"), { loading: () => <StartGateIntroduction pending /> });
 const ProjectsPage = dyn(() => import("@/components/ProjectsPage"));
 const WorkspaceStoragePage = dyn(() => import("@/components/WorkspaceStoragePage"));

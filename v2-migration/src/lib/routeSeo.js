@@ -17,12 +17,12 @@ export const ROUTE_SEO = {
   },
   "guide-index": {
     ko: {
-      title: "퍼포먼스 마케팅 실무 가이드 | UAC·Meta·MMP",
-      description: "MMP 연동, 이벤트 택소노미, UAC·Meta 운영, 소재 규격, 코호트 리텐션을 단계별 체크리스트로 정리했습니다.",
+      title: "마케팅 분석 지도·실무 가이드",
+      description: "성과·실험·리텐션·CRM·가격·B2B 분석의 질문, 데이터와 한계를 살펴보세요. 실행 도구·내부 가이드·공식 참고 자료를 구분해 안내합니다.",
     },
     en: {
-      title: "Performance Marketing Playbooks",
-      description: "Step-by-step playbooks for MMP tracking, event taxonomy, Google and Meta campaign operations, creative, cohorts, and retention analysis.",
+      title: "Marketing Analysis Map and Playbooks",
+      description: "Explore performance, experiments, retention, CRM, pricing and B2B: questions, data and limits, with linked tools, guides and primary references.",
     },
   },
   "start-gate": {

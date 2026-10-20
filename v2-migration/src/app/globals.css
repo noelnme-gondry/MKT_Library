@@ -816,6 +816,27 @@
         background: var(--surface-container, rgba(255, 255, 255, 0.05));
         color: var(--text-primary) !important;
       }
+      .analysis-library { margin-top: 3rem; scroll-margin-top: 5rem; }
+      .analysis-library__filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 20px; }
+      .analysis-library__filters label { display: grid; gap: 6px; flex: 1 1 190px; min-width: 0; }
+      .analysis-library__filters input,
+      .analysis-library__filters select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-primary); font: inherit; font-size: max(16px, 1rem); }
+      .analysis-library__filters button { min-height: 44px; }
+      .analysis-library__domain { margin-top: 28px; }
+      .analysis-library__method { border-bottom: 1px solid var(--border); scroll-margin-top: 5rem; }
+      .analysis-library__method summary { padding: 14px 4px; min-height: 44px; cursor: pointer; line-height: 1.6; overflow-wrap: anywhere; }
+      .analysis-library__method summary > span:first-child { font-weight: 600; }
+      .analysis-library__status { display: inline-block; margin-inline-start: 12px; color: var(--text-secondary); font-size: var(--fs-sm); }
+      .analysis-library__body { padding: 0 16px 16px; line-height: 1.7; overflow-wrap: anywhere; }
+      .analysis-library__question { font-weight: 600; }
+      .analysis-library__body dt { font-weight: 600; margin-top: 12px; }
+      .analysis-library__body dd { margin: 4px 0 12px; }
+      .analysis-library__body h4 { margin: 16px 0 6px; }
+      .analysis-library__body ul { padding-inline-start: 22px; }
+      .analysis-library__body a { display: inline-block; padding-block: 6px; text-underline-offset: 3px; }
+      .analysis-library__reference-note,
+      .analysis-library__checked { color: var(--text-secondary); font-size: var(--fs-sm); }
+      .analysis-library :is(input, select, button, summary, a):focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
       .btn .kbd {
         font-family: var(--font-sans);
         font-size: var(--fs-xs);

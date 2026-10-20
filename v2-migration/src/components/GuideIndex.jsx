@@ -4,6 +4,7 @@ import Link from "next/link";
 import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToPath, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trGroupDesc, trItemTitle } from "@/lib/enNavCopy";
+import MarketingAnalysisLibrary from "./MarketingAnalysisLibrary";
 
 // 가이드 인덱스 — 블로그(`/blog`)처럼 자체 주소(`/guide`)를 갖는 SOP 목록 페이지.
 // 예전엔 랜딩 track 상태(무주소)로만 떠서 뒤로가기가 깨졌음 → 실제 라우트로 승격.
@@ -19,6 +20,7 @@ const COPY = {
     deck: "셋업 → 운영 → 소재 → 운영 후 분석. 참고할 순서대로 나열했습니다. 각 문서는 앱 그대로, 실무 표준 절차(SOP)입니다.",
     itemsSuffix: "개 항목",
     open: "시작하기 →",
+    analysisMap: "마케팅 분석 지도 보기",
   },
   en: {
     eyebrow: "Operating guides",
@@ -26,6 +28,7 @@ const COPY = {
     deck: "Setup → operation → creative → post-launch analysis, listed in a sensible order. Each doc is a practical standard operating procedure.",
     itemsSuffix: " items",
     open: "Open →",
+    analysisMap: "Explore the marketing analysis map",
   },
 };
 
@@ -38,6 +41,7 @@ export default function GuideIndex({ locale = "ko" }) {
     <>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
+      <p><a href="#analysis-library">{C.analysisMap} ↓</a></p>
 
       <div className="phase-grid" style={{ marginTop: "1.4rem" }}>
         {groups.map((g, idx) => {
@@ -81,6 +85,7 @@ export default function GuideIndex({ locale = "ko" }) {
           );
         })}
       </div>
+      <MarketingAnalysisLibrary locale={locale} />
     </>
   );
 }

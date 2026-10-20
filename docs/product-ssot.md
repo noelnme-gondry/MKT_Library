@@ -239,6 +239,15 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 > **routeMap의 `component`는 파일 이름이 아닐 수 있다.** `5-18-trend`의 `component`는 `MarketingResponseTrend`지만 그런 파일은 없고, 실제 디스패치는 `PageClient`가 `routeId`로 한다. 컴포넌트 파일을 라우트에서 찾는 도구·테스트는 이 사실을 알아야 한다(`ds/downloadEscape.test.js`가 디스패치에서 파생한다).
 
+### 4.4 마케팅 분석 지도 (2026-10-20)
+
+- `/guide`·`/en/guide`에서 기존 SOP와 함께 분석 질문·필요 데이터·해석 한계·참고 문헌을 탐색한다. 분류와 설명은 `src/lib/marketingAnalysisLibrary.js`, 실행 도구의 이름·주소는 기존 `toolIndex`·`routeMap`에서 가져온다.
+- 상태는 **연결 도구 있음 / Tool linked**, **내부 가이드 / Internal guide**, **외부 참고 자료 / External reference**로 구분한다. 연결 도구는 카드에 명시한 범위만 지원한다. 외부 참고 문헌의 모든 방법을 구현했다는 뜻이 아니며 지도 항목 수를 제품의 도구 수에 더하지 않는다.
+- KO: “질문에 맞는 분석과 필요한 데이터를 찾으세요. 연결 도구의 지원 범위와 참고 자료를 구분해 안내합니다.”
+- EN: “Find analyses and data for your question. Tool capabilities are distinguished from reference material.”
+- KR/EN의 방법·참고 자료·실행 링크는 동등하게 제공한다. 분야·검색·상태 필터는 브라우저 안에서만 처리하고 검색어를 계측하지 않는다.
+- 새로운 통계 엔진·자동 실행·CSV 업로드 계약은 이 지도에 추가하는 것만으로 생성되지 않는다. 입력 단위, 식별 가정, 회귀 검증과 실제 사용자 경로를 구현한 뒤에만 실행 도구를 연결한다.
+
 ## 5. UX 계약
 
 ### 제휴 광고 / Affiliate advertising (2026-10-14)
