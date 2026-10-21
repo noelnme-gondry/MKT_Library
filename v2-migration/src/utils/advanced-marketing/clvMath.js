@@ -133,8 +133,8 @@ export function runPredictiveClv(rows, options = {}) {
       column("low", P("평균 예측 95% 하한", "Mean prediction 95% lower"), "money"), column("high", P("평균 예측 95% 상한", "Mean prediction 95% upper"), "money"),
       column("predictedHoldout", P("홀드아웃 예측", "Holdout prediction")), column("actualHoldout", P("홀드아웃 실제", "Holdout actual"), "integer"),
     ], customerRows)],
-    method: P("BG/NBD와 Gamma–Gamma 최대우도 적합. 지정 기간 예상 순매출×입력 공헌이익률이며 할인·획득비를 반영한 무한기간 CLV가 아닙니다. 구간은 모형 독립 가정하 로그 델타법의 모수 불확실성입니다.",
-      "BG/NBD and Gamma–Gamma maximum likelihood. Expected net revenue over the chosen horizon times the supplied contribution rate; not infinite-horizon discounted CLV after acquisition costs. Intervals use log-delta parameter uncertainty under model independence."),
+    method: P("BG/NBD와 Gamma–Gamma 최대우도 적합. 학습 종료일부터 지정 기간의 예상 순매출×입력 공헌이익률이며 할인·획득비를 반영한 무한기간 CLV가 아닙니다. 평가 기간은 재학습에 사용하지 않습니다. 구간은 모형 독립 가정하 로그 델타법의 모수 불확실성입니다.",
+      "BG/NBD and Gamma–Gamma maximum likelihood. Expected net revenue from calibration end over the chosen horizon times the supplied contribution rate; not infinite-horizon discounted CLV after acquisition costs. Evaluation data are not used to refit. Intervals use log-delta parameter uncertainty under model independence."),
     warnings: [
       P("95% 구간은 개별 고객의 실제 구매 변동을 포함한 예측구간이 아닙니다. 미래 환불·가격·시즌 변화는 별도 검토해야 합니다.",
         "95% intervals are not predictive intervals for an individual's realized purchases. Future refunds, price changes and seasonality require separate review."),
