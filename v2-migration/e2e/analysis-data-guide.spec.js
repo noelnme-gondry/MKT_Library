@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
+import { dataGuideQuestions } from "../src/lib/analysisDataGuide";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
@@ -27,7 +28,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(`${prefix}/data-guide`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "What data do you need?" : "어떤 데이터가 필요한가요?");
     await expect(page.locator(".breadcrumb")).toContainText(en ? "Data requirements" : "필요한 데이터 양식");
-    await expect(page.locator(".analysis-data-guide__question-grid button")).toHaveCount(7);
+    await expect(page.locator(".analysis-data-guide__question-grid button")).toHaveCount(dataGuideQuestions(locale).length);
     await page.getByRole("button", { name: en ? "Should I scale spend or move the budget?" : "예산을 더 쓸까, 다른 곳으로 옮길까?" }).focus();
     await page.keyboard.press("Enter");
     const allocation = page.locator('.analysis-data-guide__tool-grid button[data-analysis-id="5-3"]');

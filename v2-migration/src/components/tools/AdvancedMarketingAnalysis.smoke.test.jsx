@@ -44,6 +44,7 @@ async function demo(id, locale = "ko") {
 describe.each(["ko", "en"])("advanced tools actual uploader path (%s)", locale => {
   it.each(ADVANCED_TOOLS)("renders $id result and all tables through route entry and demo", async tool => {
     const view = await demo(tool.id, locale);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(tool.name[locale]);
     expect(view.container.querySelectorAll(".advanced-table table").length).toBeGreaterThan(0);
     expect(view.container.querySelector('[data-advanced-result="blocked"]')).toBeNull();
     if (locale === "en") expect(view.container.textContent).not.toMatch(/[가-힣]/);

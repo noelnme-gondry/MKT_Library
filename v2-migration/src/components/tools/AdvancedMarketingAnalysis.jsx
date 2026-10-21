@@ -75,7 +75,7 @@ export default function AdvancedMarketingAnalysis({ toolId, locale = "ko" }) {
     const value = row[column.key];
     return column.type === "text" ? t(value) : Number.isFinite(value) ? value : "";
   }))), `${spec.key}-${data.id}`);
-  return <ToolPageShell toolId={toolId} locale={locale} titleLevel={0} title={t(spec.name)} summary={<p>{t(spec.answer)}</p>}>
+  return <ToolPageShell toolId={toolId} locale={locale} title={t(spec.name)} summary={<p>{t(spec.answer)}</p>}>
     <div className="advanced-analysis" data-tool-id={toolId}>
       {report && <div data-advanced-result="ready"><ResultActionCard toolId={toolId} locale={locale} analysisType={spec.key}
         analysisKey={`advanced-${config.epoch}`} resultState="ready" headline={t(report.headline)} tone="neutral"
