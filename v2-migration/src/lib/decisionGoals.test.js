@@ -24,7 +24,13 @@ describe("decisionGoals — 커버리지는 발행 라우트에서 파생한다"
 
   it.each(PUBLISHED)("%s — 목표 1개+·가드레일 1개+를 갖는다", (toolId) => {
     expect(toolDecisionGoals(toolId).length).toBeGreaterThan(0);
-    expect(toolDecisionGuardrails(toolId).length).toBeGreaterThan(0);
+    const entry = TOOL_DECISION_GOALS[toolId];
+    if (entry.guardrailUnavailable) {
+      expect(entry.guardrails).toEqual([]);
+      expect(entry.goals.every((goal) => isRerunGoalMetric(goal.key))).toBe(true);
+      expect(entry.guardrailUnavailable.ko.length).toBeGreaterThan(20);
+      expect(entry.guardrailUnavailable.en.length).toBeGreaterThan(20);
+    } else expect(toolDecisionGuardrails(toolId).length).toBeGreaterThan(0);
   });
 
   it("레지스트리에 발행 도구가 아닌 id가 섞여 있지 않다", () => {

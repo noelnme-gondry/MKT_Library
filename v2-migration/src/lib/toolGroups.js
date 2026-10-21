@@ -1,7 +1,9 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 // route id → client-side CSV slice. Similar-grain tools share one slice;
 // different grains stay isolated so navigating between tools never overwrites
 // an unrelated dataset.
 export const TOOL_GROUP = {
+  ...advancedMap((tool) => tool.group),
   "5-31": "efficiency", "5-2": "efficiency", "5-21": "efficiency", "5-22": "efficiency", "5-3": "efficiency",
   // /start는 도구가 아니지만 효율 슬라이스에 CSV를 "쓰는" 라우트다. 여기 없으면
   // setCurrentRouteId가 activeDataGroup을 이전 도구 그룹으로 유지하는 반면

@@ -1,3 +1,4 @@
+import { ADVANCED_TOOLS, ADVANCED_IDS } from "@/lib/advanced-marketing/registry";
 // SSOT for slug <-> internal route id mapping.
 // Plain module (NO "use client") so both client components and the server
 // sitemap.js can import it.
@@ -20,6 +21,7 @@ export const OG_CARD_URL = `${SITE_URL}${OG_CARD_PATH}`;
 
 // component tag is documentation-only (the actual dispatch lives in the page).
 export const ROUTES = [
+  ...ADVANCED_TOOLS.map(({ id, slug }) => ({ id, slug, component: "AdvancedMarketingAnalysis" })),
   { id: "home", slug: "/", component: "LandingPage" },
   { id: "5-31", slug: "/tools/operations-planner", component: "OperationsPlanner" },
   { id: "5-2", slug: "/dashboard", component: "Dashboard" },
@@ -159,6 +161,7 @@ export function isRouteIndexable(routeOrId) {
 // this gates /en/[[...slug]] dispatch, hreflang emission, and sitemap EN URLs
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
+  ...ADVANCED_IDS,
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
   "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-30", "5-31",
   // 구 5-18 안에 있던 다섯 분석. 각각 독립 도구다.

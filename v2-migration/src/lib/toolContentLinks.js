@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { PUBLISHED_BLOG_TOOL_MAP, PUBLISHED_GLOSSARY_TOOL_MAP } from "./contentToolRegistry";
 
 // 콘텐츠 → 도구(단방향)만 있던 연결의 역방향. 목록을 새로 나열하지 않고
@@ -20,6 +21,7 @@ function reverseIndex(map) {
 // 5-24·9-1·5-18-paid-organic·5-18-forecast는 전용 발행 글이 아직 없어(콘텐츠 공백)
 // 방법론이 겹치는 글로 연결한다. 없는 글을 지어내는 대신 공백을 공백으로 둔다.
 const SUPPLEMENTARY_BLOG_BY_TOOL = {
+  ...advancedMap((tool) => tool.blogs),
   "5-31": ["budget-marginal-efficiency", "ad-performance-diagnosis", "ad-creative-testing"],
   "5-30": ["cannibalization-organic-paid", "correlation-vs-causation"],
   "5-24": ["incrementality-measurement", "uplift-holdout-guide", "correlation-vs-causation"],

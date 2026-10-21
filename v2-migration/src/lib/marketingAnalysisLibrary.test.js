@@ -1,3 +1,4 @@
+import { ADVANCED_ENGINES } from "./advanced-marketing/execute";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -44,11 +45,12 @@ describe("marketing analysis library contracts", () => {
     }
   });
 
-  it("does not advertise external methods as executable through a nearby tool", () => {
+  it("links newly implemented methods to their own executable engines", () => {
     for (const id of ["cuped", "geo-experiment", "predictive-clv", "uplift-targeting", "pricing-conjoint", "pipeline-conversion"]) {
       const entry = methods.find((item) => item.id === id);
-      expect(analysisLibraryStatus(entry), id).toBe("reference");
-      expect(entry.tools).toEqual([]);
+      expect(analysisLibraryStatus(entry), id).toBe("tool");
+      expect(entry.tools).toHaveLength(1);
+      expect(ADVANCED_ENGINES[entry.tools[0]], id).toBeTypeOf("function");
     }
     expect(methods.find((entry) => entry.id === "sequential-testing").limit.en).toContain("not an always-valid inference engine");
   });
@@ -57,8 +59,8 @@ describe("marketing analysis library contracts", () => {
     const search = (options) => filterAnalysisLibrary(options).flatMap((group) => group.methods.map((entry) => entry.id));
     expect(search({ query: "ＣＵＰＥＤ", locale: "ko" })).toEqual(["cuped"]);
     expect(search({ query: "중도절단", locale: "en" })).toContain("survival");
-    expect(search({ query: "CUPED", status: "tool" })).toEqual([]);
+    expect(search({ query: "CUPED", status: "tool" })).toEqual(["cuped"]);
     expect(search({ query: "no-such-method-91762" })).toEqual([]);
-    expect(search({ query: "  ", status: "reference" })).toContain("geo-experiment");
+    expect(search({ query: "  ", status: "reference" })).not.toContain("geo-experiment");
   });
 });
