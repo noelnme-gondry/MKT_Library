@@ -247,7 +247,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 5-37 | CRM 업리프트 | `/tools/crm-uplift` |
 | 5-38 | B2B 파이프라인 | `/tools/b2b-pipeline` |
 | 5-39 | 컨조인트·가격 선호 | `/tools/conjoint-pricing` |
-| 5-40 | 프로모션 순이익 | `/tools/promotion-profit` |
+| 5-40 | 프로모션 공헌이익 | `/tools/promotion-profit` |
 | 5-41 | 장바구니 연관 | `/tools/basket-association` |
 | 5-42 | 도달·빈도 | `/tools/reach-frequency` |
 | 5-43 | 트래픽 품질 | `/tools/traffic-quality` |
