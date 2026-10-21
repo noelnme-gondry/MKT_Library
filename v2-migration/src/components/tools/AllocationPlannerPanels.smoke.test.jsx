@@ -6,8 +6,11 @@ import { render, fireEvent, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 import { buildSampleJourney } from "@/lib/sampleJourney";
-import { PlannerCreativeStatus } from "@/components/tools/AllocationPlannerPanels";
-import { prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
+import { PlannerCreativeStatus, PlannerForecast, PlannerPlanReview } from "@/components/tools/AllocationPlannerPanels";
+import { allocationAt, loserOffScenarioAt, newCreativeScenarioAt, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
+import { reviewAllocationPlan } from "@/lib/budgetPlanner/planReview";
+import { serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
+import { vi } from "vitest";
 
 function seed(locale) {
   const csv = buildSampleJourney(locale);
@@ -77,5 +80,71 @@ describe("5-3 플래너 근거 구역", () => {
     const first = within(table).getAllByRole("row")[1];
     expect(first.textContent).toContain("fresh");
     expect(first.textContent).toContain("학습 중");
+  });
+
+  it("새 소재를 넣는다면: 대상을 고르면 같은 배분의 예측이 어떻게 바뀌는지 출시 이력 근거와 함께 말한다", () => {
+    const start = Date.parse("2026-06-01T00:00:00Z");
+    const day = (t) => new Date(start + t * 86400000).toISOString().slice(0, 10);
+    const rows = [];
+    for (let t = 0; t <= 40; t += 1) {
+      for (const [channel, base] of [["Meta", 20000], ["TikTok", 12000]]) {
+        const cost = base * (1 + 0.4 * Math.sin(t / 3.7 + base));
+        rows.push({ date: day(t), country: "KR", channel, platform: "", cost, installs: cost / (base / 20) });
+      }
+    }
+    const planner = prepareAllocationPlanner(rows, { unitField: "channel", metric: "installs", adv: { trendType: "auto", outlierMethod: "none" } });
+    expect(planner.ok).toBe(true);
+    const budget = planner.allocationNodes.reduce((acc, node) => acc + node.current, 0);
+    const { forecast } = allocationAt(planner, budget, { withForecast: true });
+    const scenario = newCreativeScenarioAt(planner, budget, "KR · Meta");
+    const onUnit = vi.fn();
+    const props = { forecast, backtest: planner.backtest, locale: "ko", resultLabel: "설치", metricLabel: "CPI", fmtMoney: (v) => `₩${Math.round(v)}`, fmtCount: (v) => String(Math.round(v)), fmtUnitCost: (v) => `₩${Math.round(v)}`, units: ["KR · Meta", "KR · TikTok"], onNewCreativeUnit: onUnit };
+    const { rerender } = render(<PlannerForecast {...props} />);
+    fireEvent.change(screen.getByLabelText("새 소재를 넣는다면"), { target: { value: "KR · Meta" } });
+    expect(onUnit).toHaveBeenCalledWith("KR · Meta");
+    rerender(<PlannerForecast {...props} newCreativeUnit="KR · Meta" newCreativeScenario={scenario} />);
+    const text = screen.getByText(/KR · Meta에 내일 새 소재를 넣으면 14일 예상 설치/).textContent;
+    expect(text).toContain(`${Math.round(scenario.base.results)} → ${Math.round(scenario.scenario.results)}`);
+    expect(scenario.scenario.results).toBeLessThan(scenario.base.results);
+    expect(text).toContain("기본 가정");
+  });
+
+  it("지난 배분안 대조: 검토일 전에는 기록 버튼을 막고, 지나면 문장과 함께 넘긴다", () => {
+    const plan = serializeAllocationPlan({ start: "2026-09-01", days: 7, metric: "installs", unitField: "channel", byPlatform: false, targets: [{ unit: "KR · Meta", cost: 7000, results: 70 }, { unit: "KR · TikTok", cost: 7000, results: 35 }] });
+    const rows = [];
+    for (let d = 1; d <= 9; d += 1) {
+      const date = `2026-09-0${d}`;
+      rows.push({ date, country: "KR", channel: "Meta", cost: 1000, installs: 10 }, { date, country: "KR", channel: "TikTok", cost: 1000, installs: 4 });
+    }
+    const match = reviewAllocationPlan({ id: "p", toolId: "5-3", action: "배분안 적용", comparisonKind: "allocation_plan", allocationPlan: plan, reviewDate: "2026-09-08" }, rows);
+    const onApply = vi.fn();
+    const props = { matches: [match], locale: "ko", fmtCpr: () => (v) => `₩${Math.round(v)}`, fmtCount: (v) => String(Math.round(v)), onApply };
+    const { rerender } = render(<PlannerPlanReview {...props} today="2026-09-07" />);
+    expect(screen.getByRole("heading", { name: "지난 배분안 대조 1건" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "이 대조 결과 기록" }).disabled).toBe(true);
+    rerender(<PlannerPlanReview {...props} today="2026-09-08" />);
+    fireEvent.click(screen.getByRole("button", { name: "이 대조 결과 기록" }));
+    expect(onApply.mock.calls[0][1].actual).toContain("실제 CPI ₩143 · 계획 ₩133");
+  });
+
+  it("학습 예산 부족과 '나쁜 소재를 끄면' 안이 소재 표 안팎에 숫자와 함께 나온다", () => {
+    const start = Date.parse("2026-06-01T00:00:00Z");
+    const day = (t) => new Date(start + t * 86400000).toISOString().slice(0, 10);
+    const rows = [];
+    for (let t = 0; t <= 60; t += 1) {
+      const cost = 70000 * (1 + 0.45 * Math.sin(t / 4.3));
+      rows.push({ date: day(t), country: "KR", channel: "Meta", platform: "", creative_id: "old", cost, installs: cost / (40 * Math.pow(cost, 0.3)) });
+      if (t >= 30) rows.push({ date: day(t), country: "KR", channel: "Meta", platform: "", creative_id: "bad", cost: 30000, installs: 30000 / (80 * Math.pow(30000, 0.3)) });
+      if (t >= 58) rows.push({ date: day(t), country: "KR", channel: "Meta", platform: "", creative_id: "fresh", cost: 2000, installs: 1 });
+    }
+    const planner = prepareAllocationPlanner(rows, { unitField: "channel", metric: "installs", adv: { trendType: "auto", outlierMethod: "none" } });
+    const budget = planner.allocationNodes.reduce((acc, node) => acc + node.current, 0);
+    const { allocation } = allocationAt(planner, budget);
+    expect(allocation.learningWarnings.map((w) => [w.creativeId, w.status])).toEqual([["fresh", "short"]]);
+    const loser = loserOffScenarioAt(planner, budget);
+    render(<PlannerCreativeStatus planner={planner} locale="ko" metricLabel="CPI" learningWarnings={allocation.learningWarnings} loserScenario={loser} resultLabel="설치" fmtMoney={(v) => `₩${Math.round(v)}`} fmtCount={(v) => String(Math.round(v))} />);
+    const table = screen.getByRole("table", { name: "소재 상태" });
+    expect(within(table).getByText(/이 배분으로는 학습 완료가 어려움: 하루 약 ₩\d+ 필요/)).toBeTruthy();
+    expect(screen.getByText(/기존보다 나쁜 소재 bad \(KR · Meta\)를 끄면 같은 예산으로 14일 예상 설치/)).toBeTruthy();
   });
 });

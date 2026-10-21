@@ -158,6 +158,33 @@ export function launchProfileFor(entry, profileEntries, cfg) {
   };
 }
 
+/**
+ * 학습 중 소재가 판정 가능한 결과 수(minResultsToJudge)를 채우는 데 필요한 하루 지출 (spec §6.6.4 [F]).
+ * 필요 일 지출 ≈ 남은 결과 수 × CPR_prior ÷ 남은 학습일. CPR_prior는 판정과 같은 기준
+ * (같은 날 기존 소재 CPR × 출시 프로파일 배율)이다. 기존 소재가 없으면 기준이 없어 계산하지 않는다.
+ */
+function learningNeedOf(entry, incumbents, nodeDays, cfg) {
+  const { learningDays } = cfg.creative;
+  const { minResultsToJudge } = cfg.creative.launch;
+  const spentDates = new Set([...entry.days].filter(([date, day]) => date >= entry.launch && date <= entry.evalDate && day.cost > 0).map(([date]) => date));
+  const inc = sumEntries(incumbents, entry.launch, entry.evalDate, spentDates);
+  if (!(inc.result > 0) || !(inc.cost > 0)) return null;
+  const cprPrior = (inc.cost / inc.result) * entry.profile.judgeRatio;
+  const remainingResults = Math.max(0, minResultsToJudge - entry.sinceLaunch.result);
+  const daysLeft = entry.age < learningDays ? learningDays - entry.age : learningDays;
+  const recentFrom = addDays(entry.evalDate, -6);
+  const own = totalOver(entry.days, recentFrom, entry.evalDate).cost;
+  const node = totalOver(nodeDays, recentFrom, entry.evalDate).cost;
+  return {
+    cprPrior,
+    priorAssumed: entry.profile.assumed,
+    remainingResults,
+    daysLeft,
+    neededDaily: remainingResults > 0 ? (remainingResults * cprPrior) / daysLeft : 0,
+    recentShare: node > 0 ? own / node : 0,
+  };
+}
+
 function judge(entry, incumbents, cfg, profile) {
   const { priorStrengthResults, winMargin, loseMargin } = cfg.creative.launch;
   const { promoteProb, killProb } = CREATIVE_CONFIG.bayes;
@@ -209,9 +236,18 @@ function assessFatigue(entry, cfg, cannibalWindows) {
   const windowStart = series.slice(-base.trendWindow)[0].date;
   const ctrOnly = cannibalWindows.some((window) => window.creativeId !== entry.id && window.to >= windowStart && window.from <= entry.evalDate);
   const fatigueCfg = ctrOnly ? { ...base, impressionWeight: 0, cpmWeight: 0 } : base;
-  const index = CREATIVE_FATIGUE.compositeIndex(CREATIVE_FATIGUE.buildDailySeries(series), fatigueCfg);
+  const daily = CREATIVE_FATIGUE.buildDailySeries(series);
+  const index = CREATIVE_FATIGUE.compositeIndex(daily, fatigueCfg);
   if (!index) return null;
-  return { score: index.score, fatigued: index.score >= base.alertScore, ctrOnly, ctrTrendPctPerDay: index.ctrTrendPctPerDay };
+  // 같은 추세가 이어지면 몇 일 뒤 임계에 닿는가(0 = 이미 닿음, null = 악화 추세 없음·추정 불가).
+  const projection = CREATIVE_FATIGUE.projectThreshold(daily, fatigueCfg);
+  return {
+    score: index.score,
+    fatigued: index.score >= base.alertScore,
+    ctrOnly,
+    ctrTrendPctPerDay: index.ctrTrendPctPerDay,
+    etaDays: Number.isFinite(projection.etaDays) ? projection.etaDays : null,
+  };
 }
 
 /**
@@ -222,7 +258,7 @@ function assessFatigue(entry, cfg, cannibalWindows) {
 export function buildCreativeLifecycle(rows, cfg, { levels, allocateLevel, asOf, dataStart, nodes, configForPath }) {
   const creativeRows = rows.filter((row) => row.creative_id);
   const byNode = new Map();
-  if (!creativeRows.length) return { hasCreatives: false, entries: [], byNode };
+  if (!creativeRows.length) return { hasCreatives: false, entries: [], byNode, profileEntries: [] };
 
   const scope = cfg.creative.identityScope;
   const identitySpend = new Map();
@@ -314,6 +350,7 @@ export function buildCreativeLifecycle(rows, cfg, { levels, allocateLevel, asOf,
       entry.state = result.state;
       entry.judgment = result.judgment;
     }
+    if (entry.state === "LEARNING") entry.learningNeed = learningNeedOf(entry, incumbentsOf(entry, siblingsByNode.get(entry.nodeKey)), nodes.get(entry.nodeKey)?.days ?? new Map(), entry.cfg);
   }
 
   for (const [key, siblings] of siblingsByNode) {
@@ -357,5 +394,6 @@ export function buildCreativeLifecycle(rows, cfg, { levels, allocateLevel, asOf,
   }
 
   for (const entry of list) delete entry.cfg;
-  return { hasCreatives: true, entries: list, byNode };
+  // 출시 프로파일 표본은 "새 소재를 넣으면" 시나리오(spec §8.1)가 같은 기준으로 다시 쓴다.
+  return { hasCreatives: true, entries: list, byNode, profileEntries };
 }

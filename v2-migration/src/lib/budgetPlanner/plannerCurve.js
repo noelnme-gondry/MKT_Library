@@ -70,8 +70,8 @@ function sigmaOf(residuals, cfg) {
   return Math.max(cfg.conformity.minSigma, Number.isFinite(sigma) ? sigma : 0);
 }
 
-function fitOwn(points, cfg, parentDow) {
-  const options = curveOptions(cfg);
+function fitOwn(points, cfg, parentDow, regimeCandidateDates = []) {
+  const options = { ...curveOptions(cfg), regimeCandidateDates };
   const lastDate = points.reduce((max, p) => (p.date > max ? p.date : max), "");
   const lookbackStart = addDays(lastDate, -(cfg.dow.lookbackWeeks * 7 - 1));
   const fitAdjusted = (factors) => fitAllocationChannel(points.map((p) => ({ x: p.x, y: p.y / factors[p.dow], date: p.date })), options);
@@ -113,6 +113,8 @@ function fitOwn(points, cfg, parentDow) {
     n: wrapper.kept.length,
     observed: { xMin: wrapper.xMin, xMax: wrapper.xMax },
     backfit: { iterations, converged },
+    // 자동 구간 선택이 고른 시작일. event=true면 그 시작일이 신규 소재 출시일 후보였다.
+    regime: wrapper.regime?.start ? { start: wrapper.regime.start, event: Boolean(wrapper.regime.candidate?.event) } : null,
   };
 }
 
@@ -157,16 +159,17 @@ function fitBorrowed(points, cfg, parent) {
  * 노드 곡선. 점이 충분하면 자체 적합, 부족하면 부모 모양 차용, 둘 다 안 되면 null(판정 불가).
  * @param {Map} days 노드 일별 합계
  * @param {object} cfg 노드 실효 config
- * @param {{to?:string, exclude?:Set<string>, parent?:object, regimeMode?:string, trendType?:string}} opts
+ * @param {{to?:string, exclude?:Set<string>, parent?:object, regimeMode?:string, trendType?:string, regimeCandidateDates?:string[]}} opts
  *   trendType: 이 노드만 모형 계열을 고정한다(5-3 곡선 검증에서 사용자가 확정한 모형).
+ *   regimeCandidateDates: 자동 구간 선택이 반드시 평가할 경계 후보(큰 신규 소재 출시일, spec §6.6.4 [C]).
  */
-export function fitNodeCurve(days, cfg, { to, exclude, parent, regimeMode, trendType } = {}) {
+export function fitNodeCurve(days, cfg, { to, exclude, parent, regimeMode, trendType, regimeCandidateDates } = {}) {
   const points = curvePoints(days, { to, exclude });
   const curvePatch = { ...(regimeMode ? { regimeMode } : {}), ...(trendType ? { trendType } : {}) };
   const effective = Object.keys(curvePatch).length ? { ...cfg, curve: { ...cfg.curve, ...curvePatch } } : cfg;
   const threshold = Math.max(cfg.curve.minPoints, cfg.curve.borrowParentBelow);
   if (points.length >= threshold) {
-    const own = fitOwn(points, effective, parent?.cprDow ?? NEUTRAL_DOW);
+    const own = fitOwn(points, effective, parent?.cprDow ?? NEUTRAL_DOW, regimeCandidateDates);
     if (own) return own;
   }
   return fitBorrowed(points, cfg, parent);

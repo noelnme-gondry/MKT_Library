@@ -43,6 +43,17 @@
   .planner-forecast__notes li + li { margin-top: .25rem; }
   .planner-cell-note { display: block; color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
   @media (max-width: 560px) { .planner-forecast__stats { grid-template-columns: minmax(0, 1fr); } }
+  .planner-scenarios { display: grid; gap: .5rem; margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
+  .planner-scenarios__row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  .planner-scenarios__row label { font-size: var(--fs-sm); font-weight: 600; }
+  .planner-scenarios__row select { min-width: 0; max-width: 100%; min-height: 2.25rem; }
+  .planner-scenarios__check { display: inline-flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); font-weight: 600; }
+  .planner-scenarios__result { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.55; }
+  .planner-creatives .planner-scenarios__result { margin-top: .75rem; }
+  .planner-plan-review__list { display: grid; gap: .75rem; margin: .75rem 0 0; padding: 0; list-style: none; }
+  .planner-plan-review__list li { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
+  .planner-plan-review__list li p { margin: 0; font-size: var(--fs-sm); line-height: 1.55; }
+  .planner-plan-review__list .btn { justify-self: start; }
 }
 
 @layer tokens {
@@ -6230,6 +6241,11 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 .weekly-review-record__forecast-ticket dt { color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); }
 .weekly-review-record__forecast-ticket dd { margin: 4px 0 0; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); }
 .weekly-review-record__forecast-pending { padding: 9px 10px; border-top: 1px solid var(--border-subtle); }
+.weekly-review-record__plan-match { padding: 9px 10px; }
+.weekly-review-record__plan-match span { color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 700; }
+.weekly-review-record__plan-match p { margin: 4px 0 0; color: var(--text-primary); font-size: var(--fs-sm); line-height: 1.5; }
+.weekly-review-record__plan-match p + p { color: var(--text-muted); font-size: var(--fs-xs); }
+.weekly-review-record__plan-match .btn { margin-top: 8px; }
 .weekly-review-record__forecast-pending span { color: var(--warning); font-size: var(--fs-xs); font-weight: 700; }
 .weekly-review-record__forecast-pending p { margin: 3px 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.45; }
 .weekly-review-record__forecast-pending a { display: inline-flex; margin-top: 6px; color: var(--primary); font-size: var(--fs-xs); font-weight: 700; text-decoration: none; }

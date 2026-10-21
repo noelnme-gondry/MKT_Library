@@ -6,6 +6,7 @@ import WeeklyReview, { buildBrief } from "@/components/WeeklyReview";
 import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { useAppStore } from "@/store/useDataStore";
 import { appendDecisionEpisode, decisionEpisodeList } from "@/lib/decisionReview";
+import { serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
 
 describe("WeeklyReview", () => {
   beforeEach(() => {
@@ -193,6 +194,49 @@ describe("WeeklyReview", () => {
 
     expect(screen.getByText("10원 · CPA")).toBeTruthy();
     expect(screen.getByRole("link", { name: /원본 도구 열기/ }).getAttribute("href")).toBe("/tools/brand-campaign-incrementality");
+  });
+
+  it("compares a saved 5-3 plan with the efficiency CSV in memory and records it as an observation", async () => {
+    const baseGroups = useAppStore.getState().csvGroups;
+    const plan = serializeAllocationPlan({
+      start: "2020-01-02", days: 7, metric: "installs", unitField: "channel", byPlatform: false,
+      targets: [{ unit: "KR · Meta", cost: 7000, results: 70 }, { unit: "KR · TikTok", cost: 7000, results: 35 }],
+    });
+    const mappedRows = [];
+    for (let day = 1; day <= 9; day += 1) {
+      const date = `2020-01-${String(day).padStart(2, "0")}`;
+      mappedRows.push({ date, country: "KR", channel: "Meta", cost: "1000", installs: "10" });
+      mappedRows.push({ date, country: "KR", channel: "TikTok", cost: "1000", installs: "4" });
+    }
+    useAppStore.setState({
+      csvGroups: { ...baseGroups, efficiency: { raw: mappedRows, headers: [], mapping: {}, fileName: "eff.csv", currency: "KRW", canonicalData: { records: [] }, mappedRows } },
+      decisionRecords: [{
+        id: "plan_1", toolId: "5-3", action: "배분안 적용", metric: "CPI", baseline: "₩133", reviewDate: "2020-01-09",
+        comparisonKind: "allocation_plan", allocationPlan: plan, forecastPeriod: "2020-01-02", actual: "", learning: "", status: "pending",
+      }],
+    });
+    render(<WeeklyReview />);
+    expect(screen.getByText("배분안 자동 대조")).toBeTruthy();
+    expect(screen.getByText(/2020-01-02–2020-01-08 · 대상 2개/)).toBeTruthy();
+    const summary = screen.getByText(/실제 CPI ₩143 · 계획 ₩133/);
+    expect(summary.textContent).toContain("모형 오차");
+    expect(screen.getByText(/예측 오차가 기준을 넘은 대상: KR · TikTok/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "이 대조 결과 기록" }));
+    confirmReviewSave();
+    await vi.waitFor(() => expect(useAppStore.getState().decisionRecords[0].status).toBe("reviewed"));
+    const record = useAppStore.getState().decisionRecords[0];
+    expect(record.actual).toContain("실제 CPI ₩143");
+    expect(decisionEpisodeList(record)).toHaveLength(1);
+    expect(record.learning).toContain("KR · TikTok");
+  });
+
+  it("says a saved plan is waiting for data when the CSV does not cover its period", () => {
+    const plan = serializeAllocationPlan({ start: "2099-01-02", days: 7, metric: "installs", unitField: "channel", byPlatform: false, targets: [{ unit: "KR · Meta", cost: 1, results: 1 }] });
+    useAppStore.setState({ decisionRecords: [{ id: "plan_2", toolId: "5-3", action: "Plan", metric: "CPI", baseline: "₩1", reviewDate: "2099-01-09", comparisonKind: "allocation_plan", allocationPlan: plan, actual: "", learning: "", status: "pending" }] });
+    render(<WeeklyReview locale="en" />);
+    expect(screen.getByText("Automatic plan comparison")).toBeTruthy();
+    expect(screen.getByText("No data to compare yet")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open budget allocation" }).getAttribute("href")).toBe("/en/tools/budget-allocation");
   });
 
   it("returns a response decision to its saved analysis stage and labels a manual rerun honestly", () => {

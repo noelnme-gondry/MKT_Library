@@ -5,6 +5,7 @@ import { getRowGroupKey, computeAllocSummary } from "@/utils/budgetAllocTool";
 import { deltaOnlyPlan, nodeBounds, planAllocation } from "./plannerAllocate";
 import { nodeKey, normalizePlannerRows } from "./plannerData";
 import { forecastAllocation, plannerNodesFor, preparePlanner } from "./runBudgetPlanner";
+import { creativeOffOverrides, fatigueStarts, learningBudgetWarnings, loserOffCandidates, newCreativeLaunches } from "./plannerScenarios";
 
 /** 실행 방식. 이번 실행안 = config의 일 변경폭 제한, 목표 배분 = 변경폭 제한 없음(곡선·상태 규칙은 같다). */
 export const ALLOCATION_PACES = Object.freeze({
@@ -90,13 +91,13 @@ function recentCprOf(planner, plannerKey) {
   return result > 0 && cost > 0 ? cost / result : null;
 }
 
-function patchedNodes(planner, { pace = "paced", holds = {} }) {
+function patchedNodes(planner, { pace = "paced", holds = {}, curveOverrides = null }) {
   const fixed = {};
   for (const [unit, cost] of Object.entries(holds)) {
     const key = planner.toPlanner.get(unit);
     if (key) fixed[key] = cost;
   }
-  return plannerNodesFor(planner, { fixed, optimizerPatch: ALLOCATION_PACES[pace] ?? null, fixedSource: "low_confidence" });
+  return plannerNodesFor(planner, { fixed, optimizerPatch: ALLOCATION_PACES[pace] ?? null, fixedSource: "low_confidence", curveOverrides });
 }
 
 /** 노드별 상·하한(5-3의 관측 상한 자리). 곡선이 없는 대상도 현재 지출에 고정되므로 계획을 막지 않는다. */
@@ -124,8 +125,8 @@ export function plannerEvidence(planner, { pace = "paced", holds = {} } = {}) {
  * 예산 하나의 배분을 5-3 모양으로. items[].channel은 5-3 단위 키.
  * 곡선이 없어 현재 지출로 고정한 대상의 결과는 최근 7일 평균 CPR로 세고 그 사실을 표시한다.
  */
-export function allocationAt(planner, budget, { pace = "paced", holds = {}, withForecast = false } = {}) {
-  const nodes = patchedNodes(planner, { pace, holds });
+export function allocationAt(planner, budget, { pace = "paced", holds = {}, withForecast = false, curveOverrides = null, forecastOptions = {} } = {}) {
+  const nodes = patchedNodes(planner, { pace, holds, curveOverrides });
   const globalCfg = ALLOCATION_PACES[pace] ? { ...planner.cfg, optimizer: { ...planner.cfg.optimizer, ...ALLOCATION_PACES[pace] } } : planner.cfg;
   const plan = planAllocation(nodes, budget, globalCfg);
   const items = plan.items.map((item) => {
@@ -166,9 +167,11 @@ export function allocationAt(planner, budget, { pace = "paced", holds = {}, with
     source: "planner",
     pace,
     warnings: plan.warnings,
+    // 배정 예산으로 신규 소재 학습을 끝내기 어려운 경우(spec §6.6.4 [F]).
+    learningWarnings: learningBudgetWarnings(planner, plan.items).map((warning) => ({ ...warning, unit: planner.toUnit.get(warning.nodeKey) })),
   };
   if (!withForecast) return { allocation };
-  const forecast = forecastAllocation(planner, plan);
+  const forecast = forecastAllocation(planner, plan, { ...forecastOptions, curveOverrides });
   return {
     allocation,
     forecast: { ...forecast, nodes: forecast.nodes.map((node) => ({ ...node, unit: planner.toUnit.get(node.key) })) },
@@ -213,4 +216,68 @@ export function plannerScenarios(planner, dailyBudget, { pace = "paced", holds =
     const totCost = allocation.totalAllocated;
     return { m, budget: dailyBudget * m, totResults, totCost, avgCpr: totResults > 0 ? totCost / totResults : null, ...(includeItems ? { items: allocation.items } : {}) };
   });
+}
+
+function forecastTotals(forecast) {
+  return forecast ? { cost: forecast.total.cost, results: forecast.total.results, cpr: forecast.total.cpr, lo: forecast.total.lo, hi: forecast.total.hi } : null;
+}
+
+/**
+ * "기존보다 나쁜 소재를 끄면" (spec §6.6.4 [F]·§8.1). 자동 반영하지 않고 별도 안으로만 낸다.
+ * 구성 효과만 반영한다 — 남은 소재가 늘어난 몫을 같은 효율로 쓴다는 가정이며, 증액분 효율은 알 수 없다.
+ * @returns {null | {offs:object[], base:object, scenario:object, allocation:object}}
+ */
+export function loserOffScenarioAt(planner, budget, { pace = "paced", holds = {} } = {}) {
+  const offs = loserOffCandidates(planner);
+  if (!offs.length || !(budget > 0)) return null;
+  const { curveOverrides, effects } = creativeOffOverrides(planner, offs);
+  const usable = effects.filter((effect) => curveOverrides.has(effect.nodeKey));
+  if (!usable.length) return { offs: effects.map((effect) => ({ ...effect, unit: planner.toUnit.get(effect.nodeKey) })), base: null, scenario: null, allocation: null };
+  const base = allocationAt(planner, budget, { pace, holds, withForecast: true });
+  const scenario = allocationAt(planner, budget, { pace, holds, withForecast: true, curveOverrides });
+  return {
+    offs: effects.map((effect) => ({ ...effect, unit: planner.toUnit.get(effect.nodeKey) })),
+    base: forecastTotals(base.forecast),
+    scenario: forecastTotals(scenario.forecast),
+    horizonDays: base.forecast.horizonDays,
+    allocation: scenario.allocation,
+  };
+}
+
+/**
+ * "이 대상에 새 소재를 넣으면" (spec §8.1). 배분은 그대로 두고 예측에 가상 출시를 더한다.
+ * 과거 출시가 모자라면 config 기본 프로파일(가정값)을 쓰고 assumed로 알린다.
+ */
+export function newCreativeScenarioAt(planner, budget, unit, { pace = "paced", holds = {}, startOffsetDays = 0 } = {}) {
+  const key = planner.toPlanner.get(unit);
+  if (!key || !(budget > 0)) return null;
+  const extraLaunches = newCreativeLaunches(planner, key, { startOffsetDays });
+  const launch = extraLaunches.get(key)?.[0];
+  const base = allocationAt(planner, budget, { pace, holds, withForecast: true });
+  const scenario = allocationAt(planner, budget, { pace, holds, withForecast: true, forecastOptions: { extraLaunches } });
+  const baseNode = base.forecast.nodes.find((node) => node.key === key);
+  const scenarioNode = scenario.forecast.nodes.find((node) => node.key === key);
+  return {
+    unit,
+    assumed: Boolean(launch?.profile.assumed),
+    launches: launch?.profile.launches ?? 0,
+    buckets: launch?.profile.buckets ?? [],
+    base: forecastTotals(base.forecast),
+    scenario: forecastTotals(scenario.forecast),
+    node: baseNode && scenarioNode ? { baseResults: baseNode.results, scenarioResults: scenarioNode.results, baseCpr: baseNode.cpr, scenarioCpr: scenarioNode.cpr } : null,
+  };
+}
+
+/** 주력 소재 피로를 반영한 예측(spec §8 — 시나리오 전용). 피로가 예측 기간에 들어오는 대상이 없으면 null. */
+export function fatigueScenarioAt(planner, budget, { pace = "paced", holds = {} } = {}) {
+  const starts = fatigueStarts(planner);
+  if (!starts.size || !(budget > 0)) return null;
+  const base = allocationAt(planner, budget, { pace, holds, withForecast: true });
+  const scenario = allocationAt(planner, budget, { pace, holds, withForecast: true, forecastOptions: { applyFatigue: true } });
+  return {
+    targets: [...starts].map(([key, start]) => ({ unit: planner.toUnit.get(key), ...start })).sort((a, b) => a.date.localeCompare(b.date) || String(a.unit).localeCompare(String(b.unit))),
+    penalty: planner.cfg.forecast.fatiguePenalty,
+    base: forecastTotals(base.forecast),
+    scenario: forecastTotals(scenario.forecast),
+  };
 }

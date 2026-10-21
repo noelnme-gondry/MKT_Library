@@ -9,6 +9,7 @@ import { fitNodeCurve } from "./plannerCurve";
 import { ancestorKey, dailyByNode, deepestPresentLevel, normalizePlannerRows } from "./plannerData";
 import { backtestPlanner, forecastPlan } from "./plannerForecast";
 import { decomposePlannerPvm } from "./plannerPvm";
+import { fatigueStarts, learningBudgetWarnings } from "./plannerScenarios";
 import { addDays, isKrLunarHoliday } from "./plannerStats";
 
 function costSeries(days) {
@@ -93,7 +94,11 @@ export function preparePlanner(mappedRows, { configPatch = {}, asOf: asOfInput, 
     const trendType = trendOverrideOf?.(node.path) || undefined;
     const judged = assessConformity(node, nodeCfg, { asOf, parent: parentCurveAt(pKey, addDays(asOf, -nodeCfg.conformity.recentDays)), learningDates: creative?.learningDates, exclude, trendType });
     const policy = nodeCfg.optimizer.statePolicy[judged.state];
-    const curve = fitNodeCurve(node.days, nodeCfg, { to: asOf, exclude, parent: parentCurveAt(pKey, asOf), regimeMode: policy === "recent_regime" && nodeCfg.curve.regimeMode !== "manual" ? "auto" : undefined, trendType });
+    // 큰 신규 소재의 출시일은 곡선이 바뀌었을 수 있는 날이다 — 자동 구간 선택이 그 날짜를 꼭 평가하게 한다.
+    const regimeCandidateDates = (creative?.entries ?? [])
+      .filter((entry) => !entry.unknownAge && entry.share >= nodeCfg.events.minCreativeShare)
+      .map((entry) => entry.launch);
+    const curve = fitNodeCurve(node.days, nodeCfg, { to: asOf, exclude, parent: parentCurveAt(pKey, asOf), regimeMode: policy === "recent_regime" && nodeCfg.curve.regimeMode !== "manual" ? "auto" : undefined, trendType, regimeCandidateDates });
     // 범위를 판정할 이력이 모자라도 전체 기간 곡선이 있으면 배분은 할 수 있다 — "판정 불가"와 "곡선 없음"을 가른다.
     const conformity = judged.state === "INSUFFICIENT" && curve ? { ...judged, state: "UNVERIFIED" } : judged;
     const recentFrom = addDays(asOf, -6);
@@ -157,6 +162,7 @@ export function preparePlanner(mappedRows, { configPatch = {}, asOf: asOfInput, 
       conformity: { ...item.conformity, curve: undefined },
       curveSource: item.curve?.source ?? null,
       curveType: item.curve?.wrapper.model.type ?? null,
+      curveRegime: item.curve?.regime ?? null,
       current: item.current,
       diagnosis,
       creative: creativeInfo ? {
@@ -214,40 +220,63 @@ export function preparePlanner(mappedRows, { configPatch = {}, asOf: asOfInput, 
       judgment: entry.judgment ?? null,
       fatigue: entry.fatigue ?? null,
       profileAssumed: entry.profile?.assumed ?? null,
+      learningNeed: entry.learningNeed ?? null,
     })),
   };
 }
 
-/** 예산 하나에 대한 배분(+선택적으로 예측). optimizerPatch는 실행 방식처럼 예산 단계에서 바꾸는 제약만 받는다. */
-export function allocatePlanner(ctx, totalBudget, { fixed = {}, optimizerPatch = null, withForecast = true } = {}) {
-  const nodes = plannerNodesFor(ctx, { fixed, optimizerPatch });
+/**
+ * 예산 하나에 대한 배분(+선택적으로 예측). optimizerPatch는 실행 방식처럼 예산 단계에서 바꾸는 제약만 받는다.
+ * curveOverrides: 시나리오가 바꾼 노드 곡선(예: 소재 OFF의 구성 효과). 배분과 예측이 같은 곡선을 쓴다.
+ */
+export function allocatePlanner(ctx, totalBudget, { fixed = {}, optimizerPatch = null, withForecast = true, curveOverrides = null, forecastOptions = {} } = {}) {
+  const nodes = plannerNodesFor(ctx, { fixed, optimizerPatch, curveOverrides });
   const globalCfg = optimizerPatch ? mergePlannerConfig(ctx.cfg, { optimizer: optimizerPatch }) : ctx.cfg;
   const budget = Number.isFinite(totalBudget) && totalBudget >= 0 ? totalBudget : nodes.reduce((acc, node) => acc + node.current, 0);
   const allocation = planAllocation(nodes, budget, globalCfg);
+  allocation.learningWarnings = learningBudgetWarnings(ctx, allocation.items);
   const deltaPlan = deltaOnlyPlan(nodes, budget, globalCfg);
-  const forecast = withForecast ? forecastAllocation(ctx, allocation) : null;
+  const forecast = withForecast ? forecastAllocation(ctx, allocation, { ...forecastOptions, curveOverrides }) : null;
   return { allocation, deltaPlan, forecast };
 }
 
 /** 배분 단계 노드: 실행 방식 제약(optimizerPatch)과 호출 화면의 고정값(fixed)을 입힌다. */
-export function plannerNodesFor(ctx, { fixed = {}, optimizerPatch = null, fixedSource = "held" } = {}) {
+export function plannerNodesFor(ctx, { fixed = {}, optimizerPatch = null, fixedSource = "held", curveOverrides = null } = {}) {
   return ctx.allocationNodes.map((node) => ({
     ...node,
+    ...(curveOverrides?.has(node.key) ? { curve: curveOverrides.get(node.key) } : {}),
     cfg: optimizerPatch ? mergePlannerConfig(node.cfg, { optimizer: optimizerPatch }) : node.cfg,
     fixedCost: Object.hasOwn(fixed, node.key) ? fixed[node.key] : undefined,
     fixedSource,
   }));
 }
 
-/** 배분 결과의 요일별 성과 예측. 학습·램프 중 신규 소재는 출시 프로파일만큼 비싸게 본다. */
-export function forecastAllocation(ctx, allocation) {
-  return forecastPlan(allocation.items.map((item) => {
+/**
+ * 배분 결과의 요일별 성과 예측. 학습·램프 중 신규 소재는 출시 프로파일만큼 비싸게 본다.
+ * @param {{applyFatigue?:boolean, extraLaunches?:Map<string, object[]>, curveOverrides?:Map}} options
+ *   applyFatigue: 주력 소재의 피로 예상일부터 CPR을 fatiguePenalty만큼 올린다(시나리오 전용, spec §8)
+ *   extraLaunches: "새 소재를 넣으면" 시나리오의 가상 출시(spec §8.1)
+ */
+export function forecastAllocation(ctx, allocation, { applyFatigue = ctx.cfg.forecast.applyFatigue, extraLaunches = null, curveOverrides = null } = {}) {
+  const fatigue = applyFatigue ? fatigueStarts(ctx) : new Map();
+  const cfg = applyFatigue === ctx.cfg.forecast.applyFatigue ? ctx.cfg : mergePlannerConfig(ctx.cfg, { forecast: { applyFatigue } });
+  const forecast = forecastPlan(allocation.items.map((item) => {
     const data = ctx.perNode.get(item.key);
     const launches = (ctx.lifecycle.byNode.get(item.key)?.entries ?? [])
       .filter((entry) => !entry.ended && !entry.unknownAge && ["LEARNING", "RAMPING"].includes(entry.state))
       .map((entry) => ({ age: entry.age, profile: entry.profile }));
-    return { key: item.key, label: item.label, cost: item.proposed, curve: data.curve, costDow: data.costDow, launches };
-  }), { startDate: addDays(ctx.asOf, 1), cfg: ctx.cfg });
+    return {
+      key: item.key,
+      label: item.label,
+      cost: item.proposed,
+      curve: curveOverrides?.get(item.key) ?? data.curve,
+      costDow: data.costDow,
+      launches: [...launches, ...(extraLaunches?.get(item.key) ?? [])],
+      fatigueFrom: fatigue.get(item.key)?.date ?? null,
+    };
+  }), { startDate: addDays(ctx.asOf, 1), cfg });
+  forecast.flags.fatigueNodes = fatigue.size;
+  return forecast;
 }
 
 /** 한 번에 실행: 준비 + 배분 + 예측. totalBudget 생략 시 현재 일 지출 합. */

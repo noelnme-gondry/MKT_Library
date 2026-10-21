@@ -226,29 +226,56 @@ export function decomposePlannerPvm(rowsB, rowsR, { levels, finestLevel, groupLe
 }
 
 /**
- * 계획 vs 실제 (spec §8.2). mix = 계획과 다른 소진 비중(실행 편차), rate = 노드별 CPR 예측 오차(모형 오차).
+ * 계획 vs 실제 (spec §8.2). 차이를 "계획과 다르게 쓴 지출 비중"(실행 편차)과 "대상별 효율 예측 오차"(모형 오차)로 나눈다.
+ * 결과량 비중 PVM은 여기 쓰면 안 된다 — 효율이 빗나가면 결과 비중이 같이 움직여, 계획대로 쓴 지출도
+ * 실행 편차로 잡힌다(실측). 지출 1원당 결과 E = Σ 지출비중 × 효율 이 지출 비중에 선형이므로 이것을
+ * Bennet 분해한다(무잔차·중첩 항등식은 PVM과 같다): ΔE = Σ(ēᵢ − Ē)·Δwᵢ [실행] + Σ w̄ᵢ·Δeᵢ [모형].
+ * 화면은 CPR로 읽으므로 각 항을 ΔCPR/ΔE로 비례 환산한다(합은 ΔCPR과 정확히 같다).
  * @param {{key:string, cost:number, results:number}[]} planned 기간 합계 예측
  * @param {{key:string, cost:number, results:number}[]} actual 같은 기간 실제
  */
 export function reviewPlanVsActual(planned, actual, cfg) {
-  const toMap = (items) => new Map(items.map((item) => [item.key, { cost: item.cost, result: item.results }]));
-  const decomposed = PVM_MATH.decompose(toMap(planned), toMap(actual));
-  if (!decomposed) return { ok: false, code: "NOT_IDENTIFIED" };
-  const nodes = decomposed.entities.map((entity) => {
-    const cprPlanned = entity.result1 > 0 ? entity.cost1 / entity.result1 : null;
-    const cprActual = entity.result2 > 0 ? entity.cost2 / entity.result2 : null;
-    const modelError = cprPlanned && cprActual ? cprActual / cprPlanned - 1 : null;
+  const p = new Map(planned.map((item) => [item.key, item]));
+  const a = new Map(actual.map((item) => [item.key, item]));
+  const keys = [...new Set([...p.keys(), ...a.keys()])].sort();
+  const total = (map, field) => [...map.values()].reduce((acc, item) => acc + (Number(item[field]) || 0), 0);
+  const C1 = total(p, "cost");
+  const C2 = total(a, "cost");
+  const R1 = total(p, "results");
+  const R2 = total(a, "results");
+  if (!(C1 > 0) || !(C2 > 0) || !(R1 > 0) || !(R2 > 0)) return { ok: false, code: "NOT_IDENTIFIED" };
+  const E1 = R1 / C1;
+  const E2 = R2 / C2;
+  const Ebar = (E1 + E2) / 2;
+  const cpr1 = C1 / R1;
+  const cpr2 = C2 / R2;
+  const scale = E2 !== E1 ? (cpr2 - cpr1) / (E2 - E1) : 0;
+  const nodes = keys.map((key) => {
+    const c1 = Number(p.get(key)?.cost) || 0;
+    const r1 = Number(p.get(key)?.results) || 0;
+    const c2 = Number(a.get(key)?.cost) || 0;
+    const r2 = Number(a.get(key)?.results) || 0;
+    const w1 = c1 / C1;
+    const w2 = c2 / C2;
+    // 한쪽에 지출이 없으면 그 쪽 효율을 다른 쪽 값으로 둔다 — 진입·제외는 통째로 실행 편차다.
+    const e1 = c1 > 0 ? r1 / c1 : c2 > 0 ? r2 / c2 : 0;
+    const e2 = c2 > 0 ? r2 / c2 : e1;
+    const mixE = ((e1 + e2) / 2 - Ebar) * (w2 - w1);
+    const rateE = ((w1 + w2) / 2) * (e2 - e1);
+    const measured = c1 > 0 && c2 > 0;
+    const modelError = measured && r1 > 0 && r2 > 0 ? (r1 / c1) / (r2 / c2) - 1 : null;
     return {
-      key: entity.key,
-      executionDeviation: entity.mix,
-      modelErrorContribution: entity.rate,
-      cprPlanned,
-      cprActual,
+      key,
+      executionDeviation: mixE * scale,
+      modelErrorContribution: rateE * scale,
+      cprPlanned: r1 > 0 ? c1 / r1 : null,
+      cprActual: r2 > 0 ? c2 / r2 : null,
       modelError,
-      largeError: modelError != null && Math.abs(modelError) > cfg.pvm.reviewErrorThreshold,
+      // 계획엔 결과가 있었는데 실제 결과가 0이면 오차는 무한대 — 큰 오차다.
+      largeError: (measured && r1 > 0 && r2 === 0) || (modelError != null && Math.abs(modelError) > cfg.pvm.reviewErrorThreshold),
     };
   });
-  return { ok: true, plannedCpa: decomposed.CPA1, actualCpa: decomposed.CPA2, deltaCpa: decomposed.deltaCpa, nodes };
+  return { ok: true, plannedCpa: cpr1, actualCpa: cpr2, deltaCpa: cpr2 - cpr1, nodes };
 }
 
 /** 모형 오차가 큰 리뷰가 연속 N회면 그 노드의 신뢰도를 한 단계 낮춘다. */

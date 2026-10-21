@@ -22,6 +22,7 @@ import { decisionDataOrigin } from "@/lib/dataOrigin";
 import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import DecisionPlanFields from "./DecisionPlanFields";
 import { serializeDecisionPlan, decisionPlanError } from "@/lib/decisionPlan";
+import { parseAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
 import ProjectReviewLink from "@/components/ProjectReviewLink";
 
 function nextWeekDate() {
@@ -63,6 +64,7 @@ function createDraft(prefill = {}, defaults = {}) {
     forecastLower: text(source.forecastLower),
     forecastUpper: text(source.forecastUpper),
     forecastSourceThrough: text(source.forecastSourceThrough),
+    allocationPlan: text(source.allocationPlan),
     baseline: text(source.baseline),
     baselineDate: /^\d{4}-\d{2}-\d{2}$/.test(text(source.baselineDate)) ? text(source.baselineDate) : (defaults.baselineDate || ""),
     comparisonWindowDays: String(Number(source.comparisonWindowDays) || defaults.comparisonWindowDays || 7),
@@ -148,6 +150,8 @@ const COPY = {
     forecastSnapshot: "다음 CSV와 자동 대조",
     forecastRange: "참고범위",
     forecastSourceThrough: "예측 기준 데이터",
+    planSnapshot: "다음 CSV와 배분안 자동 대조",
+    planPeriod: (start, days, count) => `${start}부터 ${days}일 · 대상 ${count}개`,
     baseline: "현재 기준값 (선택)",
     baselineDate: "기준값 데이터 기준일",
     comparisonWindow: "비교 기간 (일)",
@@ -240,6 +244,8 @@ const COPY = {
     forecastSnapshot: "Match with the next CSV",
     forecastRange: "Reference range",
     forecastSourceThrough: "Forecast data through",
+    planSnapshot: "Match this plan with the next CSV",
+    planPeriod: (start, days, count) => `${days} days from ${start} · ${count} ${count === 1 ? "target" : "targets"}`,
     baseline: "Current baseline (optional)",
     baselineDate: "Baseline data through",
     comparisonWindow: "Comparison window (days)",
@@ -323,6 +329,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     return stage ? `${normalizedPath}?stage=${stage}` : normalizedPath;
   }, [pathname, searchParams, sourcePath]);
   const [draft, setDraft] = useState(() => createDraft(decisionPrefill, draftDefaults));
+  const planTicket = useMemo(() => (draft.comparisonKind === "allocation_plan" ? parseAllocationPlan(draft.allocationPlan) : null), [draft.comparisonKind, draft.allocationPlan]);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [draftBasis, setDraftBasis] = useState(null);
   const evidenceSignature = JSON.stringify([serializeReviewEvidence(analysisEvidence), decisionPrefillKey, activeDataGroup, dashboardFilter, csvData?.currency]);
@@ -447,6 +454,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       forecastLower: draft.forecastLower,
       forecastUpper: draft.forecastUpper,
       forecastSourceThrough: draft.forecastSourceThrough,
+      allocationPlan: draft.allocationPlan,
       baseline: draft.baseline.trim(),
       baselineDate: draft.baselineDate,
       comparisonWindowDays: draft.comparisonWindowDays,
@@ -587,6 +595,14 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <span>{t.sourceConclusion}</span>
             <strong>{draft.conclusion}</strong>
             {draft.sourcePeriod && <small>{t.sourcePeriod} · {draft.sourcePeriod}</small>}
+          </div>
+        )}
+
+        {draft.comparisonKind === "allocation_plan" && planTicket && (
+          <div className="decision-review__forecast-ticket">
+            <span>{t.planSnapshot}</span>
+            <strong>{t.planPeriod(planTicket.start, planTicket.days, planTicket.targets.length)} · {draft.metric} {draft.baseline}</strong>
+            {draft.forecastSourceThrough && <small>{t.forecastSourceThrough} · {draft.forecastSourceThrough}</small>}
           </div>
         )}
 

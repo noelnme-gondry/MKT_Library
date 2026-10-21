@@ -9,6 +9,7 @@ import { isRerunGoalMetric } from "@/lib/decisionGoals";
 import { serializeDecisionPlan, needsExplicitPlanReview } from "@/lib/decisionPlan";
 import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import { parseNumericStrict } from "@/utils/parseNumeric";
+import { parseAllocationPlan, serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
 import { reimportableCsvBody, restoreCsvRecord } from "@/utils/download";
 
 // v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
@@ -16,7 +17,9 @@ import { reimportableCsvBody, restoreCsvRecord } from "@/utils/download";
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
 // v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 15;
+// v16: 5-3 배분안 스냅샷(`allocationPlan`, comparisonKind "allocation_plan"). 저장한 배분안을 새 CSV의
+// 같은 기간·대상 실제값과 대조해 실행 편차와 모형 오차로 나눈다(spec §8.2). 옛 레코드는 빈 칸이다.
+export const DECISION_REVIEW_SCHEMA_VERSION = 16;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "schemaVersion",
@@ -58,6 +61,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "forecastLower",
   "forecastUpper",
   "forecastSourceThrough",
+  "allocationPlan",
   "baseline",
   "baselineDate",
   "comparisonWindowDays",
@@ -109,6 +113,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "forecast_lower",
   "forecast_upper",
   "forecast_source_through",
+  "allocation_plan",
   "baseline",
   "baseline_date",
   "comparison_window_days",
@@ -145,6 +150,8 @@ const FIELD_LIMITS = Object.freeze({
   episodes: MAX_DECISION_EPISODES * ((ACTUAL_TEXT_LIMIT + LEARNING_TEXT_LIMIT + 40) * 9 + 3),
   baseline: 160,
   comparisonScope: 5000,
+  // 대상 60개 × (인코딩된 이름 최대 160자×9 + 숫자 2개) — 넘으면 스냅샷 자체를 만들지 않는다.
+  allocationPlan: 60 * (160 * 9 + 40) + 64,
   datasetSnapshot: 1200,
   reviewQuestion: 500,
   sourcePeriod: 160,
@@ -531,6 +538,7 @@ function hasComparableMetric(metric) {
 // 기록해야 하는 진단형 결정을 구분한다. 후자를 자동 성과처럼 만들지 않는다.
 export function decisionReviewFollowUpMode(record = {}) {
   if (String(record.comparisonKind ?? record.comparison_kind) === "forecast_actual") return "forecast_auto";
+  if (String(record.comparisonKind ?? record.comparison_kind) === "allocation_plan") return "plan_auto";
   if (needsExplicitPlanReview(record.reviewPlan)) return "rerun_manual";
   // 도구가 "이 목표는 효율 CSV로 계산되지 않는다"고 선언했으면 그 선언이 이긴다.
   // 표시 라벨을 정규식으로 읽어 추측하는 것보다 정확하다 — 라벨은 번역·리네임으로 바뀐다.
@@ -604,7 +612,8 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   const learning = asText(field(row, "learning"), FIELD_LIMITS.learning);
   const reviewedAt = asTimestamp(field(row, "reviewedAt", "reviewed_at"));
   const locale = asText(field(row, "locale"), FIELD_LIMITS.locale).toLowerCase() === "en" ? "en" : "ko";
-  const comparisonKind = asText(field(row, "comparisonKind", "comparison_kind"), 24) === "forecast_actual" ? "forecast_actual" : "";
+  const comparisonKindText = asText(field(row, "comparisonKind", "comparison_kind"), 24);
+  const comparisonKind = ["forecast_actual", "allocation_plan"].includes(comparisonKindText) ? comparisonKindText : "";
   const record = {
     // Legacy records are normalized into the current allowlisted shape on read.
     // Record the written format; never erase user observations for a version bump.
@@ -644,6 +653,10 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     forecastLower: comparisonKind ? asFiniteNumberText(field(row, "forecastLower", "forecast_lower")) : "",
     forecastUpper: comparisonKind ? asFiniteNumberText(field(row, "forecastUpper", "forecast_upper")) : "",
     forecastSourceThrough: comparisonKind ? asDate(field(row, "forecastSourceThrough", "forecast_source_through")) : "",
+    // 재조립으로 한 번 더 거른다 — 깨진 스냅샷은 일부만 살리지 않고 버린다.
+    allocationPlan: comparisonKind === "allocation_plan"
+      ? serializeAllocationPlan(parseAllocationPlan(asText(field(row, "allocationPlan", "allocation_plan"), FIELD_LIMITS.allocationPlan)))
+      : "",
     baseline: asText(field(row, "baseline"), FIELD_LIMITS.baseline),
     baselineDate: asDate(field(row, "baselineDate", "baseline_date")),
     comparisonWindowDays: asComparisonWindowDays(field(row, "comparisonWindowDays", "comparison_window_days")),
