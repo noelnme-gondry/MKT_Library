@@ -1,3 +1,7 @@
+import { ADVANCED_TOOLS } from "@/lib/advanced-marketing/registry";
+import { executeAdvanced } from "@/lib/advanced-marketing/execute";
+import { advancedDemoOptions } from "@/lib/advanced-marketing/demo";
+import { projectAdvancedRows } from "@/lib/advanced-marketing/input";
 import { describe, it, expect } from "vitest";
 import { buildDemoCsv, buildMmmPriorDemo } from "./demoData";
 import { getMappedRows } from "./dashboardAggregator";
@@ -41,7 +45,10 @@ describe("demo sanity", () => {
       expect(demo.fileName).toMatch(/^demo_/);
       expect(demo.raw.length).toBeGreaterThan(0);
       expect(demo.headers.length).toBeGreaterThan(0);
-      expect(demo.raw.length, `${group} demo needs enough depth to expose its result views`).toBeGreaterThanOrEqual(DEMO_MINIMUM_ROWS[group]);
+      const advanced = ADVANCED_TOOLS.filter(tool => tool.group === group);
+      if (advanced.length) {
+        for (const tool of advanced) expect(executeAdvanced(tool.id, projectAdvancedRows(demo, tool.id), advancedDemoOptions(tool.id)).status).toBe("ready");
+      } else expect(demo.raw.length, `${group} demo needs enough depth to expose its result views`).toBeGreaterThanOrEqual(DEMO_MINIMUM_ROWS[group]);
     });
 
     // These three groups were previously sent to the efficiency fallback.

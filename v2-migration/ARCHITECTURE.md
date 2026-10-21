@@ -4,6 +4,15 @@
 > 규칙·함정·레시피는 루트 `../AGENTS.md`(정경). 이 파일은 "어디에 있나"만 답한다.
 > **새 도구·엔진·경로·상태 슬라이스를 추가/이동/삭제하면 같은 작업에서 이 파일도 갱신**(AGENTS.md §15).
 
+## 고객·실험·커머스 확장 (2026-10-21)
+
+- `lib/advanced-marketing/registry.js`: 5-32~5-43 도구·라우트·그룹·입력·설정 정본. `fields.js` 입력/의미 역할, `catalog.js` 검색·가이드·여정, `demo.js` 합성 예시.
+- `components/tools/AdvancedMarketingAnalysis.jsx`: 공용 업로더 → 명시 분석 → 취소 가능한 worker → 결과 카드·상세표·다운로드. `advanced-marketing/AdvancedFigure.jsx` 결과 표에서 파생한 SVG.
+- `lib/advanced-marketing/{input,execute,analysis.worker,errors}.js`: 원본 셀 보존, 엔진 디스패치, 작업 격리, KO/EN 오류. 기존 수학 엔진은 사용 경로를 변경하지 않음.
+- `utils/advanced-marketing/`: 거래·RFM(`transactionMath`), 순서 퍼널(`eventMath`), CUPED/프로모션/CRM(`experimentMath`), BG/NBD·Gamma–Gamma(`clvMath`), 지역 합성 대조(`geoMath`), B2B(`pipelineMath`), 조건부 로짓(`conjointMath`), 장바구니/도달/품질(`commerceMath`). `commonMath`는 새 엔진 전용 엄격 파서·추정 도구.
+- `lib/analysis-export/svgSnapshots.js`: 내보내기 시 명시된 SVG만 브라우저에서 PNG로 변환. 설정과 전체 결과는 XLSX 계산 시트에 보존.
+- 검증: `utils/advanced-marketing/engines.test.js`, `lib/advanced-marketing/catalog.test.js`, `AdvancedMarketingAnalysis.smoke.test.jsx`, `e2e/advanced-marketing.spec.js`.
+
 ## 1. 디렉토리 트리 (핵심)
 
 결제 기간 migration: `scripts/payment-periods.sql` ← `scripts/migrate-payment-periods.mjs` (npm prestart). 계정 연장 구간: `gop_paid_until` SQL 함수. 운영 알림: `src/instrumentation.js` → `lib/account/accountMailWorker.js` → `accountMail.js`.

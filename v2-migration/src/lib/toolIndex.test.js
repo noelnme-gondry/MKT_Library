@@ -1,3 +1,4 @@
+import { TOOL_JOURNEY } from "./toolConnections";
 import { describe, expect, it } from "vitest";
 import { allToolIndexEntries, PUBLISHED_TOOL_IDS, toolIndexByStage, toolIndexEntry } from "@/lib/toolIndex";
 
@@ -41,6 +42,6 @@ describe("toolIndex", () => {
   });
 
   it("스테이지 순서는 여정 순서를 따른다", () => {
-    expect(toolIndexByStage().map((stage) => stage.id)).toEqual(["monitor", "baseline", "budget", "creative", "store", "prove", "contribution"]);
+    expect(toolIndexByStage().map((stage) => stage.id)).toEqual(TOOL_JOURNEY.map(stage => stage.id));
   });
 });

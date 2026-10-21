@@ -1,8 +1,10 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { getSopLastModified } from "@/lib/sopEditorial";
 
 // sitemap의 lastmod는 페이지에 실제 반영된 최종 검수/기능 변경일만 기록한다.
 // 새 도구·가이드의 공개 내용을 바꾸면 같은 PR에서 이 표도 갱신한다.
 const TOOL_LAST_MODIFIED = {
+  ...advancedMap(() => "2026-10-21"),
   "data-guide": "2026-10-12",
   "5-31": "2026-10-10",
   "5-2": "2026-08-05",

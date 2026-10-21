@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 // EN 라벨 오버레이 — IA 원본(store/useDataStore.js)은 한글 SSOT 그대로 두고,
 // Header/Sidebar가 locale="en"일 때만 여기서 찾아 덮어씀(없으면 한글 폴백).
 // 번역 완료된 그룹/항목만 추가 (§routeMap EN_READY_TOOL_IDS와 함께 확장).
@@ -14,6 +15,7 @@ export const GROUP_TITLE_EN = {
 };
 
 export const ITEM_TITLE_EN = {
+  ...advancedMap((tool) => tool.name.en),
   // ── SOP 가이드(EN_READY_GUIDE_IDS와 동기) ──
   "1-1": "Developer Collaboration Guide & Technical PRD",
   "1-2": "In-App Event Taxonomy Spec",

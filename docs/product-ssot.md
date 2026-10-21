@@ -8,6 +8,17 @@
 
 ## 0. 문서 지위와 다른 문서와의 관계
 
+### 거래·행동·실험 확장 계약 (2026-10-21)
+
+- KO: 거래 분석은 환불 후 순매출·변동비와 같은 관측 기간의 고객 코호트를 사용한다. 미회수·미성숙·획득비 누락을 0이나 회수 성공으로 처리하지 않는다. EN: Transaction analysis uses refund-adjusted net revenue, variable costs and equal observation horizons; unrecovered, immature and missing-cost states remain explicit.
+- KO: 순서형 사용자 퍼널은 엄격한 이벤트 시각 순서, 리텐션은 UTC 날짜와 관측 완료 모수를 쓴다. EN: Ordered user funnels require strictly increasing timestamps; retention uses UTC calendar days and fully observed denominators.
+- KO: CUPED·프로모션·CRM 업리프트는 배정 단위, 무작위 배정 및 사전 정보 조건을 확인한다. 관측 차이와 개인 인과효과를 혼동하지 않는다. EN: CUPED, promotion and CRM uplift require declared assignment units, randomization and pre-treatment information; observed differences are not individual causal effects.
+- KO: BG/NBD·Gamma–Gamma 예측은 학습/평가 기간을 분리한다. 예상 평균의 모수 구간과 개인의 실제 미래 값 예측구간을 구분한다. EN: BG/NBD and Gamma–Gamma separate calibration from evaluation; parameter intervals for expected means are not individual predictive intervals.
+- KO: 지역 실험은 사전 학습·검증, 고정 합성 대조, 조건부 HAC 구간·위약 비교·검정력 근사를 제공한다. GeoLift 패키지와 동일한 구현이라고 주장하지 않는다. EN: Geo analysis provides pre-period training/validation, fixed synthetic controls, conditional HAC intervals, placebos and approximate power; it does not claim to reproduce GeoLift.
+- KO: B2B는 미종결·후퇴·재개와 첫 종결을 구분한다. 컨조인트는 선호와 시장 점유율을 구분하며 가격 계수 식별 실패 시 금액 교환가치를 보류한다. EN: B2B distinguishes open, regressed, reopened and first-closed deals. Conjoint preferences are not market shares; unidentified price effects withhold monetary trade-offs.
+- KO: 장바구니 연관은 인과효과가 아니다. 도달 경계는 신뢰구간이 아니며 공통 식별자 확인 없이 중복 제거 도달을 만들지 않는다. 트래픽 이상은 부정행위 확정이 아니다. EN: Basket association is not causal. Reach bounds are not confidence intervals; exact cross-platform deduplication requires verified common identity. Traffic anomalies do not establish fraud.
+- 공통: 원본·식별자·설정값은 브라우저 안에서만 처리한다. 오류 사유는 KO/EN으로 제공하고 서버 분석 이벤트에 원문 값을 보내지 않는다. 계산 불가 값은 빈 상태와 사유로 남긴다. 환율 변환 없이 CSV의 단일 통화 단위를 표시한다.
+
 이 문서는 **"무엇을 지켜야 하는가"(계약)** 를 소유한다. **"어떻게 구현하는가"(상세)** 는 기존 문서가 계속 소유한다. 같은 문장을 두 곳에 적지 않는다 — 계약이 바뀌면 여기만 고치고, 상세 문서는 여기를 참조한다.
 
 | 문서 | 소유 범위 | 이 문서와의 관계 |
@@ -34,7 +45,7 @@
 | 한국어 표기 | **Growth Opt Playbook**(원문 유지) | "그로스 최적화 플레이북"은 **설명 문구로만** 사용. 제품명 자리에 쓰지 않는다 |
 | 공식 도메인 | `https://growthoptplaybook.com` | `routeMap.js` `SITE_URL` |
 | 제품 범주 | 앱·웹 퍼포먼스 마케팅용 **브라우저 기반 분석·의사결정 지원 도구** | — |
-| 도구 수 표기 | **"22개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-31 운영 플래너가 추가됐다. 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
+| 도구 수 표기 | **"34개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-32~5-43 고객·실험·영업·상품 분석이 추가됐다. 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
 
 **도구 수를 손으로 세지 말 것.** 화면 카피는 `PUBLISHED_TOOL_IDS`(`lib/toolIndex.js`)에서 파생한다(현재 `LandingPage.jsx`의 `T.questionDeck(PUBLISHED_TOOL_IDS.length)`). `brandFacts.getPublishedToolCount()`는 같은 수를 계산하는 두 번째 경로이므로 이제 그것을 재노출한다 — 세는 곳은 하나다. 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
@@ -200,7 +211,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 **PR #696으로 관계가 뒤집혔다.** 이전에는 5-18(마케팅 반응 분석)이 정식 도구이고 그 아래 다섯 분석이 subtool이었다. 지금은 다섯 분석이 각각 정식 도구이고 **5-18 허브가 subtool**이다 — 사용자가 찾는 단위가 "마케팅 반응 분석"이 아니라 "잠식 진단"·"MMM 기여도"이기 때문이다. 내부 id(`5-18-*`)는 §4.1 규칙대로 불변이다.
 
-### 4.2 공개 분석 도구 22개
+### 4.2 공개 분석 도구 34개
 
 멀티터치 맵은 설치 raw의 관측된 클릭 contributor와 귀속 매체의 중복을 보여준다. 앱×AppsFlyer ID의 파일 내 가장 이른 설치를 기준으로 하며, 누락·제한된 contributor는 접촉이 없었다는 증거가 아니다. 최대 3개 contributor의 경로이며 전체 접촉이나 인과 기여율을 복원하지 않는다. CTIT는 유효한 귀속 클릭 시각에서 설치까지, probabilistic 비교는 같은 설치 분모의 contributor 포함 범위만 바꾼다. / The multi-touch map describes observed click contributors and the attributed install source. It uses the earliest installation per app × AppsFlyer ID in the file. Missing or restricted contributors are not evidence of no contact. Up to three contributors do not reconstruct a complete journey or causal credit. CTIT uses valid attributed-click timestamps; probabilistic comparisons retain the same installation denominator.
 
@@ -228,6 +239,18 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 5-28 | 핵심 액션 생존·이탈 분석 | `/tools/subscription-survival` (기존 URL 유지) |
 | 5-29 | 구성 변화 분석 | `/tools/segment-composition-change` |
 | 5-31 | 운영 플래너 | `/tools/operations-planner` |
+| 5-32 | 고객 수익성·RFM | `/tools/customer-economics` |
+| 5-33 | 사용자 퍼널·리텐션 | `/tools/user-funnel-retention` |
+| 5-34 | CUPED 실험 보정 | `/tools/cuped-experiment` |
+| 5-35 | 고객가치 예측 | `/tools/predictive-customer-value` |
+| 5-36 | 지역 실험·합성 대조 | `/tools/geo-experiment` |
+| 5-37 | CRM 업리프트 | `/tools/crm-uplift` |
+| 5-38 | B2B 파이프라인 | `/tools/b2b-pipeline` |
+| 5-39 | 컨조인트·가격 선호 | `/tools/conjoint-pricing` |
+| 5-40 | 프로모션 공헌이익 | `/tools/promotion-profit` |
+| 5-41 | 장바구니 연관 | `/tools/basket-association` |
+| 5-42 | 도달·빈도 | `/tools/reach-frequency` |
+| 5-43 | 트래픽 품질 | `/tools/traffic-quality` |
 | 9-1 | 콘텐츠 요소 분석 | `/content/element-analysis` |
 | 9-6 | 광고 소재 피로도 분석 | `/content/freshness` |
 

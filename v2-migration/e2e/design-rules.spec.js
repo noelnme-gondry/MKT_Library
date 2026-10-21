@@ -19,7 +19,7 @@ const STATIC_PAGES = [
   "/calculator/roas", "/en/calculator/roas", "/calculator/uplift", "/en/calculator/uplift",
   "/compare/incrementality-methods", "/templates/dashboard", "/templates/aso-store-conversion", "/en/templates/aso-store-conversion", "/tools/mmm-contribution", "/tools/cannibalization-diagnosis",
   // 결론 카드가 수동 입력 뒤에야 그려지는 도구는 입력 화면을 본다.
-  "/tools/budget-allocation", "/tools/experiment-analysis", "/tools/incrementality",
+  "/tools/budget-allocation", "/tools/experiment-analysis", "/en/tools/experiment-analysis", "/tools/incrementality",
 ];
 const KO_RESULT_PAGES = [
   "/tools/operations-planner?example=1",
@@ -132,6 +132,11 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
 for (const path of STATIC_PAGES) {
   test(`design rules hold on ${path}`, async ({ page }) => {
     await page.goto(path);
+    // 동적 도구가 아직 없으면 셸만 재고 통과한다. 실험 조건 두 묶음까지 기다린다.
+    if (path.endsWith("/tools/experiment-analysis")) {
+      await expect(page.locator("#tab-ab #s-mode .ab-pillgroup")).toHaveCount(2);
+      await expect(page.locator("#tab-ab #s-mode .ab-pillgroup").last()).toBeVisible();
+    }
     await page.evaluate(async () => { await document.fonts.ready; });
     await page.waitForLoadState("networkidle");
     expectClean(await measureDesignRules(page));

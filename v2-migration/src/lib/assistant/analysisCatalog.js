@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { ROUTES, isRoutePublished } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { TOOL_DATA_REQUIREMENTS_V2 } from "@/lib/data-import/schema/toolDataRequirements";
@@ -19,6 +20,7 @@ export const ANALYSIS_EXECUTION_COSTS = Object.freeze({
 // routeMap과 data contract로부터 파생할 수 없는 제품 판단만 여기에 둔다. 이 표는
 // "모든 도구를 실행"하는 목록이 아니라, 자동 실행 경계와 확인 질문의 정본이다.
 const DECLARATIONS = Object.freeze({
+  ...advancedMap((tool) => ({ runMode: "manual", executionCost: "heavy", priority: 100, grains: [tool.group], decisionQuestion: tool.question.ko, confirmationRequirements: tool.options.map((option) => option.key) })),
   // 여러 기존 엔진을 조합하는 계산은 작업대 자동 실행 대신 독립 도구에서 명시적으로 실행한다.
   "5-31": { runMode: "manual", executionCost: "heavy", priority: 5, grains: ["campaign_daily"], decisionQuestion: "예산·캠페인·소재에서 무엇부터 바꿀 것인가" },
   "5-30": { runMode: "manual", executionCost: "heavy", priority: 50, grains: ["appsflyer_install"], decisionQuestion: "관측된 클릭 contributor와 설치 귀속 매체는 어디서 겹치는가" },

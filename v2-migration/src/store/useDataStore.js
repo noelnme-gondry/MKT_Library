@@ -1,3 +1,4 @@
+import { ADVANCED_TOOLS } from "@/lib/advanced-marketing/registry";
 import { dashboardControlPatch } from "@/lib/recipe/dashboardRecipe";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { serializeProject } from "@/lib/project/serializeProject";
@@ -262,6 +263,7 @@ export const IA = [
     title: "운영 & 성과 분석",
     desc: "실제 운영한 캠페인 데이터를 업로드해 대시보드로 시각화하고, 성과 변동·포화도·예산 배분까지 한 CSV로 이어서 분석.",
     items: [
+      ...ADVANCED_TOOLS.map((tool) => ({ id: tool.id, title: tool.name.ko, titleEn: tool.name.en, seoTitle: tool.question.ko, seoTitleEn: tool.question.en })),
       {
         id: "5-31", title: "운영 플래너", titleEn: "Operations planner",
         seoTitle: "캠페인 예산·성과 변동·신규 소재 통합 운영 계획", seoTitleEn: "Campaign budget, performance changes and new creatives",

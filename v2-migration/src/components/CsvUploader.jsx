@@ -62,6 +62,7 @@ const STANDARD_FIELD_EN_LABELS = {
 function localizedStandardFieldLabel(key, locale) {
   if (locale !== "en") return STANDARD_FIELDS[key]?.label || key;
   if (STANDARD_FIELD_EN_LABELS[key]) return STANDARD_FIELD_EN_LABELS[key];
+  if (STANDARD_FIELDS[key]?.labelEn) return STANDARD_FIELDS[key].labelEn;
   const match = String(key || "").match(/^(revenue|pu|ret)_d(\d+)$/);
   if (match) {
     const prefix = { revenue: "Revenue", pu: "Purchases", ret: "Retention" }[match[1]];

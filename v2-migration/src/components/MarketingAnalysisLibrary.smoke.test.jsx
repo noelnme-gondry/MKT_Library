@@ -25,9 +25,11 @@ describe.each(["ko", "en"])("analysis library %s", (locale) => {
     fireEvent.change(query, { target: { value: "CUPED" } });
     const method = document.querySelector("#analysis-cuped");
     expect(method).not.toBeNull();
-    expect(method.textContent).toContain(en ? "External reference" : "외부 참고 자료");
-    expect(within(method).queryByText(en ? "Linked tools" : "연결 도구")).toBeNull();
+    expect(method.textContent).toContain(en ? "Tool linked" : "연결 도구 있음");
+    expect(within(method).getByRole("link", { name: en ? "CUPED experiment adjustment" : "CUPED 실험 보정" }).getAttribute("href")).toBe(`${en ? "/en" : ""}/tools/cuped-experiment`);
     fireEvent.change(screen.getByLabelText(en ? "Availability" : "제공 범위"), { target: { value: "tool" } });
+    expect(document.querySelectorAll("details")).toHaveLength(1);
+    fireEvent.change(query, { target: { value: "no-such-analysis-7823" } });
     expect(document.querySelectorAll("details")).toHaveLength(0);
     expect(screen.getByRole("status").textContent).toContain("0");
     fireEvent.click(screen.getByRole("button", { name: en ? "Reset filters" : "필터 초기화" }));

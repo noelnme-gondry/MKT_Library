@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 // 분석 이벤트에는 CSV 값·파일명·채널명 등 사용자 데이터를 절대 싣지 않는다.
 // GA4 탐색에서 미리 정의된 범주형/집계형 파라미터만 쓴다.
 import { PAYMENT_PRODUCT } from "./subscription/paymentProduct";
@@ -92,6 +93,7 @@ export function productElapsedBucket(elapsedMs) {
 const SENT_ONCE_KEYS = new Set();
 
 const ANALYSIS_TYPE_BY_TOOL = {
+  ...advancedMap((tool) => tool.key),
   "5-31": "operations_planner",
   "5-2": "dashboard",
   "5-3": "budget_allocation",

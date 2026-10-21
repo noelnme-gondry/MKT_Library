@@ -1,7 +1,10 @@
+import { ADVANCED_JOURNEYS } from "@/lib/advanced-marketing/catalog";
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { idToSlug } from "@/lib/routeMap";
 import { groupForRoute } from "@/lib/toolGroups";
 
 export const CONNECTED_TOOLS = {
+  ...advancedMap((tool) => ({ title: tool.name, question: tool.question, keywords: { ko: tool.outputs.map((item) => item.ko).join(" "), en: tool.outputs.map((item) => item.en).join(" ") } })),
   "5-30": { title: { ko: "멀티터치 맵", en: "Multi-touch map" }, question: { ko: "어떤 클릭 채널이 함께 기록됐을까?", en: "Which click channels were recorded together?" }, keywords: { ko: "AppsFlyer 멀티터치 contributor 어시스트 경로 CTIT 지면", en: "AppsFlyer multi-touch contributor assist paths CTIT placement" } },
   "5-31": { title: { ko: "운영 플래너", en: "Operations planner" }, question: { ko: "예산·캠페인·소재에서 무엇부터 바꿀까?", en: "What should change across budgets, campaigns and creatives?" }, keywords: { ko: "통합 운영 계획 예산 추천 최근 효율 신규 소재 PVM", en: "integrated operations plan budget recent efficiency new creatives PVM" } },
   "5-2": {
@@ -167,6 +170,7 @@ export const TOOL_JOURNEY = [
     description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
     tools: ["5-4", "5-23", "5-24", "5-28"],
   },
+  ...ADVANCED_JOURNEYS,
   {
     id: "contribution",
     homeQuestion: { ko: "채널별 기여와 앞으로의 성과는 어떨까?", en: "How much do channels contribute, and what comes next?" },
@@ -176,12 +180,13 @@ export const TOOL_JOURNEY = [
     description: { ko: "장기 배분의 근거를 채널 단위로 만듭니다.", en: "Build the channel-level basis for long-run allocation." },
     tools: ["5-25", "5-18-mmm", "5-18-forecast"],
   },
-];
+].map((stage, index) => ({ ...stage, label: Object.fromEntries(Object.entries(stage.label).map(([locale, value]) => [locale, value.replace(/^\d+/, String(index + 1).padStart(2, "0"))])) }));
 
 // 다음 단계 3개. 같은 CSV 그룹이면 화면이 "같은 데이터로 바로" 라고 표시하므로
 // (isSameData), 응답 패널을 쓰는 다섯 분석은 서로를 먼저 가리킨다 — 한 번 매핑한
 // CSV로 이어서 볼 수 있는 질문을 다음 단계로 잇는 것이 이 맵의 목적이다.
 export const NEXT_TOOL_IDS = {
+  ...advancedMap((tool) => tool.next),
   "5-30": ["5-18-cannibal", "5-23", "5-18-mmm"],
   "5-31": ["5-3", "5-21", "9-6"],
   "5-2": ["5-31", "5-21", "5-22"],
@@ -189,7 +194,7 @@ export const NEXT_TOOL_IDS = {
   "5-22": ["5-3", "5-26", "9-6"],
   "5-3": ["5-22", "5-18-mmm", "5-4"],
   "9-6": ["5-4", "9-1", "5-2"],
-  "5-4": ["5-23", "5-18-cannibal", "5-2"],
+  "5-4": ["5-23", "5-18-cannibal", "5-34"],
   "5-23": ["5-4", "5-24", "5-2"],
   "5-24": ["5-23", "5-4", "5-2"],
   "5-25": ["5-18-mmm", "5-4", "5-23"],

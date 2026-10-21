@@ -19,9 +19,12 @@ async function verifyLibrary(page, locale) {
   await summary.focus();
   await page.keyboard.press("Enter");
   await expect(method).toHaveAttribute("open", "");
-  await expect(method).toContainText(en ? "External reference" : "외부 참고 자료");
-  await expect(method.getByRole("link")).toHaveAttribute("href", /microsoft\.com/);
+  await expect(method).toContainText(en ? "Tool linked" : "연결 도구 있음");
+  await expect(method.locator('a[href*="microsoft.com"]')).toHaveCount(1);
+  await expect(method.locator(`a[href="${en ? "/en" : ""}/tools/cuped-experiment"]`)).toBeVisible();
   await library.getByLabel(en ? "Availability" : "제공 범위").selectOption("tool");
+  await expect(library.locator("details")).toHaveCount(1);
+  await library.getByLabel(en ? "Availability" : "제공 범위").selectOption("reference");
   await expect(library.getByRole("status")).toContainText("0");
   await expect(library.locator("details")).toHaveCount(0);
   await library.getByRole("button", { name: en ? "Reset filters" : "필터 초기화" }).click();
