@@ -13,7 +13,8 @@ export const ADVANCED_ENGINES = new Map([
   ["5-40", runPromotion], ["5-41", runBasketAssociation], ["5-42", runReachFrequency], ["5-43", runTrafficQuality],
 ]);
 export function executeAdvanced(toolId, rows, options) {
+  if (!ADVANCED_ENGINES.has(toolId)) throw new Error("unknown_analysis");
   const engine = ADVANCED_ENGINES.get(toolId);
-  if (!engine) throw new Error("unknown_analysis");
+  if (typeof engine !== "function") throw new Error("unknown_analysis");
   return engine(rows, options);
 }
