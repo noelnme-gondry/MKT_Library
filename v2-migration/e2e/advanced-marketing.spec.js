@@ -129,8 +129,10 @@ test("paid local downloads contain all computed rows, settings and the SVG chart
   expect(Object.keys(entries).filter(name => /^word\/media\/.*\.png$/.test(name))).toHaveLength(1);
 });
 
-test("all advanced results retain contrast and layout in light English @light-en", async ({ page }) => {
-  for (const tool of ADVANCED_TOOLS) {
+// 도구별로 브라우저·시간 제한을 격리한다. 12개 axe 검사에 60초를 공유하면
+// CI에서 뒤쪽 도구가 검사를 시작하기도 전에 전체 테스트가 만료된다.
+for (const tool of ADVANCED_TOOLS) {
+  test(`advanced result ${tool.id} retains contrast and layout in light English @light-en`, async ({ page }) => {
     await page.goto(`/en${tool.slug}`);
     const root = page.locator(".advanced-analysis");
     await expect(root.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
@@ -139,5 +141,5 @@ test("all advanced results retain contrast and layout in light English @light-en
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     const axe = await new AxeBuilder({ page }).include(".advanced-analysis").withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(axe.violations.map(v => v.id), tool.id).toEqual([]);
-  }
-});
+  });
+}
