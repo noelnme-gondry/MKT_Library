@@ -9,7 +9,10 @@ import { TOOL_REQUIRED_FIELDS, STANDARD_FIELDS } from "@/utils/csvConstants";
 
 describe("advanced analysis end-to-end contracts", () => {
   it("gives every route exactly one engine", () => {
-    expect(Object.keys(ADVANCED_ENGINES).sort()).toEqual([...ADVANCED_IDS].sort());
+    expect([...ADVANCED_ENGINES.keys()].sort()).toEqual([...ADVANCED_IDS].sort());
+  });
+  it.each(["constructor", "toString", "__proto__", "5-999", ""])("rejects unregistered engine ID %s", (id) => {
+    expect(() => executeAdvanced(id, [], {})).toThrow("unknown_analysis");
   });
   it.each(ADVANCED_TOOLS)("runs $id from its actual common-uploader demo", (tool) => {
     const csv = buildToolDemo(tool.id), rows = projectAdvancedRows(csv, tool.id);

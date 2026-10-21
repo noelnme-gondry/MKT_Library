@@ -50,7 +50,7 @@ describe("marketing analysis library contracts", () => {
       const entry = methods.find((item) => item.id === id);
       expect(analysisLibraryStatus(entry), id).toBe("tool");
       expect(entry.tools).toHaveLength(1);
-      expect(ADVANCED_ENGINES[entry.tools[0]], id).toBeTypeOf("function");
+      expect(ADVANCED_ENGINES.get(entry.tools[0]), id).toBeTypeOf("function");
     }
     expect(methods.find((entry) => entry.id === "sequential-testing").limit.en).toContain("not an always-valid inference engine");
   });
