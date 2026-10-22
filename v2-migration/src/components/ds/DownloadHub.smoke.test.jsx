@@ -12,7 +12,7 @@ import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract
 
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
 vi.mock("@/lib/analysis-export/workbookClient", () => ({ createAnalysisWorkbook: vi.fn(async () => new ArrayBuffer(8)) }));
-vi.mock("@/utils/download", () => ({ downloadJson: vi.fn(), downloadXlsx: vi.fn() }));
+vi.mock("@/utils/download", async importOriginal => ({ ...await importOriginal(), downloadJson: vi.fn(), downloadXlsx: vi.fn() }));
 
 describe("DownloadHub", () => {
   it.each(["ko", "en"])("opens a free preview directly and gates its paid download (%s)", async locale => {

@@ -1,3 +1,4 @@
+import { ADVANCED_SEARCH_CONTENT } from "@/lib/advanced-marketing/catalog";
 import { getResponseSubtoolContent } from "./responseSubtoolContent";
 import { ROUTES, isRoutePublished, isRouteIndexable } from "./routeMap";
 import { REPORT_SEARCH_CONTENT } from "./attributionReports/content";
@@ -8,6 +9,7 @@ import { REPORT_SEARCH_CONTENT } from "./attributionReports/content";
 // 5-18 하위 진입 라우트는 `responseSubtoolContent.js`가 그대로 소유하고 여기서 폴백으로 잇는다.
 // 카피 원칙(AGENTS §8): 관측 결과를 인과로 단정하지 않고, 도구가 못 하는 것을 함께 적는다.
 const CONTENT = {
+  ...ADVANCED_SEARCH_CONTENT,
   ...REPORT_SEARCH_CONTENT,
   "5-31": {
     ko: { eyebrow: "도구 사용 가이드", title: "다음 운영에서 무엇부터 바꿀까?", question: "예산·캠페인·소재를 한 번에 점검할 수 있나요?", answer: "최근 효율 변화와 신규 소재를 확인하고 같은 예산의 조정안을 비교합니다.", outputs: ["동일 예산 조정안과 예상 성과", "캠페인별 단가 변화와 분해", "새로 관측된 소재와 효율"], lead: "긴 일별 이력을 올리면 최근 실적을 기준으로 예산 이동과 캠페인·소재 확인 순서를 정합니다.", detailsLabel: "계산 기준과 한계 보기", sections: [["어떤 파일인가요?", "날짜·캠페인 또는 채널·광고비·설치 또는 가입을 포함한 일별 성과입니다. 소재 ID와 노출·클릭이 있으면 소재 목록과 단계별 기여가 열립니다."], ["예산은 어떻게 계산하나요?", "최근 하루 평균 지출을 고정하고 최근 데이터에 더 큰 가중치를 줍니다. 관측·안전 범위와 변경 한도 안에서 기존 배분과 조정안의 모형 예측을 비교합니다."], ["어떻게 활용하나요?", "단가가 오른 캠페인과 신규 소재를 확인한 뒤 예산 이동안을 검토합니다. 데이터가 부족하면 추정을 보류합니다. 예측은 성과를 보장하지 않으며 관측 분해는 원인을 증명하지 않습니다."]], faq: [{ q: "자동으로 광고 예산을 변경하나요?", a: "아니요. 분석과 조정안을 제공하며 실제 집행 변경은 사용자가 결정합니다." }, { q: "신규 소재는 어떻게 찾나요?", a: "업로드 이력 안에서 처음 관측된 날짜를 사용합니다. 실제 생성일은 확인할 수 없습니다." }] },

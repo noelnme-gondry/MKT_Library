@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 // 도구마다 "어떤 값이 들어 있어야 하나"를 한 문장으로. 결과 화면의 '다른 데이터가 필요한
 // 분석' 목록이 읽는다. 컬럼 이름(전환수 (분자)·비용(Creative))이 아니라 파일에 무엇이
 // 기록돼 있어야 하는지를 말한다 — 마케터는 컬럼 이름이 아니라 자기가 가진 데이터로 판단한다.
@@ -5,6 +6,7 @@
 // 커버리지는 publishedToolIds()에서 파생한 테스트가 막는다(toolDataNeeds.test.js).
 
 const NEEDS = {
+  ...advancedMap((tool) => tool.need),
   "5-31": { ko: "캠페인·소재별 긴 일별 광고비와 설치 또는 가입", en: "Daily spend and installs or actions by campaign and creative" },
   "5-2": { ko: "날짜별 광고비와 전환 수", en: "Ad spend and conversions by date" },
   "5-21": { ko: "캠페인별·날짜별 광고비와 전환 수", en: "Ad spend and conversions by campaign and date" },

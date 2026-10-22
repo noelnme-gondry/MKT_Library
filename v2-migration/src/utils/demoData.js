@@ -1,3 +1,5 @@
+import { ADVANCED_TOOLS } from "@/lib/advanced-marketing/registry";
+import { buildAdvancedDemo } from "@/lib/advanced-marketing/demo";
 // ── Demo data generator ─────────────────────────────────────────────────────
 // Deterministic (seededNoise / LCG — NO Math.random, §3) sample datasets that
 // produce MEANINGFUL results in every tool. Wired to the "데모 데이터" button in
@@ -1028,6 +1030,8 @@ function localizeDemoCsv(data, locale) {
 }
 
 export function buildDemoCsv(group, locale = "ko") {
+  const advanced = ADVANCED_TOOLS.find(tool => tool.group === group);
+  if (advanced) return buildAdvancedDemo(advanced.id);
   const fn = BUILDERS[group];
   if (!fn) throw new Error(`No demo dataset registered for data group: ${group}`);
   return localizeDemoCsv(fn(), locale);

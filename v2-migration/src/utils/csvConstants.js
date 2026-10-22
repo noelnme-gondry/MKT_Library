@@ -1,9 +1,12 @@
+import { ADVANCED_FIELDS } from "@/lib/advanced-marketing/fields";
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 import { MULTITOUCH_FIELDS, WEEKLY_MOVEMENT_FIELDS } from "@/lib/attributionReports/fields";
 
 export const SATURATION_AXIS_FIELDS = Object.freeze(["channel", "campaign_name", "platform", "country"]);
 
 export const STANDARD_FIELDS = {
+              ...ADVANCED_FIELDS,
               ...Object.fromEntries(Object.entries({ ...WEEKLY_MOVEMENT_FIELDS, ...MULTITOUCH_FIELDS }).filter(([key]) => !["date", "country", "platform", "channel", "campaign_name"].includes(key)).map(([key, field]) => [key, key === "count" ? { ...field, aliases: ["cnt", "count"] } : field])),
               date: {
                 label: "날짜",
@@ -1212,6 +1215,7 @@ export const STANDARD_FIELDS = {
             };
 
 export const TOOL_REQUIRED_FIELDS = {
+              ...advancedMap((tool) => tool.required),
               "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => field.required).map(([key]) => key),
               "5-18-cannibal-detail": ["channel", "count"],
               // /start는 첫 업로드에서 효율 CSV의 기본 역할만 판별한다. 필드 스코프가
@@ -1368,6 +1372,7 @@ export const TOOL_REQUIRED_FIELDS = {
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              ...advancedMap((tool) => tool.optional.map((key) => ({ key, note: ADVANCED_FIELDS[key]?.label || key }))),
               "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
               "5-18-cannibal-detail": Object.entries(WEEKLY_MOVEMENT_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
               // /start의 매핑은 효율 슬라이스에 그대로 저장돼 사이드바로 진입한

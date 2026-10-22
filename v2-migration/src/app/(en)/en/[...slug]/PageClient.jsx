@@ -1,4 +1,6 @@
 "use client";
+import { ADVANCED_BY_ID } from "@/lib/advanced-marketing/registry";
+
 import ToolRecipeWorkspace from "@/components/ds/ToolRecipeWorkspace";
 import AnalysisSetupBar from "@/components/ds/AnalysisSetupBar";
 import { use, useLayoutEffect } from "react";
@@ -30,6 +32,7 @@ const ProjectsPage = dyn(() => import("@/components/ProjectsPage"));
 const WorkspaceStoragePage = dyn(() => import("@/components/WorkspaceStoragePage"));
 const MyAccountPage = dyn(() => import("@/components/MyAccountPage"));
 const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResultWorkspace"));
+const AdvancedMarketingAnalysis = dyn(() => import("@/components/tools/AdvancedMarketingAnalysis"));
 const OperationsPlanner = dyn(() => import("@/components/tools/OperationsPlanner"));
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
@@ -102,6 +105,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "storage" && <WorkspaceStoragePage locale="en" />}
             {routeId === "account" && <MyAccountPage locale="en" />}
             {routeId === "dochi-result" && <DochiResultWorkspace locale="en" />}
+            {ADVANCED_BY_ID[routeId] && <AdvancedMarketingAnalysis key={routeId} toolId={routeId} locale="en" />}
             {routeId === "5-31" && <OperationsPlanner locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
