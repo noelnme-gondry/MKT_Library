@@ -119,3 +119,38 @@ export function allocationIssues({ creatives = [], toUnit = new Map(), asOf = ""
   if (unallocated > 0) issues.push({ code: "unallocated", params: { amount: unallocated } });
   return issues;
 }
+
+/**
+ * 결론 한 줄(화면은 여러 줄). 감액·증액·효과를 각자 한 줄로 두고, 줄 안은 끊기지 않는 덩어리로 나눈다 —
+ * "Google / UAC 외 2곳"처럼 이름 중간에서 줄이 바뀌지 않게 하려는 것이다. 공유·내보내기는 `text`를 쓴다.
+ * @param {{groups:ReturnType<typeof moveGroups>, change:number|null, isRoas?:boolean, metricLabel:string, money:(v:number)=>string, locale?:string}} input
+ *   change: 평균 지표(CPR 공간 아님, 표시 지표) 상대 변화. null이면 비교할 과거가 없다.
+ * @returns {{tone:"good"|"bad"|"neutral", lines:{kind:string, chunks:string[]}[], text:string}}
+ */
+export function allocationHeadline({ groups, change, isRoas = false, metricLabel, money, locale = "ko" }) {
+  const en = locale === "en";
+  const names = (list) => (list.length > 1 ? (en ? `${list[0].channel} +${list.length - 1}` : `${list[0].channel} 외 ${list.length - 1}곳`) : list[0].channel);
+  const actions = [];
+  if (groups.down.length) actions.push({ kind: "down", chunks: en ? [`Cut ${names(groups.down)}`, `by ${money(groups.moved)}/day`] : [names(groups.down), `일 ${money(groups.moved)} 감액`] });
+  if (groups.up.length) actions.push({ kind: "up", chunks: en ? [`Add ${money(groups.added)}/day to`, names(groups.up)] : [names(groups.up), `일 ${money(groups.added)} 증액`] });
+  const pct = (value) => `${value > 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(1)}%`;
+  let tone = "neutral";
+  let lines;
+  if (change != null && (Math.abs(change) < 0.02 || !actions.length)) {
+    lines = [
+      { kind: "keep", chunks: [en ? "Keep the current split" : "현 배분 유지 권고"] },
+      { kind: "effect", chunks: [en ? `reallocation moves ${metricLabel} by ${Math.abs(change * 100).toFixed(1)}%` : `재배분 효과 ${metricLabel} ${Math.abs(change * 100).toFixed(1)}%`] },
+    ];
+  } else if (change != null) {
+    const good = isRoas ? change > 0 : change < 0;
+    tone = good ? "good" : "bad";
+    lines = [...actions, { kind: "effect", chunks: [good ? `→ ${metricLabel} ${pct(change)}` : (en ? `→ ${metricLabel} worsens ${pct(change)}` : `→ ${metricLabel} ${pct(change)} 악화`)] }];
+  } else {
+    lines = actions.length ? actions : [{ kind: "keep", chunks: [en ? "Keep the current split" : "현 배분 유지 권고"] }];
+  }
+  const sentence = (line) => line.chunks.join(" ");
+  const effect = lines.find((line) => line.kind === "effect");
+  const body = lines.filter((line) => line !== effect).map(sentence).join(" · ");
+  const text = effect ? `${body}${effect.chunks[0].startsWith("→") ? " " : " · "}${sentence(effect)}` : body;
+  return { tone, lines, text };
+}

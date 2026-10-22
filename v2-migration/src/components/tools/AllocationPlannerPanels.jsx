@@ -1,7 +1,7 @@
 "use client";
 // 5-3 결과에 붙는 플래너 근거: 성과 예측 · 대상별 상태와 원인 · 단가 변화 분해 · 소재 상태.
 // 계산은 lib/budgetPlanner가 하고, 여기서는 읽는 순서대로 보여 주기만 한다.
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import DataTable from "@/components/ds/DataTable";
 import {
   bindingLabel, CREATIVE_STATE_LABELS, CREATIVE_STATE_ORDER, NODE_STATE_LABELS, PVM_COLUMN_LABELS,
@@ -427,6 +427,27 @@ function issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel }) {
     };
     default: return null;
   }
+}
+
+/** 결론 표시: 줄은 방향(감액·증액·효과)별, 줄 안의 덩어리는 통째로 넘어가 이름 중간에서 끊기지 않는다. */
+export function AllocationHeadline({ lines = [] }) {
+  return (
+    <span className="alloc-headline">
+      {lines.map((line, index) => (
+        <span key={`${line.kind}-${index}`} className={`alloc-headline__line is-${line.kind}`}>
+          {/* 덩어리 사이 공백은 덩어리 밖에 둔다 — 안에 두면 접혀서 줄을 바꿀 자리가 사라진다. */}
+          {line.chunks.map((chunk, chunkIndex) => (
+            <Fragment key={chunkIndex}>
+              {chunkIndex > 0 ? " " : null}
+              <span className="alloc-headline__chunk">{chunk}</span>
+            </Fragment>
+          ))}
+          {/* 줄 끝 공백은 화면에서 접히지만 읽기·복사에서는 줄 사이를 띄운다. */}
+          {index < lines.length - 1 ? " " : ""}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** 증감 막대: 0을 가운데 두고 감액은 왼쪽, 증액은 오른쪽. 길이는 표 안 최대 변화 대비. */

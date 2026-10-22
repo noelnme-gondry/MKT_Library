@@ -35,13 +35,13 @@ import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
 import { allocConfidence } from "@/utils/allocationConfidence";
 import AllocationResultWorkspace from "@/components/tools/AllocationResultWorkspace";
-import { AllocationActionSummary, allocationActionPoints, PlannerChangeBreakdown, PlannerCreativeStatus, PlannerForecast, PlannerPlanReview, PlannerTargetStatus } from "@/components/tools/AllocationPlannerPanels";
+import { AllocationActionSummary, AllocationHeadline, allocationActionPoints, PlannerChangeBreakdown, PlannerCreativeStatus, PlannerForecast, PlannerPlanReview, PlannerTargetStatus } from "@/components/tools/AllocationPlannerPanels";
 import DataTable from "@/components/ds/DataTable";
 import { allocationCadence, prepareAllocationObservations, allocationHistory } from "@/utils/allocationObservations";
 import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
 import { allocationAt, deltaAllocationAt, fatigueScenarioAt, loserOffScenarioAt, newCreativeScenarioAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { createAllocationPlanSnapshot, findAllocationPlanMatches, plannerDowngradeUnits, planReviewText } from "@/lib/budgetPlanner/planReview";
-import { allocationIssues, allocationMoves, moveGroups } from "@/lib/budgetPlanner/allocationActions";
+import { allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "@/lib/budgetPlanner/allocationActions";
 import { addDays as plannerAddDays } from "@/lib/budgetPlanner/plannerStats";
 import { appendDecisionEpisode, toLocalDecisionDate } from "@/lib/decisionReview";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -2028,36 +2028,18 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const dPrev = displayMetricValue(S.prevAvgCPR, effectiveMetric);
     const dNext = displayMetricValue(S.nextAvgCPR, effectiveMetric);
     const groups = moveGroups(actionMoves);
-    // 결론은 한 줄 — 무엇을 얼마나 옮기는지와 그 결과(지표 변화율)만. 수치 근거는 아래 표가 말한다.
-    const names = (list) => (list.length > 1 ? tr(`${list[0].channel} 외 ${list.length - 1}곳`, `${list[0].channel} +${list.length - 1}`) : list[0].channel);
-    const money = (value) => fmtCurrencyCompact(Math.round(value), { currency, locale });
-    const action = groups.down.length && groups.up.length
-      ? tr(`${names(groups.down)} 일 ${money(groups.moved)} 감액 · ${names(groups.up)} ${money(groups.added)} 증액`, `Cut ${names(groups.down)} by ${money(groups.moved)}/day · add ${money(groups.added)} to ${names(groups.up)}`)
-      : groups.up.length
-        ? tr(`${names(groups.up)} 일 ${money(groups.added)} 증액`, `Add ${money(groups.added)}/day to ${names(groups.up)}`)
-        : groups.down.length
-          ? tr(`${names(groups.down)} 일 ${money(groups.moved)} 감액`, `Cut ${names(groups.down)} by ${money(groups.moved)}/day`)
-          : "";
-    let tone = "neutral";
-    let text;
-    let change = null;
-    if (dPrev != null && dNext != null && dPrev !== 0) {
-      change = (dNext - dPrev) / dPrev;
-      const pctText = `${change > 0 ? "+" : "−"}${Math.abs(change * 100).toFixed(1)}%`;
-      const good = roas ? change > 0 : change < 0;
-      if (Math.abs(change) < 0.02 || !action) {
-        text = tr(`현 배분 유지 권고 · 재배분 효과 ${metricLabel} ${Math.abs(change * 100).toFixed(1)}%`, `Keep the current split · reallocation moves ${metricLabel} by ${Math.abs(change * 100).toFixed(1)}%`);
-      } else if (good) {
-        tone = "good";
-        text = `${action} → ${metricLabel} ${pctText}`;
-      } else {
-        tone = "bad";
-        text = `${action} → ${tr(`${metricLabel} ${pctText} 악화`, `${metricLabel} worsens ${pctText}`)}`;
-      }
-    } else {
-      text = action || tr("현 배분 유지 권고", "Keep the current split");
-    }
-    return { tone, text, change, S };
+    // 결론은 한 줄 — 무엇을 얼마나 옮기는지와 그 결과(지표 변화율)만. 화면은 방향별로 줄을 나누고
+    // 이름·금액 덩어리 안에서는 끊지 않는다(allocationHeadline). 수치 근거는 아래 표가 말한다.
+    const change = dPrev != null && dNext != null && dPrev !== 0 ? (dNext - dPrev) / dPrev : null;
+    const { tone, lines, text } = allocationHeadline({
+      groups,
+      change,
+      isRoas: roas,
+      metricLabel,
+      money: (value) => fmtCurrencyCompact(Math.round(value), { currency, locale }),
+      locale,
+    });
+    return { tone, text, lines, change, S };
   })();
   const fmtActionResult = roas ? (value) => fmtCurrency(value, currency) : (value) => formatNumberK(value);
   const fmtActionMoney = (value) => fmtCurrencyCompact(value, { currency, locale });
@@ -2938,6 +2920,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           tone={verdict.tone}
           title={tr("결론", "Conclusion")}
           headline={verdict.text}
+          headlineContent={<AllocationHeadline lines={verdict.lines} />}
           points={actionPoints}
           pointsContent={<AllocationActionSummary
             moves={actionMoves}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocationIssues, allocationMoves, moveGroups } from "./allocationActions";
+import { allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "./allocationActions";
 import { addDays } from "./plannerStats";
 
 const unit = (name, channel, diagnosis = null) => ({ unit: name, path: { channel }, diagnosis });
@@ -109,5 +109,41 @@ describe("확인할 점 — 실제 신호가 있을 때만", () => {
   it("소재를 꺼도 결과가 늘지 않으면 손해 소재로 말하지 않는다", () => {
     const issues = allocationIssues({ loserScenario: { base: { results: 100 }, scenario: { results: 100 }, offs: [{ unit: "u", creativeIds: ["c"], multiplier: 0.8 }] } });
     expect(issues).toEqual([]);
+  });
+});
+
+describe("결론 문장 — 줄은 방향별, 줄 안은 끊기지 않는 덩어리", () => {
+  const groups = {
+    down: [{ channel: "Meta AAP", count: 4, delta: -3900000 }],
+    up: [{ channel: "Google UAC", count: 3, delta: 1500000 }, { channel: "TikTok", count: 2, delta: 800000 }, { channel: "Apple Search Ads", count: 1, delta: 350000 }],
+    moved: 3900000,
+    added: 2650000,
+  };
+  const money = (value) => `₩${Math.round(value / 10000)}만`;
+
+  it("감액 줄 · 증액 줄 · 효과 줄, 이름은 한 덩어리", () => {
+    const result = allocationHeadline({ groups, change: -0.089, metricLabel: "CPI", money });
+    expect(result.tone).toBe("good");
+    expect(result.lines).toEqual([
+      { kind: "down", chunks: ["Meta AAP", "일 ₩390만 감액"] },
+      { kind: "up", chunks: ["Google UAC 외 2곳", "일 ₩265만 증액"] },
+      { kind: "effect", chunks: ["→ CPI −8.9%"] },
+    ]);
+    expect(result.text).toBe("Meta AAP 일 ₩390만 감액 · Google UAC 외 2곳 일 ₩265만 증액 → CPI −8.9%");
+  });
+
+  it("EN과 악화·ROAS 방향", () => {
+    const en = allocationHeadline({ groups, change: -0.089, metricLabel: "CPI", money: (v) => `₩${(v / 1e6).toFixed(1)}M`, locale: "en" });
+    expect(en.lines.map((line) => line.chunks)).toEqual([["Cut Meta AAP", "by ₩3.9M/day"], ["Add ₩2.6M/day to", "Google UAC +2"], ["→ CPI −8.9%"]]);
+    expect(allocationHeadline({ groups, change: 0.05, metricLabel: "CPI", money }).lines.at(-1).chunks[0]).toBe("→ CPI +5.0% 악화");
+    expect(allocationHeadline({ groups, change: 0.05, isRoas: true, metricLabel: "ROAS", money }).tone).toBe("good");
+  });
+
+  it("변화가 2% 미만이면 유지 권고, 과거가 없으면 행동만", () => {
+    expect(allocationHeadline({ groups, change: 0.01, metricLabel: "CPI", money }).text).toBe("현 배분 유지 권고 · 재배분 효과 CPI 1.0%");
+    const none = allocationHeadline({ groups, change: null, metricLabel: "CPI", money });
+    expect(none.tone).toBe("neutral");
+    expect(none.lines.map((line) => line.kind)).toEqual(["down", "up"]);
+    expect(allocationHeadline({ groups: { down: [], up: [], moved: 0, added: 0 }, change: null, metricLabel: "CPI", money }).text).toBe("현 배분 유지 권고");
   });
 });

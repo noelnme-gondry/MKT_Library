@@ -123,6 +123,14 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     const headline = card.querySelector(".result-action-card__headline").textContent;
     expect(headline).toMatch(/일 ₩[\d.,]+(만|억)? (감액|증액)|현 배분 유지/);
     expect(headline.length).toBeLessThanOrEqual(70);
+    // 줄은 방향별(감액·증액·효과), 줄 안은 끊기지 않는 덩어리 — 이름 중간에서 줄이 바뀌지 않는다.
+    const lines = [...card.querySelectorAll(".alloc-headline__line")];
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    for (const line of lines) expect(line.querySelectorAll(".alloc-headline__chunk").length).toBeGreaterThanOrEqual(1);
+    expect(headline).not.toMatch(/감액\S|증액\S/);
+    // 덩어리 사이 공백은 덩어리 밖(텍스트 노드)에 있어야 줄을 바꿀 자리가 생긴다.
+    for (const chunk of card.querySelectorAll(".alloc-headline__chunk")) expect(chunk.textContent).toBe(chunk.textContent.trim());
+    expect(lines[0].textContent).toMatch(/\S \S/);
     expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
     const table = within(card).getByRole("table", { name: "채널별 조정안" });
     const rows = table.querySelectorAll("tbody tr");

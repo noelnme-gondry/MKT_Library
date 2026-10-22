@@ -52,6 +52,14 @@
   .planner-creatives .planner-scenarios__result { margin-top: .75rem; }
   /* 5-3 결론(임원용): 한 줄 결론 · 핵심 수치 3개 · 채널별 조정안 표 · 확인할 점 표. 글자는 표 크기로, 막대가 크기를 말한다. */
   .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-lg); line-height: 1.35; letter-spacing: -.02em; }
+  /* 결론 줄바꿈: 감액·증액·효과가 각자 한 줄, 덩어리(이름 · 금액)는 통째로 다음 줄로 넘어간다.
+     덩어리가 한 줄보다 길 때만 안에서 접힌다(inline-block + max-width). */
+  .alloc-headline { display: block; }
+  .alloc-headline__line { display: block; }
+  .alloc-headline__chunk { display: inline-block; max-width: 100%; }
+  .alloc-headline__line.is-effect { margin-top: .125rem; font-size: var(--fs-md); font-weight: 600; color: var(--text-secondary); }
+  .result-action-card.good .alloc-headline__line.is-effect { color: var(--success); }
+  .result-action-card.bad .alloc-headline__line.is-effect { color: var(--danger); }
   .alloc-actions { display: grid; gap: 1.5rem; margin-top: 1.25rem; min-width: 0; }
   .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 47px; }
   .alloc-plan { min-width: 0; container-type: inline-size; }
@@ -8559,9 +8567,17 @@ body.light-mode .app:not(.is-home) .main {
 .dashboard-decision-strip .tool-template-action__actions button:hover { border-bottom-color:currentColor;color:var(--primary); }
 .dashboard-decision-strip .tool-template-action__actions button:focus-visible { border-bottom-color:currentColor;color:var(--primary);outline:2px solid color-mix(in srgb,var(--primary) 45%,transparent);outline-offset:3px; }
 @media (max-width:720px) {
-  .result-action-card__evidence { position:absolute; top:13px; right:13px; }
-  .result-action-card__copy { padding-right:38px; }
   .dashboard-next-actions__utility { align-items:flex-start; flex-direction:column; }
+}
+/* 좁은 폭에서 "확인할 점" 표시는 결론 오른쪽 자기 열을 차지한다. 예전에는 절대 위치에 38px만 비워 둬
+   "확인 1"(약 75px)이 결론 첫 줄을 덮었다 — 열을 주면 구조적으로 겹칠 수 없다. 표시가 없으면 열도 없다. */
+@media (max-width:1100px) {
+  .result-action-card__head:has(> .result-action-card__evidence) { grid-template-columns: 34px minmax(0,1fr) auto; }
+  .result-action-card__head > .result-action-card__evidence { grid-column: 3; grid-row: 1; align-self: start; }
+}
+@media (max-width:768px) {
+  .result-action-card__head:has(> .result-action-card__evidence) { grid-template-columns: 30px minmax(0,1fr) auto; }
+  .result-action-card__head > .result-action-card__evidence { padding-left: 0; border-left: 0; }
 }
 @media (max-width:720px) { .dashboard-demo-source,.dashboard-decision-strip { align-items:flex-start;flex-direction:column; }.dashboard-decision-strip__actions { justify-content:flex-start; }.dashboard-recommendations__heading { align-items:flex-start;flex-direction:column;gap:6px; }.dashboard-recommendations__heading p { text-align:left; }.dashboard-recommendations__grid { grid-template-columns:1fr; } }
 /* AGENTS.md §12.30이 "인접한 보조 박스도 마감 영역과 같은 재질(--operator-line /
