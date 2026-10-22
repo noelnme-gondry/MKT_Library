@@ -79,6 +79,23 @@ export function fmtCompact(value) {
   return sign + abs.toLocaleString("en-US");
 }
 
+// Compact money for dense executive tables: KO KRW uses 만·억 (₩490만), others K·M·B (₩4.9M).
+// Below 10,000 the full amount is shown. Sign uses the minus sign (−).
+export function fmtCurrencyCompact(value, opts = {}) {
+  const { currency = "KRW", locale = "ko" } = opts;
+  if (value == null || !Number.isFinite(Number(value))) return "—";
+  const v = Number(value);
+  const abs = Math.abs(v);
+  const sign = v < 0 ? "−" : "";
+  const sym = CURRENCY_SYMBOL[currency] || "₩";
+  if (abs < 1e4) return sign + fmtCurrency(abs, { currency });
+  if (locale !== "en" && currency === "KRW") return sign + sym + fmtCompact(abs);
+  const units = [[1e9, "B"], [1e6, "M"], [1e3, "K"]];
+  const [size, suffix] = units.find(([unit]) => abs >= unit);
+  const scaled = abs / size;
+  return `${sign}${sym}${scaled.toFixed(scaled >= 100 ? 0 : 1)}${suffix}`;
+}
+
 // Parse a possibly comma-formatted string → number, or null.
 // Prevents parseFloat("72,341,057") === 72 (§7 함정). Read sites use this.
 export function parseNum(str) {

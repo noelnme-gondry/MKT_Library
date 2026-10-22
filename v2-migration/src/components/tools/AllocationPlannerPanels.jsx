@@ -367,103 +367,138 @@ const SHORT_VERDICT = {
   CREATIVE: ["소재 효율 하락", "creative efficiency down"],
   FUNNEL_POST_CLICK: ["클릭 후 전환 하락", "post-click conversion down"],
   MARKET: ["시장 전체 악화", "market-wide decline"],
-  BUDGET_CURVE: ["지출을 늘린 만큼 단가 상승", "unit cost rose with spend"],
-  MIXED: ["여러 원인", "several causes"],
+  BUDGET_CURVE: ["지출 증가로 단가 상승", "unit cost rose with spend"],
+  MIXED: ["복합 요인", "several causes"],
   NEW_CREATIVE_LEARNING: ["신규 소재 학습 중", "new creative learning"],
 };
 
+// 근거는 표의 한 칸에 들어가는 짧은 명사구로 — 문장은 내보내기(points)가 같은 판정에서 만든다.
 function reasonText(reason, tr, metricLabel) {
   const short = (verdict) => SHORT_VERDICT[verdict] ? tr(...SHORT_VERDICT[verdict]) : "";
   switch (reason.code) {
-    case "down_outside_history": return tr("지금 지출이 검증된 범위를 넘음 — 범위 안으로 낮춤", "Current spend is beyond the tested range — bring it back inside");
+    case "down_outside_history": return tr("검증된 지출 범위 초과", "Above the tested spend range");
     case "down_worse": return reason.change != null
-      ? tr(`최근 7일 ${metricLabel} ${pct(reason.change)} · ${short(reason.verdict)}`, `${metricLabel} ${pct(reason.change)} in the last 7 days · ${short(reason.verdict)}`)
+      ? tr(`최근 7일 ${metricLabel} ${pct(reason.change)} · ${short(reason.verdict)}`, `${metricLabel} ${pct(reason.change)} (7d) · ${short(reason.verdict)}`)
       : short(reason.verdict);
-    case "down_low_marginal": return tr("예산을 더 써도 결과가 가장 적게 늘어남", "Extra budget adds the fewest results here");
-    case "up_daily_limit": return tr("효율이 좋아 하루 증액 한도까지", "Efficient — up to the daily increase limit");
-    case "up_history_ceiling": return tr("효율이 좋아 과거 최대 지출까지", "Efficient — up to the highest spend observed");
-    case "up_high_marginal": return tr("추가 예산 1원당 결과가 가장 많이 늘어남", "Extra budget adds the most results here");
-    case "hold_low_confidence": return tr("곡선 신뢰도가 낮아 현재 유지", "Held: low curve confidence");
-    case "hold_no_curve": return tr("데이터가 부족해 현재 유지", "Held: too little data");
-    case "hold_locked": return tr("현재 유지", "Held");
-    default: return tr("지금 수준 유지", "Keep as is");
+    case "down_low_marginal": return tr("추가 지출 대비 효율 최저", "Lowest return on extra spend");
+    case "up_daily_limit": return tr("고효율 · 하루 증액 한도", "Efficient · daily increase cap");
+    case "up_history_ceiling": return tr("고효율 · 과거 최대 지출까지", "Efficient · up to peak observed spend");
+    case "up_high_marginal": return tr("추가 지출 대비 효율 최고", "Highest return on extra spend");
+    case "hold_low_confidence": return tr("곡선 신뢰도 낮음 · 유지", "Low curve confidence · held");
+    case "hold_no_curve": return tr("데이터 부족 · 유지", "Too little data · held");
+    case "hold_locked": return tr("고정", "Held");
+    default: return tr("유지", "Keep");
   }
 }
 
-function issueText(issue, tr, { fmtMoney, fmtResult, resultLabel }) {
+/** 확인할 점 한 행: 구분 · 대상 · 내용. */
+function issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel }) {
   const p = issue.params;
   switch (issue.code) {
-    case "learning_short": return tr(
-      `${p.unit} 신규 소재 ${p.creative}: 이 예산으론 학습을 끝내기 어렵습니다. 하루 약 ${fmtMoney(p.needed)}이 필요합니다(배정 약 ${fmtMoney(p.expected)}).`,
-      `${p.unit} new creative ${p.creative}: this budget may not finish learning. It needs about ${fmtMoney(p.needed)}/day (gets about ${fmtMoney(p.expected)}).`,
-    );
-    case "loser_creative": return tr(
-      `${p.unit}의 ${p.creatives.join(", ")}: 기존 소재보다 효율이 나쁩니다. 끄면 ${p.horizonDays}일 ${resultLabel} 약 ${fmtResult(p.gain)} 늘 것으로 봅니다.`,
-      `${p.unit} ${p.creatives.join(", ")}: worse than incumbents. Turning it off adds about ${fmtResult(p.gain)} ${resultLabel} over ${p.horizonDays} days.`,
-    );
-    case "fatigue_now": return tr(
-      `${p.unit}의 주력 소재 ${p.creative}: 피로 신호가 있습니다. 새 소재를 준비하세요.`,
-      `${p.unit} main creative ${p.creative}: fatigue signal. Prepare a new creative.`,
-    );
-    case "fatigue_soon": return tr(
-      `${p.unit}의 주력 소재 ${p.creative}: ${p.date}경 피로가 예상됩니다. 새 소재를 준비하세요.`,
-      `${p.unit} main creative ${p.creative}: fatigue expected around ${p.date}. Prepare a new creative.`,
-    );
-    case "review_held": return tr(
-      `${p.units.join(", ")}: 지난 배분안에서 예측이 연속으로 크게 빗나가 현재 지출로 고정했습니다.`,
-      `${p.units.join(", ")}: forecasts missed by a wide margin in consecutive plans, so spend is held.`,
-    );
-    case "unallocated": return tr(
-      `하루 ${fmtMoney(p.amount)}은 검증된 지출 범위를 넘어 배분하지 않았습니다.`,
-      `${fmtMoney(p.amount)}/day was left unallocated because it exceeds tested spend ranges.`,
-    );
-    default: return "";
+    case "learning_short": return {
+      kind: tr("학습 예산 부족", "Learning underfunded"),
+      target: `${p.unit} · ${p.creative}`,
+      detail: tr(`하루 ${fmtMoney(p.needed)} 필요 · 배정 ${fmtMoney(p.expected)}`, `Needs ${fmtMoney(p.needed)}/day · gets ${fmtMoney(p.expected)}`),
+    };
+    case "loser_creative": return {
+      kind: tr("저효율 소재", "Underperforming creative"),
+      target: `${p.unit} · ${p.creatives.join(", ")}`,
+      detail: tr(`끄면 ${p.horizonDays}일 ${resultLabel} +${fmtResult(p.gain)}`, `Turning off adds ${fmtResult(p.gain)} ${resultLabel} in ${p.horizonDays}d`),
+    };
+    case "fatigue_now": return {
+      kind: tr("소재 피로", "Creative fatigue"),
+      target: `${p.unit} · ${p.creative}`,
+      detail: tr("피로 신호 · 교체 소재 준비", "Fatigue signal · prepare a replacement"),
+    };
+    case "fatigue_soon": return {
+      kind: tr("소재 피로 예상", "Fatigue expected"),
+      target: `${p.unit} · ${p.creative}`,
+      detail: tr(`${p.date}경 · 교체 소재 준비`, `Around ${p.date} · prepare a replacement`),
+    };
+    case "review_held": return {
+      kind: tr("예측 오차 반복", "Repeated forecast miss"),
+      target: p.units.join(", "),
+      detail: tr("현재 지출 유지", "Spend held"),
+    };
+    case "unallocated": return {
+      kind: tr("미배분", "Unallocated"),
+      target: "—",
+      detail: tr(`하루 ${fmtMoney(p.amount)} · 검증된 지출 범위 초과`, `${fmtMoney(p.amount)}/day · above tested spend`),
+    };
+    default: return null;
   }
 }
 
-/** 결론 카드의 본문: 지금 할 일(대상·금액·이유)과 확인할 점. 나머지 근거는 "자세히 보기"에 있다. */
-export function AllocationActionSummary({ moves = [], issues = [], locale = "ko", metricLabel, resultLabel, fmtMoney, fmtResult, onShowAll, limit = 5, issueLimit = 3 }) {
+/** 증감 막대: 0을 가운데 두고 감액은 왼쪽, 증액은 오른쪽. 길이는 표 안 최대 변화 대비. */
+function ChangeBar({ delta, max }) {
+  const width = max > 0 ? Math.min(50, (Math.abs(delta) / max) * 50) : 0;
+  return (
+    <span className="alloc-plan__bar" aria-hidden="true">
+      <i className={delta < 0 ? "is-down" : "is-up"} style={{ width: `${width}%` }} />
+    </span>
+  );
+}
+
+/**
+ * 결론 카드 본문(임원용): 채널별 조정안 표와 확인할 점 표. 금액은 축약 표기, 근거는 짧은 명사구.
+ * fmtMoney: 축약 금액 · fmtMetric: 내부 CPR → 표시 지표(ROAS면 역수).
+ */
+export function AllocationActionSummary({ moves = [], issues = [], locale = "ko", metricLabel, resultLabel, fmtMoney, fmtResult, fmtMetric = (value) => String(value), onShowAll, limit = 6, issueLimit = 4 }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const changed = moves.filter((move) => move.direction !== "keep");
   const shown = changed.slice(0, limit);
+  const max = Math.max(0, ...shown.map((move) => Math.abs(move.delta)));
   const signed = (value) => {
     const text = fmtMoney(Math.abs(value));
     if (!/[1-9]/.test(text)) return "0";
     return `${value > 0 ? "+" : "−"}${text}`;
   };
-  const issueShown = issues.slice(0, issueLimit);
+  const rows = issues.slice(0, issueLimit).map((issue) => issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel })).filter(Boolean);
   return (
     <div className="alloc-actions">
       {shown.length > 0 && (
-        <section aria-labelledby="alloc-actions-title">
-          <h3 id="alloc-actions-title">{tr("지금 할 일", "What to do")}</h3>
-          <ol className="alloc-actions__list">
-            {shown.map((move) => (
-              <li key={move.unit} className={`alloc-actions__item is-${move.direction}`}>
-                <span className="alloc-actions__unit">{move.unit}</span>
-                <span className="alloc-actions__delta">
-                  <strong>{tr(`하루 ${signed(move.delta)}`, `${signed(move.delta)}/day`)}</strong>
-                  {move.changePct != null && <span> ({pct(move.changePct)})</span>}
-                </span>
-                <span className="alloc-actions__why">{reasonText(move.reason, tr, metricLabel)}</span>
-                <span className="alloc-actions__amounts">{fmtMoney(move.current)} → {fmtMoney(move.proposed)}</span>
-              </li>
-            ))}
-          </ol>
+        <section className="alloc-plan" aria-labelledby="alloc-actions-title">
+          <div className="alloc-plan__head">
+            <h3 id="alloc-actions-title">{tr("채널별 조정안", "Changes by target")}</h3>
+            <span>{tr(`하루 기준 · 변화 큰 순 ${shown.length}/${changed.length}`, `Per day · largest ${shown.length} of ${changed.length}`)}</span>
+          </div>
+          <DataTable
+            ariaLabel={tr("채널별 조정안", "Changes by target")}
+            className="alloc-plan__table"
+            rows={shown}
+            rowKey={(move) => move.unit}
+            columns={[
+              { key: "unit", label: tr("대상", "Target"), cellClassName: "alloc-plan__unit" },
+              { key: "budget", label: tr("일예산 현재 → 변경", "Daily budget now → plan"), align: "right", cellClassName: "alloc-plan__budget", fmt: (_, move) => <><span className="alloc-plan__label">{tr("일예산 ", "Budget ")}</span>{fmtMoney(move.current)} → <strong>{fmtMoney(move.proposed)}</strong></> },
+              { key: "delta", label: tr("증감", "Change"), align: "right", cellClassName: "alloc-plan__delta", fmt: (_, move) => <><ChangeBar delta={move.delta} max={max} /><strong className={`is-${move.direction}`}>{signed(move.delta)}</strong>{move.changePct != null && <span> {pct(move.changePct)}</span>}</> },
+              { key: "cpr", label: tr(`${metricLabel} 현재 → 예상`, `${metricLabel} now → expected`), align: "right", cellClassName: "alloc-plan__cpr", fmt: (_, move) => move.currentCpr == null && move.plannedCpr == null ? "—" : <><span className="alloc-plan__label">{metricLabel} </span>{move.currentCpr != null ? fmtMetric(move.currentCpr) : "—"} → {move.plannedCpr != null ? fmtMetric(move.plannedCpr) : "—"}</> },
+              { key: "why", label: tr("근거", "Why"), cellClassName: "alloc-plan__why", fmt: (_, move) => reasonText(move.reason, tr, metricLabel) },
+            ]}
+          />
           {changed.length > shown.length && onShowAll && (
             <button type="button" className="btn ghost alloc-actions__more" onClick={onShowAll}>
-              {tr(`나머지 ${changed.length - shown.length}개 대상 보기`, `Show the other ${changed.length - shown.length} targets`)}
+              {tr(`전체 ${changed.length}개 대상 보기`, `Show all ${changed.length} targets`)}
             </button>
           )}
         </section>
       )}
-      {issueShown.length > 0 && (
-        <section aria-labelledby="alloc-issues-title">
-          <h3 id="alloc-issues-title">{tr("확인할 점", "Check these")}</h3>
-          <ul className="alloc-actions__issues">
-            {issueShown.map((issue, index) => <li key={`${issue.code}-${index}`}>{issueText(issue, tr, { fmtMoney, fmtResult, resultLabel })}</li>)}
-          </ul>
-          {issues.length > issueShown.length && <p className="planner-cell-note">{tr(`외 ${issues.length - issueShown.length}건은 자세히 보기의 원인·소재에 있습니다.`, `${issues.length - issueShown.length} more under Details → Causes & creatives.`)}</p>}
+      {rows.length > 0 && (
+        <section className="alloc-plan alloc-plan--issues" aria-labelledby="alloc-issues-title">
+          <div className="alloc-plan__head">
+            <h3 id="alloc-issues-title">{tr("확인할 점", "Check these")}</h3>
+            {issues.length > rows.length && <span>{tr(`외 ${issues.length - rows.length}건은 자세히 보기`, `${issues.length - rows.length} more in Details`)}</span>}
+          </div>
+          <DataTable
+            ariaLabel={tr("확인할 점", "Check these")}
+            className="alloc-plan__table alloc-plan__table--issues"
+            rows={rows}
+            rowKey={(row, index) => `${row.kind}-${index}`}
+            columns={[
+              { key: "kind", label: tr("구분", "Type"), cellClassName: "alloc-plan__kind" },
+              { key: "target", label: tr("대상", "Target"), cellClassName: "alloc-plan__unit" },
+              { key: "detail", label: tr("내용", "Detail"), cellClassName: "alloc-plan__why" },
+            ]}
+          />
         </section>
       )}
     </div>
@@ -471,7 +506,7 @@ export function AllocationActionSummary({ moves = [], issues = [], locale = "ko"
 }
 
 /** 내보내기·공유용 같은 내용의 문장(화면과 같은 판정에서 만든다). */
-export function allocationActionPoints({ moves = [], issues = [], locale = "ko", metricLabel, resultLabel, fmtMoney, fmtResult, limit = 5 }) {
+export function allocationActionPoints({ moves = [], issues = [], locale = "ko", metricLabel, resultLabel, fmtMoney, fmtResult, limit = 6 }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const signed = (value) => `${value > 0 ? "+" : "−"}${fmtMoney(Math.abs(value))}`;
   return [
@@ -479,6 +514,6 @@ export function allocationActionPoints({ moves = [], issues = [], locale = "ko",
       text: tr(`${move.unit}: 하루 ${signed(move.delta)} (${fmtMoney(move.current)} → ${fmtMoney(move.proposed)}) — ${reasonText(move.reason, tr, metricLabel)}`, `${move.unit}: ${signed(move.delta)}/day (${fmtMoney(move.current)} → ${fmtMoney(move.proposed)}) — ${reasonText(move.reason, tr, metricLabel)}`),
       cls: move.direction === "up" ? "good" : undefined,
     })),
-    ...issues.map((issue) => ({ text: issueText(issue, tr, { fmtMoney, fmtResult, resultLabel }), cls: "muted" })),
+    ...issues.map((issue) => issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel })).filter(Boolean).map((row) => ({ text: `${row.kind} · ${row.target} — ${row.detail}`, cls: "muted" })),
   ];
 }

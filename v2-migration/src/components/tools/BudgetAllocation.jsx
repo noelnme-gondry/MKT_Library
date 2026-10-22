@@ -50,7 +50,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import { showToast } from "@/utils/toast";
-import { sourceCurrencyOf } from "@/utils/format";
+import { fmtCurrencyCompact, sourceCurrencyOf } from "@/utils/format";
 import {
   getRowGroupKey,
   allocParseNum,
@@ -2010,7 +2010,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // 결론 카드: 무엇을 얼마나 옮기고(행동) 그러면 효율이 어떻게 되는지(결과) 한 문장. 근거는 "자세히 보기".
   // 조기 반환 뒤라 훅을 쓰지 않는다 — 대상 수만큼 도는 가벼운 계산이다.
-  const actionMoves = planner.ok ? allocationMoves(allocation.items, planner.units, { isRoas: isRoasMetric(effectiveMetric) }) : [];
+  const actionMoves = planner.ok ? allocationMoves(allocation.items, planner.units, { isRoas: isRoasMetric(effectiveMetric), history: historyByCh }) : [];
   const actionIssues = planner.ok ? allocationIssues({
     creatives: planner.creatives,
     toUnit: planner.toUnit,
@@ -2028,17 +2028,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const dPrev = displayMetricValue(S.prevAvgCPR, effectiveMetric);
     const dNext = displayMetricValue(S.nextAvgCPR, effectiveMetric);
     const groups = moveGroups(actionMoves);
-    const names = (list) => {
-      const shown = list.slice(0, 2).map((entry) => entry.channel).join(", ");
-      return list.length > 2 ? tr(`${shown} 외 ${list.length - 2}곳`, `${shown} and ${list.length - 2} more`) : shown;
-    };
-    const money = (value) => fmtCurrency(Math.round(value), currency);
+    // 결론은 한 줄 — 무엇을 얼마나 옮기는지와 그 결과(지표 변화율)만. 수치 근거는 아래 표가 말한다.
+    const names = (list) => (list.length > 1 ? tr(`${list[0].channel} 외 ${list.length - 1}곳`, `${list[0].channel} +${list.length - 1}`) : list[0].channel);
+    const money = (value) => fmtCurrencyCompact(Math.round(value), { currency, locale });
     const action = groups.down.length && groups.up.length
-      ? tr(`${names(groups.down)}에서 하루 ${money(groups.moved)}을 빼고 ${names(groups.up)}에 ${money(groups.added)}을 더하세요.`, `Take ${money(groups.moved)}/day from ${names(groups.down)} and add ${money(groups.added)} to ${names(groups.up)}.`)
+      ? tr(`${names(groups.down)} 일 ${money(groups.moved)} 감액 · ${names(groups.up)} ${money(groups.added)} 증액`, `Cut ${names(groups.down)} by ${money(groups.moved)}/day · add ${money(groups.added)} to ${names(groups.up)}`)
       : groups.up.length
-        ? tr(`${names(groups.up)}에 하루 ${money(groups.added)}을 더하세요.`, `Add ${money(groups.added)}/day to ${names(groups.up)}.`)
+        ? tr(`${names(groups.up)} 일 ${money(groups.added)} 증액`, `Add ${money(groups.added)}/day to ${names(groups.up)}`)
         : groups.down.length
-          ? tr(`${names(groups.down)}에서 하루 ${money(groups.moved)}을 줄이세요.`, `Cut ${money(groups.moved)}/day from ${names(groups.down)}.`)
+          ? tr(`${names(groups.down)} 일 ${money(groups.moved)} 감액`, `Cut ${names(groups.down)} by ${money(groups.moved)}/day`)
           : "";
     let tone = "neutral";
     let text;
@@ -2046,27 +2044,24 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     if (dPrev != null && dNext != null && dPrev !== 0) {
       change = (dNext - dPrev) / dPrev;
       const pctText = `${change > 0 ? "+" : "−"}${Math.abs(change * 100).toFixed(1)}%`;
-      const range = `${fmtCostMetric(S.prevAvgCPR, effectiveMetric, currency)} → ${fmtCostMetric(S.nextAvgCPR, effectiveMetric, currency)}`;
       const good = roas ? change > 0 : change < 0;
       if (Math.abs(change) < 0.02 || !action) {
-        text = tr(
-          `지금 배분이 이미 최선에 가깝습니다(${metricLabel} 차이 ${Math.abs(change * 100).toFixed(1)}%). 예산을 옮기기보다 소재·타겟을 손보세요.`,
-          `Today's split is already close to the best (${metricLabel} differs by ${Math.abs(change * 100).toFixed(1)}%). Work on creatives or targeting rather than moving budget.`,
-        );
+        text = tr(`현 배분 유지 권고 · 재배분 효과 ${metricLabel} ${Math.abs(change * 100).toFixed(1)}%`, `Keep the current split · reallocation moves ${metricLabel} by ${Math.abs(change * 100).toFixed(1)}%`);
       } else if (good) {
         tone = "good";
-        text = `${action} ${tr(`${metricLabel} ${range} (${pctText}) 예상.`, `Expected ${metricLabel}: ${range} (${pctText}).`)}`;
+        text = `${action} → ${metricLabel} ${pctText}`;
       } else {
         tone = "bad";
-        text = `${action} ${tr(`다만 이 예산에서는 ${metricLabel}가 ${range} (${pctText})로 나빠집니다.`, `At this budget, though, ${metricLabel} worsens: ${range} (${pctText}).`)}`;
+        text = `${action} → ${tr(`${metricLabel} ${pctText} 악화`, `${metricLabel} worsens ${pctText}`)}`;
       }
     } else {
-      text = action || tr("지금 배분을 유지하세요.", "Keep today's split.");
+      text = action || tr("현 배분 유지 권고", "Keep the current split");
     }
     return { tone, text, change, S };
   })();
   const fmtActionResult = roas ? (value) => fmtCurrency(value, currency) : (value) => formatNumberK(value);
-  const actionPoints = allocationActionPoints({ moves: actionMoves, issues: actionIssues, locale, metricLabel, resultLabel: unitLabel, fmtMoney: (value) => fmtCurrency(value, currency), fmtResult: fmtActionResult });
+  const fmtActionMoney = (value) => fmtCurrencyCompact(value, { currency, locale });
+  const actionPoints = allocationActionPoints({ moves: actionMoves, issues: actionIssues, locale, metricLabel, resultLabel: unitLabel, fmtMoney: fmtActionMoney, fmtResult: fmtActionResult });
 
   const activeAllocationView = allocationView === "share" && hiddenBlocks.includes("s-bar") ? "changes" : allocationView;
   const activeCurveView = hiddenBlocks.includes(curveView === "efficiency" ? "s-scatter" : "s-response")
@@ -2950,8 +2945,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             locale={locale}
             metricLabel={metricLabel}
             resultLabel={unitLabel}
-            fmtMoney={(value) => fmtCurrency(value, currency)}
+            fmtMoney={fmtActionMoney}
             fmtResult={fmtActionResult}
+            fmtMetric={(value) => fmtCostMetric(value, effectiveMetric, currency)}
             onShowAll={() => {
               setResultView("allocation");
               setAllocationView("table");
@@ -3010,7 +3006,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             },
             {
               label: tr(planBudgetPeriod === "monthly" ? "총 월예산" : "총 일예산", planBudgetPeriod === "monthly" ? "Total monthly budget" : "Total daily budget"),
-              value: `${fmtCurrency((summary?.prev.cost ?? 0) * (planBudgetPeriod === "monthly" ? 30 : 1), currency)} → ${fmtCurrency(planBudgetPeriod === "monthly" ? plannedDailyBudget * 30 : plannedDailyBudget, currency)}`,
+              value: `${fmtActionMoney((summary?.prev.cost ?? 0) * (planBudgetPeriod === "monthly" ? 30 : 1))} → ${fmtActionMoney(planBudgetPeriod === "monthly" ? plannedDailyBudget * 30 : plannedDailyBudget)}`,
             },
           ]}
           workbookExport={() => {

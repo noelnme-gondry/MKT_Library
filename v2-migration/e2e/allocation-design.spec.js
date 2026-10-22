@@ -25,10 +25,10 @@ for (const locale of ['ko', 'en']) {
     // 결론은 행동 목록으로 끝난다. 일반 방법 안내 3줄로 빨간 "!"를 띄우지 않는다 — 남는 것은 예시 파일의 데이터 품질 1건뿐.
     await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveAttribute('aria-label', en ? '1 thing to check' : '확인할 점 1개');
     await expect(page.locator('.result-action-card__stats > div')).toHaveCount(3);
-    const actions = page.locator('.result-action-card .alloc-actions__item');
+    const actions = page.getByRole('table', { name: en ? 'Changes by target' : '채널별 조정안' }).locator('tbody tr');
     expect(await actions.count()).toBeGreaterThan(0);
-    expect(await actions.count()).toBeLessThanOrEqual(5);
-    await expect(actions.first().locator('.alloc-actions__why')).not.toBeEmpty();
+    expect(await actions.count()).toBeLessThanOrEqual(6);
+    await expect(actions.first().locator('.alloc-plan__why')).not.toBeEmpty();
     await expect(page.locator('.prism-result-grid, .alloc-total-card')).toHaveCount(0);
     const analysis = page.locator('.allocation-result-workspace');
     const review = page.locator('.decision-review-preview');

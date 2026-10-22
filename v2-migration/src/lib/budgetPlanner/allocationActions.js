@@ -34,9 +34,11 @@ function reasonOf(item, unit, direction, isRoas) {
  * 대상별 행동. 변화가 큰 순서(절대 금액)로 정렬한다.
  * @param {object[]} items 5-3 배분 항목(channel·cost·current·binding·state·cpr)
  * @param {object[]} units 플래너 대상(unit·path·diagnosis·state)
- * @param {{isRoas?:boolean, minShare?:number}} opts minShare: 현재 지출 대비 이 비율 미만의 변화는 "유지"
+ * @param {{isRoas?:boolean, minShare?:number, history?:Object<string,{totalCost:number,totalResults:number}>}} opts
+ *   minShare: 현재 지출 대비 이 비율 미만의 변화는 "유지"
+ *   history: 대상별 최근 일평균 — 있으면 현재·예상 CPR을 함께 싣는다(예산 변화와 효율 변화를 같은 행에서 읽게)
  */
-export function allocationMoves(items = [], units = [], { isRoas = false, minShare = 0.01 } = {}) {
+export function allocationMoves(items = [], units = [], { isRoas = false, minShare = 0.01, history = null } = {}) {
   const unitOf = new Map(units.map((unit) => [unit.unit, unit]));
   return items.map((item) => {
     const current = Number(item.current) || 0;
@@ -46,6 +48,8 @@ export function allocationMoves(items = [], units = [], { isRoas = false, minSha
     const small = current > 0 ? Math.abs(delta) < current * minShare : Math.abs(delta) < 1e-6;
     const direction = small ? "keep" : delta > 0 ? "up" : "down";
     const unit = unitOf.get(item.channel);
+    const past = history?.[item.channel];
+    const results = Number(item.results);
     return {
       unit: item.channel,
       channel: unit?.path?.channel || item.channel,
@@ -54,6 +58,8 @@ export function allocationMoves(items = [], units = [], { isRoas = false, minSha
       delta,
       changePct,
       direction,
+      currentCpr: past && past.totalResults > 0 ? past.totalCost / past.totalResults : null,
+      plannedCpr: results > 0 ? proposed / results : null,
       reason: reasonOf(item, unit, direction, isRoas),
     };
   }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || a.unit.localeCompare(b.unit));

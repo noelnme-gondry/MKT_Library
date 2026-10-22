@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtCurrency, fmtPct, fmtNum, fmtCompact, parseNum, convertCurrency, sourceCurrencyOf, USD_KRW_RATE } from "./format";
+import { fmtCurrency, fmtCurrencyCompact, fmtPct, fmtNum, fmtCompact, parseNum, convertCurrency, sourceCurrencyOf, USD_KRW_RATE } from "./format";
 
 describe("format", () => {
   it("fmtCurrency: ₩ 0 decimals, $ 2 decimals, precise small", () => {
@@ -50,5 +50,23 @@ describe("format", () => {
     expect(sourceCurrencyOf({ currency: "USD" }, "KRW")).toBe("USD");
     expect(sourceCurrencyOf({ currency: "EUR" }, "KRW")).toBe("KRW");
     expect(sourceCurrencyOf({}, null)).toBeNull();
+  });
+});
+
+describe("fmtCurrencyCompact — 임원용 표의 축약 금액", () => {
+  it("KO 원화는 만·억, 그 외는 K·M·B, 만 미만은 전체 금액", () => {
+    expect(fmtCurrencyCompact(4895725)).toBe("₩490만");
+    expect(fmtCurrencyCompact(41644748)).toBe("₩4164만");
+    expect(fmtCurrencyCompact(-1454949)).toBe("−₩145만");
+    expect(fmtCurrencyCompact(353428)).toBe("₩35만");
+    expect(fmtCurrencyCompact(23456)).toBe("₩2.3만");
+    expect(fmtCurrencyCompact(250000000)).toBe("₩2.5억");
+    expect(fmtCurrencyCompact(9500)).toBe("₩9,500");
+    expect(fmtCurrencyCompact(4895725, { locale: "en" })).toBe("₩4.9M");
+    expect(fmtCurrencyCompact(-1454949, { locale: "en" })).toBe("−₩1.5M");
+    expect(fmtCurrencyCompact(353428, { locale: "en" })).toBe("₩353K");
+    expect(fmtCurrencyCompact(12345.6, { currency: "USD", locale: "en" })).toBe("$12.3K");
+    expect(fmtCurrencyCompact(512.5, { currency: "USD" })).toBe("$512.50");
+    expect(fmtCurrencyCompact(null)).toBe("—");
   });
 });

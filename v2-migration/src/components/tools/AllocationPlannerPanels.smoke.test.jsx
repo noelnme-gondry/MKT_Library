@@ -149,43 +149,50 @@ describe("5-3 플래너 근거 구역", () => {
   });
 });
 
-describe("결론 카드의 할 일·확인할 점", () => {
+describe("결론 카드의 조정안·확인할 점 표", () => {
   const moves = [
-    { unit: "KR · TikTok · iOS", channel: "TikTok", current: 2000, proposed: 1400, delta: -600, changePct: -0.3, direction: "down", reason: { code: "down_worse", verdict: "AUCTION_COST", change: 0.2 } },
-    { unit: "KR · Meta · iOS", channel: "Meta", current: 1000, proposed: 1200, delta: 200, changePct: 0.2, direction: "up", reason: { code: "up_daily_limit" } },
-    { unit: "KR · ASA · iOS", channel: "ASA", current: 500, proposed: 600, delta: 100, changePct: 0.2, direction: "up", reason: { code: "up_high_marginal" } },
-    { unit: "KR · Google · iOS", channel: "Google", current: 1000, proposed: 1000, delta: 0, changePct: 0, direction: "keep", reason: { code: "keep" } },
+    { unit: "KR · TikTok · iOS", channel: "TikTok", current: 2000000, proposed: 1400000, delta: -600000, changePct: -0.3, direction: "down", currentCpr: 1000, plannedCpr: 900, reason: { code: "down_worse", verdict: "AUCTION_COST", change: 0.2 } },
+    { unit: "KR · Meta · iOS", channel: "Meta", current: 1000000, proposed: 1200000, delta: 200000, changePct: 0.2, direction: "up", currentCpr: 800, plannedCpr: 850, reason: { code: "up_daily_limit" } },
+    { unit: "KR · ASA · iOS", channel: "ASA", current: 500000, proposed: 600000, delta: 100000, changePct: 0.2, direction: "up", currentCpr: null, plannedCpr: null, reason: { code: "up_high_marginal" } },
+    { unit: "KR · Google · iOS", channel: "Google", current: 1000000, proposed: 1000000, delta: 0, changePct: 0, direction: "keep", reason: { code: "keep" } },
   ];
   const issues = [
     { code: "fatigue_soon", params: { unit: "KR · Meta · iOS", creative: "c1", date: "2026-10-06" } },
-    { code: "unallocated", params: { amount: 250 } },
+    { code: "unallocated", params: { amount: 250000 } },
   ];
-  const fmt = { fmtMoney: (value) => `₩${Math.round(value)}`, fmtResult: (value) => String(Math.round(value)) };
+  const fmt = { fmtMoney: (value) => `₩${Math.round(value / 10000)}만`, fmtResult: (value) => String(Math.round(value)), fmtMetric: (value) => `₩${value}` };
 
-  for (const locale of ["ko", "en"]) it(`대상·금액·이유를 한 줄씩, 나머지는 버튼 하나로 (${locale})`, () => {
+  for (const locale of ["ko", "en"]) it(`대상·일예산·증감 막대·지표·근거를 한 행에, 나머지는 버튼 하나로 (${locale})`, () => {
     const en = locale === "en";
     const onShowAll = vi.fn();
     render(<AllocationActionSummary moves={moves} issues={issues} locale={locale} metricLabel="CPI" resultLabel={en ? "install" : "설치"} limit={2} onShowAll={onShowAll} {...fmt} />);
-    const items = document.querySelectorAll(".alloc-actions__item");
-    expect([...items].map((item) => item.querySelector(".alloc-actions__unit").textContent)).toEqual(["KR · TikTok · iOS", "KR · Meta · iOS"]);
-    expect(items[0].querySelector(".alloc-actions__delta").textContent).toBe(en ? "−₩600/day (−30%)" : "하루 −₩600 (−30%)");
-    expect(items[0].querySelector(".alloc-actions__why").textContent).toMatch(en ? /CPI \+20%/ : /최근 7일 CPI \+20%/);
-    expect(items[0].querySelector(".alloc-actions__amounts").textContent).toBe("₩2000 → ₩1400");
-    expect(items[1].querySelector(".alloc-actions__why").textContent.trim()).not.toBe("");
-    // 유지 대상은 할 일이 아니다 — 남은 변경 대상은 1개.
-    fireEvent.click(screen.getByRole("button", { name: en ? "Show the other 1 targets" : "나머지 1개 대상 보기" }));
+    const table = screen.getByRole("table", { name: en ? "Changes by target" : "채널별 조정안" });
+    const rows = [...table.querySelectorAll("tbody tr")];
+    expect(rows.map((row) => row.querySelector(".alloc-plan__unit").textContent)).toEqual(["KR · TikTok · iOS", "KR · Meta · iOS"]);
+    expect(rows[0].querySelector(".alloc-plan__delta strong").textContent).toBe("−₩60만");
+    expect(rows[0].querySelector(".alloc-plan__delta").textContent).toContain("−30%");
+    expect(rows[0].querySelector(".alloc-plan__bar i").className).toBe("is-down");
+    expect(rows[0].querySelector(".alloc-plan__bar i").style.width).toBe("50%");
+    expect(rows[1].querySelector(".alloc-plan__bar i").style.width).toBe(`${(200000 / 600000) * 50}%`);
+    expect(rows[0].querySelector(".alloc-plan__budget").textContent).toContain("₩200만 → ₩140만");
+    expect(rows[0].querySelector(".alloc-plan__cpr").textContent).toContain("₩1000 → ₩900");
+    expect(rows[0].querySelector(".alloc-plan__why").textContent).toMatch(en ? /CPI \+20% \(7d\)/ : /최근 7일 CPI \+20%/);
+    // 유지 대상은 조정안이 아니다 — 변경 대상은 3개.
+    fireEvent.click(screen.getByRole("button", { name: en ? "Show all 3 targets" : "전체 3개 대상 보기" }));
     expect(onShowAll).toHaveBeenCalledTimes(1);
-    const issueItems = [...document.querySelectorAll(".alloc-actions__issues li")].map((item) => item.textContent);
-    expect(issueItems).toHaveLength(2);
-    expect(issueItems[0]).toContain("2026-10-06");
-    expect(issueItems[1]).toContain("₩250");
+    const issueTable = screen.getByRole("table", { name: en ? "Check these" : "확인할 점" });
+    const issueRows = [...issueTable.querySelectorAll("tbody tr")].map((row) => [...row.querySelectorAll("td")].map((cell) => cell.textContent));
+    expect(issueRows).toHaveLength(2);
+    expect(issueRows[0][1]).toBe("KR · Meta · iOS · c1");
+    expect(issueRows[0][2]).toContain("2026-10-06");
+    expect(issueRows[1][2]).toContain("₩25만");
     const points = allocationActionPoints({ moves, issues, locale, metricLabel: "CPI", resultLabel: "설치", ...fmt });
-    expect(points.map((point) => point.text)).toHaveLength(5);
+    expect(points).toHaveLength(5);
     expect(points.every((point) => point.text && !point.text.includes("undefined"))).toBe(true);
   });
 
-  it("할 일도 확인할 점도 없으면 아무 제목도 그리지 않는다", () => {
+  it("조정도 확인할 점도 없으면 표를 그리지 않는다", () => {
     render(<AllocationActionSummary moves={[moves[3]]} issues={[]} {...fmt} />);
-    expect(document.querySelector(".alloc-actions h3")).toBeNull();
+    expect(document.querySelector(".alloc-actions table")).toBeNull();
   });
 });

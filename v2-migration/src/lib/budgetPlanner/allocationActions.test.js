@@ -35,6 +35,17 @@ describe("지금 할 일 — 대상별 행동", () => {
     expect(byUnit["KR · Google · iOS"].code).toBe("keep");
   });
 
+  it("최근 일평균이 있으면 같은 행에 현재·예상 CPR을 싣는다(결과 0이면 정의하지 않는다)", () => {
+    const history = { "KR · TikTok · iOS": { totalCost: 2000, totalResults: 20 }, "KR · Meta · iOS": { totalCost: 1000, totalResults: 0 } };
+    const moves = allocationMoves(items.map((item) => ({ ...item, results: item.channel === "KR · TikTok · iOS" ? 14 : 0 })), units, { history });
+    const byUnit = Object.fromEntries(moves.map((move) => [move.unit, move]));
+    expect(byUnit["KR · TikTok · iOS"].currentCpr).toBe(100);
+    expect(byUnit["KR · TikTok · iOS"].plannedCpr).toBe(100);
+    expect(byUnit["KR · Meta · iOS"].currentCpr).toBeNull();
+    expect(byUnit["KR · Meta · iOS"].plannedCpr).toBeNull();
+    expect(byUnit["KR · ASA · iOS"].currentCpr).toBeNull();
+  });
+
   it("ROAS면 같은 비용 공간 변화를 역으로 읽는다(CPR +20% = ROAS −16.7%)", () => {
     const [down] = allocationMoves(items, units, { isRoas: true });
     expect(down.reason.change).toBeCloseTo(1 / 1.2 - 1, 12);

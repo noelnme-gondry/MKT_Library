@@ -50,28 +50,61 @@
   .planner-scenarios__check { display: inline-flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); font-weight: 600; }
   .planner-scenarios__result { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.55; }
   .planner-creatives .planner-scenarios__result { margin-top: .75rem; }
-  /* 5-3 결론: 지금 할 일(대상·금액·이유)과 확인할 점. 한 줄에 한 행동, 폰에서는 이유가 아랫줄로. */
-  .alloc-actions { display: grid; gap: 1.25rem; margin-top: 1rem; min-width: 0; }
-  .alloc-actions section { min-width: 0; }
-  .alloc-actions h3 { margin: 0 0 .5rem; font-size: var(--fs-md); font-weight: 600; }
-  .alloc-actions__list { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-subtle); }
-  /* 행마다 열 폭이 달라지지 않게 목록이 열을 정하고 행은 subgrid로 따른다. 카드 안에서는 수치 줄과 같은 들여쓰기. */
+  /* 5-3 결론(임원용): 한 줄 결론 · 핵심 수치 3개 · 채널별 조정안 표 · 확인할 점 표. 글자는 표 크기로, 막대가 크기를 말한다. */
+  .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-lg); line-height: 1.35; letter-spacing: -.02em; }
+  .alloc-actions { display: grid; gap: 1.5rem; margin-top: 1.25rem; min-width: 0; }
   .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 47px; }
-  .alloc-actions__list { grid-template-columns: minmax(0, 1.1fr) auto minmax(0, 2fr) auto; column-gap: 1rem; }
-  .alloc-actions__item { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; row-gap: .25rem; align-items: baseline; padding: .625rem 0; border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-sm); line-height: 1.5; }
-  .alloc-actions__unit { min-width: 0; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
-  .alloc-actions__delta { white-space: nowrap; color: var(--text-secondary); }
-  .alloc-actions__delta strong { color: var(--text-primary); font-weight: 600; }
-  .alloc-actions__why { min-width: 0; color: var(--text-secondary); }
-  .alloc-actions__amounts { color: var(--text-muted); white-space: nowrap; text-align: right; }
-  .alloc-actions__more { margin-top: .5rem; }
-  .alloc-actions__issues { display: grid; gap: .375rem; margin: 0; padding-left: 1.1rem; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.55; }
-  @media (max-width: 768px) { .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 0; } }
-  /* 폭은 화면이 아니라 목록이 받은 폭으로 판단한다(사이드바 옆 980px에서도 네 칸이 좁아진다). */
-  .alloc-actions section { container-type: inline-size; }
-  @container (max-width: 768px) {
-    .alloc-actions__list { grid-template-columns: minmax(0, 1fr) auto; }
-    .alloc-actions__why, .alloc-actions__amounts { grid-column: 1 / -1; text-align: left; }
+  .alloc-plan { min-width: 0; container-type: inline-size; }
+  .alloc-plan__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .5rem; }
+  .alloc-plan__head h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+  .alloc-plan__head span { color: var(--text-muted); font-size: var(--fs-xs); }
+  .alloc-plan .table-wrap { margin: 0; }
+  .alloc-plan__table { width: 100%; font-size: var(--fs-sm); }
+  /* 공용 표 규칙(셀 높이·좌우 여백)이 이기므로 이 표만 밀도를 직접 정한다. */
+  .alloc-plan .alloc-plan__table :is(th, td) { height: auto !important; padding: .5rem .75rem !important; vertical-align: middle; line-height: 1.45; }
+  .alloc-plan .alloc-plan__table :is(th, td):first-child { padding-left: 0 !important; }
+  .alloc-plan .alloc-plan__table :is(th, td):last-child { padding-right: 0 !important; }
+  .alloc-plan__table th { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+  .alloc-plan__unit { font-weight: 600; color: var(--text-primary); }
+  .alloc-plan__kind { font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+  .alloc-plan__budget, .alloc-plan__cpr { white-space: nowrap; color: var(--text-secondary); }
+  .alloc-plan__budget strong { color: var(--text-primary); font-weight: 600; }
+  .alloc-plan__delta { white-space: nowrap; color: var(--text-muted); }
+  .alloc-plan__delta strong { color: var(--text-primary); font-weight: 600; }
+  .alloc-plan__why { color: var(--text-secondary); }
+  .alloc-plan__label { display: none; color: var(--text-muted); }
+  /* 증감 막대: 가운데가 0. 증액은 강조색, 감액은 중립색 — 감액이 곧 나쁨은 아니다. */
+  .alloc-plan__bar { position: relative; display: inline-block; width: 88px; height: 8px; margin-right: .625rem; vertical-align: middle; background: color-mix(in srgb, var(--text-muted) 16%, transparent); border-radius: var(--radius-sm); }
+  .alloc-plan__bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--border); }
+  .alloc-plan__bar i { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-sm); }
+  .alloc-plan__bar i.is-up { left: 50%; background: var(--primary); }
+  .alloc-plan__bar i.is-down { right: 50%; background: var(--text-muted); }
+  .alloc-actions__more { margin-top: .75rem; }
+  /* 좁은 폭(폰·사이드바 옆 좁은 칸): 표를 행 블록으로. 열 제목 대신 칸 안 라벨이 말한다. */
+  @container (max-width: 640px) {
+    .alloc-plan__table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .alloc-plan__table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .125rem .75rem; padding: .625rem 0; border-bottom: 1px solid var(--border-subtle); }
+    .alloc-plan .alloc-plan__table td { display: block; min-height: 0 !important; padding: 0 !important; border: 0 !important; text-align: left !important; }
+    .alloc-plan__table .alloc-plan__unit { grid-row: 1; grid-column: 1; }
+    .alloc-plan__table .alloc-plan__delta { grid-row: 1; grid-column: 2; }
+    .alloc-plan__table .alloc-plan__budget { grid-row: 2; grid-column: 1; }
+    .alloc-plan__table .alloc-plan__cpr { grid-row: 2; grid-column: 2; text-align: right !important; }
+    .alloc-plan__table .alloc-plan__delta { text-align: right !important; }
+    .alloc-plan__table .alloc-plan__why { grid-column: 1 / -1; color: var(--text-muted); }
+    .alloc-plan__table--issues :is(.alloc-plan__unit, .alloc-plan__why) { grid-row: auto; grid-column: 1 / -1; }
+    .alloc-plan__table--issues .alloc-plan__kind { grid-column: 1 / -1; }
+    .alloc-plan__label { display: inline; }
+    .alloc-plan__bar { width: 48px; }
+    .alloc-plan .alloc-plan__table td:not(.alloc-plan__delta) { white-space: normal; overflow-wrap: anywhere; }
+  }
+  @container (max-width: 480px) {
+    .alloc-plan__table .alloc-plan__cpr { grid-row: 3; grid-column: 1 / -1; text-align: left !important; }
+    .alloc-plan__table .alloc-plan__budget { grid-column: 1 / -1; }
+    .alloc-plan__bar { display: none; }
+  }
+  @media (max-width: 768px) {
+    .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 0; }
+    .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-md); }
   }
   /* 배분 조건: 지표·요약·바꾸기 한 줄 + 예산 입력. 나머지 조건은 창에서. */
   .alloc-condition__top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
@@ -87,7 +120,8 @@
   .alloc-condition-dialog .alloc-hold-low { max-width: none; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
   .alloc-condition-dialog :is(.prism-driver__method p, .alloc-hold-low p) { font-size: var(--fs-sm); line-height: 1.7; }
   .alloc-details { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); min-width: 0; }
-  .alloc-details > .section-title { margin: 0 0 .75rem; }
+  .alloc-details > .section-title { margin: 0 0 .75rem; font-size: var(--fs-md); }
+  .allocation-workspace .alloc-condition .prism-driver__readout { font-size: var(--fs-lg); }
   .planner-plan-review__list { display: grid; gap: .75rem; margin: .75rem 0 0; padding: 0; list-style: none; }
   .planner-plan-review__list li { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
   .planner-plan-review__list li p { margin: 0; font-size: var(--fs-sm); line-height: 1.55; }

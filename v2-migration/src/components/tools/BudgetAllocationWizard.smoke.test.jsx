@@ -119,16 +119,20 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     render(<BudgetAllocation />);
     const card = document.querySelector(".result-action-card");
     expect(card).toBeTruthy();
-    // 결론 문장은 행동(어디서 빼고 어디에 더할지)부터 말한다.
-    expect(card.querySelector(".result-action-card__headline").textContent).toMatch(/하루 .+(빼고|더하세요|줄이세요)|최선에 가깝습니다/);
+    // 결론은 한 줄: 무엇을 얼마나 옮기는지 → 지표 변화.
+    const headline = card.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/일 ₩[\d.,]+(만|억)? (감액|증액)|현 배분 유지/);
+    expect(headline.length).toBeLessThanOrEqual(70);
     expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
-    const actions = card.querySelectorAll(".alloc-actions__item");
-    expect(actions.length).toBeGreaterThan(0);
-    expect(actions.length).toBeLessThanOrEqual(5);
-    for (const item of actions) {
-      expect(item.querySelector(".alloc-actions__unit").textContent.trim()).not.toBe("");
-      expect(item.querySelector(".alloc-actions__delta").textContent).toMatch(/하루 [+−]/);
-      expect(item.querySelector(".alloc-actions__why").textContent.trim()).not.toBe("");
+    const table = within(card).getByRole("table", { name: "채널별 조정안" });
+    const rows = table.querySelectorAll("tbody tr");
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThanOrEqual(6);
+    for (const row of rows) {
+      expect(row.querySelector(".alloc-plan__unit").textContent.trim()).not.toBe("");
+      expect(row.querySelector(".alloc-plan__delta strong").textContent).toMatch(/^[+−]₩/);
+      expect(row.querySelector(".alloc-plan__cpr").textContent).toMatch(/→/);
+      expect(row.querySelector(".alloc-plan__why").textContent.trim()).not.toBe("");
     }
     // 일반 방법 안내로 빨간 "!"를 띄우지 않는다. 지운 진단·점검 블록은 되살리지 않는다.
     expect(card.querySelector(".issue-mark")).toBeNull();
