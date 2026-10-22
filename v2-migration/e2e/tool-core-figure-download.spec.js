@@ -8,7 +8,8 @@ import { measureDesignRules } from "./support/designRules";
 // 캔버스 차트도 같은 버튼(ds/FigurePngButton)으로 받는다 — HTML 그림과 캔버스 경로를 둘 다 실제로 밟는다.
 const CASES = [
   { path: "/tools/campaign-variance", file: /^pvm_mix_rate_\d{4}-\d{2}-\d{2}\.png$/ },
-  { path: "/tools/budget-allocation", file: /^budget_shift_\d{4}-\d{2}-\d{2}\.png$/ },
+  // 5-3은 전체 배분표가 기본 보기라 그림은 "변경 요약"을 골라야 보인다.
+  { path: "/tools/budget-allocation", view: "변경 요약", file: /^budget_shift_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/vif-multicollinearity", file: /^vif_by_channel_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/content/freshness", file: /^creative_status_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/campaign-saturation", scope: "#s-marginal-gap", file: /^marginal_gap_[a-z]+_[a-z]+_\d{4}-\d{2}-\d{2}\.png$/ },
@@ -24,7 +25,7 @@ function pngSize(buffer) {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
-for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES) {
+for (const { path, file, scope = ".tool-core-figure", canvas = false, view = null } of CASES) {
   test(`core figure downloads as a real PNG (${path})`, async ({ page }) => {
     test.setTimeout(150_000);
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "figure-owner", email: "figure@example.com" }, entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
@@ -34,6 +35,7 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES)
     const figure = page.locator(scope).first();
     await expect(async () => {
       if (await example.isVisible()) await example.click();
+      if (view) await page.getByRole("radio", { name: view, exact: true }).click({ timeout: 5_000 });
       await expect(figure).toBeVisible({ timeout: 5_000 });
     }).toPass({ timeout: 120_000 });
     const button = figure.getByRole("button", { name: "PNG 받기" });

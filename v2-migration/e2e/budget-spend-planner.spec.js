@@ -17,7 +17,12 @@ for (const locale of ["ko", "en"]) {
     const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
     await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "weekly-planner.csv", mimeType: "text/csv", buffer: Buffer.from(lines.join("\n")) });
     await uploader.getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
-    await expect(page.locator(".allocation-observation-note")).toContainText(en ? "Weekly totals" : "주간 합계");
+    // 관측 단위 안내는 "조건 바꾸기" 창 안에 있다 — 창을 닫아야 뒤 화면을 누를 수 있다(aria-hidden).
+    await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
+    const conditions = page.getByRole("dialog", { name: en ? "Allocation settings" : "배분 조건", exact: true });
+    await expect(conditions.locator(".allocation-observation-note")).toContainText(en ? "Weekly totals" : "주간 합계");
+    await conditions.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
+    await expect(conditions).toHaveCount(0);
     // A week-start row covers the full seven-day observation. The boundary is
     // Sunday, not the last Monday; selecting partial weeks still uses the
     // planner's existing exclusion rule.
