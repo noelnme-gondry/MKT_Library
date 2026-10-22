@@ -115,7 +115,9 @@ describe("BudgetAllocation render smoke", () => {
     expect(screen.getByLabelText("자료 단위").value).toBe("weekly");
     expect(screen.getByLabelText("분배 단위", { selector: "select" }).value).toBe("channel");
     fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     expect(document.querySelector(".allocation-observation-note").textContent).toContain("주간 합계를 7일로");
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
     fireEvent.click(screen.getByRole("tab", { name: "예산 비교", exact: true }));
     expect(screen.getAllByRole("table", { name: "예산 실행안 비교" })).toHaveLength(1);
     expect(document.querySelector(".result-action-card")).toBeTruthy();
@@ -150,7 +152,7 @@ describe("BudgetAllocation render smoke", () => {
     expect(document.getElementById("s-table").closest("[hidden]")).toBeNull();
     expect(figure.closest("[hidden]")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
-    expect(container.querySelector(".alloc-verify-strip").closest('[role="tabpanel"]').hidden).toBe(false);
+    expect(container.querySelector(".planner-status").closest('[role="tabpanel"]').hidden).toBe(false);
     expect(container.querySelector(".alloc-total-card")).toBeNull();
     expect(container.querySelector(".prism-result-grid")).toBeNull();
     expect(figure.textContent).toBe(original);
@@ -167,6 +169,9 @@ describe("BudgetAllocation render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-3");
     render(<BudgetAllocation />);
+    // 실행 방식은 "조건 바꾸기" 창에서 고르고, 바깥 요약 한 줄이 지금 방식을 말한다.
+    expect(document.querySelector(".alloc-condition__summary").textContent).toContain("이번 실행안");
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     const buttons = [...document.querySelectorAll(".alloc-mode-toggle button")];
     expect(buttons.map((button) => button.textContent)).toEqual(["이번 실행안", "목표 배분"]);
     expect(buttons[0].getAttribute("aria-pressed")).toBe("true");

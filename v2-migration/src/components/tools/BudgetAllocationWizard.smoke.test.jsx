@@ -6,13 +6,22 @@
 // Step3 (§4 배분 비중 bar chart) so render-throw bugs in step-transition JSX
 // and Chart.js effects are caught (golden tests only cover pure math, §7).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOCATION_SPEC, allocationOptionValue } from "@/lib/recipe/allocationRecipe";
 import { foldSteps } from "@/lib/recipe/recipe";
 import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import BudgetAllocation, { buildAllocationChartCountries, buildAllocationChartPoints, buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
+
+// 계산 기준(총 예산/효율 목표)은 "조건 바꾸기" 창 안에 있다. 창이 열려 있으면 바깥이 aria-hidden이므로 고른 뒤 닫는다.
+function chooseBasis(name, locale = "ko") {
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name }));
+  fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Close" : "닫기", exact: true }));
+}
+
 
 function seedWithData() {
   const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs", "Actions", "Revenue"];
@@ -106,18 +115,31 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(barSection).toBeTruthy();
   });
 
-  it("진단은 확인 탭에서 읽고 총합 수치는 결론에 한 번만 표시한다", () => {
+  it("결론은 할 일·핵심 수치 3개로 끝나고, 근거는 자세히 보기 탭에만 있다", () => {
     render(<BudgetAllocation />);
-    const diagnosis = document.querySelector(".alloc-diag-card");
-    expect(diagnosis).toBeTruthy();
+    const card = document.querySelector(".result-action-card");
+    expect(card).toBeTruthy();
+    // 결론 문장은 행동(어디서 빼고 어디에 더할지)부터 말한다.
+    expect(card.querySelector(".result-action-card__headline").textContent).toMatch(/하루 .+(빼고|더하세요|줄이세요)|최선에 가깝습니다/);
+    expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    const actions = card.querySelectorAll(".alloc-actions__item");
+    expect(actions.length).toBeGreaterThan(0);
+    expect(actions.length).toBeLessThanOrEqual(5);
+    for (const item of actions) {
+      expect(item.querySelector(".alloc-actions__unit").textContent.trim()).not.toBe("");
+      expect(item.querySelector(".alloc-actions__delta").textContent).toMatch(/하루 [+−]/);
+      expect(item.querySelector(".alloc-actions__why").textContent.trim()).not.toBe("");
+    }
+    // 일반 방법 안내로 빨간 "!"를 띄우지 않는다. 지운 진단·점검 블록은 되살리지 않는다.
+    expect(card.querySelector(".issue-mark")).toBeNull();
+    expect(document.querySelector(".alloc-diag-card")).toBeNull();
+    expect(document.querySelector(".alloc-verify-strip")).toBeNull();
     expect(document.querySelector(".alloc-total-card")).toBeNull();
     expect(document.querySelectorAll(".result-action-card__stats")).toHaveLength(1);
-    expect(diagnosis.querySelector(".alloc-insight-summary").textContent).toMatch(/감액|증액|효율 점검/);
-    expect(diagnosis.closest('[role="tabpanel"]').hidden).toBe(true);
+    const status = document.querySelector(".planner-status");
+    expect(status.closest('[role="tabpanel"]').hidden).toBe(true);
     fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
-    expect(diagnosis.closest('[role="tabpanel"]').hidden).toBe(false);
-    expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeGreaterThan(0);
-    expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeLessThanOrEqual(3);
+    expect(status.closest('[role="tabpanel"]').hidden).toBe(false);
   });
 
   it("switches between named current/plan distribution and the full allocation table", () => {
@@ -214,12 +236,12 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     fireEvent.change(exact, { target: { value: String(Number(slider.max) * 2) } });
     fireEvent.blur(exact);
     expect(screen.getByText(/자동 실행안은 만들지 않았습니다/)).toBeTruthy();
-    expect(screen.queryByText(/결론 —/)).toBeNull();
+    expect(document.querySelector(".result-action-card")).toBeNull();
   });
 
   it("효율 목표 모드는 CPI/CPA/ROAS 중 현재 CSV에 있는 목표의 전역 슬라이더로 최대 안전 예산을 찾는다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
+    chooseBasis(/효율 목표/);
     const sliders = document.querySelectorAll('input[type="range"]');
     expect(sliders).toHaveLength(1);
     const targetSlider = document.getElementById("prism-efficiency-target");
@@ -233,29 +255,29 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("달성 불가능한 효율 목표는 참고안만 보이고 실행·저장 가능한 결과를 만들지 않는다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
+    chooseBasis(/효율 목표/);
     const targetSlider = document.getElementById("prism-efficiency-target");
     fireEvent.change(targetSlider, { target: { value: targetSlider.min } });
     expect(screen.getByText(/실행·저장할 수 없습니다/)).toBeTruthy();
-    expect(screen.queryByText(/결론 —/)).toBeNull();
+    expect(document.querySelector(".result-action-card")).toBeNull();
   });
 
   it("효율 목표에서 고른 KPI는 총 예산 모드에도 그대로 이어진다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
+    chooseBasis(/효율 목표/);
     fireEvent.click(screen.getByRole("radio", { name: /ROAS/ }));
     expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     const finish = screen.getAllByRole("button", { name: /검증 완료 및 예산 배분/ })[0];
     fireEvent.click(finish);
-    fireEvent.click(screen.getByRole("button", { name: /총 예산/ }));
+    chooseBasis(/총 예산/);
     expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
+    chooseBasis(/효율 목표/);
     expect(screen.getByRole("radio", { name: /CPI/ }).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
@@ -288,7 +310,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   it("keeps the same global-driver behavior in English", () => {
     render(<BudgetAllocation locale="en" />);
     expect(document.getElementById("prism-total-budget")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Efficiency target" }));
+    chooseBasis("Efficiency target", "en");
     expect(document.getElementById("prism-efficiency-target")).toBeTruthy();
     expect(document.querySelector(".prism-driver__status")?.textContent).toMatch(/largest daily budget|observed maximum spend|observed-spend ceiling|No budget below the observed-spend ceilings/);
   });

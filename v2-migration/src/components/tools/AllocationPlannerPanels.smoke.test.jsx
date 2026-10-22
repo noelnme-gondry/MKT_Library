@@ -6,7 +6,7 @@ import { render, fireEvent, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 import { buildSampleJourney } from "@/lib/sampleJourney";
-import { PlannerCreativeStatus, PlannerForecast, PlannerPlanReview } from "@/components/tools/AllocationPlannerPanels";
+import { AllocationActionSummary, allocationActionPoints, PlannerCreativeStatus, PlannerForecast, PlannerPlanReview } from "@/components/tools/AllocationPlannerPanels";
 import { allocationAt, loserOffScenarioAt, newCreativeScenarioAt, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { reviewAllocationPlan } from "@/lib/budgetPlanner/planReview";
 import { serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
@@ -146,5 +146,46 @@ describe("5-3 플래너 근거 구역", () => {
     const table = screen.getByRole("table", { name: "소재 상태" });
     expect(within(table).getByText(/이 배분으로는 학습 완료가 어려움: 하루 약 ₩\d+ 필요/)).toBeTruthy();
     expect(screen.getByText(/기존보다 나쁜 소재 bad \(KR · Meta\)를 끄면 같은 예산으로 14일 예상 설치/)).toBeTruthy();
+  });
+});
+
+describe("결론 카드의 할 일·확인할 점", () => {
+  const moves = [
+    { unit: "KR · TikTok · iOS", channel: "TikTok", current: 2000, proposed: 1400, delta: -600, changePct: -0.3, direction: "down", reason: { code: "down_worse", verdict: "AUCTION_COST", change: 0.2 } },
+    { unit: "KR · Meta · iOS", channel: "Meta", current: 1000, proposed: 1200, delta: 200, changePct: 0.2, direction: "up", reason: { code: "up_daily_limit" } },
+    { unit: "KR · ASA · iOS", channel: "ASA", current: 500, proposed: 600, delta: 100, changePct: 0.2, direction: "up", reason: { code: "up_high_marginal" } },
+    { unit: "KR · Google · iOS", channel: "Google", current: 1000, proposed: 1000, delta: 0, changePct: 0, direction: "keep", reason: { code: "keep" } },
+  ];
+  const issues = [
+    { code: "fatigue_soon", params: { unit: "KR · Meta · iOS", creative: "c1", date: "2026-10-06" } },
+    { code: "unallocated", params: { amount: 250 } },
+  ];
+  const fmt = { fmtMoney: (value) => `₩${Math.round(value)}`, fmtResult: (value) => String(Math.round(value)) };
+
+  for (const locale of ["ko", "en"]) it(`대상·금액·이유를 한 줄씩, 나머지는 버튼 하나로 (${locale})`, () => {
+    const en = locale === "en";
+    const onShowAll = vi.fn();
+    render(<AllocationActionSummary moves={moves} issues={issues} locale={locale} metricLabel="CPI" resultLabel={en ? "install" : "설치"} limit={2} onShowAll={onShowAll} {...fmt} />);
+    const items = document.querySelectorAll(".alloc-actions__item");
+    expect([...items].map((item) => item.querySelector(".alloc-actions__unit").textContent)).toEqual(["KR · TikTok · iOS", "KR · Meta · iOS"]);
+    expect(items[0].querySelector(".alloc-actions__delta").textContent).toBe(en ? "−₩600/day (−30%)" : "하루 −₩600 (−30%)");
+    expect(items[0].querySelector(".alloc-actions__why").textContent).toMatch(en ? /CPI \+20%/ : /최근 7일 CPI \+20%/);
+    expect(items[0].querySelector(".alloc-actions__amounts").textContent).toBe("₩2000 → ₩1400");
+    expect(items[1].querySelector(".alloc-actions__why").textContent.trim()).not.toBe("");
+    // 유지 대상은 할 일이 아니다 — 남은 변경 대상은 1개.
+    fireEvent.click(screen.getByRole("button", { name: en ? "Show the other 1 targets" : "나머지 1개 대상 보기" }));
+    expect(onShowAll).toHaveBeenCalledTimes(1);
+    const issueItems = [...document.querySelectorAll(".alloc-actions__issues li")].map((item) => item.textContent);
+    expect(issueItems).toHaveLength(2);
+    expect(issueItems[0]).toContain("2026-10-06");
+    expect(issueItems[1]).toContain("₩250");
+    const points = allocationActionPoints({ moves, issues, locale, metricLabel: "CPI", resultLabel: "설치", ...fmt });
+    expect(points.map((point) => point.text)).toHaveLength(5);
+    expect(points.every((point) => point.text && !point.text.includes("undefined"))).toBe(true);
+  });
+
+  it("할 일도 확인할 점도 없으면 아무 제목도 그리지 않는다", () => {
+    render(<AllocationActionSummary moves={[moves[3]]} issues={[]} {...fmt} />);
+    expect(document.querySelector(".alloc-actions h3")).toBeNull();
   });
 });

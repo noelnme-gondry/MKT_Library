@@ -22,25 +22,30 @@ for (const locale of ['ko', 'en']) {
     expect(header.alignment).toBeLessThanOrEqual(1);
     const views = page.getByRole('tablist', { name: en ? 'Allocation views' : '배분 보기' });
     await expect(views.getByRole('tab')).toHaveCount(4);
-    await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveCount(1);
-    await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveAttribute('aria-label', en ? '3 things to check' : '확인할 점 3개');
+    // 결론은 행동 목록으로 끝난다. 일반 방법 안내 3줄로 빨간 "!"를 띄우지 않는다 — 남는 것은 예시 파일의 데이터 품질 1건뿐.
+    await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveAttribute('aria-label', en ? '1 thing to check' : '확인할 점 1개');
+    await expect(page.locator('.result-action-card__stats > div')).toHaveCount(3);
+    const actions = page.locator('.result-action-card .alloc-actions__item');
+    expect(await actions.count()).toBeGreaterThan(0);
+    expect(await actions.count()).toBeLessThanOrEqual(5);
+    await expect(actions.first().locator('.alloc-actions__why')).not.toBeEmpty();
     await expect(page.locator('.prism-result-grid, .alloc-total-card')).toHaveCount(0);
     const analysis = page.locator('.allocation-result-workspace');
     const review = page.locator('.decision-review-preview');
     await expect(review).toBeVisible();
     expect(await analysis.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('.decision-review-preview')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    await expect(page.locator('#s-table')).toBeHidden();
-    await page.getByRole('radio', { name: en ? 'Full table' : '전체 배분표', exact: true }).click();
     await expect(page.locator('#s-table')).toBeVisible();
     await expect(page.locator('.result-shift')).toBeHidden();
     await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
+    await expect(page.locator('.result-shift')).toBeVisible();
+    await expect(page.locator('#s-table')).toBeHidden();
     const allocationTab = views.getByRole('tab', { name: en ? 'Allocation' : '배분안', exact: true });
     await allocationTab.focus();
     await allocationTab.press('End');
     const checks = views.getByRole('tab', { name: en ? 'Checks' : '확인', exact: true });
     await expect(checks).toBeFocused();
     await expect(checks).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.alloc-verify-strip')).toBeVisible();
+    await expect(page.locator('.planner-status')).toBeVisible();
     const panelId = await checks.getAttribute('aria-controls');
     await expect(page.locator(`[id="${panelId}"]`)).toHaveAttribute('aria-labelledby', await checks.getAttribute('id'));
     const tabAudit = await new AxeBuilder({ page }).include('.allocation-result-workspace').withTags(['wcag2a', 'wcag2aa']).analyze();
@@ -129,6 +134,8 @@ for (const locale of ['ko', 'en']) {
     await page.route('**/api/account/session', route => route.fulfill({ json: { enabled: true, account: { id: 'figure-test', email: 'figure@example.com' }, entitlement } }));
     await page.route('**/api/payments/access', route => route.fulfill({ json: { entitlement } }));
     await page.goto(`${en ? '/en' : ''}/tools/budget-allocation?example=1`);
+    // 자세히 보기는 전체 배분표로 열린다 — 그림은 "변경 요약"에 있다.
+    await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
     const figure = page.locator('.result-shift');
     const entities = figure.locator('.result-shift__entity');
     await expect(entities).toHaveCount(8);
@@ -293,6 +300,7 @@ for (const locale of ['ko', 'en']) {
     const command = page.locator('.allocation-context-controls .recipe-command');
     const input = command.getByRole('combobox');
     const plan = page.locator('.result-shift');
+    await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
     await expect(plan).toBeVisible();
     const initial = await plan.textContent();
     await page.getByRole('tab', { name: en ? 'Budget comparison' : '예산 비교', exact: true }).click();
