@@ -26,8 +26,8 @@ describe("period sensitivity evidence", () => {
     const sparse = saturationPeriodSensitivity(rows.slice(0, 4), { grain: "channel", metricField: "installs", metric: "cpa" });
     expect(sparse.rows[0].status).toBe("unavailable");
   });
-  it.each(["b", "c"])("reruns actual allocation at a fixed budget and withholds infeasible constraints (%s)", (allocMode) => {
-    const settings = { unitField: "channel", effectiveMetric: "installs", adv: { trendType: "linear", outlierMethod: "none" }, groupModels: {}, recentDays: 8, holdLowConfidence: false, plannedDailyBudget: 1500, allocMode, currency: "KRW" };
+  it.each(["paced", "full"])("reruns actual allocation at a fixed budget and withholds infeasible constraints (%s)", (allocPace) => {
+    const settings = { unitField: "channel", effectiveMetric: "installs", adv: { trendType: "linear", outlierMethod: "none" }, groupModels: {}, recentDays: 8, holdLowConfidence: false, plannedDailyBudget: 1500, allocPace, currency: "KRW" };
     const result = allocationPeriodSensitivity(rows, settings);
     expect(result.rows[0]).toMatchObject({ status: "stable", before: { direction: "increase" }, after: { direction: "increase" } });
     expect(allocationPeriodSensitivity(rows, { ...settings, plannedDailyBudget: 5000 }).rows[0].status).toBe("unavailable");

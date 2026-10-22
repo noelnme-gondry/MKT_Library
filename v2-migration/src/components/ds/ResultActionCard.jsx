@@ -32,6 +32,7 @@ import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract
 //   tone     : "good" | "bad" | "neutral"  (좌측 보더·아이콘 색)
 //   title    : 카드 제목(기본 "결론")
 //   headline : 한 줄 평어 결론(string | node)  — 통계용어 없이
+//   headlineContent : 화면에만 쓰는 결론 마크업(줄바꿈 위치를 정할 때). 공유·내보내기는 headline 문자열을 쓴다.
 //   points   : [{ text, cls? }]  다음 액션/설명 불릿 (cls: "bad"|"good"|"muted")
 //   stats    : [{ label, value, detail? }]  핵심 수치 스트립
 //   download : node (DownloadHub 등)  — 우상단 배치
@@ -63,6 +64,7 @@ export default function ResultActionCard({
   tone = "neutral",
   title = "결론",
   headline,
+  headlineContent = null,
   points = [],
   pointsContent = null, // Alternate evidence UI; keep points intact for shares, reports and exports.
   stats = [],
@@ -301,7 +303,7 @@ export default function ResultActionCard({
           </div>
           {headline && (
             <h2 id={headingId} className="result-action-card__headline">
-              {headline}
+              {headlineContent ?? headline}
             </h2>
           )}
         </div>

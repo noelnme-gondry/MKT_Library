@@ -77,7 +77,7 @@ describe("Dochi efficiency analysis adapters", () => {
       expect(stat("current-results"), denomBasis).toBeGreaterThan(0);
       expect(stat("expected-results"), denomBasis).toBeGreaterThanOrEqual(stat("current-results"));
       expect(actual.verdict.headline, denomBasis).not.toContain("지금 배분이 더 낫습니다");
-      expect(actual.manifest.allocationSource, denomBasis).toBe("from_current");
+      expect(actual.manifest.allocationSource, denomBasis).toBe("planner");
     }
   });
 

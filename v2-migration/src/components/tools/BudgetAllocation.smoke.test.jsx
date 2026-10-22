@@ -115,7 +115,9 @@ describe("BudgetAllocation render smoke", () => {
     expect(screen.getByLabelText("자료 단위").value).toBe("weekly");
     expect(screen.getByLabelText("분배 단위", { selector: "select" }).value).toBe("channel");
     fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     expect(document.querySelector(".allocation-observation-note").textContent).toContain("주간 합계를 7일로");
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
     fireEvent.click(screen.getByRole("tab", { name: "예산 비교", exact: true }));
     expect(screen.getAllByRole("table", { name: "예산 실행안 비교" })).toHaveLength(1);
     expect(document.querySelector(".result-action-card")).toBeTruthy();
@@ -150,7 +152,7 @@ describe("BudgetAllocation render smoke", () => {
     expect(document.getElementById("s-table").closest("[hidden]")).toBeNull();
     expect(figure.closest("[hidden]")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
-    expect(container.querySelector(".alloc-verify-strip").closest('[role="tabpanel"]').hidden).toBe(false);
+    expect(container.querySelector(".planner-status").closest('[role="tabpanel"]').hidden).toBe(false);
     expect(container.querySelector(".alloc-total-card")).toBeNull();
     expect(container.querySelector(".prism-result-grid")).toBeNull();
     expect(figure.textContent).toBe(original);
@@ -158,8 +160,7 @@ describe("BudgetAllocation render smoke", () => {
     fit.mockRestore();
   });
 
-  it("greedy mode says when it shows the plan that starts from the current split", () => {
-    // 샘플은 0원부터 채우는 그리디가 지금보다 나쁜 안을 내는 데이터다(결과 화면 5-3과 같은 샘플).
+  it("switches between the next-step plan and the target allocation on the same planner", () => {
     const csv = buildSampleJourney("ko");
     useAppStore.setState({
       currentRouteId: "5-3",
@@ -168,11 +169,16 @@ describe("BudgetAllocation render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-3");
     render(<BudgetAllocation />);
-    const greedy = [...document.querySelectorAll(".alloc-mode-toggle button")].find((button) => button.textContent === "한계효용 그리디");
-    expect(greedy).toBeTruthy();
-    act(() => greedy.click());
-    expect(greedy.getAttribute("aria-pressed")).toBe("true");
-    expect(document.body.textContent).toContain("현재 배분을 기준으로 조정한 안입니다");
+    // 실행 방식은 "조건 바꾸기" 창에서 고르고, 바깥 요약 한 줄이 지금 방식을 말한다.
+    expect(document.querySelector(".alloc-condition__summary").textContent).toContain("이번 실행안");
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
+    const buttons = [...document.querySelectorAll(".alloc-mode-toggle button")];
+    expect(buttons.map((button) => button.textContent)).toEqual(["이번 실행안", "목표 배분"]);
+    expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("하루 증액 20%·감액 30% 안에서만");
+    act(() => buttons[1].click());
+    expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("단계적으로 다가가세요");
     // 결과 작업대와 같은 핵심 그림(지금 하루 예산 ↔ 바꾼 안)이 결론 카드 바로 뒤에 온다.
     const figure = document.querySelector(".tool-core-figure .result-shift");
     expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();

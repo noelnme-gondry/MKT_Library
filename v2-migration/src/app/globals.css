@@ -28,6 +28,112 @@
   .app .content .allocation-result-panel .analysis-design-check--allocation { border: 0; background: transparent; padding: 0; }
   .allocation-result-subview { margin-bottom: 1rem; }
   @media (max-width: 768px) { .result-action-card .allocation-result-workspace { margin-left: 0; } }
+  /* 5-3 플래너 근거: 예측 · 대상별 상태 · 단가 변화 분해 · 소재 상태 */
+  .planner-forecast, .planner-status, .planner-breakdown, .planner-creatives { min-width: 0; }
+  .planner-forecast h3, .planner-status h3, .planner-breakdown h3, .planner-creatives h3 { margin: 0 0 .25rem; font-size: var(--fs-md); font-weight: 600; }
+  .planner-status > p, .planner-breakdown > p, .planner-creatives > p { margin: 0 0 .75rem; color: var(--text-muted); font-size: var(--fs-sm); }
+  .planner-forecast { padding-top: 1.25rem; border-top: 1px solid var(--border); }
+  .planner-forecast__period { margin: 0 0 .75rem; color: var(--text-muted); font-size: var(--fs-sm); }
+  .planner-forecast__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem 1.5rem; margin: 0; }
+  .planner-forecast__stats > div { min-width: 0; }
+  .planner-forecast__stats dt { color: var(--text-muted); font-size: var(--fs-sm); }
+  .planner-forecast__stats dd { margin: .125rem 0 0; font-size: var(--fs-lg); font-weight: 600; overflow-wrap: anywhere; }
+  .planner-forecast__stats dd.planner-forecast__range { font-size: var(--fs-sm); font-weight: 400; color: var(--text-muted); }
+  .planner-forecast__notes { margin: .75rem 0 0; padding-left: 1.1rem; color: var(--text-muted); font-size: var(--fs-sm); }
+  .planner-forecast__notes li + li { margin-top: .25rem; }
+  .planner-cell-note { display: block; color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
+  @media (max-width: 560px) { .planner-forecast__stats { grid-template-columns: minmax(0, 1fr); } }
+  .planner-scenarios { display: grid; gap: .5rem; margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
+  .planner-scenarios__row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  .planner-scenarios__row label { font-size: var(--fs-sm); font-weight: 600; }
+  .planner-scenarios__row select { min-width: 0; max-width: 100%; min-height: 2.25rem; }
+  .planner-scenarios__check { display: inline-flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); font-weight: 600; }
+  .planner-scenarios__result { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.55; }
+  .planner-creatives .planner-scenarios__result { margin-top: .75rem; }
+  /* 5-3 결론(임원용): 한 줄 결론 · 핵심 수치 3개 · 채널별 조정안 표 · 확인할 점 표. 글자는 표 크기로, 막대가 크기를 말한다. */
+  .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-lg); line-height: 1.35; letter-spacing: -.02em; }
+  /* 결론 줄바꿈: 감액·증액·효과가 각자 한 줄, 덩어리(이름 · 금액)는 통째로 다음 줄로 넘어간다.
+     덩어리가 한 줄보다 길 때만 안에서 접힌다(inline-block + max-width). */
+  .alloc-headline { display: block; }
+  .alloc-headline__line { display: block; }
+  .alloc-headline__chunk { display: inline-block; max-width: 100%; }
+  .alloc-headline__line.is-effect { margin-top: .125rem; font-size: var(--fs-md); font-weight: 600; color: var(--text-secondary); }
+  .result-action-card.good .alloc-headline__line.is-effect { color: var(--success); }
+  .result-action-card.bad .alloc-headline__line.is-effect { color: var(--danger); }
+  .alloc-actions { display: grid; gap: 1.5rem; margin-top: 1.25rem; min-width: 0; }
+  .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 47px; }
+  .alloc-plan { min-width: 0; container-type: inline-size; }
+  .alloc-plan__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .5rem; }
+  .alloc-plan__head h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+  .alloc-plan__head span { color: var(--text-muted); font-size: var(--fs-xs); }
+  .alloc-plan .table-wrap { margin: 0; }
+  .alloc-plan__table { width: 100%; font-size: var(--fs-sm); }
+  /* 공용 표 규칙(셀 높이·좌우 여백)이 이기므로 이 표만 밀도를 직접 정한다. */
+  .alloc-plan .alloc-plan__table :is(th, td) { height: auto !important; padding: .5rem .75rem !important; vertical-align: middle; line-height: 1.45; }
+  .alloc-plan .alloc-plan__table :is(th, td):first-child { padding-left: 0 !important; }
+  .alloc-plan .alloc-plan__table :is(th, td):last-child { padding-right: 0 !important; }
+  .alloc-plan__table th { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+  .alloc-plan__unit { font-weight: 600; color: var(--text-primary); }
+  .alloc-plan__kind { font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+  .alloc-plan__budget, .alloc-plan__cpr { white-space: nowrap; color: var(--text-secondary); }
+  .alloc-plan__budget strong { color: var(--text-primary); font-weight: 600; }
+  .alloc-plan__delta { white-space: nowrap; color: var(--text-muted); }
+  .alloc-plan__delta strong { color: var(--text-primary); font-weight: 600; }
+  .alloc-plan__why { color: var(--text-secondary); }
+  .alloc-plan__label { display: none; color: var(--text-muted); }
+  /* 증감 막대: 가운데가 0. 증액은 강조색, 감액은 중립색 — 감액이 곧 나쁨은 아니다. */
+  .alloc-plan__bar { position: relative; display: inline-block; width: 88px; height: 8px; margin-right: .625rem; vertical-align: middle; background: color-mix(in srgb, var(--text-muted) 16%, transparent); border-radius: var(--radius-sm); }
+  .alloc-plan__bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--border); }
+  .alloc-plan__bar i { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-sm); }
+  .alloc-plan__bar i.is-up { left: 50%; background: var(--primary); }
+  .alloc-plan__bar i.is-down { right: 50%; background: var(--text-muted); }
+  .alloc-actions__more { margin-top: .75rem; }
+  /* 좁은 폭(폰·사이드바 옆 좁은 칸): 표를 행 블록으로. 열 제목 대신 칸 안 라벨이 말한다. */
+  @container (max-width: 640px) {
+    .alloc-plan__table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .alloc-plan__table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .125rem .75rem; padding: .625rem 0; border-bottom: 1px solid var(--border-subtle); }
+    .alloc-plan .alloc-plan__table td { display: block; min-height: 0 !important; padding: 0 !important; border: 0 !important; text-align: left !important; }
+    .alloc-plan__table .alloc-plan__unit { grid-row: 1; grid-column: 1; }
+    .alloc-plan__table .alloc-plan__delta { grid-row: 1; grid-column: 2; }
+    .alloc-plan__table .alloc-plan__budget { grid-row: 2; grid-column: 1; }
+    .alloc-plan__table .alloc-plan__cpr { grid-row: 2; grid-column: 2; text-align: right !important; }
+    .alloc-plan__table .alloc-plan__delta { text-align: right !important; }
+    .alloc-plan__table .alloc-plan__why { grid-column: 1 / -1; color: var(--text-muted); }
+    .alloc-plan__table--issues :is(.alloc-plan__unit, .alloc-plan__why) { grid-row: auto; grid-column: 1 / -1; }
+    .alloc-plan__table--issues .alloc-plan__kind { grid-column: 1 / -1; }
+    .alloc-plan__label { display: inline; }
+    .alloc-plan__bar { width: 48px; }
+    .alloc-plan .alloc-plan__table td:not(.alloc-plan__delta) { white-space: normal; overflow-wrap: anywhere; }
+  }
+  @container (max-width: 480px) {
+    .alloc-plan__table .alloc-plan__cpr { grid-row: 3; grid-column: 1 / -1; text-align: left !important; }
+    .alloc-plan__table .alloc-plan__budget { grid-column: 1 / -1; }
+    .alloc-plan__bar { display: none; }
+  }
+  @media (max-width: 768px) {
+    .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 0; }
+    .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-md); }
+  }
+  /* 배분 조건: 지표·요약·바꾸기 한 줄 + 예산 입력. 나머지 조건은 창에서. */
+  .alloc-condition__top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+  .alloc-condition__summary { flex: 1 1 14rem; margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
+  .alloc-condition-dialog__body { display: grid; gap: 1rem; padding: 1rem; }
+  /* 창은 body로 포털되므로 .allocation-workspace 안의 규칙을 받지 못한다 — 같은 열린 면을 여기서 준다. */
+  .alloc-condition-dialog :is(.prism-driver__window, .prism-driver__method > div) { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+  .alloc-condition-dialog .prism-driver__method > div { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .alloc-condition-dialog .alloc-mode-toggle { justify-self: start; }
+  .alloc-condition-dialog .prism-driver__method { padding-top: 1rem; border-top: 1px solid var(--border); }
+  .alloc-condition-dialog .prism-driver__method > header { margin-bottom: .5rem; font-size: var(--fs-sm); font-weight: 700; }
+  .alloc-condition-dialog .prism-driver__window small { flex-basis: 100%; color: var(--text-muted); line-height: 1.6; }
+  .alloc-condition-dialog .alloc-hold-low { max-width: none; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+  .alloc-condition-dialog :is(.prism-driver__method p, .alloc-hold-low p) { font-size: var(--fs-sm); line-height: 1.7; }
+  .alloc-details { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); min-width: 0; }
+  .alloc-details > .section-title { margin: 0 0 .75rem; font-size: var(--fs-md); }
+  .allocation-workspace .alloc-condition .prism-driver__readout { font-size: var(--fs-lg); }
+  .planner-plan-review__list { display: grid; gap: .75rem; margin: .75rem 0 0; padding: 0; list-style: none; }
+  .planner-plan-review__list li { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
+  .planner-plan-review__list li p { margin: 0; font-size: var(--fs-sm); line-height: 1.55; }
+  .planner-plan-review__list .btn { justify-self: start; }
 }
 
 @layer tokens {
@@ -6217,6 +6323,11 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 .weekly-review-record__forecast-ticket dt { color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); }
 .weekly-review-record__forecast-ticket dd { margin: 4px 0 0; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); }
 .weekly-review-record__forecast-pending { padding: 9px 10px; border-top: 1px solid var(--border-subtle); }
+.weekly-review-record__plan-match { padding: 9px 10px; }
+.weekly-review-record__plan-match span { color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 700; }
+.weekly-review-record__plan-match p { margin: 4px 0 0; color: var(--text-primary); font-size: var(--fs-sm); line-height: 1.5; }
+.weekly-review-record__plan-match p + p { color: var(--text-muted); font-size: var(--fs-xs); }
+.weekly-review-record__plan-match .btn { margin-top: 8px; }
 .weekly-review-record__forecast-pending span { color: var(--warning); font-size: var(--fs-xs); font-weight: 700; }
 .weekly-review-record__forecast-pending p { margin: 3px 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.45; }
 .weekly-review-record__forecast-pending a { display: inline-flex; margin-top: 6px; color: var(--primary); font-size: var(--fs-xs); font-weight: 700; text-decoration: none; }
@@ -8458,9 +8569,17 @@ body.light-mode .app:not(.is-home) .main {
 .dashboard-decision-strip .tool-template-action__actions button:hover { border-bottom-color:currentColor;color:var(--primary); }
 .dashboard-decision-strip .tool-template-action__actions button:focus-visible { border-bottom-color:currentColor;color:var(--primary);outline:2px solid color-mix(in srgb,var(--primary) 45%,transparent);outline-offset:3px; }
 @media (max-width:720px) {
-  .result-action-card__evidence { position:absolute; top:13px; right:13px; }
-  .result-action-card__copy { padding-right:38px; }
   .dashboard-next-actions__utility { align-items:flex-start; flex-direction:column; }
+}
+/* 좁은 폭에서 "확인할 점" 표시는 결론 오른쪽 자기 열을 차지한다. 예전에는 절대 위치에 38px만 비워 둬
+   "확인 1"(약 75px)이 결론 첫 줄을 덮었다 — 열을 주면 구조적으로 겹칠 수 없다. 표시가 없으면 열도 없다. */
+@media (max-width:1100px) {
+  .result-action-card__head:has(> .result-action-card__evidence) { grid-template-columns: 34px minmax(0,1fr) auto; }
+  .result-action-card__head > .result-action-card__evidence { grid-column: 3; grid-row: 1; align-self: start; }
+}
+@media (max-width:768px) {
+  .result-action-card__head:has(> .result-action-card__evidence) { grid-template-columns: 30px minmax(0,1fr) auto; }
+  .result-action-card__head > .result-action-card__evidence { padding-left: 0; border-left: 0; }
 }
 @media (max-width:720px) { .dashboard-demo-source,.dashboard-decision-strip { align-items:flex-start;flex-direction:column; }.dashboard-decision-strip__actions { justify-content:flex-start; }.dashboard-recommendations__heading { align-items:flex-start;flex-direction:column;gap:6px; }.dashboard-recommendations__heading p { text-align:left; }.dashboard-recommendations__grid { grid-template-columns:1fr; } }
 /* AGENTS.md §12.30이 "인접한 보조 박스도 마감 영역과 같은 재질(--operator-line /
@@ -12317,6 +12436,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 /* Keep one surface per task; the drop target supplies the upload boundary. */
 .app .content .allocation-workspace .tool-page-shell__main > .tool-upload-entry { background: transparent; border: 0; border-radius: 0; padding: 0; }
 .allocation-workspace .prism-driver__control { padding: 16px 0; border: 0; border-radius: 0; background: transparent; }
+.allocation-workspace .alloc-condition .prism-driver__control { margin-top: 12px; padding-bottom: 0; }
 .allocation-context-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .allocation-context-controls__scope { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; }
 .allocation-scope { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
