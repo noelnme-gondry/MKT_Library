@@ -22,6 +22,7 @@
   .allocation-result-tabs button { min-height: 44px; padding: .5rem .75rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-primary); font: inherit; font-weight: 600; }
   .allocation-result-tabs button[aria-selected="true"] { background: var(--primary); color: var(--on-primary); }
   .allocation-result-tabs button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  /* exec-report 묶음 A: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
   .allocation-result-panel[hidden] { display: none !important; }
   .allocation-result-panel > * + * { margin-top: 1.5rem; }
   .allocation-result-panel .block, .allocation-result-panel .alloc-card { border: 0; background: transparent; box-shadow: none; padding: 0; }
@@ -50,6 +51,7 @@
   .planner-scenarios__check { display: inline-flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); font-weight: 600; }
   .planner-scenarios__result { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.55; }
   .planner-creatives .planner-scenarios__result { margin-top: .75rem; }
+  /* exec-report 묶음 B: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
   /* 결과 보고서 층(ds/ResultReport) — 5-3에서 확립한 임원 보고 형식을 전 도구가 함께 쓴다.
      한 줄 결론 · 핵심 수치 ≤3 · 대상별 표 · 확인할 점 표 · 자세히 보기(기본 닫힘). 글자는 표 크기로, 막대가 크기를 말한다. */
   /* 결론 줄바꿈: 줄은 의미(주 결론·감액·증액·효과)별, 덩어리(이름 · 금액)는 통째로 다음 줄로 넘어간다.
@@ -148,6 +150,7 @@
   /* 대상별 표(ds/ResultReport ResultTable): 공용 표 규칙(셀 높이·좌우 여백)이 이기므로 밀도를 직접 정한다. */
   .result-table { min-width: 0; container-type: inline-size; }
   .result-table__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .5rem; }
+  /* exec-report 묶음 C: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
   .result-table__head h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
   .result-table__head span { color: var(--text-muted); font-size: var(--fs-xs); }
   .result-table .table-wrap { margin: 0; }
@@ -174,6 +177,7 @@
   /* 자세히 보기: 기본 닫힘, 이름 있는 버튼이 열고 닫는다. 닫힌 동안에도 안에 무엇이 있는지 한 줄로 말한다. */
   .result-details { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); min-width: 0; }
   .result-details__title { margin: 0; font-size: var(--fs-md); }
+  /* exec-report 묶음 D: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
   .result-details__summary { margin: .5rem 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.5; }
   .result-details__body { margin-top: 1rem; min-width: 0; }
   /* 조건 한 줄 + "조건 바꾸기" 창(ds/ResultReport ConditionLine). */
@@ -184,6 +188,7 @@
   .planner-plan-review__list { display: grid; gap: .75rem; margin: .75rem 0 0; padding: 0; list-style: none; }
   .planner-plan-review__list li { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
   .planner-plan-review__list li p { margin: 0; font-size: var(--fs-sm); line-height: 1.55; }
+  /* exec-report 묶음 E: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
   .planner-plan-review__list .btn { justify-self: start; }
 }
 
