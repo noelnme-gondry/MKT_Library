@@ -11,6 +11,10 @@ import { ALLOC_MATH } from "@/utils/allocationMath";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 import { buildSampleJourney } from "@/lib/sampleJourney";
+import { openResultDetails } from "@/test/resultDetails";
+
+// 근거 구역("자세히 보기")은 기본 닫힘 — 사람이 하듯 열고 본다.
+const renderOpen = (ui) => { const view = render(ui); openResultDetails(); return view; };
 
 // Empty CSV slice = the "no data yet, show uploader" state.
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -65,7 +69,7 @@ describe("BudgetAllocation render smoke", () => {
     seedWithData();
     useAppStore.setState({ analyzedByGroup: {} });
     const fit = vi.spyOn(ALLOC_MATH, "fitBest");
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     expect(fit).not.toHaveBeenCalled();
     act(() => useAppStore.getState().setGroupAnalyzed("5-3"));
     expect(fit).toHaveBeenCalled();
@@ -79,14 +83,14 @@ describe("BudgetAllocation render smoke", () => {
   });
 
   it("mounts without throwing in the no-data state", () => {
-    expect(() => render(<BudgetAllocation />)).not.toThrow();
+    expect(() => renderOpen(<BudgetAllocation />)).not.toThrow();
     // Sanity: something rendered into the DOM.
     expect(document.body.querySelector("*")).toBeTruthy();
   });
 
   it("mounts without throwing with a valid seeded CSV", () => {
     seedWithData();
-    expect(() => render(<BudgetAllocation />)).not.toThrow();
+    expect(() => renderOpen(<BudgetAllocation />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
   });
 
@@ -107,7 +111,7 @@ describe("BudgetAllocation render smoke", () => {
       useAppStore.getState().setGroupAnalyzed("5-3");
     });
     expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
     fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "weekly" } });
     fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "2026-02-01" } });
@@ -130,7 +134,7 @@ describe("BudgetAllocation render smoke", () => {
 
   it("places the conclusion before the scatter plot (결과-먼저 착지)", () => {
     seedWithData();
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     // 결론 뒤의 곡선 탭에서 관측 근거를 확인한다.
 
     const resultCard = document.querySelector(".result-action-card");
@@ -143,7 +147,7 @@ describe("BudgetAllocation render smoke", () => {
   it("switches result views without refitting or changing the allocation", () => {
     seedWithData();
     const fit = vi.spyOn(ALLOC_MATH, "fitBest");
-    const { container } = render(<BudgetAllocation />);
+    const { container } = renderOpen(<BudgetAllocation />);
     const figure = container.querySelector(".result-shift");
     const original = figure.textContent;
     const count = fit.mock.calls.length;
@@ -168,7 +172,7 @@ describe("BudgetAllocation render smoke", () => {
       csvData: csv,
     });
     useAppStore.getState().setGroupAnalyzed("5-3");
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     // 실행 방식은 "조건 바꾸기" 창에서 고르고, 바깥 요약 한 줄이 지금 방식을 말한다.
     expect(document.querySelector(".alloc-condition__summary").textContent).toContain("이번 실행안");
     fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));

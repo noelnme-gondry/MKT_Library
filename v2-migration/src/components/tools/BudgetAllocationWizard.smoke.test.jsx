@@ -13,6 +13,10 @@ import { foldSteps } from "@/lib/recipe/recipe";
 import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import BudgetAllocation, { buildAllocationChartCountries, buildAllocationChartPoints, buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
+import { openResultDetails } from "@/test/resultDetails";
+
+// 근거 구역("자세히 보기")은 기본 닫힘 — 사람이 하듯 열고 본다.
+const renderOpen = (ui) => { const view = render(ui); openResultDetails(); return view; };
 
 // 계산 기준(총 예산/효율 목표)은 "조건 바꾸기" 창 안에 있다. 창이 열려 있으면 바깥이 aria-hidden이므로 고른 뒤 닫는다.
 function chooseBasis(name, locale = "ko") {
@@ -96,7 +100,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("결과-먼저 착지 → 곡선 검증(Step2)로 이동 시 사이드바+scatter가 throw 없이 렌더", () => {
     // PRISM 뷰 P2: 데이터가 있으면 렌더 즉시 결과(step 3)에 착지. 곡선 검증은 링크로 이동.
-    expect(() => render(<BudgetAllocation />)).not.toThrow();
+    expect(() => renderOpen(<BudgetAllocation />)).not.toThrow();
     fireEvent.click(screen.getByText(/곡선 검증·보정/));
 
     expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
@@ -109,14 +113,14 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("결과-먼저 착지에서 §4 배분 섹션이 throw 없이 렌더", () => {
-    expect(() => render(<BudgetAllocation />)).not.toThrow();
+    expect(() => renderOpen(<BudgetAllocation />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
     const barSection = document.querySelector("#s-bar");
     expect(barSection).toBeTruthy();
   });
 
   it("결론은 할 일·핵심 수치 3개로 끝나고, 근거는 자세히 보기 탭에만 있다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const card = document.querySelector(".result-action-card");
     expect(card).toBeTruthy();
     // 결론은 한 줄: 무엇을 얼마나 옮기는지 → 지표 변화.
@@ -124,12 +128,12 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(headline).toMatch(/일 ₩[\d.,]+(만|억)? (감액|증액)|현 배분 유지/);
     expect(headline.length).toBeLessThanOrEqual(70);
     // 줄은 방향별(감액·증액·효과), 줄 안은 끊기지 않는 덩어리 — 이름 중간에서 줄이 바뀌지 않는다.
-    const lines = [...card.querySelectorAll(".alloc-headline__line")];
+    const lines = [...card.querySelectorAll(".result-headline__line")];
     expect(lines.length).toBeGreaterThanOrEqual(1);
-    for (const line of lines) expect(line.querySelectorAll(".alloc-headline__chunk").length).toBeGreaterThanOrEqual(1);
+    for (const line of lines) expect(line.querySelectorAll(".result-headline__chunk").length).toBeGreaterThanOrEqual(1);
     expect(headline).not.toMatch(/감액\S|증액\S/);
     // 덩어리 사이 공백은 덩어리 밖(텍스트 노드)에 있어야 줄을 바꿀 자리가 생긴다.
-    for (const chunk of card.querySelectorAll(".alloc-headline__chunk")) expect(chunk.textContent).toBe(chunk.textContent.trim());
+    for (const chunk of card.querySelectorAll(".result-headline__chunk")) expect(chunk.textContent).toBe(chunk.textContent.trim());
     expect(lines[0].textContent).toMatch(/\S \S/);
     expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
     const table = within(card).getByRole("table", { name: "채널별 조정안" });
@@ -156,7 +160,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("switches between named current/plan distribution and the full allocation table", () => {
     // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const budgetSlider = document.getElementById("prism-total-budget");
     expect(budgetSlider).toBeTruthy();
     expect(() => {
@@ -205,7 +209,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("PRISM은 전역 예산 슬라이더 하나만 렌더하고 채널 행을 직접 편집하지 않는다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const slider = document.getElementById("prism-total-budget");
     expect(slider).toBeTruthy();
     const sliders = document.querySelectorAll('input[type="range"]');
@@ -217,7 +221,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("일/월 전환은 같은 실제 일예산을 보존한다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: "100000" } });
     fireEvent.blur(exact);
@@ -229,7 +233,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("USD 전역 예산은 센트와 월/일 변환을 잃지 않는다", () => {
     useAppStore.setState({ displayCurrency: "USD" });
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: "0.01" } });
     fireEvent.blur(exact);
@@ -242,7 +246,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("관측 상한을 넘는 정확 예산은 실행·저장 가능한 추천안으로 만들지 않는다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const slider = document.getElementById("prism-total-budget");
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: String(Number(slider.max) * 2) } });
@@ -252,7 +256,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("효율 목표 모드는 CPI/CPA/ROAS 중 현재 CSV에 있는 목표의 전역 슬라이더로 최대 안전 예산을 찾는다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     chooseBasis(/효율 목표/);
     const sliders = document.querySelectorAll('input[type="range"]');
     expect(sliders).toHaveLength(1);
@@ -266,7 +270,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("달성 불가능한 효율 목표는 참고안만 보이고 실행·저장 가능한 결과를 만들지 않는다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     chooseBasis(/효율 목표/);
     const targetSlider = document.getElementById("prism-efficiency-target");
     fireEvent.change(targetSlider, { target: { value: targetSlider.min } });
@@ -275,7 +279,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("효율 목표에서 고른 KPI는 총 예산 모드에도 그대로 이어진다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     chooseBasis(/효율 목표/);
     fireEvent.click(screen.getByRole("radio", { name: /ROAS/ }));
     expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
@@ -288,7 +292,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     chooseBasis(/효율 목표/);
     expect(screen.getByRole("radio", { name: /CPI/ }).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
@@ -298,7 +302,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   for (const locale of ["ko", "en"]) it(`date selection is saved and invalid drafts preserve the applied range (${locale})`, () => {
     const en = locale === "en";
-    render(<BudgetAllocation locale={locale} />);
+    renderOpen(<BudgetAllocation locale={locale} />);
     const dates = () => screen.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
     const observations = vi.spyOn(ALLOC_MATH, "removeOutliers");
     fireEvent.click(dates());
@@ -320,7 +324,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("keeps the same global-driver behavior in English", () => {
-    render(<BudgetAllocation locale="en" />);
+    renderOpen(<BudgetAllocation locale="en" />);
     expect(document.getElementById("prism-total-budget")).toBeTruthy();
     chooseBasis("Efficiency target", "en");
     expect(document.getElementById("prism-efficiency-target")).toBeTruthy();
@@ -328,7 +332,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("§6 채널 반응 곡선이 canvas로 렌더되고 채널 선택 전환이 throw 없이 동작 (P4)", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     // 결과-먼저 착지(step3, 예산 자동 시드) → §6 반응 곡선 canvas + 채널 선택 노출.
     const section = document.querySelector("#s-response");
     expect(section).toBeTruthy();
@@ -344,7 +348,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   });
 
   it("§1 진단 산점도가 <details>로 접혀 있고, 펼쳐도(toggle) throw 없이 canvas resize 경로가 동작 (P5)", () => {
-    render(<BudgetAllocation />);
+    renderOpen(<BudgetAllocation />);
     const scatter = document.querySelector("#s-scatter");
     expect(scatter).toBeTruthy();
     // 접힘 섹션은 <details>, 기본 collapsed(open=false).

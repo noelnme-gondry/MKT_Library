@@ -393,7 +393,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 2 | 분석 범위 | 이 결과가 무엇을 다루는가 |
 | 3 | 판단 상태 | 지금 결론을 낼 수 있는가 (§5.4의 **이름**으로) |
 | 4 | 결론 | 무엇이 핵심인가 (전문용어 최소 평어 한 문장) |
-| 5 | 핵심 수치 | 왜 그런 결론인가 (3~5개, 단위·기간·비교 기준 포함) |
+| 5 | 핵심 수치 | 왜 그런 결론인가 (최대 3개, 단위·기간·비교 기준 포함) |
 | 6 | 다음 행동 | 지금 무엇을 할까 (primary action 1개) |
 | 7 | 근거·방법론 | 얼마나 믿고 어떻게 검증할까 (본문 하단 또는 도움말 팝오버) |
 
@@ -426,10 +426,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ### 5.5 결과 카드 계약
 
+**임원 보고 형식 (2026-10-23 사용자 결정)** — 전 도구의 결과 화면은 5-3에서 확립한 형식을 공용 부품(`ds/ResultReport`)으로 따른다. 결론 1문장(대상·크기·판정 또는 행동, 숫자 1개 이상 — 판정할 수 없으면 `판단 보류 — 사유`로 시작) → 핵심 수치 최대 3개 → 핵심 그림 1개 → 대상별 표(대상·전→후·증감 막대·판정·짧은 사유) → 확인할 점 표(신호가 있을 때만) → 자세히 보기(**기본 닫힘**, 이름 있는 버튼으로 열고 닫힌 동안 안에 있는 것을 한 줄로 말한다). 분석 조건은 한 줄 요약 + `조건 바꾸기` 창. 결론 문장은 도구 성격에 따라 행동형(무엇을 얼마나 → 기대 효과)·진단형(지표 변화 · 주원인과 몫)·검증형(판정 · 효과 [95% 구간])·보류형 중 하나다. 금액 행동은 엔진이 금액을 계산하는 도구만 말하고(5-3·5-31·5-26 등), 진단 도구는 판정·원인까지 말한 뒤 다음 도구로 잇는다. 증분 도구는 설계가 선언되지 않아도 추정치를 보여 주되 `탐색용`을 붙이고 권고·채택 단어를 쓰지 않는다. 금액은 표·수치에서 축약 표기(`fmtCurrencyCompact`, ₩390만)를 쓴다. / Every result follows the executive format: one conclusion sentence with at least one number (or `Hold — reason`), at most three key figures, one core figure, a per-target table, a check-these table only when signals exist, and Details closed by default behind a named button. Conditions are one line plus a `Change settings` dialog. Money amounts appear only where the engine computes them; diagnostic tools stop at verdict and cause. Incrementality estimates without a declared design show the number marked `exploratory` and never use recommend/adopt wording.
+
 | 층위 | 필수 요소 | 작성 규칙 |
 |---|---|---|
 | 1층 | 평어 결론 한 문장 | 원인·효과를 과장하지 않고 판단 상태를 반영 |
-| 2층 | 핵심 수치 3~5개 | 단위·기간·비교 기준·불확실성 상태 포함 |
+| 2층 | 핵심 수치 최대 3개 | 단위·기간·비교 기준·불확실성 상태 포함. 계산할 수 없는 값으로 칸을 채우지 않는다 |
 | 3층 | 다음 행동 1개 | '증액'·'보류'·'추가 데이터'·'실험 설계' 중 지금 가능한 것 |
 | 4층 | 다음 검토일 또는 검증 조건 | 언제·어떤 수치로 재검토할지 |
 | 상세 | 근거 차트·표·가정·제약 | 주요 그림은 결론 바로 뒤에, 추가 차트·표는 하단에 둔다. **분석 범위·분모·신뢰도·방법·실행 정보는 화면에 늘어놓지 않는다**(2026-09-24 사용자 결정) — 확인할 점이 있을 때만 결론 옆 중립적인 `확인 N` 버튼(`ds/IssueMark`, 2026-10-01 사용자 수정)가 어느 기간·열·칸이 문제인지 말하고, 전체 기록은 상세 워크북(XLSX)의 `00_README`·`04_SCOPE`에 남긴다 |

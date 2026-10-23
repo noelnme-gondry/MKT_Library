@@ -11,6 +11,10 @@ import { allocationAt, loserOffScenarioAt, newCreativeScenarioAt, prepareAllocat
 import { reviewAllocationPlan } from "@/lib/budgetPlanner/planReview";
 import { serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
 import { vi } from "vitest";
+import { openResultDetails } from "@/test/resultDetails";
+
+// 근거 구역("자세히 보기")은 기본 닫힘 — 사람이 하듯 열고 본다.
+const renderOpen = (ui) => { const view = render(ui); openResultDetails(); return view; };
 
 function seed(locale) {
   const csv = buildSampleJourney(locale);
@@ -30,7 +34,7 @@ describe("5-3 플래너 근거 구역", () => {
     ["en", "Next 14 days with this plan", "Checks", "Spend state and change cause by target", "Creative status"],
   ])("%s: 배분안 탭에 기간 예측, 확인 탭에 상태·분해·소재 표가 숫자와 함께 나온다", (locale, forecastTitle, checksTab, statusTitle, creativeTitle) => {
     seed(locale);
-    render(<BudgetAllocation locale={locale} />);
+    renderOpen(<BudgetAllocation locale={locale} />);
     const forecast = document.querySelector(".planner-forecast");
     expect(forecast, "예측 구역이 없다").toBeTruthy();
     expect(forecast.textContent).toContain(forecastTitle);
@@ -56,7 +60,7 @@ describe("5-3 플래너 근거 구역", () => {
 
   it("분해 표는 전체 행이 먼저 오고 대상별 행이 이어진다", () => {
     seed("ko");
-    render(<BudgetAllocation locale="ko" />);
+    renderOpen(<BudgetAllocation locale="ko" />);
     fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
     const table = document.querySelector(".planner-breakdown table");
     expect(table, "분해 표가 없다").toBeTruthy();
@@ -171,9 +175,9 @@ describe("결론 카드의 조정안·확인할 점 표", () => {
     expect(rows.map((row) => row.querySelector(".alloc-plan__unit").textContent)).toEqual(["KR · TikTok · iOS", "KR · Meta · iOS"]);
     expect(rows[0].querySelector(".alloc-plan__delta strong").textContent).toBe("−₩60만");
     expect(rows[0].querySelector(".alloc-plan__delta").textContent).toContain("−30%");
-    expect(rows[0].querySelector(".alloc-plan__bar i").className).toBe("is-down");
-    expect(rows[0].querySelector(".alloc-plan__bar i").style.width).toBe("50%");
-    expect(rows[1].querySelector(".alloc-plan__bar i").style.width).toBe(`${(200000 / 600000) * 50}%`);
+    expect(rows[0].querySelector(".change-bar i").className).toBe("is-down is-left");
+    expect(rows[0].querySelector(".change-bar i").style.width).toBe("50%");
+    expect(rows[1].querySelector(".change-bar i").style.width).toBe(`${(200000 / 600000) * 50}%`);
     expect(rows[0].querySelector(".alloc-plan__budget").textContent).toContain("₩200만 → ₩140만");
     expect(rows[0].querySelector(".alloc-plan__cpr").textContent).toContain("₩1000 → ₩900");
     expect(rows[0].querySelector(".alloc-plan__why").textContent).toMatch(en ? /CPI \+20% \(7d\)/ : /최근 7일 CPI \+20%/);

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openResultDetails } from "./support/resultDetails";
 
 for (const locale of ["ko", "en"]) {
   test(`weekly spend planner uses real upload, maturity and grouping (${locale})`, async ({ page }) => {
@@ -44,6 +45,7 @@ for (const locale of ["ko", "en"]) {
     await dialog.getByLabel(en ? "Curve fitting period" : "곡선 사용 구간", { exact: true }).selectOption("auto");
     await dialog.getByLabel(en ? "Grouping" : "분배 단위", { exact: true }).selectOption("channel");
     await dialog.press("Escape");
+    await openResultDetails(page);
     await page.getByRole("tab", { name: en ? "Budget comparison" : "예산 비교", exact: true }).click();
     await expect(page.getByRole("table", { name: en ? "Budget strategy comparison" : "예산 실행안 비교", exact: true })).toBeVisible();
     await expect(page.locator("h1")).toHaveCount(1);

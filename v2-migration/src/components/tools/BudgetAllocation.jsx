@@ -31,6 +31,7 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ResultDetails } from "@/components/ds/ResultReport";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
 import { allocConfidence } from "@/utils/allocationConfidence";
@@ -403,6 +404,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const conditionsTrigger = useRef(null);
   const [resultView, setResultView] = useState("allocation");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   // 결론 카드가 큰 변경 몇 개를 이미 말하므로, 자세히 보기는 전체 대상을 한 표로 먼저 보인다.
   const [allocationView, setAllocationView] = useState("table");
   const [curveView, setCurveView] = useState("efficiency");
@@ -2909,10 +2911,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <div id="s-result">
       {verdict && canStorePlan ? (
         <ResultActionCard
-          analysisContent={<section className="alloc-details" aria-labelledby="alloc-details-title">
-            <h2 className="section-title" id="alloc-details-title">{tr("자세히 보기", "Details")}</h2>
+          analysisContent={<ResultDetails
+            id="alloc-details"
+            locale={locale}
+            open={detailsOpen}
+            onOpenChange={setDetailsOpen}
+            items={[tr("전체 배분표", "Full allocation table"), tr("예산 비교", "Budget comparison"), tr("반응 곡선", "Response curves"), tr("확인(원인·소재·검증)", "Checks (causes, creatives, validation)")]}
+          >
             {resultWorkspace}
-          </section>}
+          </ResultDetails>}
           toolId="5-3"
           exportOptions={recipe.export}
           scopeEvidence={{ periods: [{ id: "after", start: activeRange.start, end: activeRange.end }], filters: { countries: [...(selectedCountries || [])], channels: [...(selectedChannelsFilter || [])], platform: platformFilter }, currency }}
@@ -2934,7 +2941,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             onShowAll={() => {
               setResultView("allocation");
               setAllocationView("table");
-              requestAnimationFrame(() => document.getElementById("alloc-details-title")?.scrollIntoView({ block: "start" }));
+              setDetailsOpen(true);
+              requestAnimationFrame(() => document.getElementById("alloc-details")?.scrollIntoView({ block: "start" }));
             }}
           />}
           decisionPrefill={{

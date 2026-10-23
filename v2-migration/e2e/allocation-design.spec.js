@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
+import { openResultDetails } from './support/resultDetails';
 
 for (const locale of ['ko', 'en']) {
   test(`allocation workspace keeps scope, dates, evidence and methods coherent (${locale})`, async ({ page }) => {
@@ -20,6 +21,9 @@ for (const locale of ['ko', 'en']) {
     });
     expect(header.padding).toBeGreaterThanOrEqual(16);
     expect(header.alignment).toBeLessThanOrEqual(1);
+    // 근거 구역(전체 배분표·예산 비교·곡선·확인)은 "자세히 보기" 안 — 기본 닫힘이라 열고 본다.
+    await expect(page.locator('[data-result-details-toggle]')).toHaveAttribute('aria-expanded', 'false');
+    await openResultDetails(page);
     const views = page.getByRole('tablist', { name: en ? 'Allocation views' : '배분 보기' });
     await expect(views.getByRole('tab')).toHaveCount(4);
     // 결론은 행동 목록으로 끝난다. 일반 방법 안내 3줄로 빨간 "!"를 띄우지 않는다 — 남는 것은 예시 파일의 데이터 품질 1건뿐.
@@ -135,6 +139,8 @@ for (const locale of ['ko', 'en']) {
     await page.route('**/api/payments/access', route => route.fulfill({ json: { entitlement } }));
     await page.goto(`${en ? '/en' : ''}/tools/budget-allocation?example=1`);
     // 자세히 보기는 전체 배분표로 열린다 — 그림은 "변경 요약"에 있다.
+    await expect(page.locator('.result-action-card')).toBeVisible();
+    await openResultDetails(page);
     await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
     const figure = page.locator('.result-shift');
     const entities = figure.locator('.result-shift__entity');
@@ -300,6 +306,8 @@ for (const locale of ['ko', 'en']) {
     const command = page.locator('.allocation-context-controls .recipe-command');
     const input = command.getByRole('combobox');
     const plan = page.locator('.result-shift');
+    await expect(page.locator('.result-action-card')).toBeVisible();
+    await openResultDetails(page);
     await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
     await expect(plan).toBeVisible();
     const initial = await plan.textContent();

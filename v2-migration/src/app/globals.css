@@ -50,18 +50,18 @@
   .planner-scenarios__check { display: inline-flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); font-weight: 600; }
   .planner-scenarios__result { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.55; }
   .planner-creatives .planner-scenarios__result { margin-top: .75rem; }
-  /* 5-3 결론(임원용): 한 줄 결론 · 핵심 수치 3개 · 채널별 조정안 표 · 확인할 점 표. 글자는 표 크기로, 막대가 크기를 말한다. */
-  .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-lg); line-height: 1.35; letter-spacing: -.02em; }
-  /* 결론 줄바꿈: 감액·증액·효과가 각자 한 줄, 덩어리(이름 · 금액)는 통째로 다음 줄로 넘어간다.
+  /* 결과 보고서 층(ds/ResultReport) — 5-3에서 확립한 임원 보고 형식을 전 도구가 함께 쓴다.
+     한 줄 결론 · 핵심 수치 ≤3 · 대상별 표 · 확인할 점 표 · 자세히 보기(기본 닫힘). 글자는 표 크기로, 막대가 크기를 말한다. */
+  /* 결론 줄바꿈: 줄은 의미(주 결론·감액·증액·효과)별, 덩어리(이름 · 금액)는 통째로 다음 줄로 넘어간다.
      덩어리가 한 줄보다 길 때만 안에서 접힌다(inline-block + max-width). */
-  .alloc-headline { display: block; }
-  .alloc-headline__line { display: block; }
-  .alloc-headline__chunk { display: inline-block; max-width: 100%; }
-  .alloc-headline__line.is-effect { margin-top: .125rem; font-size: var(--fs-md); font-weight: 600; color: var(--text-secondary); }
-  .result-action-card.good .alloc-headline__line.is-effect { color: var(--success); }
-  .result-action-card.bad .alloc-headline__line.is-effect { color: var(--danger); }
-  .alloc-actions { display: grid; gap: 1.5rem; margin-top: 1.25rem; min-width: 0; }
-  .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 47px; }
+  .result-headline { display: block; }
+  .result-headline__line { display: block; }
+  .result-headline__chunk { display: inline-block; max-width: 100%; }
+  .result-headline__line.is-effect { margin-top: .125rem; font-size: var(--fs-md); font-weight: 600; color: var(--text-secondary); }
+  .result-action-card.good .result-headline__line.is-effect { color: var(--success); }
+  .result-action-card.bad .result-headline__line.is-effect { color: var(--danger); }
+  .alloc-actions, .result-report { display: grid; gap: 1.5rem; margin-top: 1.25rem; min-width: 0; }
+  .result-action-card :is(.alloc-actions, .result-report, .result-details) { margin-left: 47px; }
   .alloc-plan { min-width: 0; container-type: inline-size; }
   .alloc-plan__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .5rem; }
   .alloc-plan__head h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
@@ -81,12 +81,31 @@
   .alloc-plan__delta strong { color: var(--text-primary); font-weight: 600; }
   .alloc-plan__why { color: var(--text-secondary); }
   .alloc-plan__label { display: none; color: var(--text-muted); }
-  /* 증감 막대: 가운데가 0. 증액은 강조색, 감액은 중립색 — 감액이 곧 나쁨은 아니다. */
-  .alloc-plan__bar { position: relative; display: inline-block; width: 88px; height: 8px; margin-right: .625rem; vertical-align: middle; background: color-mix(in srgb, var(--text-muted) 16%, transparent); border-radius: var(--radius-sm); }
-  .alloc-plan__bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--border); }
-  .alloc-plan__bar i { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-sm); }
-  .alloc-plan__bar i.is-up { left: 50%; background: var(--primary); }
-  .alloc-plan__bar i.is-down { right: 50%; background: var(--text-muted); }
+  /* 증감 막대: 가운데가 0. 증가는 강조색, 감소는 중립색 — 감액이 곧 나쁨은 아니다. 좋고 나쁨이 정해진 지표만 good·bad. */
+  .change-bar { position: relative; display: inline-block; width: 88px; height: 8px; margin-right: .625rem; vertical-align: middle; background: color-mix(in srgb, var(--text-muted) 16%, transparent); border-radius: var(--radius-sm); }
+  .change-bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--border); }
+  .change-bar i { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-sm); }
+  .change-bar i.is-right { left: 50%; }
+  .change-bar i.is-left { right: 50%; }
+  .change-bar i.is-up { background: var(--primary); }
+  .change-bar i.is-down { background: var(--text-muted); }
+  .change-bar i.is-good { background: var(--success); }
+  .change-bar i.is-bad { background: var(--danger); }
+  /* 한쪽 막대(0부터): 비중·비율·지수. */
+  .level-bar { display: inline-block; width: 72px; height: 8px; margin-right: .5rem; vertical-align: middle; background: color-mix(in srgb, var(--text-muted) 16%, transparent); border-radius: var(--radius-sm); overflow: hidden; }
+  .level-bar i { display: block; height: 100%; border-radius: var(--radius-sm); }
+  .level-bar i.is-up { background: var(--primary); }
+  .level-bar i.is-down { background: var(--text-muted); }
+  .level-bar i.is-good { background: var(--success); }
+  .level-bar i.is-bad { background: var(--danger); }
+  .level-bar i.is-warn { background: var(--warning); }
+  /* 판정 칩: 글자가 먼저 말하고 색은 의미 토큰만. */
+  .verdict-chip { display: inline-block; padding: .0625rem .5rem; border: 1px solid currentColor; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; line-height: 1.5; white-space: nowrap; }
+  .verdict-chip.is-good { color: var(--success); }
+  .verdict-chip.is-bad { color: var(--danger); }
+  .verdict-chip.is-warn { color: var(--warning); }
+  .verdict-chip.is-info { color: var(--primary); }
+  .verdict-chip.is-muted { color: var(--text-muted); }
   .alloc-actions__more { margin-top: .75rem; }
   /* 좁은 폭(폰·사이드바 옆 좁은 칸): 표를 행 블록으로. 열 제목 대신 칸 안 라벨이 말한다. */
   @container (max-width: 640px) {
@@ -102,17 +121,16 @@
     .alloc-plan__table--issues :is(.alloc-plan__unit, .alloc-plan__why) { grid-row: auto; grid-column: 1 / -1; }
     .alloc-plan__table--issues .alloc-plan__kind { grid-column: 1 / -1; }
     .alloc-plan__label { display: inline; }
-    .alloc-plan__bar { width: 48px; }
+    .alloc-plan .change-bar { width: 48px; }
     .alloc-plan .alloc-plan__table td:not(.alloc-plan__delta) { white-space: normal; overflow-wrap: anywhere; }
   }
   @container (max-width: 480px) {
     .alloc-plan__table .alloc-plan__cpr { grid-row: 3; grid-column: 1 / -1; text-align: left !important; }
     .alloc-plan__table .alloc-plan__budget { grid-column: 1 / -1; }
-    .alloc-plan__bar { display: none; }
+    .alloc-plan .change-bar { display: none; }
   }
   @media (max-width: 768px) {
-    .result-action-card :is(.alloc-actions, .alloc-details) { margin-left: 0; }
-    .allocation-workspace .result-action-card .result-action-card__headline { font-size: var(--fs-md); }
+    .result-action-card :is(.alloc-actions, .result-report, .result-details) { margin-left: 0; }
   }
   /* 배분 조건: 지표·요약·바꾸기 한 줄 + 예산 입력. 나머지 조건은 창에서. */
   .alloc-condition__top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
@@ -127,8 +145,41 @@
   .alloc-condition-dialog .prism-driver__window small { flex-basis: 100%; color: var(--text-muted); line-height: 1.6; }
   .alloc-condition-dialog .alloc-hold-low { max-width: none; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
   .alloc-condition-dialog :is(.prism-driver__method p, .alloc-hold-low p) { font-size: var(--fs-sm); line-height: 1.7; }
-  .alloc-details { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); min-width: 0; }
-  .alloc-details > .section-title { margin: 0 0 .75rem; font-size: var(--fs-md); }
+  /* 대상별 표(ds/ResultReport ResultTable): 공용 표 규칙(셀 높이·좌우 여백)이 이기므로 밀도를 직접 정한다. */
+  .result-table { min-width: 0; container-type: inline-size; }
+  .result-table__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .5rem; }
+  .result-table__head h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+  .result-table__head span { color: var(--text-muted); font-size: var(--fs-xs); }
+  .result-table .table-wrap { margin: 0; }
+  .result-table__table { width: 100%; font-size: var(--fs-sm); }
+  .result-table .result-table__table :is(th, td) { height: auto !important; padding: .5rem .75rem !important; vertical-align: middle; line-height: 1.45; }
+  .result-table .result-table__table :is(th, td):first-child { padding-left: 0 !important; }
+  .result-table .result-table__table :is(th, td):last-child { padding-right: 0 !important; }
+  .result-table__table th { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+  .result-table__table td { color: var(--text-secondary); }
+  .result-table__table td strong { color: var(--text-primary); font-weight: 600; }
+  .result-table__table td:first-child, .result-table__primary, .result-table__kind { color: var(--text-primary); font-weight: 600; }
+  .result-table__kind { white-space: nowrap; }
+  .result-table__table td[data-numeric="true"] { white-space: nowrap; }
+  .result-table__why { color: var(--text-secondary); }
+  .result-table__more { margin-top: .75rem; }
+  /* 좁은 칸: 행을 블록으로. 첫 칸(대상)이 제목, 나머지는 열 이름을 칸 안 라벨로 붙인다. */
+  @container (max-width: 640px) {
+    .result-table__table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .result-table__table tr { display: grid; grid-template-columns: minmax(0, 1fr); gap: .125rem; padding: .625rem 0; border-bottom: 1px solid var(--border-subtle); }
+    .result-table .result-table__table td { display: block; min-height: 0 !important; padding: 0 !important; border: 0 !important; text-align: left !important; white-space: normal; overflow-wrap: anywhere; }
+    .result-table__table td:not(:first-child)[data-label]::before { content: attr(data-label) "  "; color: var(--text-muted); font-size: var(--fs-xs); white-space: pre; }
+    .result-table .change-bar { width: 48px; }
+  }
+  /* 자세히 보기: 기본 닫힘, 이름 있는 버튼이 열고 닫는다. 닫힌 동안에도 안에 무엇이 있는지 한 줄로 말한다. */
+  .result-details { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); min-width: 0; }
+  .result-details__title { margin: 0; font-size: var(--fs-md); }
+  .result-details__summary { margin: .5rem 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.5; }
+  .result-details__body { margin-top: 1rem; min-width: 0; }
+  /* 조건 한 줄 + "조건 바꾸기" 창(ds/ResultReport ConditionLine). */
+  .condition-line__top { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+  .condition-line__summary { flex: 1 1 14rem; margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
+  .condition-dialog__body { display: grid; gap: 1rem; padding: 1rem; }
   .allocation-workspace .alloc-condition .prism-driver__readout { font-size: var(--fs-lg); }
   .planner-plan-review__list { display: grid; gap: .75rem; margin: .75rem 0 0; padding: 0; list-style: none; }
   .planner-plan-review__list li { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
@@ -9820,7 +9871,9 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
   border-radius: var(--radius-sm);
   background: var(--surface-container-low);
 }
-.result-action-card__headline { font-size: clamp(var(--fs-lg), 1.7vw, var(--fs-xl)); line-height: 1.28; }
+/* 결론은 표 크기의 한 문장 — 큰 글씨를 쌓지 않는다(임원 보고 형식, product-ssot §5.5). */
+.result-action-card__headline { font-size: var(--fs-lg); line-height: 1.35; letter-spacing: -.02em; }
+@media (max-width: 768px) { .result-action-card__headline { font-size: var(--fs-md); } }
 .result-action-card__stats { margin-top: 16px; }
 .result-action-card__stats > div { padding-block: 12px; }
 .result-action-card__controls > .btn.ghost { min-height: 32px; padding-inline: 7px; }

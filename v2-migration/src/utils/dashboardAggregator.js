@@ -55,7 +55,7 @@ export function fmtCurrencyPrecise(value, currency = "KRW") {
 // 훨씬 길어 같은 글자 크기에서 카드 위계를 깨뜨리므로, 원본 숫자를 숨기지 않고
 // 읽기 쉬운 단위로만 축약한다. 표·CSV·툴팁은 fmtCurrencyPrecise를 계속 써서
 // 정확한 금액을 유지한다.
-export function fmtCurrencyCompact(value, currency = "KRW", locale = "ko") {
+export function fmtCurrencyCard(value, currency = "KRW", locale = "ko") {
   if (value == null || !isFinite(value)) return "—";
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
   const abs = Math.abs(Number(value));

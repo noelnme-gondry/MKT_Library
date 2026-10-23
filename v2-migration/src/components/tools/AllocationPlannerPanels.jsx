@@ -1,8 +1,9 @@
 "use client";
 // 5-3 결과에 붙는 플래너 근거: 성과 예측 · 대상별 상태와 원인 · 단가 변화 분해 · 소재 상태.
 // 계산은 lib/budgetPlanner가 하고, 여기서는 읽는 순서대로 보여 주기만 한다.
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import DataTable from "@/components/ds/DataTable";
+import { ChangeBar, ResultHeadline } from "@/components/ds/ResultReport";
 import {
   bindingLabel, CREATIVE_STATE_LABELS, CREATIVE_STATE_ORDER, NODE_STATE_LABELS, PVM_COLUMN_LABELS,
   VERDICT_LABELS, VERDICT_REASON_LABELS, plannerLabel,
@@ -429,36 +430,8 @@ function issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel }) {
   }
 }
 
-/** 결론 표시: 줄은 방향(감액·증액·효과)별, 줄 안의 덩어리는 통째로 넘어가 이름 중간에서 끊기지 않는다. */
-export function AllocationHeadline({ lines = [] }) {
-  return (
-    <span className="alloc-headline">
-      {lines.map((line, index) => (
-        <span key={`${line.kind}-${index}`} className={`alloc-headline__line is-${line.kind}`}>
-          {/* 덩어리 사이 공백은 덩어리 밖에 둔다 — 안에 두면 접혀서 줄을 바꿀 자리가 사라진다. */}
-          {line.chunks.map((chunk, chunkIndex) => (
-            <Fragment key={chunkIndex}>
-              {chunkIndex > 0 ? " " : null}
-              <span className="alloc-headline__chunk">{chunk}</span>
-            </Fragment>
-          ))}
-          {/* 줄 끝 공백은 화면에서 접히지만 읽기·복사에서는 줄 사이를 띄운다. */}
-          {index < lines.length - 1 ? " " : ""}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-/** 증감 막대: 0을 가운데 두고 감액은 왼쪽, 증액은 오른쪽. 길이는 표 안 최대 변화 대비. */
-function ChangeBar({ delta, max }) {
-  const width = max > 0 ? Math.min(50, (Math.abs(delta) / max) * 50) : 0;
-  return (
-    <span className="alloc-plan__bar" aria-hidden="true">
-      <i className={delta < 0 ? "is-down" : "is-up"} style={{ width: `${width}%` }} />
-    </span>
-  );
-}
+/** 결론 표시는 공용 부품(ds/ResultReport)을 쓴다 — 줄은 방향별, 줄 안의 덩어리는 통째로 넘어간다. */
+export const AllocationHeadline = ResultHeadline;
 
 /**
  * 결론 카드 본문(임원용): 채널별 조정안 표와 확인할 점 표. 금액은 축약 표기, 근거는 짧은 명사구.
@@ -491,7 +464,7 @@ export function AllocationActionSummary({ moves = [], issues = [], locale = "ko"
             columns={[
               { key: "unit", label: tr("대상", "Target"), cellClassName: "alloc-plan__unit" },
               { key: "budget", label: tr("일예산 현재 → 변경", "Daily budget now → plan"), align: "right", cellClassName: "alloc-plan__budget", fmt: (_, move) => <><span className="alloc-plan__label">{tr("일예산 ", "Budget ")}</span>{fmtMoney(move.current)} → <strong>{fmtMoney(move.proposed)}</strong></> },
-              { key: "delta", label: tr("증감", "Change"), align: "right", cellClassName: "alloc-plan__delta", fmt: (_, move) => <><ChangeBar delta={move.delta} max={max} /><strong className={`is-${move.direction}`}>{signed(move.delta)}</strong>{move.changePct != null && <span> {pct(move.changePct)}</span>}</> },
+              { key: "delta", label: tr("증감", "Change"), align: "right", cellClassName: "alloc-plan__delta", fmt: (_, move) => <><ChangeBar value={move.delta} max={max} /><strong className={`is-${move.direction}`}>{signed(move.delta)}</strong>{move.changePct != null && <span> {pct(move.changePct)}</span>}</> },
               { key: "cpr", label: tr(`${metricLabel} 현재 → 예상`, `${metricLabel} now → expected`), align: "right", cellClassName: "alloc-plan__cpr", fmt: (_, move) => move.currentCpr == null && move.plannedCpr == null ? "—" : <><span className="alloc-plan__label">{metricLabel} </span>{move.currentCpr != null ? fmtMetric(move.currentCpr) : "—"} → {move.plannedCpr != null ? fmtMetric(move.plannedCpr) : "—"}</> },
               { key: "why", label: tr("근거", "Why"), cellClassName: "alloc-plan__why", fmt: (_, move) => reasonText(move.reason, tr, metricLabel) },
             ]}

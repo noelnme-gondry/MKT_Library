@@ -2,13 +2,14 @@ import { openDochiSample } from "./support/dochiSample";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { measureDesignRules } from "./support/designRules";
+import { openResultDetails } from "./support/resultDetails";
 
 // 도구 화면의 핵심 그림(ToolCoreFigure)은 HTML로 그린다. 캔버스 차트를 걷어낸 자리의 PNG 받기가
 // 실제 브라우저에서 이미지 파일을 만드는지 본다 — jsdom은 SVG foreignObject를 그리지 못한다.
 // 캔버스 차트도 같은 버튼(ds/FigurePngButton)으로 받는다 — HTML 그림과 캔버스 경로를 둘 다 실제로 밟는다.
 const CASES = [
   { path: "/tools/campaign-variance", file: /^pvm_mix_rate_\d{4}-\d{2}-\d{2}\.png$/ },
-  // 5-3은 전체 배분표가 기본 보기라 그림은 "변경 요약"을 골라야 보인다.
+  // 5-3의 그림은 "자세히 보기" 안 "변경 요약"에 있다(전체 배분표가 기본 보기).
   { path: "/tools/budget-allocation", view: "변경 요약", file: /^budget_shift_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/vif-multicollinearity", file: /^vif_by_channel_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/content/freshness", file: /^creative_status_\d{4}-\d{2}-\d{2}\.png$/ },
@@ -35,7 +36,10 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false, view = nul
     const figure = page.locator(scope).first();
     await expect(async () => {
       if (await example.isVisible()) await example.click();
-      if (view) await page.getByRole("radio", { name: view, exact: true }).click({ timeout: 5_000 });
+      if (view) {
+        await openResultDetails(page);
+        await page.getByRole("radio", { name: view, exact: true }).click({ timeout: 5_000 });
+      }
       await expect(figure).toBeVisible({ timeout: 5_000 });
     }).toPass({ timeout: 120_000 });
     const button = figure.getByRole("button", { name: "PNG 받기" });

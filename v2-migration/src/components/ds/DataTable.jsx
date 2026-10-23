@@ -69,6 +69,7 @@ export default function DataTable({
                       key={c.key}
                       className={joinClasses("data-table__cell", isNum && "tnum", c.cellClassName)}
                       data-numeric={isNum ? "true" : undefined}
+                      data-label={typeof c.label === "string" && c.label ? c.label : undefined}
                       style={{ textAlign: alignOf(c), ...(c.cellStyle || {}) }}
                     >
                       {content}

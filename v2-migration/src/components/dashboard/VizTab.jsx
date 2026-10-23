@@ -6,7 +6,7 @@ import HelpTip from "@/components/ds/HelpTip";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
-import { getMonFilteredRows, aggregateByKey, buildRetentionCurve, calculateKPIs, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, aggregateByKey, buildRetentionCurve, calculateKPIs, effectiveDenomBasis, fmtCurrencyCard, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { useRouter } from "next/navigation";
 import { idToPath } from "@/lib/routeMap";
 import { sourceCurrencyOf } from "@/utils/format";
@@ -303,7 +303,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
 
   // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
   // 불투명 호출로 effBasis를 소비하면 React Compiler가 메모 보존을 못 함).
-  const compactCurrency = (value) => fmtCurrencyCompact(Number(value), dataCurrency, locale);
+  const compactCurrency = (value) => fmtCurrencyCard(Number(value), dataCurrency, locale);
   const preciseCurrency = (value) => fmtCurrencyPrecise(Number(value), dataCurrency);
   const acqLabel = D.acqLabel(effBasis);
   const trendOutcomeLabel = D.trendOutcome(effBasis);

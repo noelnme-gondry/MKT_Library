@@ -9,7 +9,7 @@ import {
   chartCommonOpts,
   getCssVar,
 } from "@/utils/chartUtils";
-import { fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { fmtCurrencyCard, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { decisionCostBounds, decisionCostTick } from "@/utils/scaleDecisionAxis";
 import { buildScaleDecisionMatrix } from "@/utils/scaleDecisionMatrix";
 import FigurePngButton from "@/components/ds/FigurePngButton";
@@ -45,7 +45,7 @@ function toneColor(tone) {
 function formatMetric(value, metric, currency, locale, compact = false) {
   if (!Number.isFinite(value)) return "—";
   if (metric === "roas") return `${value.toFixed(2)}x`;
-  return compact ? fmtCurrencyCompact(value, currency, locale) : fmtCurrencyPrecise(value, currency);
+  return compact ? fmtCurrencyCard(value, currency, locale) : fmtCurrencyPrecise(value, currency);
 }
 
 function bubbleRadius(points, value) {
