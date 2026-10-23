@@ -20,6 +20,8 @@ import {
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
 import { allocationAt, plannerEvidence, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
+import { allocationEffect, allocationHeadline, allocationMoves, moveGroups } from "@/lib/budgetPlanner/allocationActions";
+import { fmtCurrencyCompact, sourceCurrencyOf } from "@/utils/format";
 
 const EFFICIENCY_TOOL_IDS = Object.freeze(["5-2", "5-21", "5-22", "5-3"]);
 
@@ -378,10 +380,22 @@ function allocationAdapter(input) {
     ? Object.values(currentByEntity).reduce((sum, entry) => sum + (entry.results || 0), 0)
     : null;
   const resultGain = currentResults != null ? summary.next.results - currentResults : null;
+  // 결론 문장은 도구 화면(5-3)과 같은 함수에서 만든다 — 무엇을 얼마나 옮기는지 + 같은 곡선 기준 효과.
+  const currency = sourceCurrencyOf(csvData, "KRW");
+  const effect = allocationEffect(allocation.items, (channel, cost) => {
+    const meta = modelsMap.get(channel);
+    return meta ? ALLOC_MATH.predictSafeCpr(meta, cost) : null;
+  });
+  const conclusion = allocationHeadline({
+    groups: moveGroups(allocationMoves(allocation.items, planner.units, { history: historyByCh })),
+    change: effect.change,
+    metricLabel: metric === "actions" ? "CPA" : "CPI",
+    money: (value) => fmtCurrencyCompact(Math.round(value), { currency, locale }),
+    locale,
+  });
   // 제목의 "늘어납니다" 분기와 같은 기준(1% 이상)이다 — 제목과 행동이 다른 판정을 쓰지 않게.
   const raisesResults = resultGain != null && resultGain >= Math.max(1, currentResults * 0.01) && unit === "channel";
   const resultLabel = metric === "actions" ? tr(locale, "전환", "conversions") : tr(locale, "설치", "installs");
-  const fmtCount = (value) => Math.round(value).toLocaleString(locale === "en" ? "en-US" : "ko-KR");
   return createAnalysisResult({
     toolId: "5-3",
     status: ANALYSIS_RESULT_STATUS.SUCCESS,
@@ -389,17 +403,9 @@ function allocationAdapter(input) {
     mappingSignature,
     verdict: {
       evidenceState: "estimated",
-      // 결론은 "같은 예산으로 배분만 바꾸면 무엇이 달라지나"다. 두 값은 같은 곡선에서 나온 예측이라
-      // 차이가 배분 효과로 읽힌다. 차이가 1% 미만이면 옮길 이유가 약하다고 말한다(억지 처방 금지).
-      headline: resultGain == null
-        ? tr(locale, "현재 관측 일예산을 기준으로 한 배분 시나리오입니다.", "This is an allocation scenario using the current observed daily budget.")
-        : Math.abs(resultGain) < Math.max(1, currentResults * 0.01)
-          ? tr(locale, `배분을 바꿔도 예상 ${resultLabel} 수는 하루 ${fmtCount(currentResults)}건으로 거의 같습니다.`, `Reallocating keeps expected ${resultLabel} at about ${fmtCount(currentResults)} a day.`)
-          : resultGain > 0
-            ? tr(locale, `같은 하루 예산으로 배분만 바꾸면 예상 ${resultLabel} 수가 하루 ${fmtCount(currentResults)}건에서 ${fmtCount(summary.next.results)}건으로 늘어납니다.`, `Reallocating the same daily budget raises expected ${resultLabel} from ${fmtCount(currentResults)} to ${fmtCount(summary.next.results)} a day.`)
-            // 탐욕 배분은 0에서 쌓아 올려 U자 곡선 구간을 못 쓰므로 지금보다 나쁜 안이 나올 수 있다.
-            // 그때 "줄어듭니다"를 권고처럼 쓰지 않고, 옮기지 말라고 말한다(엔진은 건드리지 않는다).
-            : tr(locale, `지금 배분이 더 낫습니다. 계산된 배분은 예상 ${resultLabel} 수가 하루 ${fmtCount(currentResults)}건에서 ${fmtCount(summary.next.results)}건으로 줄어듭니다.`, `The current split is better: the computed allocation lowers expected ${resultLabel} from ${fmtCount(currentResults)} to ${fmtCount(summary.next.results)} a day.`),
+      // 결론은 "같은 예산으로 배분만 바꾸면 무엇이 달라지나"다 — 두 값은 같은 곡선에서 나온 예측이라
+      // 차이가 배분 효과로 읽힌다. 변화가 작으면 유지를 권한다(억지 처방 금지, allocationHeadline).
+      headline: conclusion.text,
       stats: [
         { id: "budget", label: tr(locale, "하루 예산", "Daily budget"), value: allocation.totalAllocated, unit: "currency" },
         ...(currentResults != null ? [{ id: "current-results", label: tr(locale, `지금 배분 예상 ${resultLabel}`, `Expected ${resultLabel} now`), value: currentResults, unit: "count" }] : []),

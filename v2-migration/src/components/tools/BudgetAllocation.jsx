@@ -42,7 +42,7 @@ import { allocationCadence, prepareAllocationObservations, allocationHistory } f
 import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
 import { allocationAt, deltaAllocationAt, fatigueScenarioAt, loserOffScenarioAt, newCreativeScenarioAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { createAllocationPlanSnapshot, findAllocationPlanMatches, plannerDowngradeUnits, planReviewText } from "@/lib/budgetPlanner/planReview";
-import { allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "@/lib/budgetPlanner/allocationActions";
+import { allocationEffect, allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "@/lib/budgetPlanner/allocationActions";
 import { addDays as plannerAddDays } from "@/lib/budgetPlanner/plannerStats";
 import { appendDecisionEpisode, toLocalDecisionDate } from "@/lib/decisionReview";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -148,13 +148,6 @@ function getCostMetricLabel(metric) {
   if (metric === "pu_d7") return "CPA";
   if (metric === "revenue_d7") return "ROAS";
   return "CPR";
-}
-
-/* 내부 CPR → 표시용 metric 값. ROAS면 1/CPR(배수), 아니면 CPR 그대로. */
-function displayMetricValue(cprValue, metric) {
-  if (cprValue == null || !isFinite(cprValue)) return null;
-  if (isRoasMetric(metric)) return cprValue > 0 ? 1 / cprValue : null;
-  return cprValue;
 }
 
 function formatNumberK(n, decimals = 0) {
@@ -2027,12 +2020,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const verdict = (() => {
     if (!summary || !items.length) return null;
     const S = summary;
-    const dPrev = displayMetricValue(S.prevAvgCPR, effectiveMetric);
-    const dNext = displayMetricValue(S.nextAvgCPR, effectiveMetric);
     const groups = moveGroups(actionMoves);
     // 결론은 한 줄 — 무엇을 얼마나 옮기는지와 그 결과(지표 변화율)만. 화면은 방향별로 줄을 나누고
     // 이름·금액 덩어리 안에서는 끊지 않는다(allocationHeadline). 수치 근거는 아래 표가 말한다.
-    const change = dPrev != null && dNext != null && dPrev !== 0 ? (dNext - dPrev) / dPrev : null;
+    // 효과는 '지금 배분'과 '바꾼 배분'을 같은 곡선으로 예측해 비교한다 — 관측 단가와 예측 단가를 섞으면
+    // 모형 오차가 배분 효과처럼 보인다(§7). 결과 작업대도 같은 함수(allocationEffect)를 쓴다.
+    const effect = planner.ok ? allocationEffect(items, (channel, cost) => {
+      const meta = planner.modelsMap?.get(channel);
+      return meta ? ALLOC_MATH.predictSafeCpr(meta, cost) : null;
+    }) : { change: null };
+    const change = effect.change == null ? null : roas ? 1 / (1 + effect.change) - 1 : effect.change;
     const { tone, lines, text } = allocationHeadline({
       groups,
       change,
@@ -2041,7 +2038,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       money: (value) => fmtCurrencyCompact(Math.round(value), { currency, locale }),
       locale,
     });
-    return { tone, text, lines, change, S };
+    return { tone, text, lines, change, S, effect };
   })();
   const fmtActionResult = roas ? (value) => fmtCurrency(value, currency) : (value) => formatNumberK(value);
   const fmtActionMoney = (value) => fmtCurrencyCompact(value, { currency, locale });
@@ -2988,12 +2985,17 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           stats={[
             {
               label: tr(`예상 ${metricLabel}`, `Projected ${metricLabel}`),
-              value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}`,
+              // 결론의 효과와 같은 기준: 지금 배분·바꾼 배분 모두 같은 곡선의 예측(관측값과 섞지 않는다).
+              value: verdict.effect?.currentCpr != null
+                ? `${fmtCostMetric(verdict.effect.currentCpr, effectiveMetric, currency)} → ${fmtCostMetric(verdict.effect.plannedCpr, effectiveMetric, currency)}`
+                : `${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}`,
               detail: verdict.change != null && Math.abs(verdict.change) >= 0.0005 ? `${verdict.change > 0 ? "+" : "−"}${Math.abs(verdict.change * 100).toFixed(1)}%` : undefined,
             },
             {
               label: tr(`하루 ${unitLabel}`, `${unitLabel}s per day`),
-              value: `${formatNumberK(verdict.S.prev.results)} → ${formatNumberK(verdict.S.next.results)}`,
+              value: verdict.effect?.currentResults != null
+                ? `${formatNumberK(verdict.effect.currentResults)} → ${formatNumberK(verdict.effect.plannedResults)}`
+                : formatNumberK(verdict.S.next.results),
             },
             {
               label: tr(planBudgetPeriod === "monthly" ? "총 월예산" : "총 일예산", planBudgetPeriod === "monthly" ? "Total monthly budget" : "Total daily budget"),

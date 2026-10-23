@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "./allocationActions";
+import { allocationEffect, allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "./allocationActions";
 import { addDays } from "./plannerStats";
 
 const unit = (name, channel, diagnosis = null) => ({ unit: name, path: { channel }, diagnosis });
@@ -145,5 +145,30 @@ describe("결론 문장 — 줄은 방향별, 줄 안은 끊기지 않는 덩어
     expect(none.tone).toBe("neutral");
     expect(none.lines.map((line) => line.kind)).toEqual(["down", "up"]);
     expect(allocationHeadline({ groups: { down: [], up: [], moved: 0, added: 0 }, change: null, metricLabel: "CPI", money }).text).toBe("현 배분 유지 권고");
+  });
+});
+
+describe("배분 효과 — 지금 배분과 바꾼 배분을 같은 곡선으로", () => {
+  // 곡선: A는 지출이 늘면 단가가 오르고(수확 체감), B는 일정하다.
+  const predict = (channel, cost) => (channel === "A" ? 10 + cost / 100 : 20);
+  const items = [
+    { channel: "A", current: 1000, cost: 500, results: 500 / predict("A", 500) },
+    { channel: "B", current: 1000, cost: 1500, results: 1500 / predict("B", 1500) },
+  ];
+
+  it("관측 단가가 아니라 같은 곡선의 예측끼리 비교한다", () => {
+    const effect = allocationEffect(items, predict);
+    const current = 1000 / 20 + 1000 / 20;
+    const planned = 500 / 15 + 1500 / 20;
+    expect(effect.currentResults).toBeCloseTo(current, 12);
+    expect(effect.plannedResults).toBeCloseTo(planned, 12);
+    expect(effect.change).toBeCloseTo((2000 / planned) / (2000 / current) - 1, 12);
+    expect(effect.resultGain).toBeCloseTo(planned - current, 12);
+  });
+
+  it("지금 배분 중 하나라도 예측이 없으면 효과를 정의하지 않는다(부분 합으로 비교하지 않는다)", () => {
+    const effect = allocationEffect(items, (channel, cost) => (channel === "B" ? null : predict(channel, cost)));
+    expect(effect.change).toBeNull();
+    expect(effect.resultGain).toBeNull();
   });
 });

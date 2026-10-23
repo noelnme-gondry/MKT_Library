@@ -158,8 +158,9 @@ describe("Dochi efficiency analysis adapters", () => {
     const raises = gain >= Math.max(1, stat(budget, "current-results") * 0.01);
     expect(raises).toBe(true);
     expect(budget.verdict.nextToolId).toBe("5-22");
-    // 제목(늘어납니다)과 행동(증액 여력 확인)이 같은 판정을 쓴다.
-    expect(budget.verdict.headline).toMatch(locale === "en" ? /raises/ : /늘어납니다/);
+    // 제목(무엇을 얼마나 옮기면 단가가 내려간다)과 행동(증액 여력 확인)이 같은 판정을 쓴다.
+    // 제목은 도구 화면(5-3)과 같은 함수(allocationHeadline · allocationEffect)에서 나온다.
+    expect(budget.verdict.headline).toMatch(locale === "en" ? /^Cut .+ → CPI −\d/ : /감액 .+ → CPI −\d/);
     expect(budget.verdict.action).toMatch(locale === "en" ? /headroom/ : /증액 여력/);
   });
 

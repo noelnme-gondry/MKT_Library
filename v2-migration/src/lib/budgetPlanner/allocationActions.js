@@ -65,6 +65,35 @@ export function allocationMoves(items = [], units = [], { isRoas = false, minSha
   }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || a.unit.localeCompare(b.unit));
 }
 
+/**
+ * 배분만 바꿨을 때의 효과: '지금 배분'과 '바꾼 배분'을 같은 곡선으로 예측해 비교한다.
+ * 관측 단가와 예측 단가를 섞으면 모형 오차가 배분 효과처럼 보인다(§7 "같은 모형에서 나온 값끼리").
+ * 도구 화면(5-3)과 결과 작업대가 같은 함수를 써서 같은 숫자를 말한다.
+ * @param {object[]} items 배분 항목(channel·current·cost·results)
+ * @param {(channel:string, cost:number) => number|null} predictCpr 그 지출에서의 예상 단가
+ * @returns {{currentResults:number|null, plannedResults:number, change:number|null, resultGain:number|null}}
+ *   change: 단가(CPR) 변화율 — ROAS로 보일 때는 1/(1+change)−1로 뒤집는다.
+ */
+export function allocationEffect(items = [], predictCpr) {
+  let currentCost = 0, currentResults = 0, plannedCost = 0, plannedResults = 0, complete = true;
+  for (const item of items) {
+    const current = Number(item.current) || 0;
+    currentCost += current;
+    plannedCost += Number(item.cost) || 0;
+    plannedResults += Number(item.results) || 0;
+    if (current <= 0) continue;
+    const cpr = predictCpr?.(item.channel, current);
+    if (Number.isFinite(cpr) && cpr > 0) currentResults += current / cpr;
+    else complete = false;
+  }
+  if (!complete || !(currentResults > 0) || !(plannedResults > 0) || !(plannedCost > 0)) {
+    return { currentResults: complete && currentResults > 0 ? currentResults : null, plannedResults, change: null, resultGain: null };
+  }
+  const currentCpr = currentCost / currentResults;
+  const plannedCpr = plannedCost / plannedResults;
+  return { currentResults, plannedResults, currentCpr, plannedCpr, change: plannedCpr / currentCpr - 1, resultGain: plannedResults - currentResults };
+}
+
 /** 결론 문장에 쓸 묶음: 줄이는 채널·늘리는 채널(대상 수와 금액 합). */
 export function moveGroups(moves) {
   const group = (direction) => {
