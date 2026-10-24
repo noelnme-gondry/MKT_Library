@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  # 새 커밋이 같은 PR 또는 main에 도착하면 오래된 검증은 결과로 쓰이지 않는다.
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -40,6 +45,8 @@ jobs:
       - run: npm run build
 
   browser-quality:
+    # 전체 E2E는 PR에서 한 번만 수행한다. main에서는 validate가 병합본을 다시 확인한다.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
