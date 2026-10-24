@@ -13114,7 +13114,7 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
 .operations-metric-evidence__calculation { display: flex; align-items: end; flex-wrap: wrap; gap: 12px 20px; padding-block: 14px; border-block: 1px solid var(--border); }
 .operations-metric-evidence__operand { display: flex; align-items: end; gap: 20px; min-width: 0; }
 .operations-metric-evidence__operand > div { display: grid; gap: 5px; min-width: 0; }
-.operations-metric-evidence__operand > div > span { color: var(--text-secondary); font-size: var(--fs-sm); }
+.operations-metric-evidence__operand > div > span { color: var(--text-secondary); font-size: var(--fs-base); }
 .operations-metric-evidence__operand strong { font-size: var(--fs-lg); line-height: 1.5; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .operations-metric-evidence__operator, .operations-metric-evidence__scale { color: var(--text-secondary); font-size: var(--fs-lg); line-height: 1.5; }
 .operations-metric-evidence__rounding { margin: 8px 0 16px; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.6; }
