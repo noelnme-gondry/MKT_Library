@@ -92,6 +92,22 @@ describe("standalone operations planner entry path", () => {
     expect(screen.queryByText("0.0% improvement")).toBeNull();
   });
 
+  it.each(["ko", "en"])("withholds forecasts for two observed days but keeps actual evidence (%s)", async locale => {
+    const en = locale === "en";
+    // 전체 업로드는 유효하다. 분석 기준일 이후의 관측이 예측 보류를 풀면 안 된다.
+    useAppStore.getState().setDashboardFilter({ dateStart: "2026-07-01", dateEnd: "2026-07-02" });
+    useAppStore.getState().setGroupAnalyzed("5-31");
+    expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(true);
+    render(<OperationsPlanner locale={locale} />);
+    await screen.findByText(en ? "Budget and improvement estimates withheld" : "예산·개선치 추정 보류");
+    expect(screen.getByText(en ? "Budget forecasts are withheld because observations or model fit are insufficient." : "관측 수 또는 모형 적합도가 부족해 예산 예측을 보류했습니다.")).toBeTruthy();
+    expect(document.querySelector(".operations-brief__forecast, .operations-panel--allocation")).toBeNull();
+    expect(document.querySelector(".operations-comparison--single > .operations-panel--trend")).toBeTruthy();
+    expect(document.querySelectorAll(".operations-observed-queue tbody tr")).toHaveLength(2);
+    expect(screen.queryByRole("radio", { name: en ? "Budget adjustment" : "예산 조정", exact: true })).toBeNull();
+    expect(screen.getByRole("button", { name: /^CPI / }).textContent).not.toContain(en ? "Unavailable" : "계산 불가");
+  });
+
   it("stacks an unavailable creative chart and its real zero-outcome details", async () => {
     const csv = useAppStore.getState().csvData;
     useAppStore.getState().setCsvData({ ...csv, raw: csv.raw.map(row => ({ ...row, Installs: 0 })) });

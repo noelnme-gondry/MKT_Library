@@ -5,9 +5,9 @@ import Papa from "papaparse";
 import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import { measureDesignRules } from "./support/designRules";
 
-function csvFixture({ gap = false } = {}) {
+function csvFixture({ gap = false, days = 70 } = {}) {
   const lines = ["Date,Country,Platform,Channel,Campaign,Creative,Cost,Installs,Impressions,Clicks"];
-  for (let day = 0; day < 70; day++) for (let campaign = 0; campaign < 2; campaign++) {
+  for (let day = 0; day < days; day++) for (let campaign = 0; campaign < 2; campaign++) {
     const date = new Date(Date.UTC(2026, 6, 1 + day)).toISOString().slice(0, 10);
     if (gap && day === 67 && campaign === 1) continue;
     const cost = 100000 + day % 11 * 14000;
@@ -192,6 +192,30 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".operations-brief")).toContainText(en ? "Budget and improvement estimates withheld" : "예산·개선치 추정 보류");
     await expect(page.getByRole("table", { name: en ? "Recent efficiency by creative" : "소재별 최근 효율", exact: true })).toBeVisible();
     await expect(page.locator(".operations-brief__forecast")).toHaveCount(0);
+  });
+
+  test(`operations planner: short history withholds predictions and retains observed evidence (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    // 업로드 자격(14일)을 통과한 뒤 초기 2일만 분석한다. 뒤의 12일은 학습에 쓰면 안 된다.
+    await openOperations(page, en, { days: 14 });
+    await page.locator(".operations-planner__conditions > summary").click();
+    await page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ }).click();
+    const dialog = page.getByRole("dialog", { name: en ? "Analysis period" : "분석 기간", exact: true });
+    await dialog.getByLabel(en ? "Start date" : "시작일").fill("2026-07-01");
+    await dialog.getByLabel(en ? "End date" : "종료일").fill("2026-07-02");
+    await dialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+    const budget = page.locator(".operations-workbench__group--budget");
+    await expect(budget).toContainText(en ? "Budget and improvement estimates withheld" : "예산·개선치 추정 보류");
+    await expect(budget).toContainText(en ? "observations or model fit are insufficient" : "관측 수 또는 모형 적합도가 부족");
+    await expect(budget.locator(".operations-brief__forecast, .operations-panel--allocation")).toHaveCount(0);
+    await expect(budget.locator(".operations-comparison--single > .operations-panel--trend")).toBeVisible();
+    await expect(page.locator(".operations-observed-queue tbody tr")).toHaveCount(2);
+    await expect(page.locator("#ops-input-detail")).toContainText(en ? "Complete total" : "유효한 합계");
+    await expect(page.locator(".operations-review-choices")).not.toContainText(en ? "Budget adjustment" : "예산 조정");
+    const grid = await budget.locator(".operations-comparison--single").boundingBox();
+    const trend = await budget.locator(".operations-panel--trend").boundingBox();
+    expect(Math.abs(grid.width - trend.width), "observed trend uses the full column when predictions are withheld").toBeLessThanOrEqual(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 
   test(`operations planner: chart decision saved and opened in weekly review (${locale})`, async ({ page }) => {

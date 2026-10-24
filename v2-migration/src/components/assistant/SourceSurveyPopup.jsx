@@ -20,7 +20,7 @@ import {
   writeSourceSurveyAnswered,
 } from "@/lib/survey/sourceSurvey";
 
-// 분석 결과 확인 후 모서리에서 묻는다. 닫힘 상태는 다음 마운트에도 이어진다.
+// 분석 결과 확인 후 본문 아래에서 묻는다. 닫힘 상태는 다음 마운트에도 이어진다.
 export const SOURCE_SURVEY_COPY = {
   ko: {
     label: "유입 경로 한 가지 질문",
@@ -149,7 +149,7 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   if (!open) return null;
 
   return (
-    <aside className="source-survey" role="dialog" aria-label={copy.label} aria-live="polite">
+    <aside className="source-survey" aria-label={copy.label} aria-live="polite">
       <button type="button" className="source-survey__close" onClick={() => dismiss("closed")} aria-label={copy.close}>
         ×
       </button>

@@ -2,12 +2,8 @@ import { test, expect } from "@playwright/test";
 
 import { SOURCE_SURVEY_ANSWERED_KEY, SOURCE_SURVEY_SEEN_KEY } from "./support/sourceSurvey.js";
 
-// 유입 경로 서베이는 `playwright.config.js`가 모든 스펙에서 "이미 답함"으로 시드해
-// 둔다(카드가 화면 모서리라 다른 스펙의 클릭을 가로챈다). 그래서 서베이를 실제로
-// 보는 곳은 여기 하나뿐이다 — 시드가 기능을 통째로 가리지 않도록 붙잡는 역할이다.
-//
-// jsdom 스모크가 못 보는 것만 본다: 실제 박스가 화면 모서리 있는가, 그리고 카드가
-// 뒤 콘텐츠를 잠그지 않는가.
+// 기본 시드를 풀고 실제 결과 뒤에서 설문을 띄운다. 설문은 결과·조작과 겹치지
+// 않아야 하며, 지연 노출이 읽는 위치와 포커스를 바꾸면 안 된다.
 const clearSeed = async (page) => {
   await page.addInitScript(([answeredKey, seenKey]) => {
     try {
@@ -21,38 +17,47 @@ const clearSeed = async (page) => {
   }, [SOURCE_SURVEY_ANSWERED_KEY, SOURCE_SURVEY_SEEN_KEY]);
 };
 
-test("유입 설문은 결과 확인 후 모서리에 뜨고 뒤를 잠그지 않는다", async ({ page }) => {
+for (const locale of ["ko", "en"]) test(`유입 설문은 결과 아래에 표시하고 분석을 덮지 않는다 (${locale})`, async ({ page }) => {
+  const en = locale === "en";
   await page.clock.install();
   await clearSeed(page);
-  await page.goto("/");
+  await page.goto(`${en ? "/en" : ""}/tools/operations-planner`);
 
   const card = page.locator(".source-survey");
   await expect(card).toHaveCount(0);
-  await page.locator(".dc-action-route--sample").click();
-  await expect(page.getByRole("navigation", { name: "결과와 다음 행동" })).toBeVisible();
-  await page.locator(".result-action-card").scrollIntoViewIfNeeded();
+  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+  await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+  await expect(page.locator("#ops-budget-title")).toBeVisible();
+  const metric = page.getByRole("button", { name: /^CTR / });
+  await metric.focus();
+  const scrollBefore = await page.evaluate(() => scrollY);
   await expect(card).toHaveCount(0);
   await page.clock.fastForward(60_001);
   await expect(card).toBeVisible();
-  // 보이기 시작한 순간은 등장 모션 도중이다. 허용 오차를 늘리지 않고 정착을 기다린다.
-  await card.evaluate(async node => {
-    await Promise.all(node.getAnimations().map(animation => animation.finished));
-  });
-
-  // ① 실제로 모서리인가 — jsdom은 좌표를 못 재므로 여기서만 확인할 수 있다.
-  const corner = await page.evaluate(() => {
-    const rect = document.querySelector(".source-survey").getBoundingClientRect();
+  await expect(metric).toBeFocused();
+  expect(await page.evaluate(() => scrollY)).toBe(scrollBefore);
+  // DOM 소속과 실제 박스를 함께 확인한다. fixed 카드도 main 안에 있을 수 있다.
+  const layout = await page.evaluate(() => {
+    const survey = document.querySelector(".source-survey");
+    const rect = survey.getBoundingClientRect();
+    const result = document.querySelector(".result-action-card").getBoundingClientRect();
     return {
-      right: innerWidth - rect.right,
-      bottom: innerHeight - rect.bottom,
+      inContent: Boolean(survey.closest("#content")),
+      position: getComputedStyle(survey).position,
+      afterResult: rect.top >= result.bottom,
       width: rect.width,
+      left: rect.left,
+      right: innerWidth - rect.right,
+      overflow: document.documentElement.scrollWidth - innerWidth,
     };
   });
-  expect(corner.width).toBeGreaterThan(0);
-  expect(corner.right).toBeGreaterThanOrEqual(15);
-  expect(corner.right).toBeLessThanOrEqual(25);
-  expect(corner.bottom).toBeGreaterThanOrEqual(15);
-  expect(corner.bottom).toBeLessThanOrEqual(25);
+  expect(layout.inContent).toBe(true);
+  expect(layout.position).toBe("relative");
+  expect(layout.afterResult).toBe(true);
+  expect(layout.width).toBeGreaterThan(0);
+  expect(layout.left).toBeGreaterThanOrEqual(0);
+  expect(layout.right).toBeGreaterThanOrEqual(0);
+  expect(layout.overflow).toBeLessThanOrEqual(1);
 
   // ② 백드롭이 없다 — 카드 밖 아무 지점이나 hit-test하면 카드가 아니어야 한다.
   //    전면 오버레이를 깔면 이 단언이 먼저 깨진다.
@@ -63,11 +68,12 @@ test("유입 설문은 결과 확인 후 모서리에 뜨고 뒤를 잠그지 �
   expect(outsideIsAlive).toBe(true);
 
   // ③ 닫으면 사라지고 다시 뜨지 않는다.
-  await page.getByRole("button", { name: "나중에" }).click();
+  await page.getByRole("button", { name: en ? "Later" : "나중에", exact: true }).click();
   await expect(card).toHaveCount(0);
-  await page.goto("/");
-  await page.locator(".dc-action-route--sample").click();
-  await expect(page.getByRole("navigation", { name: "결과와 다음 행동" })).toBeVisible();
-  await page.locator(".result-action-card").scrollIntoViewIfNeeded();
+  await page.reload();
+  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+  await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+  await expect(page.locator("#ops-budget-title")).toBeVisible();
+  await page.clock.fastForward(60_001);
   await expect(card).toHaveCount(0);
 });

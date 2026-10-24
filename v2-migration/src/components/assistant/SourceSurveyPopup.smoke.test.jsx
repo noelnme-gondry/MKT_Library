@@ -224,11 +224,11 @@ describe("화면에 실제로 보인다", () => {
     return rule[1];
   };
 
-  it("카드가 본문을 가리지 않도록 화면 모서리에 고정된다", () => {
+  it("설문은 본문 아래의 흐름에 머물러 분석을 덮지 않는다", () => {
     const rule = cardRule();
-    expect(rule).toMatch(/position:\s*fixed/);
-    expect(rule).toMatch(/right:\s*24px/);
-    expect(rule).toMatch(/bottom:\s*24px/);
+    expect(rule).toMatch(/position:\s*relative/);
+    expect(rule).not.toMatch(/position:\s*(fixed|absolute|sticky)/);
+    expect(rule).not.toMatch(/z-index:/);
     expect(rule).not.toMatch(/translate\(-50%/);
   });
 
