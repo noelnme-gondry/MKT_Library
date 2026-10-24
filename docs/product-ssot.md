@@ -331,7 +331,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 ### 5.1.0 결과 읽기와 보조 안내 (2026-09-23)
 
 - 결과는 결론 → 주요 지표 → 선택한 지표의 기간 비교 → 다음 행동 순서다. 지출 증감은 중립, CPA·CPI 상승은 악화로 표시하며 원본 통화를 환산하지 않는다. 노출·클릭 등은 전체 수치에서 확인한다. / Read conclusion, key metrics, selected-period comparison, then next action; spend changes are neutral and increasing CPA/CPI indicates deterioration. Preserve source currency.
-- 유입 설문은 첫 결과를 본 뒤 모서리에 표시한다. 답변·다시 묻지 않기는 영구 저장하고, 나중에·닫기는 세션 동안 다시 표시하지 않는다. / Show the source survey after a result, at the screen corner; persist answers/opt-out and suppress dismissals for the session.
+- 유입 설문은 첫 결과를 본 뒤 본문 아래의 일반 문서 흐름에 표시한다. 화면에 고정하거나 분석 결과·조작을 덮지 않으며 자동 스크롤·포커스 이동을 하지 않는다. 답변·다시 묻지 않기는 영구 저장하고, 나중에·닫기는 세션 동안 다시 표시하지 않는다. / Show the source survey in normal document flow below the content after a result. Never pin it over results or controls, auto-scroll or move focus. Persist answers/opt-out and suppress dismissals for the session.
 - 블로그 보조 안내는 **첫 번째 글부터 두 번 아래로 스크롤한 뒤** 표시한다. 연속 스크롤 이벤트는 한 동작으로 묶는다. 각 글에서 중앙 안내로 해당 글에 맞는 분석을 우선 연결하며 예제·준비 양식도 제공한다. 닫기는 해당 글에만 적용하고, 오늘 다시 보지 않기는 기기 현지 자정까지 모든 글을 숨긴다. / Each article shows a centered helper linking primarily to its relevant analysis, with practice and preparation links. Dismiss per article, or hide all helpers until local midnight.
 
 ### 5.1.1 홈 진입과 도구 탐색

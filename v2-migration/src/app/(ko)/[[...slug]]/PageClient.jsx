@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
+import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
 import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
 import AnalysisDataGuide from "@/components/AnalysisDataGuide";
@@ -174,6 +175,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />}
             {isAnalysisAdRoute(routeId) && <PartnerAdSlot placement="analysis-bottom" />}
+            <SourceSurveyPopup />
             </article>
           </main>
         </div>
