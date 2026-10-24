@@ -65,7 +65,7 @@ v2-migration/
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
 | `/` | home | LandingPage → CSV·샘플 진입 + landing/HomeResultPreview(동일 픽스처 CPA 비교) + ds/HomeToolFinder(전체 toolIndex·TOOL_JOURNEY, 검색·savedTools) + HomeReading(서버 발행 글) |
-| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsBrief · operationsDemo |
+| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsBrief · operationsDemo · operationsEvidence → OperationsMetricEvidence / OperationsObservedQueue (기존 지표·매핑·관측 검토 연결) |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
 | `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |

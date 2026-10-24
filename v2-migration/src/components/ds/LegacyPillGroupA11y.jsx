@@ -13,6 +13,9 @@ function optionButtons(group) {
 }
 
 function syncGroup(group) {
+  // PillGroup은 자식 radiogroup에서 소유 관계와 키보드를 직접 관리한다.
+  // 바깥 스타일 래퍼까지 승격하면 중첩 그룹·키보드 중복 처리가 생긴다.
+  if (group.querySelector(':scope > [role="radiogroup"]')) return;
   // 다중선택 그룹에 radiogroup을 씌우면 "여럿 켜져 있는데 하나만 선택됨"으로 읽힌다 —
   // ARIA가 없는 것보다 나쁘다. DOM만으로는 단일/다중을 가를 수 없으므로(한 개만 켜진
   // 순간의 다중선택 그룹은 단일과 구분되지 않는다) 마크업이 말하게 한다.
