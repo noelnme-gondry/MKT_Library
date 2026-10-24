@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
+import PillGroup from "@/components/ds/PillGroup";
 
 function LegacyPills() {
   const [value, setValue] = useState("week");
@@ -19,6 +20,16 @@ function LegacyPills() {
 
 describe("LegacyPillGroupA11y", () => {
   afterEach(() => vi.unstubAllGlobals());
+  it("leaves the native radio owner and its keyboard handler intact", () => {
+    const onChange = vi.fn();
+    render(<><LegacyPillGroupA11y /><PillGroup ariaLabel="Review type" value="budget" onChange={onChange}
+      options={[{ value: "budget", label: "Budget" }, { value: "campaign", label: "Campaign" }]} /></>);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(1);
+    expect(screen.getByRole("radiogroup", { name: "Review type" }).querySelectorAll('[role="radio"]')).toHaveLength(2);
+    fireEvent.keyDown(screen.getByRole("radio", { name: "Budget" }), { key: "ArrowRight" });
+    expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Campaign" }));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("campaign");
+  });
   it("settles multi-select synchronization without scheduling itself again", () => {
     const Recorder = MutationObserver;
     let sync;

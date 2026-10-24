@@ -82,6 +82,22 @@ function expectClean(result) {
   expect(result.titleInsets, "filled page titles without an inner gutter").toEqual([]);
 }
 
+test("the scanner recognizes an owned radio wrapper and still rejects a plain nested box", async ({ page }) => {
+  await page.setContent(`<style>
+    .surface { padding: 20px; border: 1px solid; border-radius: 8px; background: #eee; }
+    .ab-pillgroup { min-height: 60px; width: 280px; padding: 12px; border: 1px solid; border-radius: 8px; background: white; }
+  </style><section class="surface">
+    <div class="ab-pillgroup"><div role="radiogroup" aria-label="Window" style="display:contents">
+      <button role="radio" aria-checked="true">Week</button><button role="radio" aria-checked="false">Month</button>
+    </div></div>
+    <article class="ab-pillgroup">Ordinary content with the same styling class</article>
+  </section>`);
+  const measured = await measureDesignRules(page);
+  expect(await page.getByRole("radiogroup").count()).toBe(1);
+  expect(measured.nested).not.toContain("div.ab-pillgroup ⊂ section.surface");
+  expect(measured.nested).toContain("article.ab-pillgroup ⊂ section.surface");
+});
+
 test("the scanner accepts compact figure actions and rejects reserved PNG rows", async ({ page }) => {
   await page.setContent('<main id="main-content"><header class="figure-head" style="display:flex;align-items:center;gap:12px"><h3 style="margin:0">Chart heading</h3><span class="figure-png-download"><button>PNG</button></span></header></main>');
   expect((await measureDesignRules(page)).figureCrowding).toEqual([]);

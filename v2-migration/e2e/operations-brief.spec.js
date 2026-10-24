@@ -60,13 +60,18 @@ for (const locale of ["ko", "en"]) {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tooltip")).toHaveCount(0);
     if (testInfo.project.use.viewport.width > 1100) {
-      const budgetHeading = await page.locator("#ops-budget-title").boundingBox();
+      const overview = await page.locator(".operations-panel--budget").boundingBox();
+      const comparisons = await page.locator(".operations-workbench__group--budget > .operations-comparison").boundingBox();
+      expect(Math.abs(overview.x - comparisons.x), "shared budget summary starts at the comparison gutter").toBeLessThanOrEqual(1);
+      expect(Math.abs(overview.width - comparisons.width), "shared budget summary spans both charts").toBeLessThanOrEqual(1);
+      expect(overview.y + overview.height, "shared conditions and summary precede both charts").toBeLessThan(comparisons.y);
+      const budgetHeading = await page.locator(".operations-panel--allocation .figure-head h3").boundingBox();
       const trendHeading = await page.locator("#ops-trend-title").boundingBox();
-      expect(Math.abs(budgetHeading.y - trendHeading.y), "paired task headings share a top edge").toBeLessThanOrEqual(1);
-      const subtitles = await page.locator(".operations-panel--budget .operations-brief__heading p, .operations-trend .figure-head__description").evaluateAll(nodes => nodes.map(node => ({ top: node.getBoundingClientRect().top, size: getComputedStyle(node).fontSize, color: getComputedStyle(node).color })));
-      expect(Math.abs(subtitles[0].top - subtitles[1].top), "paired subtitles share a baseline").toBeLessThanOrEqual(1);
-      expect(subtitles[0].size).toBe(subtitles[1].size);
-      expect(subtitles[0].color).toBe(subtitles[1].color);
+      expect(Math.abs(budgetHeading.y - trendHeading.y), "paired chart headings share a top edge below the summary").toBeLessThanOrEqual(1);
+      const titles = await page.locator(".operations-panel--allocation .figure-head h3, #ops-trend-title").evaluateAll(nodes => nodes.map(node => ({ size: getComputedStyle(node).fontSize, color: getComputedStyle(node).color })));
+      expect(titles).toHaveLength(2);
+      expect(titles[0].size).toBe(titles[1].size);
+      expect(titles[0].color).toBe(titles[1].color);
       const figureHeads = await page.locator(".operations-decomposition-grid .section-head").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().bottom));
       expect(Math.abs(figureHeads[0] - figureHeads[1]), "stage and mix plots start below aligned figure headers").toBeLessThanOrEqual(1);
     }
