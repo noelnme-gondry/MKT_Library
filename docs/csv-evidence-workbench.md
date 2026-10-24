@@ -58,3 +58,4 @@
 - 최종 검사: `npm run test:all` 5,679 통과·4 건너뜀, 614 파일 통과·1 건너뜀. `npm run lint`, `npm run build`(374 정적 페이지), `git diff --check` 모두 통과. 수학 엔진·골든값·경로/CSV 그룹·서버 전송 계약은 변경하지 않았다.
 - 주요 수정 파일: `OperationsWorkbench.jsx`, `OperationsWeeklyReview.jsx`, `OperationsPlanner.jsx`, 해당 구역의 `globals.css`, `LegacyPillGroupA11y.jsx`와 회귀 스모크. 브랜치는 계속 `codex/csv-evidence-workbench`이고 마지막 확인에서 HEAD 대 `origin/main`은 0/0이다. 전체 변경은 미커밋·미배포이며 기존 사용자 변경과 이전 구현을 보존했다. 기본 뷰포트로 되돌리고 한국어 라이트의 실제 결과 탭을 열어 두었다.
 - PR 준비: 기존 E2E의 “예산 구역 제목 = 추세 차트 제목” 정렬 단언을 승인된 구조에 맞췄다. 공통 요약이 두 차트 전체 폭을 차지하며 위에 있고, 실제 두 차트 제목의 시작선·서체·색은 동일한지 확인한다. 서버 CI의 전체 브라우저 검사 결과는 PR에서 확인한다.
+- PR #972의 첫 CI: 모바일 대시보드의 공용 PillGroup 시각 래퍼를 일반 중첩 카드로 분류하던 검사 전제를 보완했다. 직접 의미를 가진 자식 라디오 그룹이 있을 때만 컨트롤로 인식하며 같은 클래스의 일반 중첩 카드는 계속 실패하는 검사를 추가했다. 기존 AssistantWorkspace 테스트는 CI에서 큐가 아직 5-3을 실행 중인 상태로 1초 제한에 걸렸다. 완료 상태 단언은 유지하고 대기를 5초로 제한해 중간 결과를 통과시키지 않는다. 제품 계산·실제 UI는 추가 변경하지 않았다.
