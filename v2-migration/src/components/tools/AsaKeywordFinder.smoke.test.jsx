@@ -6,11 +6,12 @@
 // 같은 패턴이다 — setCurrentRouteId → 미러 스왑을 밟지 않으면 미러가 undefined인
 // 상태의 렌더 throw를 못 잡는다.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { act } from "react";
 import { renderToString } from "react-dom/server";
 import { useAppStore } from "@/store/useDataStore";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
+import { openResultDetails } from "@/test/resultDetails";
 
 const HEADERS = ["date", "search_term", "cost", "clicks", "installs"];
 const MAPPING = { date: "date", search_term: "search_term", cost: "cost", clicks: "clicks", installs: "installs" };
@@ -76,5 +77,35 @@ describe("AsaKeywordFinder render smoke", () => {
     });
     expect(() => render(<AsaKeywordFinder locale="en" />)).not.toThrow();
     expect(screen.queryByText("�")).toBeNull();
+  });
+
+  it("결과는 임원 보고 형식이다: 보류형 결론 → 성숙도 선언 뒤 숫자 결론·수치 3개·조치 표, 자세히 보기는 닫힘", () => {
+    const actionable = [];
+    for (let d = 1; d <= 7; d += 1) {
+      const date = `2026-03-${String(d).padStart(2, "0")}`;
+      actionable.push({ date, search_term: "budget app", match_type: "broad", cost: "1000", clicks: "10", installs: "3", daily_budget: "10000", target_cpa: "500" });
+      actionable.push({ date, search_term: "bank app", match_type: "exact", cost: "1000", clicks: "10", installs: "1", daily_budget: "10000", target_cpa: "500" });
+    }
+    act(() => {
+      useAppStore.getState().setCurrentRouteId("5-26");
+      useAppStore.getState().setCsvData({ raw: actionable, headers: Object.keys(actionable[0]), mapping: Object.fromEntries(Object.keys(actionable[0]).map((key) => [key, key])), fileName: "asa.csv" });
+      useAppStore.getState().setGroupAnalyzed("5-26");
+    });
+    const { container } = render(<AsaKeywordFinder />);
+    const headline = () => container.querySelector(".result-action-card__headline").textContent;
+    expect(headline()).toMatch(/^판단 보류 — 전환 성숙도 미확인/);
+    fireEvent.change(screen.getByLabelText("최근 며칠은 전환이 아직 더 들어올 수 있나요?"), { target: { value: "mature" } });
+    expect(headline()).toMatch(/검색어 1개 CPT 조정/);
+    expect(headline()).toMatch(/Exact 승격 1개/);
+    expect(container.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    const table = container.querySelector("#asa-actions table");
+    expect(table.textContent).toContain("budget app");
+    // 조치 없는 행(bank app)은 결론 표에 섞이지 않는다 — 자세히 보기의 전체 표에만 있다.
+    expect(table.textContent).not.toContain("bank app");
+    const toggle = container.querySelector("[data-result-details-toggle]");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("#asa-all-title")).toBeNull();
+    openResultDetails();
+    expect(container.querySelector(".asa-tool__all").textContent).toContain("bank app");
   });
 });
