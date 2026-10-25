@@ -151,6 +151,15 @@
   .result-table { min-width: 0; container-type: inline-size; }
   .result-table__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .5rem; }
   /* exec-report 묶음 C: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
+  /* 5-4·5-23·5-24 자세히 보기: 근거 구획은 상자 없이 제목 + 본문. */
+  .ab-readout-details, .incr-details, .brand-its-details { display: grid; gap: 1.5rem; min-width: 0; }
+  :is(.ab-readout-detail, .incr-detail, .brand-its-detail) { min-width: 0; }
+  :is(.ab-readout-detail, .incr-detail, .brand-its-detail) h3 { margin: 0 0 .5rem; font-size: var(--fs-md); font-weight: 600; }
+  :is(.ab-readout-detail, .incr-detail, .brand-its-detail) :is(p, li) { margin: 0 0 .5rem; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
+  :is(.incr-detail, .brand-its-detail) ul { margin: 0; padding-left: 1.1rem; }
+  /* 조건 줄 왼쪽에 둔 기간·시점 선택(표시된 날짜 자체에서 고친다). */
+  .incr-condition-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; }
+  .incr-condition-fields .ab-field { min-width: 10rem; }
   .result-table__head h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
   .result-table__head span { color: var(--text-muted); font-size: var(--fs-xs); }
   .result-table .table-wrap { margin: 0; }

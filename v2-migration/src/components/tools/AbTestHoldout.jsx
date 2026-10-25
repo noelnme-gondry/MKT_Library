@@ -12,7 +12,6 @@ import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
-import InfoPopover from "@/components/ds/InfoPopover";
 import DownloadHub from "@/components/ds/DownloadHub";
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -26,6 +25,10 @@ import { buildToolDemo } from "@/lib/toolDemo";
 import { trackProductEvent } from "@/lib/analytics";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import useExampleLink from "@/components/ds/useExampleLink";
+import { ResultHeadline, headlineText, ChangeBar, VerdictChip, ResultTable, IssueTable, ResultDetails, ConditionLine } from "@/components/ds/ResultReport";
+import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
+import { effectIntervalFigure } from "@/lib/assistant/coreFigures";
+import { summarizeAbReadout, pp, ppInterval } from "@/lib/experimentReadoutSummary";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -139,6 +142,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const [pcPower, setPcPower] = useSavedToolInput("5-4", "pcPower", "0.80");
 
   const abChartRef = useRef(null);
+  // 결과의 "자세히 보기"(검정 상세·막대 차트)는 기본 닫힘 — 열 때 캔버스가 마운트되므로 차트 효과가 이 값을 본다.
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const powerChartRef = useRef(null);
 
   // ============================================================
@@ -315,6 +320,10 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const designCheck = <ExperimentDesignCheck locale={locale} share={plannedShare} setShare={setPlannedShare}
     confirmed={isDesignConfirmed} setConfirmed={(value) => setConfirmedDesign(value ? { source: designSource, tab: activeTab } : null)}
     margin={equivalenceMargin} setMargin={setEquivalenceMargin} srm={srm} equivalence={equivalence} hasTwoArms={hasTwoArms} />;
+  // 보고서 층: 결론 줄·수치 3개·실험군 표·확인할 점. 엔진 값만 묶는다(lib/experimentReadoutSummary).
+  const readoutSummary = activeTab === "readout" && readoutData && !readoutData.invalidRows
+    ? summarizeAbReadout({ readoutData, srm, plannedShare, locale })
+    : null;
 
   // ============================================================
   //  Readout bar chart
@@ -339,7 +348,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     return () => {
       if (abChartRef.current) { abChartRef.current.destroy(); abChartRef.current = null; }
     };
-  }, [activeTab, readoutData, locale, tr]);
+  }, [activeTab, readoutData, locale, tr, detailsOpen]);
 
   // ============================================================
   //  Power curve chart (§4)
@@ -420,8 +429,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           </button>
           <button type="button" className={activeTab === "readout" ? "is-active" : ""} onClick={() => setActiveTab("readout")}>
             <span>02 · {tr("판독", "READOUT")}</span>
-            <strong>{readoutData?.sig ? `p=${readoutData.sig.pValue.toFixed(4)}` : tr("결과 바로 판독", "Read results")}</strong>
-            <small>{readoutData?.sig ? tr(`Lift ${(readoutData.sig.liftRel * 100).toFixed(1)}%`, `Lift ${(readoutData.sig.liftRel * 100).toFixed(1)}%`) : tr("Control · Test 매핑", "Map Control · Test")}</small>
+            <strong>{readoutSummary ? tr(`차이 ${pp(readoutSummary.lead.diff)}`, `Difference ${pp(readoutSummary.lead.diff)}`) : tr("결과 바로 판독", "Read results")}</strong>
+            <small>{readoutSummary ? readoutSummary.lead.name : tr("Control · Test 매핑", "Map Control · Test")}</small>
           </button>
         </div>
         {/* 첫 탭은 계산기라 예시 결과로 가는 길이 없었다 — 예시는 판독 결과로 바로 연다(2026-09-24). */}
@@ -441,7 +450,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
         {activeTab === "design" && tr("실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다.", "Before you launch the test — calculate how many samples (people) you need to trust the result.")}
         {activeTab === "readout" && tr("두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다.", "After exposing both variants (A vs B) — determine which conversion rate is higher and whether the difference is more than chance.")}
       </p>
-      {activeTab === "readout" && (
+      {/* 결과가 나오면 이 안내는 "자세히 보기"로 내려간다 — 결론 위에 블록을 쌓지 않는다(§5.5). */}
+      {activeTab === "readout" && !readoutData && (
         <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
           {tr(
             <><strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.</>,
@@ -869,9 +879,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
 
       {activeTab === "readout" && (
         <>
-          <section className="block" id="s-prep">
+          {/* 파일을 올린 뒤에는 파일·행 수가 결과 위 조건 줄 한 줄로 남는다. */}
+          {!readoutData && <section className="block" id="s-prep">
             <h2 className="section-title">{tr("데이터 준비", "Data setup")}</h2>
-            {!readoutData ? (
               <div className="callout warning">
                 <div className="ico">!</div>
                 <div className="body">
@@ -892,24 +902,34 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} locale={locale} /></div>
                 </div>
               </div>
-            ) : (
-              <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0 }}>{csvData?.fileName ? <strong>{csvData.fileName}</strong> : tr("업로드된 데이터", "Uploaded data")} · {tr(`${csvData?.raw?.length?.toLocaleString?.()}행`, `${csvData?.raw?.length?.toLocaleString?.()} rows`)}. {tr("Control/Test 집계 후 two-proportion z-test로 유의성 검정.", "Aggregates Control/Test then tests significance with a two-proportion z-test.")}</p></div></div>
-            )}
-          </section>
+          </section>}
 
           {readoutData?.invalidRows ? (
             <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("판독할 수 없는 행이 있습니다", "Some rows cannot be read")}</strong><p>{tr(`${readoutData.invalidRows.toLocaleString()}행에서 전환수는 0 이상이고 분모 이하여야 하며, 분모는 0보다 커야 합니다. 원본 값을 수정한 뒤 다시 분석하세요.`, `In ${readoutData.invalidRows.toLocaleString()} row(s), conversions must be between 0 and the denominator, and the denominator must be greater than 0. Correct the source values and analyze again.`)}</p></div></div>
           ) : readoutData && (
             <>
-              {designCheck}
+              {/* 분석 조건은 한 줄 + "조건 바꾸기" 창(설계·SRM·동등성 선언). 결론 위에 입력 폼을 펼치지 않는다. */}
+              <ConditionLine
+                id="ab-conditions"
+                locale={locale}
+                dialogTitle={tr("실험 설계 조건", "Experiment design conditions")}
+                summary={[
+                  csvData?.fileName || tr("업로드된 데이터", "Uploaded data"),
+                  readoutSummary ? tr(`실험군 ${readoutSummary.arms.length}개`, `${readoutSummary.arms.length} arms`) : null,
+                  tr("전환율(전환수 ÷ 인원)", "Conversion rate (conversions ÷ users)"),
+                  srm.status === "no_alarm"
+                    ? tr(`배정 ${plannedShare}:${100 - num(plannedShare)} 확인`, `Split ${plannedShare}:${100 - num(plannedShare)} checked`)
+                    : srm.status === "mismatch" ? tr("배정 비율 이상", "Allocation mismatch") : tr("배정 비율 미확인", "Allocation not checked"),
+                ].filter(Boolean).join(" · ")}
+              >
+                {designCheck}
+              </ConditionLine>
               <section className="block" id="s-readout-sig">
-                <div className="section-head">
-                  <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
-                </div>
-                {readoutData.sig ? (() => {
+                {readoutData.sig && readoutSummary ? (() => {
                   const s = readoutData.sig;
-                  const liftPositive = s.liftRel >= 0;
-                  const isSignificant = s.pValue < 0.05;
+                  // 판정은 보고서 층과 같은 기준(검정 p와 95% 구간이 같은 방향, 저전환이면 정확검정)에서 온다.
+                  const liftPositive = (readoutSummary.lead.diff ?? 0) >= 0;
+                  const isSignificant = readoutSummary.lead.verdict === "adopt" || readoutSummary.lead.verdict === "stop";
                   const testArmCount = readoutData.mass
                     ? readoutData.mass.rows.filter((row) => !row.isControl).length
                     : 1;
@@ -961,31 +981,119 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         `사전 계획한 표본 수에 도달한 뒤 Test 전환율이 Control 기준 ${readoutData.cRate.toFixed(2)}%와 구분되는가?`,
                         `After reaching the pre-planned sample size, is the Test conversion rate distinguishable from the ${readoutData.cRate.toFixed(2)}% Control baseline?`,
                       );
+                  const summary = readoutSummary;
+                  const readoutDetails = <div className="ab-readout-details">
+                    <section className="ab-readout-detail">
+                      <h3>{tr("검정 상세", "Test details")}</h3>
+                      <p className="tnum">{readoutSummary.isMulti ? tr("전체 변형 합산 · ", "All variants pooled · ") : ""}z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} /></p>
+                      <p>{tr("통계적 차이와 실행 가능한 개선인지는 구분해서 판단하세요. 비유의는 효과 없음의 증명이 아니라 현재 표본에서 판정 보류입니다.", "Distinguish statistical differences from actionable improvements. Non-significance is not proof of no effect; it is inconclusive for the current sample.")}</p>
+                      <p>{tr("사전 MDE·검정력을 지정하지 않은 사후 판정에서는 검정력을 역산하지 않습니다. 보류일 때 보이는 '그룹당 약 N명'은 관측 차이가 실제라고 가정한 설계 계산(검정력 80%·α 0.05)이며, 설계 탭의 목표 Power와 필요한 표본을 함께 기록하세요.", "Post-hoc power is not back-calculated without a pre-specified MDE and target power. The 'about N more per arm' shown on a hold is a design calculation assuming the observed difference is real (80% power, α 0.05); record the target power and required sample in the design tab.")}</p>
+                    </section>
+              {readoutData.mass && readoutData.mass.control && (
+                <section className="ab-readout-detail" id="s-readout-mass">
+                  <h3>{tr("대량 검정 (arm_id별)", "Mass test (by arm_id)")}</h3>
+                  <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "6px 0 10px" }}>
+                    {tr(
+                      <>대조군: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, 전환율 {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
+                      <>Control: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, conversion rate {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
+                    )}
+                  </p>
+                  <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 전환이 적은 변형은 정규근사가 p를 과소평가하므로 정확검정(Fisher)으로 판정합니다 — 어느 검정을 썼는지는 '검정' 열에 있습니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. For low-conversion arms the normal approximation understates p, so the verdict moves to the exact (Fisher) test — the Test column says which one ran. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
+                  <DataTable
+                    rows={readoutData.mass.rows}
+                    rowKey={(r, i) => i}
+                    emptyText={tr("데이터 없음", "No data")}
+                    columns={[
+                      { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}> (control)</span> : ""}</> },
+                      { key: "n", label: tr("표본수", "Sample size"), align: "right", fmt: (v) => v.toLocaleString() },
+                      { key: "rate", label: tr("전환율", "Conv. rate"), align: "right", fmt: (v) => (v * 100).toFixed(2) + "%" },
+                      { key: "liftRel", label: tr("대조군 대비 Lift", "Lift vs control"), align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },
+                      { key: "z", label: "z", align: "right", fmt: (_, r) => r.isControl ? "—" : r.z.toFixed(3) },
+                      { key: "pValue", label: "Holm p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
+                      { key: "testMethod", label: tr("검정", "Test"), align: "left", fmt: (_, r) => r.isControl ? "—" : r.testMethod === "fisher" ? <span title={tr("전환이 적어 정규근사 대신 정확검정으로 판정했습니다.", "Low conversion counts: the verdict uses the exact test instead of the normal approximation.")}>{tr("정확검정", "Exact")}</span> : r.approxUnreliable ? <span title={tr("전환이 적지만 셀 값이 정수가 아니라 정확검정을 쓸 수 없습니다. p가 낙관적일 수 있습니다.", "Low conversion counts, but non-integer cells rule out the exact test. This p may be optimistic.")}>{tr("근사 (주의)", "Approx. (caution)")}</span> : tr("근사", "Approx.") },
+                      { key: "ci", label: tr("95% CI (절대차)", "95% CI (abs. diff.)"), align: "right", fmt: (_, r) => r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]` },
+                      { key: "probBWins", label: "P(B>A)", align: "right", fmt: (_, r) => r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%" },
+                      { key: "sigv", label: tr("유의성", "Significance"), align: "left", fmt: (_, r) => r.isControl ? <span className="pill tier-3">{tr("대조군", "Control")}</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">{tr("비유의", "Not sig.")}</span> },
+                    ]}
+                  />
+                </section>
+              )}
+
+              <RecipeBlock className="ab-readout-detail" id="s-readout-chart">
+                <FigureHead level={3} title={tr("판독 결과 차트", "Readout result chart")} target={() => document.getElementById("ab-bar")} fileName="ab_readout" locale={locale} />
+                <div className="chart-container" style={{ height: "300px" }}>
+                  <canvas id="ab-bar"></canvas>
+                </div>
+              </RecipeBlock>
+                    <section className="ab-readout-detail">
+                      <h3>{tr("증분 분석과의 차이", "Versus incrementality")}</h3>
+                      <p>{tr("A/B는 둘 중 무엇이 나은가를, 증분 분석은 광고를 한 것 자체가 값어치였나(광고가 없었어도 일어났을 전환 제외)를 봅니다.", "A/B asks which variant is better; incrementality asks whether running the ad was worth it at all (excluding conversions that would have happened anyway).")}</p>
+                      <p><Link href={localizedTool("9-6", locale).href}>{tr("소재 가설 찾기", "Find a creative hypothesis")}</Link> · <Link href={localizedTool("5-23", locale).href}>{tr("광고 자체 효과 검증", "Test advertising incrementality")}</Link></p>
+                    </section>
+                  </div>;
+                  const maxDiff = Math.max(0, ...summary.variants.map((arm) => Math.max(Math.abs(arm.ciLow95 ?? 0), Math.abs(arm.ciHigh95 ?? 0), Math.abs(arm.diff ?? 0))));
+                  const chip = (arm) => arm.verdict === "control"
+                    ? <VerdictChip tone="muted">{tr("기준", "Baseline")}</VerdictChip>
+                    : arm.verdict === "adopt"
+                      ? <VerdictChip tone="good">{summary.srmOk ? tr("채택", "Adopt") : tr("우세", "Ahead")}</VerdictChip>
+                      : arm.verdict === "stop"
+                        ? <VerdictChip tone="bad">{summary.srmOk ? tr("중단", "Stop") : tr("열세", "Behind")}</VerdictChip>
+                        : <VerdictChip tone="muted">{tr("보류", "Hold")}</VerdictChip>;
+                  const headlineLines = summary.lines;
                   return (
                     <ResultActionCard
                       toolId="5-4"
                       locale={locale}
                       decisionReview={canPrefillDecision}
                       decisionPrefill={canPrefillDecision ? { conclusion, action, metric, baseline, reviewQuestion } : null}
-                      resultState={srm.status === "mismatch" ? "insufficient" : "ready"}
-                      tone={srm.status === "mismatch" ? "neutral" : isSignificant ? (liftPositive ? "good" : "bad") : "neutral"}
-                      title={tr("결론 — Control vs Test", "Conclusion — Control vs Test")}
-                      headline={srm.status === "mismatch" ? tr("배정 비율 이상: 효과에 따른 결정 보류", "Allocation mismatch: hold treatment decisions") : isSignificant
-                        ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
-                        : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
-                      points={testArmCount > 1 ? [{
-                        cls: "muted",
-                        text: tr(
-                          `이 수치는 ${testArmCount}개 variant를 합친 참고값입니다. 실행 결정은 아래 Holm 보정 arm별 표에서 한 variant를 특정한 뒤 내리세요.`,
-                          `This is a reference aggregate across ${testArmCount} variants. Choose one specific variant from the Holm-adjusted arm table below before making an operating decision.`,
-                        ),
-                      }] : []}
-                      stats={[
-                        { label: tr("Control 전환율", "Control rate"), value: `${readoutData.cRate.toFixed(2)}%`, detail: `${readoutData.cNum.toLocaleString()}/${readoutData.cDen.toLocaleString()}` },
-                        { label: tr("Test 전환율", "Test rate"), value: `${readoutData.tRate.toFixed(2)}%`, detail: `${readoutData.tNum.toLocaleString()}/${readoutData.tDen.toLocaleString()}` },
-                        { label: tr("상대 Lift", "Relative lift"), value: `${s.liftRel >= 0 ? "+" : ""}${(s.liftRel * 100).toFixed(2)}%` },
-                        { label: "p-value", value: s.pValue.toFixed(4), detail: s.pValue < 0.05 ? tr("차이 후보", "Difference candidate") : tr("판정 보류", "Inconclusive") },
+                      resultState={srm.status === "mismatch" ? "insufficient" : summary.lead.verdict === "hold" ? "inconclusive" : "ready"}
+                      tone={summary.tone}
+                      title={tr("결론 — 실험군 비교", "Conclusion — arm comparison")}
+                      headline={headlineText(headlineLines)}
+                      headlineContent={<ResultHeadline lines={headlineLines} />}
+                      points={[
+                        { text: action },
+                        ...summary.variants.map((arm) => ({ text: `${arm.name}: ${pp(arm.diff)} (${ppInterval(arm.ciLow95, arm.ciHigh95)})` })),
                       ]}
+                      stats={summary.stats}
+                      coreFigure={<ToolCoreFigure embedded
+                        figure={effectIntervalFigure({
+                          id: "ab-arm-difference",
+                          question: tr("대조군 대비 전환율 차이 (95% 구간)", "Conversion-rate difference vs control (95% interval)"),
+                          rows: summary.variants.map((arm) => ({ entity: arm.name, estimate: arm.diff, low: arm.ciLow95, high: arm.ciHigh95 })),
+                          unit: "rate",
+                          goodDirection: "up",
+                          withheld: srm.status === "mismatch",
+                        })}
+                        locale={locale}
+                        downloadName="ab_arm_difference"
+                      />}
+                      pointsContent={<div className="result-report">
+                        <ResultTable
+                          title={tr("실험군별 결과", "Results by arm")}
+                          meta={summary.isMulti ? tr("판정: Holm 보정 p · 구간: 비교별 95%", "Verdict: Holm-adjusted p · interval: per-comparison 95%") : tr("판정: 검정 p와 95% 구간이 같은 방향일 때", "Verdict when the test and the 95% interval agree")}
+                          locale={locale}
+                          rows={summary.arms}
+                          rowKey={(arm) => arm.name}
+                          columns={[
+                            { key: "name", label: tr("실험군", "Arm"), fmt: (_, arm) => arm.isControl ? <>{arm.name} <small className="muted">{tr("(대조)", "(control)")}</small></> : arm.name },
+                            { key: "n", label: tr("표본 n", "Sample n"), align: "right", fmt: (v) => Number(v).toLocaleString(locale === "en" ? "en-US" : "ko-KR") },
+                            { key: "rate", label: tr("전환율", "Conv. rate"), align: "right", fmt: (v) => `${(v * 100).toFixed(2)}%` },
+                            { key: "diff", label: tr("차이 %p (95%)", "Diff. %p (95%)"), align: "right", fmt: (_, arm) => arm.isControl ? "—" : <><ChangeBar value={arm.diff} max={maxDiff} tone={arm.verdict === "adopt" ? "good" : arm.verdict === "stop" ? "bad" : "down"} /><strong>{pp(arm.diff)}</strong> <small>({ppInterval(arm.ciLow95, arm.ciHigh95).replace("95% ", "")})</small></> },
+                            { key: "verdict", label: tr("판정", "Verdict"), fmt: (_, arm) => chip(arm) },
+                          ]}
+                        />
+                        <IssueTable issues={summary.issues} locale={locale} />
+                      </div>}
+                      analysisContent={<ResultDetails
+                        id="ab-readout-details"
+                        locale={locale}
+                        open={detailsOpen}
+                        onOpenChange={setDetailsOpen}
+                        items={[tr("z · p · P(B>A)", "z · p · P(B>A)"), tr("전환율 막대 차트", "Conversion-rate chart"), tr("해석 기준", "Interpretation"), tr("증분 분석 안내", "Incrementality note")]}
+                      >
+                        {readoutDetails}
+                      </ResultDetails>}
                       workbookExport={() => ({
                         calculationMode: "exact_after_preprocessing",
                         calculationTables: [{
@@ -1026,58 +1134,13 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                           limitations: [tr("비유의는 효과 없음이 아니라 현재 표본에서 판단 보류입니다. arm별 Holm 보정과 Bayesian 값은 엔진 출력입니다.", "Non-significance means inconclusive for the current sample, not no effect. Per-arm Holm and Bayesian values are engine outputs.")],
                         },
                       })}
-                    >
-                      <div className="analysis-evidence-strip">
-                        <p>{tr("통계적 차이와 실행 가능한 개선인지는 구분해서 판단하세요.", "Distinguish statistical differences from actionable improvements.")}</p>
-                        <InfoPopover label={tr("통계·해석 기준", "Statistics and interpretation")} glyph={tr("통계·해석 기준", "Statistics and interpretation")} className="analysis-evidence-button">
-                          <p className="tnum">z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} /></p>
-                          <p>{tr("비유의는 효과 없음의 증명이 아니라 현재 표본에서 판정 보류입니다.", "Non-significance is not proof of no effect; it is inconclusive for the current sample.")}</p>
-                          <p>{tr("사전 MDE·검정력을 지정하지 않은 사후 판정에서는 검정력을 역산하지 않습니다. 설계 탭의 목표 Power와 필요한 표본을 함께 기록하세요.", "Post-hoc power is not back-calculated without a pre-specified MDE and target power. Record the target power and required sample size in the design tab.")}</p>
-                        </InfoPopover>
-                      </div>
-                    </ResultActionCard>
+                    />
                   );
                 })() : (
                   <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("Control/Test 양쪽 데이터가 필요합니다", "Data for both Control and Test is required")}</strong><p>{tr("is_control 컬럼으로 대조군을 구분하고 numerator/denominator를 채우세요.", "Use the is_control column to mark the control arm and fill in numerator/denominator.")}</p></div></div>
                 )}
               </section>
 
-              {readoutData.mass && readoutData.mass.control && (
-                <section className="block" id="s-readout-mass">
-                  <h2 className="section-title">{tr("대량 검정 (arm_id별)", "Mass test (by arm_id)")}</h2>
-                  <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "6px 0 10px" }}>
-                    {tr(
-                      <>대조군: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, 전환율 {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
-                      <>Control: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, conversion rate {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
-                    )}
-                  </p>
-                  <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 전환이 적은 변형은 정규근사가 p를 과소평가하므로 정확검정(Fisher)으로 판정합니다 — 어느 검정을 썼는지는 '검정' 열에 있습니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. For low-conversion arms the normal approximation understates p, so the verdict moves to the exact (Fisher) test — the Test column says which one ran. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
-                  <DataTable
-                    rows={readoutData.mass.rows}
-                    rowKey={(r, i) => i}
-                    emptyText={tr("데이터 없음", "No data")}
-                    columns={[
-                      { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}> (control)</span> : ""}</> },
-                      { key: "n", label: tr("표본수", "Sample size"), align: "right", fmt: (v) => v.toLocaleString() },
-                      { key: "rate", label: tr("전환율", "Conv. rate"), align: "right", fmt: (v) => (v * 100).toFixed(2) + "%" },
-                      { key: "liftRel", label: tr("대조군 대비 Lift", "Lift vs control"), align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },
-                      { key: "z", label: "z", align: "right", fmt: (_, r) => r.isControl ? "—" : r.z.toFixed(3) },
-                      { key: "pValue", label: "Holm p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
-                      { key: "testMethod", label: tr("검정", "Test"), align: "left", fmt: (_, r) => r.isControl ? "—" : r.testMethod === "fisher" ? <span title={tr("전환이 적어 정규근사 대신 정확검정으로 판정했습니다.", "Low conversion counts: the verdict uses the exact test instead of the normal approximation.")}>{tr("정확검정", "Exact")}</span> : r.approxUnreliable ? <span title={tr("전환이 적지만 셀 값이 정수가 아니라 정확검정을 쓸 수 없습니다. p가 낙관적일 수 있습니다.", "Low conversion counts, but non-integer cells rule out the exact test. This p may be optimistic.")}>{tr("근사 (주의)", "Approx. (caution)")}</span> : tr("근사", "Approx.") },
-                      { key: "ci", label: tr("95% CI (절대차)", "95% CI (abs. diff.)"), align: "right", fmt: (_, r) => r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]` },
-                      { key: "probBWins", label: "P(B>A)", align: "right", fmt: (_, r) => r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%" },
-                      { key: "sigv", label: tr("유의성", "Significance"), align: "left", fmt: (_, r) => r.isControl ? <span className="pill tier-3">{tr("대조군", "Control")}</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">{tr("비유의", "Not sig.")}</span> },
-                    ]}
-                  />
-                </section>
-              )}
-
-              <RecipeBlock className="block" id="s-readout-chart">
-                <FigureHead title={tr("판독 결과 차트", "Readout result chart")} target={() => document.getElementById("ab-bar")} fileName="ab_readout" locale={locale} />
-                <div className="chart-container" style={{ height: "300px" }}>
-                  <canvas id="ab-bar"></canvas>
-                </div>
-              </RecipeBlock>
             </>
           )}
         </>
