@@ -37,7 +37,7 @@ v2-migration/
 │  ├─ lib/                          # 도메인 로직 (라우팅·SEO·데이터임포트·분석라우터·analysis/webr 고급엔진…)
 │  ├─ workers/                      # dataPreparation·xlsxParse·dashboardVerdict·forecastSelection
 │  └─ components/
-│     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
+│     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27) — 결과 보고서 층 ResultReport(결론 줄·대상별 표·확인할 점·자세히 보기·조건 한 줄)
 │     ├─ assistant/                  # 홈 전용 도치 데이터 접수·작업대 handoff UI (분석 엔진/원본 데이터 소유 안 함)
 │     ├─ VideoTutorialHelp.jsx       # RootDocument 공용 영상 도움말 + CsvUploader/Sheets 인라인 진입. lib/videoTutorials.js → 문구·주제·자막 SSOT, scripts/tutorials/ → 실제 UI 시연·정적 영상 생성
 │     ├─ tools/                     # route별 도구 1 컴포넌트
