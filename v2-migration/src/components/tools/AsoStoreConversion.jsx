@@ -1,7 +1,7 @@
 "use client";
 import RecipeBlock from "@/components/ds/RecipeBlock";
 
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
@@ -19,6 +19,8 @@ import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
 import StoreEventLog from "@/components/tools/StoreEventLog";
 import { fmtPct } from "@/utils/format";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+import { ChangeBar, ConditionLine, IssueTable, ResultDetails, ResultHeadline, ResultTable } from "@/components/ds/ResultReport";
+import { asoStoreReport, fmtPp } from "@/lib/execReports/asoStoreReport";
 
 const TOOL_ID = "5-27";
 
@@ -122,7 +124,11 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
         ...base,
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { ...(base.plugins || {}), eventMarkers: { events: axisEvents.onAxis } },
+        // 비교 기준일을 같은 세로선으로 그어, 결론의 "앞 → 뒤"가 그림의 어디서 갈리는지 보이게 한다.
+        plugins: { ...(base.plugins || {}), eventMarkers: { events: [
+          ...(cutDate && series.dates.indexOf(cutDate) >= 0 ? [{ index: series.dates.indexOf(cutDate), label: tr("비교 기준일", "Split date"), type: "other" }] : []),
+          ...axisEvents.onAxis,
+        ] } },
         scales: {
           ...base.scales,
           y: {
@@ -132,6 +138,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
           },
           x: {
             ...(base.scales?.x || {}),
+            title: { display: true, text: tr("날짜", "Date"), color: CHART_THEME.text },
             ticks: { ...(base.scales?.x?.ticks || {}), color: CHART_THEME.text, maxTicksLimit: 10 },
           },
         },
@@ -156,17 +163,10 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
   const rateDelta = formatRateDelta(decomposed?.funnelBefore?.viewToInstall, decomposed?.funnelAfter?.viewToInstall);
   const installDelta = formatCountDelta(decomposed?.funnelBefore?.installs, decomposed?.funnelAfter?.installs);
 
-  const headline =
-    verdict === "mix"
-      ? tr("트래픽 구성 변화가 주도 — 원인은 별도 확인", "Traffic mix drove it — verify causes separately")
-      : verdict === "efficiency"
-        ? tr("소스별 전환율 변화가 주도 — 페이지·스토어 요소 점검", "Per-source conversion drove it — check the page")
-        : verdict === "mixed"
-          ? tr("구성과 효율이 함께 움직임", "Mix and efficiency moved together")
-          : verdict === "flat"
-            ? tr("분해된 순변화 0", "Zero net decomposed change")
-            : tr("판단 보류 — 기간 또는 설치가 부족", "Withheld — not enough periods or installs");
-
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // 결론·수치·소스별 기여는 결과 작업대와 같은 함수에서 받는다(lib/execReports/asoStoreReport).
+  const report = result ? asoStoreReport({ ...result, eventCount: axisEvents.onAxis.length }, { locale }) : null;
+  const headline = report?.text || "";
   const copy =
     verdict === "mix"
       ? tr(
@@ -205,6 +205,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
       }
     : null;
 
+  const contributionRows = report?.contributions?.rows || [];
+  const contributionMax = Math.max(0, ...contributionRows.flatMap((row) => [Math.abs(row.mix), Math.abs(row.rate)]));
   const sourceRows = (decomposed?.entities || []).map((entity) => ({
     source: entity.key,
     // PVM의 cost/result는 여기서 조회/설치다. CPA는 "설치 1건당 조회 수"라 역수가 전환율.
@@ -224,6 +226,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
     ])), "aso-store-conversion");
   };
 
+
   return (
     <ToolPageShell
       toolId={TOOL_ID}
@@ -235,27 +238,159 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
         "Build the store funnel from a console CSV and split conversion change into traffic mix and per-source efficiency.",
       )}</p>}
     >
-      <section className="block diagnostic-tool__rules" id="aso-setup">
+      {!(analyzed && result) && <section className="block diagnostic-tool__rules" id="aso-setup">
         <h2 className="section-title">{tr("무엇을 가르나", "What it separates")}</h2>
         <p>{tr(
           "설치당 조회 수 변화를 구성 항과 소스별 효율 항으로 분해합니다. 이는 관측 산술이며 페이지·광고 변경의 인과 효과를 구분하는 검정은 아닙니다.",
           "Decompose changes in views per install into mix and within-source efficiency. This is observational arithmetic, not a causal test of page or advertising changes.",
         )}</p>
-      </section>
+      </section>}
 
       <CsvUploader toolId={TOOL_ID} locale={locale} />
 
       {analyzed && result && <>
+        {/* 비교 조건은 자동(날짜 절반 분할)이라 바꿀 칸이 없다 — 한 줄로만 말한다(§5.5). */}
+        {result.periods?.before && result.periods?.after && <ConditionLine
+          id="aso-condition"
+          locale={locale}
+          summary={tr(
+            `앞 ${formatPeriod(result.periods.before, locale)} vs 뒤 ${formatPeriod(result.periods.after, locale)} · 제품 페이지 조회 → 설치 · 유입 소스 ${sourceRows.length}개`,
+            `Earlier ${formatPeriod(result.periods.before, locale)} vs later ${formatPeriod(result.periods.after, locale)} · product page view → install · ${sourceRows.length} sources`,
+          )}
+        />}
         <div id="aso-result"><ResultActionCard
-          tone="neutral"
+          tone={report.tone}
           title={tr("판정", "Verdict")}
           headline={headline}
-          points={[{ text: copy }]}
-          stats={[
-            { label: tr("전체 조회→설치", "Overall view-to-install"), value: pct(result.overall.viewToInstall) },
-            { label: tr("앞 기간", "Earlier half"), value: pct(decomposed?.funnelBefore?.viewToInstall) },
-            { label: tr("뒤 기간", "Later half"), value: pct(decomposed?.funnelAfter?.viewToInstall) },
+          headlineContent={<ResultHeadline lines={report.lines} />}
+          points={[
+            ...contributionRows.slice(0, 5).map((row) => ({ text: tr(`${row.source}: 설치 비중 ${pct(row.shareBefore)} → ${pct(row.shareAfter)} · 전환율 ${pct(row.cvrBefore)} → ${pct(row.cvrAfter)} · 구성 ${fmtPp(row.mix)} · 효율 ${fmtPp(row.rate)}`, `${row.source}: install share ${pct(row.shareBefore)} → ${pct(row.shareAfter)} · CVR ${pct(row.cvrBefore)} → ${pct(row.cvrAfter)} · mix ${fmtPp(row.mix)} · efficiency ${fmtPp(row.rate)}`) })),
+            { text: copy, cls: "muted" },
           ]}
+          stats={report.stats}
+          coreFigure={series && series.dates.length > 1 ? <RecipeBlock className="tool-core-figure tool-core-figure--embedded" id="aso-trend">
+            <FigureHead level={3} title={tr("일별 설치 전환율", "Daily view-to-install rate")} description={tr("굵은 선 = 전체 · 점선 = 소스별 · 세로선 = 비교 기준일", "Bold = overall · dashed = per source · vertical line = split date")} target={chartRef} fileName="aso_conversion_trend" locale={locale} />
+            <div className="chart-container" style={{ height: 300 }}><canvas ref={chartRef} role="img" aria-label={tr("날짜별 조회→설치 전환율과 비교 기준일", "Daily view-to-install rate with the split date")} /></div>
+          </RecipeBlock> : null}
+          pointsContent={<div className="result-report">
+            {contributionRows.length > 0 && <div id="aso-source-summary"><ResultTable
+              title={tr("유입 소스별", "By traffic source")}
+              meta={tr(`기여 큰 순 · ${Math.min(5, contributionRows.length)}/${contributionRows.length} · 기여 단위 %p`, `Largest contribution first · ${Math.min(5, contributionRows.length)} of ${contributionRows.length} · contributions in pp`)}
+              locale={locale}
+              rows={contributionRows}
+              rowKey={(row) => row.source}
+              limit={5}
+              onShowAll={() => setDetailsOpen(true)}
+              showAllLabel={tr(`소스 ${contributionRows.length}개 전체 보기`, `Show all ${contributionRows.length} sources`)}
+              columns={[
+                { key: "source", label: tr("소스", "Source"), cellClassName: "result-table__primary" },
+                { key: "share", label: tr("설치 비중 전 → 후", "Install share before → after"), align: "right", fmt: (_, row) => `${pct(row.shareBefore)} → ${pct(row.shareAfter)}` },
+                { key: "cvr", label: tr("전환율 전 → 후", "CVR before → after"), align: "right", fmt: (_, row) => `${pct(row.cvrBefore)} → ${pct(row.cvrAfter)}` },
+                { key: "mix", label: tr("구성 기여", "Mix contribution"), align: "right", fmt: (value) => <><ChangeBar value={value} max={contributionMax} tone={value < 0 ? "bad" : "good"} /><strong>{fmtPp(value)}</strong></> },
+                { key: "rate", label: tr("효율 기여", "Efficiency contribution"), align: "right", fmt: (value) => <><ChangeBar value={value} max={contributionMax} tone={value < 0 ? "bad" : "good"} /><strong>{fmtPp(value)}</strong></> },
+              ]}
+            /></div>}
+            <IssueTable issues={report.issues} locale={locale} />
+          </div>}
+          analysisContent={decomposed ? <ResultDetails
+            id="aso-details"
+            locale={locale}
+            open={detailsOpen}
+            onOpenChange={setDetailsOpen}
+            items={[tr("비교한 두 기간", "The two periods"), tr("스토어 퍼널", "Store funnel"), tr("이벤트 기록", "Event log"), tr("소스별 분해(설치당 조회 수)", "Per-source breakdown (views per install)"), tr("해석 한계", "Limits")]}
+          >
+            <p className="report-detail__note">{tr("구성·효율 기여(%p)는 설치당 조회 수의 무잔차 분해를 전환율 변화로 옮긴 값이라 합이 전체 변화와 같습니다.", "Mix and efficiency contributions (pp) restate the no-residual views-per-install decomposition as conversion change, so they sum to the total change.")}</p>
+            {result.periods?.before && result.periods?.after && <section className="report-detail" id="aso-periods">
+              <h3 className="report-detail__title">{tr("비교한 두 기간", "The two periods compared")}</h3>
+              <dl className="period-compare">
+                <div className="period-compare__cell">
+                  <dt>{tr("앞 기간", "Earlier")}</dt>
+                  <dd>{formatPeriod(result.periods.before, locale)}</dd>
+                </div>
+                <div className="period-compare__cell">
+                  <dt>{tr("뒤 기간", "Later")}</dt>
+                  <dd>{formatPeriod(result.periods.after, locale)}</dd>
+                </div>
+                <div className="period-compare__cell">
+                  <dt>{tr("조회→설치 변화", "View-to-install change")}</dt>
+                  <dd className={`period-compare__delta is-${rateDelta?.tone || "flat"}`}>{rateDelta?.text || "—"}</dd>
+                </div>
+                <div className="period-compare__cell">
+                  <dt>{tr("설치 변화", "Install change")}</dt>
+                  <dd className={`period-compare__delta is-${installDelta?.tone || "flat"}`}>{installDelta?.text || "—"}</dd>
+                </div>
+              </dl>
+              <p className="muted">{result.periods.balance?.balanced
+                ? tr(
+                    "두 기간의 데이터 일수가 같습니다. 요일·소스 구성·측정 조건도 확인해야 합니다.",
+                    "Both periods have the same day count. Check weekdays, source composition and measurement conditions too.",
+                  )
+                : tr(
+                    `데이터가 있는 날이 앞 ${result.periods.balance?.beforeDays}일 · 뒤 ${result.periods.balance?.afterDays}일로 다릅니다. 비율과 합계 모두 기간 길이·요일·구성 차이를 감안해 읽으세요.`,
+                    `Day counts differ (${result.periods.balance?.beforeDays} vs ${result.periods.balance?.afterDays}). Read both rates and totals with duration, weekdays and composition in mind.`,
+                  )}</p>
+              <p className="muted">{tr(
+                "%p는 절대 차이, 괄호 안 %는 상대 차이입니다. 전환율 30%가 40%가 되면 +10%p이자 +33.3%예요.",
+                "%p is the absolute gap and the bracketed % is the relative change. 30% to 40% is +10pp and +33.3%.",
+              )}</p>
+            </section>}
+            <section className="report-detail" id="aso-funnel">
+              <h3 className="report-detail__title">{tr("스토어 퍼널", "Store funnel")}</h3>
+              <p className="muted">{tr("노출·조회·다운로드 집계의 파생 비율입니다. 동일 사용자의 순차 전환 확률이나 Apple 공식 전환율과 다릅니다. Apple 노출에는 페이지 조회도 포함되며 고유 기기·횟수·재다운로드 기준을 맞춰 비교하세요.", "These are ratios of aggregate impressions, views and downloads, not linked-user transition probabilities or Apple’s official conversion rate. Apple impressions include page views; align unique-device, event-count and redownload definitions.")}</p>
+              <DataTable
+                columns={[
+                  { key: "stage", label: tr("단계", "Stage") },
+                  { key: "value", label: tr("값", "Value"), align: "right" },
+                ]}
+                rows={[
+                  { stage: tr("노출", "Impressions"), value: result.overall.impressions.toLocaleString() },
+                  { stage: tr("제품 페이지 조회", "Product page views"), value: result.overall.views.toLocaleString() },
+                  { stage: tr("설치", "Installs"), value: result.overall.installs.toLocaleString() },
+                  { stage: tr("노출→조회 (탭률)", "Impression to view (tap-through)"), value: pct(result.overall.tapThrough) },
+                  { stage: tr("조회→설치", "View to install"), value: pct(result.overall.viewToInstall) },
+                ]}
+              />
+              {result.overall.tapThrough == null && <p className="muted">{tr(
+                "노출 열이 없어 탭률은 계산하지 않았습니다. 조회→설치 전환은 그대로 유효합니다.",
+                "No impressions column, so tap-through was not computed. View-to-install remains valid.",
+              )}</p>}
+            </section>
+            <StoreEventLog locale={locale} csvEvents={csvEvents} mergedEvents={allEvents} offAxis={axisEvents.offAxis} />
+            {sourceRows.length > 0 && <section className="report-detail" id="aso-sources">
+              <h3 className="report-detail__title">{tr("소스별 분해", "Per-source breakdown")}</h3>
+              <DataTable
+                columns={[
+                  { key: "source", label: tr("유입 소스", "Source") },
+                  { key: "cvrBefore", label: tr("전환율(앞)", "CVR (earlier)"), align: "right" },
+                  { key: "cvrAfter", label: tr("전환율(뒤)", "CVR (later)"), align: "right" },
+                  { key: "shareBefore", label: tr("설치 비중(앞)", "Install share (earlier)"), align: "right" },
+                  { key: "shareAfter", label: tr("설치 비중(뒤)", "Install share (later)"), align: "right" },
+                ]}
+                rows={sourceRows.map((row) => ({
+                  source: row.source,
+                  cvrBefore: pct(row.cvrBefore),
+                  cvrAfter: pct(row.cvrAfter),
+                  shareBefore: pct(row.shareBefore),
+                  shareAfter: pct(row.shareAfter),
+                }))}
+              />
+              <p className="muted">{tr(
+                "비중은 설치 기준입니다. 분해값의 단위는 설치당 조회 수이며 전환율의 %p와 다릅니다.",
+                "Shares use installs. Decomposition effects are in views per install, not conversion-rate percentage points.",
+              )}</p>
+            </section>}
+            <section className="report-detail" id="aso-honesty">
+              <h3 className="report-detail__title">{tr("정직하게", "Let's be honest")}</h3>
+              <p>{tr(
+                "이 분해는 관측 데이터에서 '어디를 볼지'를 좁혀줄 뿐 인과를 증명하지 않습니다. 같은 기간에 광고 증액·피처링·시즌이 함께 움직였다면 믹스 변화의 원인까지는 이 표로 알 수 없습니다.",
+                "This decomposition narrows where to look; it does not establish cause. If paid scaling, featuring, or seasonality moved in the same window, this table cannot tell you why the mix shifted.",
+              )}</p>
+              <p>{tr(
+                "유료 유입이 오가닉을 잠식하는지가 궁금하면 증분 분석으로, 스크린샷·아이콘 변경 효과를 확정하려면 스토어 실험(App Store PPO·Play 스토어 등록정보 실험)으로 가야 합니다.",
+                "To test whether paid traffic is displacing organic, use incrementality analysis; to confirm a screenshot or icon change, use a store experiment (App Store PPO or Play store listing experiments).",
+              )}</p>
+            </section>
+          </ResultDetails> : null}
           workbookExport={decomposed ? () => ({
             calculationMode: "exact_after_preprocessing",
             calculationTables: [{
@@ -298,7 +433,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
           toolId={TOOL_ID}
           analysisType="aso_store_conversion"
           analysisKey={`${verdict || "unknown"}:${result.overall.installs}`}
-          resultState={decomposed ? "ready" : "blocked"}
+          resultState={report.resultState}
           locale={locale}
           decisionReview={Boolean(decisionPrefill)}
           decisionPrefill={decisionPrefill}
@@ -306,114 +441,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             { icon: "⬇", analyticsType: "csv", label: tr("소스별 분해 (CSV)", "Per-source decomposition (CSV)"), desc: tr("소스별 전환율·비중과 믹스·효율 기여", "Per-source conversion, share, and mix/efficiency contribution"), onSelect: downloadSourceCsv },
           ]} /> : null}
         /></div>
-
-        {result.periods?.before && result.periods?.after && <section className="block" id="aso-periods">
-          <h2 className="section-title">{tr("비교한 두 기간", "The two periods compared")}</h2>
-          <dl className="period-compare">
-            <div className="period-compare__cell">
-              <dt>{tr("앞 기간", "Earlier")}</dt>
-              <dd>{formatPeriod(result.periods.before, locale)}</dd>
-            </div>
-            <div className="period-compare__cell">
-              <dt>{tr("뒤 기간", "Later")}</dt>
-              <dd>{formatPeriod(result.periods.after, locale)}</dd>
-            </div>
-            <div className="period-compare__cell">
-              <dt>{tr("조회→설치 변화", "View-to-install change")}</dt>
-              <dd className={`period-compare__delta is-${rateDelta?.tone || "flat"}`}>{rateDelta?.text || "—"}</dd>
-            </div>
-            <div className="period-compare__cell">
-              <dt>{tr("설치 변화", "Install change")}</dt>
-              <dd className={`period-compare__delta is-${installDelta?.tone || "flat"}`}>{installDelta?.text || "—"}</dd>
-            </div>
-          </dl>
-          <p className="muted">{result.periods.balance?.balanced
-            ? tr(
-                "두 기간의 데이터 일수가 같습니다. 요일·소스 구성·측정 조건도 확인해야 합니다.",
-                "Both periods have the same day count. Check weekdays, source composition and measurement conditions too.",
-              )
-            : tr(
-                `데이터가 있는 날이 앞 ${result.periods.balance?.beforeDays}일 · 뒤 ${result.periods.balance?.afterDays}일로 다릅니다. 비율과 합계 모두 기간 길이·요일·구성 차이를 감안해 읽으세요.`,
-                `Day counts differ (${result.periods.balance?.beforeDays} vs ${result.periods.balance?.afterDays}). Read both rates and totals with duration, weekdays and composition in mind.`,
-              )}</p>
-          <p className="muted">{tr(
-            "%p는 절대 차이, 괄호 안 %는 상대 차이입니다. 전환율 30%가 40%가 되면 +10%p이자 +33.3%예요.",
-            "%p is the absolute gap and the bracketed % is the relative change. 30% to 40% is +10pp and +33.3%.",
-          )}</p>
-        </section>}
-
-        <section className="block" id="aso-funnel">
-          <h2 className="section-title">{tr("스토어 퍼널", "Store funnel")}</h2>
-          <p className="muted">{tr("노출·조회·다운로드 집계의 파생 비율입니다. 동일 사용자의 순차 전환 확률이나 Apple 공식 전환율과 다릅니다. Apple 노출에는 페이지 조회도 포함되며 고유 기기·횟수·재다운로드 기준을 맞춰 비교하세요.", "These are ratios of aggregate impressions, views and downloads, not linked-user transition probabilities or Apple’s official conversion rate. Apple impressions include page views; align unique-device, event-count and redownload definitions.")}</p>
-          <DataTable
-            columns={[
-              { key: "stage", label: tr("단계", "Stage") },
-              { key: "value", label: tr("값", "Value"), align: "right" },
-            ]}
-            rows={[
-              { stage: tr("노출", "Impressions"), value: result.overall.impressions.toLocaleString() },
-              { stage: tr("제품 페이지 조회", "Product page views"), value: result.overall.views.toLocaleString() },
-              { stage: tr("설치", "Installs"), value: result.overall.installs.toLocaleString() },
-              { stage: tr("노출→조회 (탭률)", "Impression to view (tap-through)"), value: pct(result.overall.tapThrough) },
-              { stage: tr("조회→설치", "View to install"), value: pct(result.overall.viewToInstall) },
-            ]}
-          />
-          {result.overall.tapThrough == null && <p className="muted">{tr(
-            "노출 열이 없어 탭률은 계산하지 않았습니다. 조회→설치 전환은 그대로 유효합니다.",
-            "No impressions column, so tap-through was not computed. View-to-install remains valid.",
-          )}</p>}
-        </section>
-
-        {series && series.dates.length > 1 && <RecipeBlock className="block" id="aso-trend">
-          <FigureHead title={tr("전환율 추이", "Conversion trend")} target={chartRef} fileName="aso_conversion_trend" locale={locale} />
-          <p className="muted">{tr(
-            "굵은 선은 전체 비율, 점선은 소스별 비율입니다. 관측 비율의 변화가 페이지 요소 때문인지는 이 차트만으로 알 수 없습니다.",
-            "The solid line is the aggregate ratio and dashed lines are per-source ratios. This chart alone cannot attribute their changes to page elements.",
-          )}</p>
-          <div className="chart-container" style={{ height: 320 }}><canvas ref={chartRef} /></div>
-          {cutDate && <p className="muted">{tr(
-            `앞뒤 비교 기준일은 ${cutDate}입니다. 이 날짜 이전이 앞 기간, 이후가 뒤 기간입니다.`,
-            `The two halves split at ${cutDate} — earlier dates form the first period, later ones the second.`,
-          )}</p>}
-        </RecipeBlock>}
-
-        <StoreEventLog locale={locale} csvEvents={csvEvents} mergedEvents={allEvents} offAxis={axisEvents.offAxis} />
-
-        {sourceRows.length > 0 && <section className="block" id="aso-sources">
-          <h2 className="section-title">{tr("소스별 분해", "Per-source breakdown")}</h2>
-          <DataTable
-            columns={[
-              { key: "source", label: tr("유입 소스", "Source") },
-              { key: "cvrBefore", label: tr("전환율(앞)", "CVR (earlier)"), align: "right" },
-              { key: "cvrAfter", label: tr("전환율(뒤)", "CVR (later)"), align: "right" },
-              { key: "shareBefore", label: tr("설치 비중(앞)", "Install share (earlier)"), align: "right" },
-              { key: "shareAfter", label: tr("설치 비중(뒤)", "Install share (later)"), align: "right" },
-            ]}
-            rows={sourceRows.map((row) => ({
-              source: row.source,
-              cvrBefore: pct(row.cvrBefore),
-              cvrAfter: pct(row.cvrAfter),
-              shareBefore: pct(row.shareBefore),
-              shareAfter: pct(row.shareAfter),
-            }))}
-          />
-          <p className="muted">{tr(
-            "비중은 설치 기준입니다. 분해값의 단위는 설치당 조회 수이며 전환율의 %p와 다릅니다.",
-            "Shares use installs. Decomposition effects are in views per install, not conversion-rate percentage points.",
-          )}</p>
-        </section>}
-
-        <section className="block" id="aso-honesty">
-          <h2 className="section-title">{tr("정직하게", "Let's be honest")}</h2>
-          <p>{tr(
-            "이 분해는 관측 데이터에서 '어디를 볼지'를 좁혀줄 뿐 인과를 증명하지 않습니다. 같은 기간에 광고 증액·피처링·시즌이 함께 움직였다면 믹스 변화의 원인까지는 이 표로 알 수 없습니다.",
-            "This decomposition narrows where to look; it does not establish cause. If paid scaling, featuring, or seasonality moved in the same window, this table cannot tell you why the mix shifted.",
-          )}</p>
-          <p>{tr(
-            "유료 유입이 오가닉을 잠식하는지가 궁금하면 증분 분석으로, 스크린샷·아이콘 변경 효과를 확정하려면 스토어 실험(App Store PPO·Play 스토어 등록정보 실험)으로 가야 합니다.",
-            "To test whether paid traffic is displacing organic, use incrementality analysis; to confirm a screenshot or icon change, use a store experiment (App Store PPO or Play store listing experiments).",
-          )}</p>
-        </section>
+        {!decomposed && <StoreEventLog locale={locale} csvEvents={csvEvents} mergedEvents={allEvents} offAxis={axisEvents.offAxis} />}
       </>}
     </ToolPageShell>
   );

@@ -5,6 +5,7 @@ import {
   decomposeStoreConversion,
   storeFunnel,
 } from "@/utils/asoStoreMath";
+import { asoStoreReport } from "@/lib/execReports/asoStoreReport";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
@@ -78,13 +79,6 @@ function storeEngineRows(csvData) {
   }));
 }
 
-function storeHeadline(locale, verdict) {
-  if (verdict === "mix") return tr(locale, "트래픽 구성 변화가 주도 — 페이지가 아니라 유입 믹스", "Traffic mix drove it — not the page");
-  if (verdict === "efficiency") return tr(locale, "소스별 전환율 변화가 주도 — 페이지·스토어 요소 점검", "Per-source conversion drove it — check the page");
-  if (verdict === "mixed") return tr(locale, "구성과 효율이 함께 움직임", "Mix and efficiency moved together");
-  return tr(locale, "의미 있는 변화 없음", "No meaningful change");
-}
-
 function asoStoreAdapter(input) {
   const { csvData, inputSignature, mappingSignature, locale } = readInput(input);
   requireSignatures({ inputSignature, mappingSignature });
@@ -128,7 +122,8 @@ function asoStoreAdapter(input) {
     mappingSignature,
     verdict: {
       evidenceState: "descriptive",
-      headline: storeHeadline(locale, classification.verdict),
+      // 결론 문장은 도구 화면과 같은 함수에서 받는다(전환율 앞→뒤 · 구성/효율 몫, §7 메타 4).
+      headline: asoStoreReport({ overall, split: periods, decomposed: decomposition, verdict: classification }, { locale }).text,
       stats: [
         { id: "overall-view-to-install", label: tr(locale, "전체 조회→설치", "Overall view-to-install"), value: overall.viewToInstall, unit: "rate" },
         { id: "before-view-to-install", label: tr(locale, "앞 기간 조회→설치", "Earlier view-to-install"), value: decomposition.funnelBefore.viewToInstall, unit: "rate" },

@@ -52,7 +52,8 @@ for (const locale of ["ko", "en"]) {
       if (example.kind === "aso") {
         await expect(result).toContainText("34.00%");
         await expect(result).toContainText("16.00%");
-        await expect(result).toContainText(en ? "Traffic mix drove it" : "트래픽 구성 변화가 주도");
+        // 결론은 전환율 앞 → 뒤와 주된 요인(임원 보고 형식 §5.5) — 주된 요인 칸이 유입 구성을 말한다.
+        await expect(result).toContainText(en ? "Traffic mix" : "유입 구성");
       } else if (example.kind === "asa") {
         const maturity = page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?");
         await expect(maturity).toHaveValue("unknown");

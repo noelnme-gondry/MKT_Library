@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
+import { openResultDetails } from "@/test/resultDetails";
 import AsoStoreConversion from "@/components/tools/AsoStoreConversion";
 
 const EMPTY = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -39,6 +40,13 @@ describe("AsoStoreConversion render smoke", () => {
 
     const ko = render(<AsoStoreConversion />);
     expect(ko.container.querySelector("#aso-result")).toBeTruthy();
+    // 임원 보고 형식: 숫자 결론(전환율 앞 → 뒤 %p) · 수치 3개 · 소스별 기여 표 · 자세히 보기는 닫힘.
+    expect(ko.container.querySelector(".result-action-card__headline").textContent).toMatch(/^설치 전환율 \d+\.\d{2}% → \d+\.\d{2}% \([+−]\d+\.\d{2}%p\)/);
+    expect(ko.container.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    expect(ko.container.querySelector("#aso-source-summary table").textContent).toMatch(/%p/);
+    expect(ko.container.querySelector("[data-result-details-toggle]").getAttribute("aria-expanded")).toBe("false");
+    expect(ko.container.querySelector("#aso-funnel")).toBeNull();
+    openResultDetails();
     expect(ko.container.querySelector("#aso-funnel")).toBeTruthy();
     expect(ko.container.querySelector("#aso-sources")).toBeTruthy();
     // 추이 차트는 캔버스가 실제로 붙어야 한다(조건부 마운트라 렌더 분기에서만 드러남).
@@ -56,6 +64,7 @@ describe("AsoStoreConversion render smoke", () => {
     seed(buildDemoCsv("aso_store", "en"));
     useAppStore.getState().setGroupAnalyzed("5-27");
     const en = render(<AsoStoreConversion locale="en" />);
+    openResultDetails();
     expect(en.container.textContent).toContain("Store funnel");
     expect(en.container.textContent).not.toMatch(/[가-힣]/);
   });
@@ -66,7 +75,7 @@ describe("AsoStoreConversion render smoke", () => {
     seed(buildDemoCsv("aso_store"));
     useAppStore.getState().setGroupAnalyzed("5-27");
     const { container } = render(<AsoStoreConversion />);
-    expect(container.textContent).toContain("트래픽 구성 변화가 주도");
+    expect(container.querySelector(".result-action-card__headline").textContent).toMatch(/유입 구성 변화 −\d+\.\d{2}%p가 주도/);
   });
 
   it("실데이터 분해 결과에는 다음 주 검토용 판단 초안을 붙인다", () => {
@@ -97,7 +106,8 @@ describe("ASO observed shift copy", () => {
       const rising = render(<AsoStoreConversion locale={locale} />);
       const first = rising.container.querySelector("#aso-result").textContent;
       expect(first).toContain(locale === "ko" ? "구성 변화" : "mix");
-      expect(first).not.toMatch(/내려갔습니다|blended rate fell/);
+      expect(first).not.toMatch(/내려갔습니다|blended rate fell|하락분|the drop/);
+      openResultDetails();
       expect(rising.container.querySelector("#aso-sources").textContent).toContain(locale === "ko" ? "설치당 조회 수" : "views per install");
       rising.unmount();
 
