@@ -33,7 +33,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
   const isCompact = density === "compact";
   const labels = locale === "en"
     ? {
-      tool: "Tool", outputs: "You get", needs: "Needs", open: "Open this analysis",
+      tool: "Tool", outputs: "You get", file: "File", needs: "Needs", open: "Open this analysis",
       readyGroup: "Ready with this file",
       readyDesc: "Select an analysis to inspect its result or required setup.",
       blockedGroup: "Needs more data or setup",
@@ -46,7 +46,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
       needPrefix: "Needs:",
     }
     : {
-      tool: "도구", outputs: "결과", needs: "필요 데이터", open: "이 분석 열기",
+      tool: "도구", outputs: "결과", file: "필요한 파일", needs: "필요 데이터", open: "이 분석 열기",
       readyGroup: "지금 이 파일로 되는 분석",
       readyDesc: "분석을 선택해 결과와 필요한 설정을 확인하세요.",
       blockedGroup: "추가 데이터·설정이 필요한 분석",
@@ -102,6 +102,13 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
                       <span className="tool-index__outputs">
                         <span className="tool-index__meta-label">{labels.outputs}</span>
                         <span>{tool.outputs.slice(0, isCompact ? 2 : tool.outputs.length).join(" · ")}</span>
+                      </span>
+                    )}
+                    {/* 컬럼보다 파일 이름이 먼저다(product-ssot §1.1c). */}
+                    {!isCompact && tool.source && (
+                      <span className="tool-index__needs tool-index__file">
+                        <span className="tool-index__meta-label">{labels.file}</span>
+                        <span>{tool.source.file}</span>
                       </span>
                     )}
                     {!isCompact && tool.needs.length > 0 && (
@@ -234,6 +241,12 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
                     <strong>{locale === "en" ? "What the result contains" : "분석하면 이런 결과를 받습니다"}</strong>
                     <ol>{open.outputs.map((output, index) => <li key={output}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><b>{output}</b></li>)}</ol>
                   </div>
+                )}
+                {open.source && (
+                  <p className="tool-index__needs tool-index__file">
+                    <span className="tool-index__meta-label">{labels.file}</span>
+                    <span>{open.source.file} · {open.source.family}</span>
+                  </p>
                 )}
                 {open.needs.length > 0 && (
                   <p className="tool-index__needs">

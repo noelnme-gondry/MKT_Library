@@ -36,7 +36,7 @@ describe("question to analysis to data guide", () => {
   });
   it("switches experiment methods without offering a holdout CSV for pre/post data", () => {
     const { container } = render(<AnalysisDataGuide />);
-    fireEvent.click(screen.getByRole("button", { name: dataGuideQuestions().find(stage => stage.id === "prove").question }));
+    fireEvent.click(screen.getByRole("button", { name: dataGuideQuestions().find(stage => stage.id === "proof").question }));
     fireEvent.click(within(container.querySelector("#data-guide-matches")).getByRole("button", { name: new RegExp(dataGuideQuestions().flatMap(stage => stage.tools).find(tool => tool.id === "5-23").name) }));
     fireEvent.click(screen.getByRole("button", { name: "광고를 켠 전후 비교" }));
     expect(screen.getByRole("button", { name: "빈 CSV 양식 받기" })).toBeTruthy();

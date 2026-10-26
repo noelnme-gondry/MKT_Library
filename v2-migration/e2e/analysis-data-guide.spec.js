@@ -29,7 +29,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "What data do you need?" : "어떤 데이터가 필요한가요?");
     await expect(page.locator(".breadcrumb")).toContainText(en ? "Data requirements" : "필요한 데이터 양식");
     await expect(page.locator(".analysis-data-guide__question-grid button")).toHaveCount(dataGuideQuestions(locale).length);
-    await page.getByRole("button", { name: en ? "Should I scale spend or move the budget?" : "예산을 더 쓸까, 다른 곳으로 옮길까?" }).focus();
+    await page.getByRole("button", { name: dataGuideQuestions(locale).find(stage => stage.id === "budget").question }).focus();
     await page.keyboard.press("Enter");
     const allocation = page.locator('.analysis-data-guide__tool-grid button[data-analysis-id="5-3"]');
     const allocationName = await allocation.locator("strong").textContent();
@@ -77,7 +77,7 @@ for (const locale of ["ko", "en"]) {
 
   test(`pre/post template matches the method opened in the tool (${locale})`, async ({ page }) => {
     await page.goto(`${prefix}/data-guide`);
-    await page.getByRole("button", { name: en ? "How can I examine experiment effects and user drop-off?" : "실험 효과와 사용자 이탈을 어떻게 확인할까?" }).click();
+    await page.getByRole("button", { name: dataGuideQuestions(locale).find(stage => stage.id === "proof").question }).click();
     await page.locator('[data-analysis-id="5-23"]').click();
     await page.getByRole("button", { name: en ? "Before and after ads started" : "광고를 켠 전후 비교" }).click();
     const pending = page.waitForEvent("download");

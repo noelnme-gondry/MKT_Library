@@ -21,6 +21,21 @@ describe("tool discovery and reuse", () => {
     fireEvent.click(screen.getByRole("button", { name: `${locale === "en" ? "Save" : "저장"}: ${tool.name}` }));
     expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
+  // 필요한 파일은 컬럼보다 먼저 말하고(product-ssot §1.1c), 파일·출처 이름으로도 찾을 수 있다.
+  it.each(["ko", "en"])("shows the file each analysis needs and finds analyses by source (%s)", locale => {
+    const { container } = render(<HomeToolFinder locale={locale} />);
+    const tools = allToolIndexEntries(locale);
+    const files = [...container.querySelectorAll(".home-tool-directory__file")].map(node => node.textContent);
+    expect(files).toHaveLength(tools.length);
+    expect(files[0]).toContain(tools[0].source.file);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "App Store Connect" } });
+    const storeTools = tools.filter(tool => tool.source.where.includes("App Store Connect"));
+    expect(storeTools.length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".home-tool-finder__tool")).toHaveLength(storeTools.length);
+    const file = container.querySelector(".home-tool-finder__file");
+    expect(file.firstChild.textContent).toBe(storeTools[0].source.file);
+    expect(file.querySelector("small").textContent).toBe(storeTools[0].source.family);
+  });
   it("restores the full directory after clearing an empty search", () => {
     const { container } = render(<HomeToolFinder />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "no-such-tool-xyz" } });

@@ -398,9 +398,9 @@ test("4개 핵심 도구의 결과를 한 주간 보고서로 수집한다", asy
   await setComparableEfficiencyWindow(page);
 
   for (const { href, section, query } of [
-    { href: "/tools/campaign-variance", section: "01 이번 주 점검", query: "성과 변동" },
-    { href: "/tools/campaign-saturation", section: "03 예산 조정", query: "포화도" },
-    { href: "/tools/budget-allocation", section: "03 예산 조정", query: "예산 배분" },
+    { href: "/tools/campaign-variance", section: "01 성과가 흔들렸다, 왜?", query: "성과 변동" },
+    { href: "/tools/campaign-saturation", section: "02 예산을 어디에 얼마나", query: "포화도" },
+    { href: "/tools/budget-allocation", section: "02 예산을 어디에 얼마나", query: "예산 배분" },
   ]) {
     await navigateToTool(page, href, section, query);
     await addVisibleResultToReport(page);

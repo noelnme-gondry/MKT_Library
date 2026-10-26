@@ -5,16 +5,18 @@ import { TOOL_REQUIRED_FIELDS, STANDARD_FIELDS } from "@/utils/csvConstants";
 import { findMeta } from "@/store/useDataStore";
 import { trItemTitle } from "@/lib/enNavCopy";
 import { toolDataNeed } from "@/lib/toolDataNeeds";
+import { dataSourceForTool } from "@/lib/dataSources";
 
 /* ============================================================
  * toolIndex — "무엇을 할 수 있나" 목록의 단일 출처.
  *
  * 새 목록을 만들지 않는다. 기존 SSOT 네 곳에서 파생한다(§7 — 목록을 두 곳에
  * 나열하지 말고 파생시켜라):
- *   TOOL_JOURNEY        질문 축(상태 확인 → 원인 → 선택 → 검증 → 학습)
+ *   TOOL_JOURNEY        상황 축(7개 상황, product-ssot §1.1c)
  *   store IA            짧은 이름
  *   toolSearchContent   그 도구가 답하는 질문 + 한 줄 답
  *   TOOL_REQUIRED_FIELDS 필요한 컬럼
+ *   dataSources         필요한 파일(어디서 받는 파일인가)
  *
  * 이름을 짧게 줄이면 이름만으로는 무엇을 하는지 알 수 없다. 그 손실을 메우는
  * 것이 `question`(무엇을 묻는 도구인가)과 `answer`(무엇을 알려주는가)다.
@@ -88,6 +90,8 @@ export function toolIndexEntry(toolId, locale = "ko") {
     needs: requiredLabels(toolId, locale),
     // 결과 화면의 "다른 데이터가 필요한 분석"이 읽는 한 문장 — 컬럼 이름이 아니라 들어 있어야 할 값.
     dataNeed: toolDataNeed(toolId, locale),
+    // 필요한 데이터는 컬럼보다 파일 이름이 먼저다(§1.1c). 모르는 그룹이면 null.
+    source: dataSourceForTool(toolId, locale),
   };
 }
 
@@ -105,14 +109,12 @@ export function toolDisplayTitle(toolId, locale = "ko", searchName = "") {
   return { name, alias };
 }
 
-/** 질문 축(TOOL_JOURNEY 스테이지)별로 묶은 전체 인덱스. */
+/** 상황(TOOL_JOURNEY)별로 묶은 전체 인덱스. */
 export function toolIndexByStage(locale = "ko") {
   return TOOL_JOURNEY.map((stage) => ({
     id: stage.id,
-    homePurpose: stage.homePurpose,
     homeQuestion: stage.homeQuestion?.[locale] || stage.title[locale],
-    // "01 · MONITOR" — 아래 워크플로 섹션이 이미 쓰는 표기다. 같은 언어를 쓰면
-    // 두 섹션이 같은 축을 말한다는 게 읽힌다.
+    // 번호만("01"). 상황은 순서가 아니므로 이름표에 단계 이름을 붙이지 않는다.
     label: stage.label?.[locale] || stage.label?.ko || "",
     title: stage.title[locale] || stage.title.ko,
     description: stage.description[locale] || stage.description.ko,

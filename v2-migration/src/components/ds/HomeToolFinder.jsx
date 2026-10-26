@@ -19,7 +19,7 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
   const allTools = stages.flatMap(stage => stage.tools);
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const tools = terms.length ? allTools.filter(tool => {
-    const text = [tool.name, tool.question, tool.answer, tool.searchText, ...tool.outputs, ...tool.needs].join(" ").toLocaleLowerCase();
+    const text = [tool.name, tool.question, tool.answer, tool.searchText, ...tool.outputs, ...tool.needs, tool.source?.file, tool.source?.family, tool.source?.where].filter(Boolean).join(" ").toLocaleLowerCase();
     return terms.every(term => text.includes(term));
   }) : selected === "saved" ? allTools.filter(tool => savedIds.includes(tool.id)) : [];
   const isOpen = Boolean(selected || terms.length);
@@ -44,6 +44,8 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
           <Link href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)}>
             <strong>{tool.name}</strong>
             {tool.question && <span>{tool.question}</span>}
+            {/* 무엇을 준비할지는 컬럼보다 파일 이름으로 먼저 말한다(product-ssot §1.1c). */}
+            {tool.source && <span className="home-tool-directory__file">{en ? "File: " : "필요한 파일: "}{tool.source.file}</span>}
           </Link>
           <button type="button" aria-label={`${en ? "Save" : "저장"}: ${tool.name}`} aria-pressed={savedIds.includes(tool.id)} onClick={() => setSaveError(!toggleSavedTool(tool.id))}>
             <Bookmark size={16} fill={savedIds.includes(tool.id) ? "currentColor" : "none"} aria-hidden="true" />
@@ -64,7 +66,7 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
           </div>
           <dl>
             <div><dt>{en ? "What you get" : "확인할 결과"}</dt><dd>{tool.answer || tool.outputs.join(" · ")}</dd></div>
-            <div className="home-tool-finder__data"><dt>{en ? "Data to prepare" : "준비할 데이터"}</dt><dd>{tool.needs.length ? <ul>{tool.needs.map(need => <li key={need}>{need}</li>)}</ul> : (en ? "Check input options in the tool" : "도구에서 입력 방법 확인")}</dd></div>
+            <div className="home-tool-finder__data"><dt>{en ? "Data to prepare" : "준비할 데이터"}</dt><dd>{tool.source && <p className="home-tool-finder__file">{tool.source.file}<small>{tool.source.family}</small></p>}{tool.needs.length ? <ul>{tool.needs.map(need => <li key={need}>{need}</li>)}</ul> : (en ? "Check input options in the tool" : "도구에서 입력 방법 확인")}</dd></div>
           </dl>
           <div className="home-tool-finder__actions">
             <Link className="home-tool-finder__open" href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)} aria-label={`${en ? "Open" : "분석 열기"}: ${tool.name}`}>

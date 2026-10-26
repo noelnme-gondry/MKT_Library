@@ -68,6 +68,25 @@
 - 분석 입구는 질문 → 필요한 데이터 → 확인할 결과 → 해당 분석 순서로 보여 준다. 예시는 실제 계산값과 합성 데이터 표시를 함께 두고, 예시 보기와 내 CSV 분석을 구분한다. / Entry points connect a question, required data, expected output and the matching analysis; calculated synthetic examples remain distinct from analysis of the user's CSV.
 - ROAS 글에서는 광고비와 귀속 매출로 ROAS를 직접 계산한 뒤 채널별 예산 분석으로 연결한다. ROAS는 매출÷광고비이며 이익률·증분 효과가 아니다. 광고비 0이나 누락·음수·비정상 입력은 계산 불가다. / The ROAS article calculates attributed revenue divided by ad spend before linking to channel budget analysis; this is neither profit nor causal lift. Zero spend and missing, negative or invalid inputs are uncomputable.
 
+### 1.1c 찾기·준비·보고서 리빌딩 (2026-10-26 승인)
+
+사용자 결정: 아래 네 가지를 모두 추천안대로 확정했다. 근거는 2026-10-26 실측(같은 질문에 답하는 입구 7곳, 공개 분석 34개가 요구하는 데이터 그룹 25종, 예시 결과의 결론 카드가 데스크톱 585~947px·폰 694~1,100px에서 시작)이다. 단계는 0 계약 → 1 결과 보고서(상위 5개 도구) → 2 분석 찾기 → 3 데이터 준비 → 4 전 도구 확장 순이다. / Approved on 2026-10-26: all four recommended options. Phases: contract → report layout (top five tools) → single analysis finder → data preparation → remaining tools.
+
+| 결정 | 확정 | 적용 단계 |
+|---|---|---|
+| 입구 통합 범위 | 앱 안 입구(홈 목록·`/start`·분석 방법 둘러보기·`/data-guide`)를 **분석 찾기** 하나로 모은다. `/compare`·`/guide` 분석 지도·`/diagnose`는 검색 유입 페이지로 두고 분석 찾기로 연결만 한다. 기존 주소는 유지하거나 301로 보존한다. | 2 |
+| 홈 첫 화면 주 행동 | **상황 고르기 + 파일 놓기**. 운영 플래너 미리보기는 그 아래로 내린다. 2단계 구현 전까지 §5.1.1의 현행 주 행동을 유지한다. | 2 |
+| 고급 분석 12개(5-32~5-43) | 숨기지 않고 상황 안에 함께 두되, 같은 상황에서 광고 운영 분석 뒤에 놓는다. | 0 |
+| 결과 화면의 설정 블록 | 결과가 있으면 기간·지표·대상을 **맥락 한 줄 + `조건 바꾸기` 창**으로 접는다(`MappingEditorDialog`와 같은 방식). | 1 |
+
+**상황 분류(0단계 적용).** 공개 분석은 `TOOL_JOURNEY`의 7개 상황에 정확히 한 번씩 속한다: 성과가 흔들렸다, 왜? · 예산을 어디에 얼마나 · 광고가 진짜 효과가 있었나 · 광고와 오가닉이 겹치나 · 소재·스토어를 고치고 싶다 · 들어온 유저가 남고 돈이 되나 · 상품·가격·영업. 상황은 순서가 아니므로 화면에 “이전/다음 단계”로 표시하지 않는다. 이름표는 번호(01~07)만 쓰고 영어 대문자 이름표를 쓰지 않는다. / Every published analysis belongs to exactly one of seven situations; situations are not a sequence.
+
+**필요한 파일 표기(0단계 적용).** 필요한 데이터는 컬럼보다 먼저 **어디서 받는 파일인지**로 말한다. 데이터 그룹(`TOOL_GROUP`)마다 사용자용 파일 이름과 출처 묶음 6종(광고 매체·MMP 리포트, 직접 정리하는 집계표, 스토어 콘솔, 제품 이벤트·사용자 기록, 주문·고객·영업 기록, 실험·설문 결과)을 `src/lib/dataSources.js` 한 곳이 소유한다. 출처 묶음의 매체 이름은 실제로 그런 파일을 내보내는 곳의 예시이며, 그 매체의 내보내기 헤더를 자동 인식한다는 약속이 아니다(인식 범위는 `lib/platformExports.js`). / Name the source file before columns; platform names are examples, not a promise of automatic header recognition.
+
+**분석 카드 계약(2단계 화면).** 카드 한 장 = 쓰는 상황(사용자 말) · 받게 될 보고서의 결론 예시(예시 데이터의 실제 엔진 결과에서 파생, 지어낸 수치 금지) · 필요한 파일(이름 → 출처 → 필수 열 → 있으면 더 좋은 열) · `예시 보고서 보기`(주 행동)와 `내 파일로 하기` · 같은 파일로 되는 다른 분석. 방법 이름(CUPED·RFM·VIF 등)은 부제와 검색어로 남긴다.
+
+**보고서 틀(1단계 화면).** 결과 첫 화면은 맥락 한 줄 → 결론(무엇이 얼마나 변했고 어디 때문인지 또는 무엇을 얼마나 할지, 수치와 대상 포함) → 결론을 받치는 숫자 3개 → 핵심 그림 1개 → 이번 주 할 일 2~3개(주 행동 1개) → 결론을 바꿀 수 있는 한계 1줄 → `자세히`(표·단계 분해·방법론·FAQ) 순이다. §5.5의 층위·확인 N·XLSX 계약을 그대로 따른다. 5-3의 `allocationHeadline`이 결론 문장의 기준 사례다. / Report-first layout; keeps the §5.5 contract.
+
 ### 1.2 승인 소개문 (그대로 복사해 사용)
 
 판매자 표시 정보(2026-09-09 사용자 제공, 2026-09-14 제공 이미지의 주소 원문 반영): 상호 공드리공작소 · 대표자 신기훈 · 사업자등록번호 856-07-03210 · 주소 서울특별시 동대문구 천호대로41길 26, 402호(용두동, 천우네오젠) · 고객센터 010-8829-9034 · 이메일 gondry.montauk@gmail.com. 주소는 사용자가 제공한 이미지의 원문을 전사했다. 통신판매업 신고번호는 미제공이며 임의 생성하지 않는다. KO/EN 모두 법적 이름과 주소 원문을 보존한다. 코드 사본은 `src/lib/sellerFacts.js`가 소유한다.
@@ -340,7 +359,9 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 홈 제목은 §1.1a를 유지하며 소개는 긴 캠페인 이력의 운영 점검을 설명한다. 주 행동은 **내 데이터로 운영하기 / Plan operations with my data**, 보조 행동은 **데모 보기 / View demo**다. 두 행동은 독립 운영 플래너로 연결한다. **필요한 데이터 양식 확인 / Check data requirements**은 `/data-guide`와 `/en/data-guide`로 연결한다. 보고 싶은 질문에서 공개 분석을 선택하고 출처·행 단위·필수/추가 항목의 쓰임·가상 작성 예시·준비 주의사항·실제 빈 CSV 양식을 확인한다. 질문·도구 목록은 홈 레지스트리, 요구사항과 예시는 업로더, 다운로드는 기존 템플릿 계약에서 가져온다. 내부 도구 번호를 화면에 표시하지 않는다. / The data guide maps questions to analyses and explains sources, row structure, field purpose, fictional sample rows, preparation checks and compatible CSV templates using the existing registries. `/start`의 범용 파일 진입은 분석 목록·내비게이션에서 유지한다. 업로드 후 매핑을 확인하고 명시적으로 분석을 시작하며 결과 이후 입력은 편집 가능한 한 줄 요약으로 접힌다. / Link both homepage actions to the standalone operations planner, preserving the general Start entry in navigation and tool discovery. Confirm mappings and explicitly analyze uploaded data; summarize input after results. 저장된 결정의 상단 재진입은 유지한다.
 
-**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 분류와 공개 도구를 처음부터 모두 보여준다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
+(2026-10-26: 홈 주 행동은 §1.1c에 따라 2단계에서 상황 고르기 + 파일 놓기로 바뀐다. 그때까지 아래 현행 계약을 유지한다.)
+
+**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 상황 분류(§1.1c)와 공개 도구를 처음부터 모두 보여주고, 도구마다 필요한 파일 이름을 함께 표시한다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
 히어로에는 도구와 같은 가상 운영 이력의 기간별 CPI 비교와 변화율, 가상 데이터·기간·범위를 표시한다. 도구 다음에는 기록·재검토, 실제 발행 글·가이드, 이용 조건 순으로 배치한다. 기록 저장은 Pro 체험 포함, 보고서 다운로드는 구매 이용권 전용임을 구분한다. / Follow tool discovery with review, published reading and service terms; trial storage and purchased-pass downloads remain distinct.
 
@@ -445,6 +466,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 예시 데이터 결과에서는 핵심 그림과 다음 행동 뒤에 **다음 기간 결과와 비교하기 / Review this decision next period**(`ds/DecisionReviewPreview`)를 둔다. 문구: **예시 결과는 저장되지 않습니다. 내 데이터로 분석하면 결론·핵심 수치·검토일을 저장할 수 있습니다. / Sample results are not saved. Analyze your own data to save the conclusion, key figures and review date.** 조건: **저장은 로그인과 Pro(7일 체험 포함)가 필요합니다. 분석은 무료입니다. / Saving requires sign-in and Pro, including the 7-day trial. Analysis is free.** `내 데이터로 분석하기`·`Pro 안내`를 제공하며 입력 폼은 두지 않는다(가짜 결정 금지).
 - 분석이 끝난 도구의 업로드·매핑은 **한 줄 요약 + `데이터·매핑 편집` 대화상자**(`ds/MappingEditorDialog`)로 고친다. 접기·펼치기가 아니라 이름 있는 편집 화면이다(§4). 결론 카드 위에 매핑 선택상자가 보이면 안 된다.
 - 결과 아래 '이어서 볼 수 있는 분석'은 지금 되는 것 3개 + `전체 분석 보기` 링크.
+- 첫 화면의 읽기 순서와 설정 블록 접기는 §1.1c **보고서 틀**을 따른다(2026-10-26 승인, 1단계에서 상위 5개 도구부터 적용).
 
 #### 5.5.1 상세 XLSX 계약
 

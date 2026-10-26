@@ -7812,7 +7812,7 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
 .tool-connection-card > p { margin: 7px 0 0; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.5; }
 .tool-connection-card > b { position: absolute; right: 14px; bottom: 12px; color: var(--primary); font: 700 var(--fs-lg) var(--font-sans); }
 .tool-connections__map { margin-top: 15px; padding: 11px 13px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: color-mix(in srgb,var(--surface-container-low) 72%,transparent); }
-.tool-connections__map > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.tool-connections__map > div { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 8px; }
 .tool-connections__map-group { min-width: 0; }
 .tool-connections__map-group > span { display: block; margin-bottom: 5px; color: var(--primary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .08em; }
 .tool-connections__map-group > div { display: flex; flex-wrap: wrap; gap: 4px; }

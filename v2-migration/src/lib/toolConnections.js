@@ -1,4 +1,3 @@
-import { ADVANCED_JOURNEYS } from "@/lib/advanced-marketing/catalog";
 import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { idToSlug } from "@/lib/routeMap";
 import { groupForRoute } from "@/lib/toolGroups";
@@ -111,76 +110,66 @@ export const CONNECTED_TOOLS = {
   },
 };
 
-// 도구를 묶는 축은 "무엇을 판단하려는 상황인가"다. 예전 5갈래는 상태 확인이
-// 1개짜리였고 학습 축적에 MMM·Aha·VIF·ASO·콘텐츠 다섯이 성격 없이 모여 있었다
-// ("여러 상황을 하나에 밀어넣은" 상태). 지금은 한 갈래가 한 상황만 말하고
-// 크기도 2~3개로 고르다 — 갈래 이름만 읽어도 어디를 볼지 정해진다.
+// 도구를 묶는 축은 사용자가 겪는 "상황"이다(product-ssot §1.1c, 2026-10-26 승인).
+// 예전 11갈래는 뒤의 넷이 이름만 있고 상황이 없었으며("고객 행동·가치에서 무엇을
+// 확인할까요?"), 이름표가 "01 · CHECK" 같은 영어 대문자였다. 지금은 7개 상황에
+// 공개 분석이 정확히 한 번씩 속하고, 같은 상황 안에서는 광고 운영 분석을 앞에,
+// 고급 분석(5-32~5-43)을 뒤에 둔다. 상황은 순서가 아니므로 "이전/다음 단계"를 만들지
+// 않는다 — 이름표는 번호만 쓴다.
 export const TOOL_JOURNEY = [
   {
-    id: "monitor",
-    homeQuestion: { ko: "성과는 어디서, 왜 달라졌을까?", en: "Where did performance change, and why?" },
-    homePurpose: "performance",
-    label: { ko: "01 · CHECK", en: "01 · CHECK" },
-    title: { ko: "이번 주 점검", en: "This week" },
-    description: { ko: "어디가 흔들렸고 왜 그런지 봅니다.", en: "See what moved and why." },
-    tools: ["5-31", "5-2", "5-21", "5-29"],
-  },
-  {
-    id: "baseline",
-    homeQuestion: { ko: "유입 변화가 추세일까, 광고 영향일까?", en: "Is traffic changing with the trend or with ads?" },
-    homePurpose: "performance",
-    label: { ko: "02 · BASELINE", en: "02 · BASELINE" },
-    title: { ko: "추세·잠식 점검", en: "Trend and displacement" },
-    description: { ko: "원래 추세인지, 광고가 오가닉을 먹은 건지 가릅니다.", en: "Tell the underlying trend apart from paid displacing organic." },
-    tools: ["5-18-trend", "5-18-paid-organic", "5-18-cannibal", "5-30"],
+    id: "performance",
+    title: { ko: "성과가 흔들렸다, 왜?", en: "Performance moved. Why?" },
+    homeQuestion: { ko: "CPA·CPI가 어디서, 왜 올랐을까?", en: "Where did CPA or CPI rise, and why?" },
+    description: { ko: "채널·캠페인·사용자 구성 중 어디서 바뀌었는지 찾습니다.", en: "Find whether channels, campaigns or the audience mix moved." },
+    tools: ["5-2", "5-21", "5-31", "5-18-trend", "5-29"],
   },
   {
     id: "budget",
-    homeQuestion: { ko: "예산을 더 쓸까, 다른 곳으로 옮길까?", en: "Should I scale spend or move the budget?" },
-    homePurpose: "planning",
-    label: { ko: "03 · BUDGET", en: "03 · BUDGET" },
-    title: { ko: "예산 조정", en: "Budget moves" },
-    description: { ko: "더 써도 되는지, 어디로 옮길지 정합니다.", en: "Decide what can scale and where budget should move." },
-    tools: ["5-22", "5-3"],
+    title: { ko: "예산을 어디에 얼마나", en: "Where the budget should go" },
+    homeQuestion: { ko: "더 쓸 곳과 줄일 곳은 어디일까?", en: "Where should I scale, and where should I cut?" },
+    description: { ko: "증액 여력, 재배분, 채널 기여와 다음 기간 예측을 봅니다.", en: "Check headroom, reallocation, channel contribution and next-period forecasts." },
+    tools: ["5-22", "5-3", "5-18-mmm", "5-18-forecast", "5-25", "5-42"],
+  },
+  {
+    id: "proof",
+    title: { ko: "광고가 진짜 효과가 있었나", en: "Did the ads really work?" },
+    homeQuestion: { ko: "실험과 홀드아웃으로 본 순수 효과는?", en: "What do tests and holdouts show?" },
+    description: { ko: "관찰된 차이가 실제 효과인지 실험 설계로 확인합니다.", en: "Use test designs to check whether a difference is a real effect." },
+    tools: ["5-4", "5-23", "5-24", "5-36", "5-34"],
+  },
+  {
+    id: "overlap",
+    title: { ko: "광고와 오가닉이 겹치나", en: "Do paid and organic overlap?" },
+    homeQuestion: { ko: "광고가 원래 올 손님을 사 오고 있을까?", en: "Is paid buying traffic that would come anyway?" },
+    description: { ko: "잠식, 함께 기록된 채널, 유입 품질을 봅니다.", en: "Check displacement, co-recorded channels and traffic quality." },
+    tools: ["5-18-cannibal", "5-18-paid-organic", "5-30", "5-43"],
   },
   {
     id: "creative",
-    homeQuestion: { ko: "어떤 소재·콘텐츠·행동이 성과와 연결될까?", en: "Which creative, content, or actions relate to results?" },
-    homePurpose: "creative",
-    label: { ko: "04 · CREATIVE", en: "04 · CREATIVE" },
-    title: { ko: "먹히는 요소 찾기", en: "What resonates" },
-    description: { ko: "소재·콘텐츠·초기 행동 중 무엇이 성과를 만드는지 찾습니다.", en: "Find which creative, content, or early action drives the outcome." },
-    tools: ["9-6", "9-1", "5-20"],
+    title: { ko: "소재·스토어를 고치고 싶다", en: "Improve creatives and the store page" },
+    homeQuestion: { ko: "무엇을 바꾸면 전환이 나아질까?", en: "What change would lift conversion?" },
+    description: { ko: "소재 피로, 콘텐츠 요소, 검색 키워드, 스토어 전환을 봅니다.", en: "Check creative fatigue, content elements, search terms and store conversion." },
+    tools: ["9-6", "9-1", "5-26", "5-27"],
   },
   {
-    id: "store",
-    homeQuestion: { ko: "앱 검색과 스토어 전환을 어떻게 개선할까?", en: "How can I improve app search and store conversion?" },
-    homePurpose: "creative",
-    label: { ko: "05 · STORE", en: "05 · STORE" },
-    title: { ko: "앱 유입 개선", en: "App store traffic" },
-    description: { ko: "검색 키워드와 스토어 페이지에서 새는 곳을 봅니다.", en: "Check search keywords and the store page for leaks." },
-    tools: ["5-26", "5-27"],
+    id: "users",
+    title: { ko: "들어온 유저가 남고 돈이 되나", en: "Do new users stay and pay?" },
+    homeQuestion: { ko: "어디서 이탈하고, 어떤 고객이 가치가 있을까?", en: "Where do users drop off, and which customers are valuable?" },
+    description: { ko: "초기 행동, 퍼널·리텐션, 고객 수익성과 CRM 효과를 봅니다.", en: "Check early actions, funnels, retention, customer profitability and CRM lift." },
+    tools: ["5-20", "5-28", "5-33", "5-32", "5-35", "5-37"],
   },
   {
-    id: "prove",
-    homeQuestion: { ko: "실험 효과와 사용자 이탈을 어떻게 확인할까?", en: "How can I examine experiment effects and user drop-off?" },
-    homePurpose: "planning",
-    label: { ko: "06 · PROOF", en: "06 · PROOF" },
-    title: { ko: "효과 검증", en: "Proof" },
-    description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
-    tools: ["5-4", "5-23", "5-24", "5-28"],
+    id: "commerce",
+    title: { ko: "상품·가격·영업", en: "Products, pricing and sales" },
+    homeQuestion: { ko: "프로모션과 가격은 이익을 남겼을까?", en: "Did promotions and pricing pay off?" },
+    description: { ko: "프로모션 이익, 함께 사는 상품, 가격 선호, 영업 파이프라인을 봅니다.", en: "Check promotion profit, co-purchases, price preference and the sales pipeline." },
+    tools: ["5-40", "5-41", "5-39", "5-38"],
   },
-  ...ADVANCED_JOURNEYS,
-  {
-    id: "contribution",
-    homeQuestion: { ko: "채널별 기여와 앞으로의 성과는 어떨까?", en: "How much do channels contribute, and what comes next?" },
-    homePurpose: "planning",
-    label: { ko: "07 · MIX", en: "07 · MIX" },
-    title: { ko: "채널 기여도", en: "Channel contribution" },
-    description: { ko: "장기 배분의 근거를 채널 단위로 만듭니다.", en: "Build the channel-level basis for long-run allocation." },
-    tools: ["5-25", "5-18-mmm", "5-18-forecast"],
-  },
-].map((stage, index) => ({ ...stage, label: Object.fromEntries(Object.entries(stage.label).map(([locale, value]) => [locale, value.replace(/^\d+/, String(index + 1).padStart(2, "0"))])) }));
+].map((stage, index) => {
+  const number = String(index + 1).padStart(2, "0");
+  return { ...stage, label: { ko: number, en: number } };
+});
 
 // 다음 단계 3개. 같은 CSV 그룹이면 화면이 "같은 데이터로 바로" 라고 표시하므로
 // (isSameData), 응답 패널을 쓰는 다섯 분석은 서로를 먼저 가리킨다 — 한 번 매핑한
@@ -236,23 +225,24 @@ export function getNextTools(toolId, locale = "ko") {
   }));
 }
 
+// 도구가 속한 상황과 이어 볼 분석. 상황은 순서가 아니라서(§1.1c) 앞뒤 단계를 만들지
+// 않는다. 대신 같은 상황의 다른 분석과, 다른 상황이지만 같은 파일(같은 CSV 그룹)로
+// 바로 되는 분석을 돌려준다 — 한 번 준비한 파일로 무엇을 더 볼 수 있는지가 다음 길이다.
 export function getJourneyContext(toolId, locale = "ko") {
-  const stageIndex = TOOL_JOURNEY.findIndex((stage) => stage.tools.includes(toolId));
-  if (stageIndex < 0) return null;
-  const stage = TOOL_JOURNEY[stageIndex];
-  const previousStage = TOOL_JOURNEY[(stageIndex - 1 + TOOL_JOURNEY.length) % TOOL_JOURNEY.length];
-  const nextStage = TOOL_JOURNEY[(stageIndex + 1) % TOOL_JOURNEY.length];
+  const stage = TOOL_JOURNEY.find((item) => item.tools.includes(toolId));
+  if (!stage) return null;
+  const group = groupForRoute(toolId);
   const decorate = (id) => ({
     ...localizedTool(id, locale),
-    isSameData: groupForRoute(toolId) === groupForRoute(id),
+    isSameData: group === groupForRoute(id),
   });
+  const sameFile = TOOL_JOURNEY
+    .filter((item) => item !== stage)
+    .flatMap((item) => item.tools)
+    .filter((id) => groupForRoute(id) === group);
   return {
     stage,
-    previousStage,
-    nextStage,
-    previous: previousStage.tools.map(decorate),
     alternatives: stage.tools.filter((id) => id !== toolId).map(decorate),
-    next: nextStage.tools.map(decorate),
-    isCycleRestart: stageIndex === TOOL_JOURNEY.length - 1,
+    sameFile: sameFile.map(decorate),
   };
 }

@@ -337,6 +337,8 @@
   .home-tool-finder__tool dt { font-size: 12px; font-weight: 700; margin: 0 0 5px; color: var(--library-muted); }
   .home-tool-finder__tool dd { margin: 0; color: var(--library-text); }
   .home-tool-finder__data { padding-top: 14px; border-top: 1px solid var(--library-border); }
+  .home-tool-finder__file { margin: 0 0 8px; color: var(--library-text); }
+  .home-tool-finder__file small { display: block; font-size: var(--fs-xs); color: var(--library-muted); }
   .home-tool-finder__data ul { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
   .home-tool-finder__data li { padding: 3px 8px; border-radius: 4px; background: var(--library-background); font-size: 12px; color: var(--library-muted); }
   .home-tool-finder__actions { display: grid; gap: 8px; }
@@ -1212,6 +1214,8 @@
 .home-tool-directory li a strong { font-size: var(--fs-base); font-weight: 600; line-height: 1.5; }
 .home-tool-directory li a strong::after { content: " →"; color: var(--library-muted); font-weight: 400; }
 .home-tool-directory li a span { overflow: hidden; font-size: var(--fs-sm); line-height: 1.55; color: var(--library-muted); text-overflow: ellipsis; white-space: nowrap; }
+/* 파일 이름은 잘리면 무엇을 준비할지가 사라진다 — 질문 줄과 달리 줄을 바꿔 다 보인다(product-ssot §1.1c). */
+.home-tool-directory li a .home-tool-directory__file { overflow: visible; white-space: normal; text-overflow: clip; }
 .home-tool-directory li a:hover strong { color: var(--library-accent); text-decoration: underline; text-underline-offset: 3px; }
 .home-tool-directory li a:focus-visible { outline: 2px solid var(--library-accent); outline-offset: 2px; border-radius: var(--radius-sm); }
 .home-approved .home-tool-directory li button { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--library-muted); cursor: pointer; }
