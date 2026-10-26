@@ -1,5 +1,6 @@
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { enablePaidReports } from "./support/paidReports";
+import { openResultDetails } from "./support/resultDetails";
 import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
@@ -491,6 +492,8 @@ async function verifyContentValidationSplit(page, en = false) {
   await page.locator("#content-outcome").selectOption("score");
   await page.getByRole("button", { name: en ? "▶ Analyze" : "▶ 분석하기", exact: true }).click();
   await expect(page.locator(".result-action-card").first()).toBeVisible();
+  // 검증 날짜·반복 단위·랜덤포레스트는 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다(임원 보고 형식 §5.5).
+  await openResultDetails(page);
   await page.getByLabel(en ? "Future-validation date column" : "미래 검증 날짜 열").selectOption("date");
   await expect(page.getByText(en ? /Past-to-future holdout: 32 validation rows/ : /과거→미래 홀드아웃: 검증 32행/)).toBeVisible();
   await page.getByLabel(en ? "Repeated-unit column" : "반복 단위 열").selectOption("post_id");

@@ -207,6 +207,10 @@
   .aha-condition-sample { display: grid; gap: .5rem; }
   .aha-condition-sample label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); }
   .aha-condition-sample input[type="number"] { width: 6rem; }
+  /* 9-1 콘텐츠 요소: 단위 꼬리표 · 유의 연관 방향 색 */
+  .content-element__unit { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
+  .result-table .content-element__up { color: var(--success); }
+  .result-table .content-element__down { color: var(--danger); }
   /* 5-26 ASA: 조건 줄 안 성숙도 선언 · 조치 칩 · CPA 목표 대비 색 */
   .asa-tool__condition .asa-tool__maturity { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); font-weight: 600; }
   .asa-tool__chips { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
