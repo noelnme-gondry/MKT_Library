@@ -51,7 +51,13 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
     if (toolId === '5-4') await root.locator('select').filter({ has: page.locator('option[value="0.01"]') }).first().selectOption('0.01');
     if (toolId === '5-18-forecast') await root.locator('input[type="number"][max="52"]').fill('26');
     if (toolId === '5-23') await root.locator('#incrementality-tab-off').click();
-    if (toolId === '5-20') await root.locator('input.map-select[type="number"]').fill('90');
+    // 5-20: 최소 표본은 분석 조건이라 "조건 바꾸기" 창(body 포털) 안에 있다.
+    const ahaMinSupport = () => page.getByRole('dialog').locator('input.map-select[type="number"]');
+    if (toolId === '5-20') {
+      await root.getByRole('button', { name: t('조건 바꾸기', 'Change settings'), exact: true }).click();
+      await ahaMinSupport().fill('90');
+      await page.getByRole('dialog').getByRole('button', { name: t('닫기', 'Close'), exact: true }).click();
+    }
     await command.fill('Daily setup');
     await expect(root.getByRole('option', { name: /Daily setup/ })).toBeVisible();
     await command.press('Enter');
@@ -67,7 +73,11 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
       await expect(root.getByRole('button', { name: t('예측 다시 계산', 'Recalculate forecast'), exact: true })).toBeDisabled();
     }
     if (toolId === '5-23') await expect(root.locator('#incrementality-tab-suppression')).toHaveAttribute('aria-selected', 'true');
-    if (toolId === '5-20') await expect(root.locator('input.map-select[type="number"]')).toHaveValue('30');
+    if (toolId === '5-20') {
+      await root.getByRole('button', { name: t('조건 바꾸기', 'Change settings'), exact: true }).click();
+      await expect(ahaMinSupport()).toHaveValue('30');
+      await page.getByRole('dialog').getByRole('button', { name: t('닫기', 'Close'), exact: true }).click();
+    }
     expect(errors).toEqual([]);
   });
 }

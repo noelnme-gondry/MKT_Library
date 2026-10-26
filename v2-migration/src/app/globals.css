@@ -203,6 +203,10 @@
   .report-detail:first-child { margin-top: 0; }
   .report-detail__title { margin: 0 0 .5rem; font-size: var(--fs-md); font-weight: 600; line-height: 1.5; }
   .report-detail p, .report-detail__note { margin: .5rem 0 0; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.6; }
+  /* 5-20 Aha: 조건 창 안 최소 표본·검증 분리 */
+  .aha-condition-sample { display: grid; gap: .5rem; }
+  .aha-condition-sample label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); }
+  .aha-condition-sample input[type="number"] { width: 6rem; }
   /* 5-26 ASA: 조건 줄 안 성숙도 선언 · 조치 칩 · CPA 목표 대비 색 */
   .asa-tool__condition .asa-tool__maturity { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); font-weight: 600; }
   .asa-tool__chips { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
