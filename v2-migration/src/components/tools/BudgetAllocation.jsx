@@ -1161,7 +1161,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         verifyChartInstance.current = null;
       }
     };
-  }, [step, hasData, byChannel, effectiveVerifyGroup, adv, groupModels, hidePoints, normalizeMode, effectiveMetric, localizeAxisLabels]);
+  }, [detailsOpen, step, hasData, byChannel, effectiveVerifyGroup, adv, groupModels, hidePoints, normalizeMode, effectiveMetric, localizeAxisLabels]);
 
   useEffect(() => {
     if (step !== 3 || !hasData || !chartRef.current) return;
@@ -1274,9 +1274,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy();
+        // 파괴한 인스턴스를 남기면 캔버스가 없을 때(자세히 보기 닫힘) resize가 죽은 차트를 부른다.
+        chartInstance.current = null;
       }
     };
-  }, [step, hasData, chartByChannel, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels, hiddenBlocks, setChartChannels, chartUnit, modelsMap]);
+  }, [detailsOpen, step, hasData, chartByChannel, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels, hiddenBlocks, setChartChannels, chartUnit, modelsMap]);
 
   // What-if 시나리오 차트 (예산 배수 → 예상 결과수 곡선). index.html renderAllocScenarioChart 이식.
   useEffect(() => {
@@ -1364,7 +1366,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         scenarioChartInstance.current = null;
       }
     };
-  }, [step, scenarios, effectiveMetric, currency, locale, tr, lowerScopeLabel, hiddenBlocks]);
+  }, [detailsOpen, step, scenarios, effectiveMetric, currency, locale, tr, lowerScopeLabel, hiddenBlocks]);
 
   // §6 채널 반응 곡선(PRISM P4) — 선택 채널의 지출→결과 곡선 + now/plan/knee/onset 마커.
   useEffect(() => {
@@ -1479,7 +1481,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         curveChartInstance.current = null;
       }
     };
-  }, [step, responseCurve, effectiveMetric, currency, locale, tr, hiddenBlocks]);
+  }, [detailsOpen, step, responseCurve, effectiveMetric, currency, locale, tr, hiddenBlocks]);
 
   if (!hasData) {
     return (
