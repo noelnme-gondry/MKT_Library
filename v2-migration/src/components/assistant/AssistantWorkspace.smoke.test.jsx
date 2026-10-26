@@ -18,7 +18,9 @@ function openAnalysis(id, locale = "ko") {
   if (chip.getAttribute("aria-expanded") !== "true") fireEvent.click(chip);
 }
 async function waitForAnalyses() {
-  await waitFor(() => expect(document.querySelector('[data-queue-settled="true"]')).toBeTruthy());
+  // CI에서는 순차 실행되는 예산 모형까지 1초를 넘길 수 있다. 중간 결과로
+  // 통과시키지 않고 큐 완료 계약을 그대로 기다리되 대기는 5초로 제한한다.
+  await waitFor(() => expect(document.querySelector('[data-queue-settled="true"]')).toBeTruthy(), { timeout: 5000 });
 }
 
 const raw = [

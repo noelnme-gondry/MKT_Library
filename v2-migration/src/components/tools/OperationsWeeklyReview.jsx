@@ -18,10 +18,12 @@ export default function OperationsWeeklyReview({ candidates, selected, onSelect,
     </header>
     {!choice ? <p>{tr("기록할 실측 기준값이 부족합니다. 데이터·기간을 확인하세요.", "Observed baselines are insufficient. Check the data and periods.")}</p> : <>
       <div className="operations-review-choices">
-        <PillGroup ariaLabel={tr("검토 종류", "Review type")} value={choice.kind} onChange={kind => onSelect(candidates.find(row => row.kind === kind).id)}
+        <div className="operations-review-kind"><span>{tr("검토 종류", "Review type")}</span>
+        <PillGroup ariaLabel={tr("검토 종류", "Review type")} value={choice.kind} onChange={kind => onSelect(candidates.find(row => row.kind === kind).id, { reveal: false })}
           options={kinds.map(kind => ({ value: kind, label: candidates.find(row => row.kind === kind).label }))} />
+        </div>
         <label className="operations-target-select">{tr("검토 대상", "Review target")}
-          <select value={choice.id} onChange={event => onSelect(event.target.value)}>
+          <select value={choice.id} onChange={event => onSelect(event.target.value, { reveal: false })}>
             {candidates.filter(row => row.kind === choice.kind).map(row => <option key={row.id} value={row.id}>{row.prefill.actionTarget || row.target}</option>)}
           </select>
         </label>
