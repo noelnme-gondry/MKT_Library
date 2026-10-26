@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import SubscriptionSurvivalAnalysis, { buildSegmentCurveChartData, scheduleSubscriptionChartResize } from "@/components/tools/SubscriptionSurvivalAnalysis";
 import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
+import { openResultDetails } from "@/test/resultDetails";
 
 beforeEach(() => useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } }));
 
@@ -48,7 +49,16 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();
-    expect(container.querySelector("#subscription-survival-curve canvas")).toBeTruthy();
+    // 임원 보고 형식: 결론은 조건부 위험 % + KM 유지율, 수치 3개, 핵심 그림은 KM 곡선, 나머지는 자세히 보기(닫힘).
+    const headline = container.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/\d+개월차 이탈 위험 \d+\.\d%로 가장 높음/);
+    expect(headline).toMatch(/유지율 \d+\.\d% \(KM\)/);
+    expect(container.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    expect(container.querySelector(".result-action-card__stats").textContent).toContain("구간 이탈 위험(조건부)");
+    expect(container.querySelector("#subscription-survival-result #subscription-survival-curve canvas")).toBeTruthy();
+    expect(container.querySelector("[data-result-details-toggle]").getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("#subscription-hazard")).toBeNull();
+    openResultDetails();
     expect(container.querySelector("#subscription-hazard canvas")).toBeTruthy();
     expect(container.querySelector("#subscription-risk-table table")).toBeTruthy();
   });
@@ -57,6 +67,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed locale={locale} />);
     confirmEventDefinition(locale);
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Analyze" : "분석하기" }));
+    openResultDetails();
     const followup = container.querySelector(".survival-followup");
     for (const [key, count] of Object.entries({ observedToHorizon: 1, earlyExit: 3, earlyCensored: 1, notEntered: 0 })) {
       expect(followup.querySelector(`[data-followup="${key}"] dd`).firstChild.textContent).toBe(String(count));
@@ -71,8 +82,8 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={censored} analyzed locale="en" />);
     confirmEventDefinition("en");
     fireEvent.click(screen.getByRole("button", { name: "Analyze" }));
-    expect(container.textContent).toContain("No dropout or exit event was observed");
-    expect(container.textContent).toContain("Median survival was not reached");
+    expect(container.querySelector(".result-action-card__headline").textContent).toMatch(/^Withheld — no dropout or exit event observed/);
+    expect(container.querySelector(".result-action-card__stats").textContent).toContain("Not reached");
     expect(container.textContent).not.toContain("Infinity");
     expect(container.textContent).not.toContain("NaN");
   });
@@ -90,6 +101,9 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    // 결과가 나온 뒤 설정은 조건 한 줄 + "조건 바꾸기" 창으로 옮겨 간다.
+    expect(screen.queryByLabelText("확인할 기간")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     const horizon = screen.getByLabelText("확인할 기간");
     fireEvent.change(horizon, { target: { value: "2" } });
     expect(container.textContent).toContain("현재 결과는 최신 설정과 다를 수 있습니다");
@@ -107,9 +121,11 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
     fireEvent.pointerDown(document.body, { button: 0 });
 
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     const segment = screen.getByLabelText("세그먼트");
     fireEvent.change(segment, { target: { value: "channel" } });
     fireEvent.click(screen.getByRole("button", { name: "다시 분석" }));
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
     expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
   });
@@ -131,6 +147,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     fireEvent.change(screen.getByLabelText("기간당 반복 가치 (선택)"), { target: { value: "100" } });
     fireEvent.change(screen.getByLabelText("매출총이익률 % (선택)"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    openResultDetails();
     expect(screen.getByText("관측기간 내 비용 회수는 2기간에 도달했습니다.")).toBeTruthy();
     expect(screen.getByText("다음 마케팅 프로젝트로 만들기")).toBeTruthy();
   });
@@ -145,6 +162,8 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();
+    expect(container.querySelector(".condition-line__summary").textContent).toContain("이탈 = “접근 종료”");
+    openResultDetails();
     expect(container.textContent).toContain("이탈·종료 이벤트 정의는 “접근 종료”으로 기록했습니다.");
   });
 
@@ -153,6 +172,9 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     confirmEventDefinition();
     fireEvent.change(screen.getByLabelText("세그먼트"), { target: { value: "channel" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    // 세그먼트를 고르면 결론 표가 세그먼트별 유지(낮은 순, 95% 구간)가 된다.
+    expect(container.querySelector(".result-report table").textContent).toMatch(/Paid|Organic/);
+    openResultDetails();
     expect(screen.getByRole("img", { name: "세그먼트별 핵심 액션 생존곡선" })).toBeTruthy();
     expect(container.querySelector("#subscription-segment-curves-note")).toBeTruthy();
   });
@@ -165,6 +187,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     confirmEventDefinition();
     fireEvent.change(screen.getByLabelText("세그먼트"), { target: { value: "channel" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    openResultDetails();
     expect(container.textContent).toContain("세그먼트가 6개를 넘어 비교를 보류했습니다");
     expect(container.querySelector("#subscription-segment-curves")).toBeNull();
   });

@@ -40,10 +40,13 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
     expect(posted.steps.every(step => !Object.hasOwn(step.params, 'values'))).toBe(true);
     expect(JSON.stringify(posted)).not.toMatch(/analysisSignature|confirmedDesign|demo_.*csv|privateChannel/);
     const command = root.getByRole('combobox', { name: t('분석·보기 설정', 'Analysis and view settings') });
+    // 5-28: 결과가 나온 뒤 설정은 조건 한 줄 + "조건 바꾸기" 창(body 포털)에 있다(임원 보고 형식 §5.5).
+    const surviveUnit = () => page.getByRole('dialog').locator('select').filter({ has: page.locator('option[value="month"]') });
     if (toolId === '5-28') {
-      const unit = root.locator('select').filter({ has: page.locator('option[value="month"]') });
-      await unit.selectOption('week');
-      await expect(unit).toHaveValue('week');
+      await root.getByRole('button', { name: t('조건 바꾸기', 'Change settings'), exact: true }).click();
+      await surviveUnit().selectOption('week');
+      await expect(surviveUnit()).toHaveValue('week');
+      await page.getByRole('dialog').getByRole('button', { name: t('닫기', 'Close'), exact: true }).click();
     }
     if (toolId === '5-4') await root.locator('select').filter({ has: page.locator('option[value="0.01"]') }).first().selectOption('0.01');
     if (toolId === '5-18-forecast') await root.locator('input[type="number"][max="52"]').fill('26');
@@ -53,7 +56,11 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
     await expect(root.getByRole('option', { name: /Daily setup/ })).toBeVisible();
     await command.press('Enter');
     await expect(root.locator('.tool-recipe-controls [role="alert"]')).toHaveCount(0);
-    if (toolId === '5-28') await expect(root.locator('select').filter({ has: page.locator('option[value="month"]') })).toHaveValue('month');
+    if (toolId === '5-28') {
+      await root.getByRole('button', { name: t('조건 바꾸기', 'Change settings'), exact: true }).click();
+      await expect(surviveUnit()).toHaveValue('month');
+      await page.getByRole('dialog').getByRole('button', { name: t('닫기', 'Close'), exact: true }).click();
+    }
     if (toolId === '5-4') await expect(root.locator('select').filter({ has: page.locator('option[value="0.01"]') }).first()).toHaveValue('0.05');
     if (toolId === '5-18-forecast') {
       await expect(root.locator('input[type="number"][max="52"]')).toHaveValue('13');
