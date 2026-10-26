@@ -16,7 +16,8 @@ const CASES = [
   { path: "/tools/campaign-saturation", scope: "#s-marginal-gap", file: /^marginal_gap_[a-z]+_[a-z]+_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/subscription-survival", scope: "#subscription-survival-curve", canvas: true, file: /^survival_curve_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/incrementality", file: /^incrementality_holdout_lift_\d{4}-\d{2}-\d{2}\.png$/ },
-  { path: "/tools/brand-campaign-incrementality", scope: ".brand-its-chart", canvas: true, file: /^brand_its_counterfactual_\d{4}-\d{2}-\d{2}\.png$/ },
+  // 5-24의 실제 vs 미집행 추정 선 차트는 "자세히 보기" 안에 있다(핵심 그림은 구간 그림).
+  { path: "/tools/brand-campaign-incrementality", scope: ".brand-its-chart", canvas: true, details: true, file: /^brand_its_counterfactual_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/segment-composition-change", file: /^composition_mix_rate_\d{4}-\d{2}-\d{2}\.png$/ },
 ];
 
@@ -26,7 +27,7 @@ function pngSize(buffer) {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
-for (const { path, file, scope = ".tool-core-figure", canvas = false, view = null } of CASES) {
+for (const { path, file, scope = ".tool-core-figure", canvas = false, view = null, details = false } of CASES) {
   test(`core figure downloads as a real PNG (${path})`, async ({ page }) => {
     test.setTimeout(150_000);
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "figure-owner", email: "figure@example.com" }, entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
@@ -36,6 +37,7 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false, view = nul
     const figure = page.locator(scope).first();
     await expect(async () => {
       if (await example.isVisible()) await example.click();
+      if (details && !view) await openResultDetails(page);
       if (view) {
         await openResultDetails(page);
         await page.getByRole("radio", { name: view, exact: true }).click({ timeout: 5_000 });

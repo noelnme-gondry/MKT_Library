@@ -52,7 +52,10 @@ describe("blog CSV to full analysis", () => {
     blog.unmount();
     const { container } = render(<Incrementality locale={locale} />);
     expect(container.querySelector(".result-action-card")).toBeTruthy();
-    expect(screen.getByText(locale === "en" ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
+    // 설계 미선언: 추정치는 보이되 "탐색용"이고 권고 단어는 없다(2026-10-23 결정 #3).
+    const headline = container.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toContain(locale === "en" ? "Exploratory — a verdict needs confirmed random assignment" : "탐색용 — 무작위 배정이 확인되면 판정합니다");
+    expect(headline).not.toMatch(locale === "en" ? /Keep the ads/ : /권고/);
     expect(screen.getByLabelText(locale === "en" ? "Holdout start date" : "홀드아웃 시작일").value).toBe(demo.designWindow.start);
   });
   it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).filter(slug => !inlineCalculatorForBlog(slug)).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("opens the header sample without a second analyze click: %s/%s", async (slug, locale) => {
