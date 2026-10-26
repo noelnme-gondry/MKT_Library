@@ -22,6 +22,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import AhaMomentFinder, { computeAhaCache } from "@/components/tools/AhaMomentFinder";
+import { openResultDetails } from "@/test/resultDetails";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -206,5 +207,27 @@ describe("AhaMomentFinder render smoke", () => {
     await screen.findByText(/선행 행동 결론/);
 
     expect(screen.queryByText(/다음 마케팅 프로젝트로 만들기/)).toBeNull();
+  });
+
+  it("shows the executive report: numeric headline, three figures, action table, closed details", async () => {
+    seedWithData(600);
+    const { container } = render(<AhaMomentFinder />);
+    fireEvent.change(screen.getByLabelText("전환 평가를 시작하는 가입 후 일수"), { target: { value: "14" } });
+    fireEvent.click(screen.getByRole("button", { name: /분석하기/ }));
+    await waitFor(() => expect(container.querySelector(".result-action-card__headline")).toBeTruthy());
+    const headline = container.querySelector(".result-action-card__headline").textContent;
+    // 결론은 숫자(정착률·배수) 또는 판단 보류로 시작하고, 연관임을 말한다.
+    expect(headline).toMatch(/정착률 \d+%.*평균 \d+%의 \d+\.\d배 — 연관|^판단 보류 —/);
+    expect(container.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    const table = container.querySelector(".result-report table");
+    expect(table.textContent).toContain("share");
+    expect(table.querySelector("thead").textContent).toContain("정착률 충족 / 미충족");
+    // 평가 시작일·최소 표본은 조건 한 줄로, 칸반·히트맵·산점도는 자세히 보기(기본 닫힘)로.
+    expect(container.querySelector("#s-aha-condition .condition-line__summary").textContent).toContain("평가 시작 D+14");
+    expect(container.querySelector("[data-result-details-toggle]").getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("#s-aha-kanban")).toBeNull();
+    openResultDetails();
+    expect(container.querySelector("#s-aha-kanban")).toBeTruthy();
+    expect(container.querySelector("#s-aha-drill")).toBeTruthy();
   });
 });

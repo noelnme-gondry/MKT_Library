@@ -23,6 +23,8 @@ import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ConditionLine, IssueTable, ResultDetails, ResultHeadline, ResultTable, VerdictChip } from "@/components/ds/ResultReport";
+import { contentElementReport, effectInterval, elementVerdict, fmtSignedEffect, nextExperimentText } from "@/lib/execReports/contentElementReport";
 import DownloadHub from "@/components/ds/DownloadHub";
 import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -295,6 +297,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [validationTimeColumn, setValidationTimeColumn] = useSavedToolInput("9-1", "validationTimeColumn", "");
   const [mixedRun, setMixedRun] = useState({ status: "idle", signature: null, result: null });
   const mixedRequestRef = useRef(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const handleFile = async (file) => {
     if (!file || !canUpload) return;
@@ -748,24 +751,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
         ),
       }
     : null;
-  return (
-    <div className="tab-pane active">
-      {isDemo && (
-        <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <div>
-            <strong>{T.demoBannerTitle}</strong>
-            <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
-          </div>
-          <button className="ab-button" onClick={resetCsv}>{T.demoBannerBtn}</button>
-        </div>
-      )}
-
-      {/* ── §0 매핑 ── */}
-      <section data-information-section="" className="block analysis-data-mapping" id="s-content-mapping"  >
-        <header data-information-heading="">
-          <span>{T.mappingTitle}</span>
-          {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
-        </header>
+  const mappingBody = (
         <div className="analysis-data-mapping__body">
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
@@ -829,7 +815,42 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </div>
         )}
         </div>
-      </section>
+  );
+  const report = analyzed && fit && !fit.error ? contentElementReport(fit, { locale }) : null;
+
+  return (
+    <div className="tab-pane active">
+      {isDemo && (
+        <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div>
+            <strong>{T.demoBannerTitle}</strong>
+            <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
+          </div>
+          <button className="ab-button" onClick={resetCsv}>{T.demoBannerBtn}</button>
+        </div>
+      )}
+
+      {/* ── §0 매핑: 첫 분석 전에는 펼쳐 두고, 한 번 분석한 뒤에는 조건 한 줄 + "조건 바꾸기" 창(§5.5) ── */}
+      {analyzedSig == null ? <section data-information-section="" className="block analysis-data-mapping" id="s-content-mapping"  >
+        <header data-information-heading="">
+          <span>{T.mappingTitle}</span>
+          {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
+        </header>
+{mappingBody}
+      </section> : <ConditionLine
+        id="s-content-mapping"
+        locale={locale}
+        dialogTitle={T.mappingTitle}
+        summary={[
+          tr(`콘텐츠 ${(fit && !fit.error ? fit.n : csvData.raw.length).toLocaleString()}편`, `${(fit && !fit.error ? fit.n : csvData.raw.length).toLocaleString()} contents`),
+          tr(`결과 ${outcome || "—"}`, `Outcome ${outcome || "—"}`),
+          tr(`요소 ${features.length}개`, `${features.length} elements`),
+          tr("다중비교 보정(BH)", "BH multiple-comparison adjustment"),
+          ...(analyzed ? [] : [tr("조건이 바뀜 — 다시 분석 필요", "Settings changed — analyze again")]),
+        ].join(" · ")}
+      >
+        {mappingBody}
+      </ConditionLine>}
 
       {analyzed && fit && fit.error && (
         <section className="block">
@@ -864,31 +885,43 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               locale={locale}
               analysisKey={analyzedSig}
               analysisType="content_elements"
-              resultState="ready"
-              tone={topSig ? "good" : "neutral"}
+              resultState={report.resultState}
+              tone={report.tone}
               title={T.heroQ}
               decisionReview={Boolean(decisionPrefill)}
               decisionPrefill={decisionPrefill}
-              headline={topSig
-                ? tr(
-                    `${topSig.name}: ${fit.outcome}가 ${topSig.coef >= 0 ? "높은" : "낮은"} 쪽과 가장 강하게 연관된 신호입니다.`,
-                    `${topSig.name} has the strongest association with a ${topSig.coef >= 0 ? "higher" : "lower"} ${fit.outcome}.`,
-                  )
-                : tr("유의한 요소를 확정할 증거가 아직 부족합니다.", "There is not enough evidence to confirm a significant element yet.")}
+              headline={report.text}
+              headlineContent={<ResultHeadline lines={report.lines} />}
               points={[
-                {
-                  text: topSig
-                    ? tr("다음 실험: 이 요소 하나만 바꾸기", "Next experiment: change this element only")
-                    : tr("표본을 늘리거나 서로 겹치지 않는 제작 요소를 추가하세요.", "Add more observations or production elements that do not overlap."),
-                  cls: topSig ? "good" : "muted",
-                },
+                ...fit.rows.slice(0, 5).map((row) => ({ text: `${row.name}: ${fmtSignedEffect(row.coef)} (95% ${effectInterval(row)}) · ${row.sig ? tr("연관", "association") : tr("보정 후 불확실", "uncertain after adjustment")}` })),
+                { text: tr("관측 연관이며 인과효과가 아닙니다. 확인은 한 요소만 바꾼 실험으로.", "Observed association, not a causal effect. Confirm with a one-element experiment."), cls: "muted" },
               ]}
-              stats={[
-                { label: tr("가장 강한 요소", "Strongest element"), value: topSig?.name || "—" },
-                { label: tr("연관 계수", "Association coefficient"), value: topSig ? `${topSig.coef >= 0 ? "+" : ""}${topSig.coef.toFixed(topSig.binary ? 2 : 3)}` : "—", detail: topSig ? `BH p=${topSig.p.toFixed(3)}` : tr("증거 부족", "Insufficient evidence") },
-                { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString(), detail: T.excludedRows(fit.n, fit.inputRows) },
-                { label: tr("분석 요소", "Features"), value: `${fit.k}${tr("개", "")}`, detail: fit.dropped.length ? tr(`${fit.dropped.length}개 제외`, `${fit.dropped.length} dropped`) : tr("제외 없음", "None dropped") },
-              ]}
+              stats={report.stats}
+              coreFigure={<section className="tool-core-figure tool-core-figure--embedded" id="s-content-forest">
+                <FigureHead level={3} title={T.forestTitle} description={tr(`${fit.outcome} 차이 · 점 = 추정, 막대 = 95% 구간 · 0을 지나면 판단 보류 · 색 = BH 보정 후 유의`, `${fit.outcome} difference · dot = estimate, bar = 95% interval · crossing 0 means withheld · color = significant after BH`)} target={chartRef} fileName="content_element_forest" locale={locale} />
+                <div className="chart-container" style={{ height: `${Math.max(160, fit.rows.length * 42 + 70)}px` }}>
+                  <canvas ref={chartRef} role="img" aria-label={tr("요소별 성과 차이와 95% 구간", "Outcome difference and 95% interval by element")}></canvas>
+                </div>
+              </section>}
+              pointsContent={<div className="result-report">
+                <ResultTable
+                  title={tr("요소별 판정", "Verdict by element")}
+                  meta={tr(`연관 크기 순 · ${Math.min(5, fit.rows.length)}/${fit.rows.length} · 단위 ${fit.outcome}`, `By association strength · ${Math.min(5, fit.rows.length)} of ${fit.rows.length} · in ${fit.outcome}`)}
+                  locale={locale}
+                  rows={fit.rows}
+                  rowKey={(row) => row.name}
+                  limit={5}
+                  onShowAll={() => setDetailsOpen(true)}
+                  showAllLabel={tr(`전체 ${fit.rows.length}개 요소 보기`, `Show all ${fit.rows.length} elements`)}
+                  columns={[
+                    { key: "name", label: tr("요소", "Element"), cellClassName: "result-table__primary", fmt: (value, row) => <>{value} <small className="content-element__unit">{row.binary ? tr("있음 vs 없음", "with vs without") : tr("1 증가당", "per +1")}</small></> },
+                    { key: "coef", label: tr(`${fit.outcome} 차이 (95%)`, `${fit.outcome} difference (95%)`), align: "right", fmt: (value, row) => <><strong className={row.sig ? (value >= 0 ? "content-element__up" : "content-element__down") : undefined}>{fmtSignedEffect(value)}</strong> <span>({effectInterval(row)})</span></> },
+                    { key: "sig", label: tr("판정", "Verdict"), fmt: (_, row) => { const verdict = elementVerdict(row); return <VerdictChip tone={verdict === "positive" ? "good" : verdict === "negative" ? "bad" : "muted"}>{verdict === "uncertain" ? tr("불확실", "Uncertain") : tr("연관", "Associated")}</VerdictChip>; } },
+                    { key: "next", label: tr("다음 실험", "Next experiment"), fmt: (_, row) => nextExperimentText(row, locale) },
+                  ]}
+                />
+                <IssueTable issues={report.issues} locale={locale} />
+              </div>}
               workbookExport={() => ({
                 calculationMode: "hybrid_engine_output",
                 calculationTables: [{
@@ -942,14 +975,19 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               ]}
             />
               )}
-            />
-          </section>
-
+              analysisContent={<ResultDetails
+                id="s-content-details"
+                locale={locale}
+                open={detailsOpen}
+                onOpenChange={setDetailsOpen}
+                items={[tr("그림 읽는 법", "How to read the figure"), ...(analystMode ? [tr("모형 진단", "Model diagnostics")] : []), ...(logisticInput ? [tr("척도 맞춤 회귀(R)", "Outcome-scale regression (R)")] : []), ...(clusterCandidates.length ? [tr("반복 측정(혼합모형)", "Repeated measures (mixed model)")] : []), tr("전문가 표", "Expert table"), tr("랜덤포레스트", "Random forest")]}
+              >
+                <>
           {analystMode && <ModelDiagnosticsPanel scope="9-1:ols" fit={fit.olsFit} X={fit.X} labels={fit.terms} locale={locale} />}
 
           {logisticInput && (
-            <section className="block" id="s-content-webr-logistic">
-              <h2 className="section-title"><span className="ix">ADV</span>{T.advancedTitle}</h2>
+            <section className="report-detail" id="s-content-webr-logistic">
+              <h3 className="report-detail__title">{T.advancedTitle}</h3>
               <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 12px" }}>{T.advancedDesc}</p>
               {!logisticInput.ok ? (
                 <div className="required-banner">
@@ -1051,8 +1089,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
           {/* ── 반복·군집 자료: 선형혼합모형 (선택 실행) ── */}
           {!fit?.error && clusterCandidates.length > 0 && (
-            <section className="block">
-              <h2 className="section-title">{tr("같은 대상을 여러 번 측정했나요?", "Repeated measures on the same unit?")}</h2>
+            <section className="report-detail" id="s-content-mixed">
+              <h3 className="report-detail__title">{tr("같은 대상을 여러 번 측정했나요?", "Repeated measures on the same unit?")}</h3>
               <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 10px" }}>{tr(
                 "같은 캠페인·카테고리에서 여러 행이 나왔다면 그 차이를 반영해 다시 계산할 수 있습니다.",
                 "If several rows come from the same campaign or category, the analysis can account for that.",
@@ -1133,9 +1171,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             </section>
           )}
 
-          {/* ── §1 요소별 기여도 forest plot ── */}
-          <section className="block">
-            <FigureHead title={T.forestTitle} target={chartRef} fileName="content_element_forest" locale={locale} />
+          <section className="report-detail" id="s-content-forest-legend">
+            <h3 className="report-detail__title">{tr("그림 읽는 법", "How to read the figure")}</h3>
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 8px" }}>
               {locale === "en" ? (
                 <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "var(--success)" }}>Green</span> / <span style={{ color: "var(--danger)" }}>red</span> = BH p&lt;.05 · <span style={{ color: "var(--text-secondary)" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>
@@ -1143,16 +1180,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 <>점 = 추정 연관(계수), 막대 = 요소별 HC3 95% 신뢰구간. <span style={{ color: "var(--success)" }}>초록</span>/<span style={{ color: "var(--danger)" }}>빨강</span>=BH p&lt;.05 · <span style={{ color: "var(--text-secondary)" }}>회색</span>=BH p≥.05. 위에서부터 강건한 연관이 큰 순(|t|).</>
               )}
             </p>
-            <div className="chart-container" style={{ height: `${Math.max(160, fit.rows.length * 42 + 70)}px` }}>
-              <canvas ref={chartRef}></canvas>
-            </div>
           </section>
 
           {/* ── §2 전문가 표 ── */}
-          <section data-information-section="" className="block">
-            <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
-              {T.expertSummary}
-            </header>
+          <section className="report-detail" id="s-content-expert">
+            <h3 className="report-detail__title">{T.expertSummary}</h3>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "var(--fs-sm)", color: MUTED }}>
@@ -1197,7 +1229,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </section>
 
           {/* 예측 모델 비교는 핵심 연관 해석을 다 읽은 뒤 필요한 사람만 본다. */}
-          {validationDates.length > 0 && <section className="block">
+          {validationDates.length > 0 && <section className="report-detail" id="s-content-validation-time">
             <label htmlFor="content-validation-time">{tr("미래 검증 날짜 열", "Future-validation date column")}</label>
             <select id="content-validation-time" className="map-select" value={validationTimeColumn} onChange={(event) => setValidationTimeColumn(event.target.value)}>
               <option value="">{tr("선택 안 함 · 미래 예측 검증 아님", "None · does not validate future prediction")}</option>
@@ -1214,6 +1246,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             groups={validationGroups}
             times={validationTimes}
           />
+                </>
+              </ResultDetails>}
+            />
+          </section>
+
         </>
       )}
     </div>

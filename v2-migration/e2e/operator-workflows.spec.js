@@ -1,5 +1,6 @@
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { enablePaidReports } from "./support/paidReports";
+import { openResultDetails } from "./support/resultDetails";
 import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
@@ -272,7 +273,7 @@ test("App Store Connect CSV를 5-27 결과로 연결한다", async ({ page }) =>
   // 태블릿에서는 결과가 첫 화면 아래로 밀릴 수 있으므로, 사용자가 결과를
   // 읽는 위치에서 내부 제목을 검증한다.
   await resultCard.scrollIntoViewIfNeeded();
-  const resultHeading = resultCard.getByRole("heading", { level: 2, name: /트래픽 구성|소스별 전환율|구성과 효율|의미 있는 변화|판단 보류/ });
+  const resultHeading = resultCard.getByRole("heading", { level: 2, name: /설치 전환율|판단 보류/ });
   await expect(resultHeading).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: "#aso-result" });
   await expectNoSeriousAccessibilityViolations(page);
@@ -467,6 +468,9 @@ async function verifyDirectAnalysisGates(page, en = false) {
   const creativeConfirmations = page.getByRole("button", { name: en ? "Confirm" : "확인", exact: true });
   while (await creativeConfirmations.count()) await creativeConfirmations.first().click();
   await page.locator(".csv-uploader").getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+  // 피로 구획은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다(임원 보고 형식 §5.5).
+  await expect(page.locator(".result-action-card").first()).toBeVisible();
+  await openResultDetails(page);
   await expect(page.locator("#s-fatigue")).toBeVisible();
 }
 
@@ -491,6 +495,8 @@ async function verifyContentValidationSplit(page, en = false) {
   await page.locator("#content-outcome").selectOption("score");
   await page.getByRole("button", { name: en ? "▶ Analyze" : "▶ 분석하기", exact: true }).click();
   await expect(page.locator(".result-action-card").first()).toBeVisible();
+  // 검증 날짜·반복 단위·랜덤포레스트는 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다(임원 보고 형식 §5.5).
+  await openResultDetails(page);
   await page.getByLabel(en ? "Future-validation date column" : "미래 검증 날짜 열").selectOption("date");
   await expect(page.getByText(en ? /Past-to-future holdout: 32 validation rows/ : /과거→미래 홀드아웃: 검증 32행/)).toBeVisible();
   await page.getByLabel(en ? "Repeated-unit column" : "반복 단위 열").selectOption("post_id");

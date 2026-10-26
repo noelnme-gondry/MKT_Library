@@ -9,6 +9,9 @@ import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
+import { ConditionLine, IssueTable, ResultDetails, ResultHeadline, ResultTable, VerdictChip, ChangeBar } from "@/components/ds/ResultReport";
+import { asaKeywordReport, asaReasonText, sortAsaRows } from "@/lib/execReports/asaKeywordReport";
+import { fmtCurrencyCompact, sourceCurrencyOf } from "@/utils/format";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
@@ -50,6 +53,64 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
   const hasData = Boolean(csvData?.raw?.length);
   const isDemo = isDemoData(csvData);
   const set = (key) => (event) => setSettings((current) => ({ ...current, [key]: event.target.value }));
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const currency = sourceCurrencyOf(csvData, displayCurrency || "KRW");
+  const compact = (value) => fmtCurrencyCompact(value, { currency, locale });
+  // 행 개수·합계만 다시 세는 가벼운 묶음이라 메모하지 않는다(엔진 계산은 위 recommendations 한 번).
+  const report = asaKeywordReport(recommendations, { locale, currency });
+  const sortedRows = sortAsaRows(recommendations);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const showResult = hasData && analyzed;
+  const dateRange = useMemo(() => {
+    const dates = rows.map((row) => String(row.date || "")).filter(Boolean).sort();
+    return dates.length ? `${dates[0]} ~ ${dates.at(-1)}` : null;
+  }, [rows]);
+  const matchLabel = (value) => ({ exact: "Exact", broad: "Broad", discovery: "Search Match" })[value] || "—";
+  const maturityField = (
+    <label className="asa-tool__maturity">{tr("최근 며칠은 전환이 아직 더 들어올 수 있나요?", "Can conversions still arrive for the most recent days?")}
+      <select value={maturity} onChange={(e) => setMaturityDeclaration({ raw: csvData.raw, value: e.target.value })}>
+        <option value="unknown">{tr("아직 모름", "Not sure yet")}</option>
+        <option value="immature">{tr("네, 아직 들어오는 중인 날이 있습니다", "Yes, some days are still filling in")}</option>
+        <option value="mature">{tr("아니요, 전환이 다 들어온 기간만 올렸습니다", "No, only fully settled days are included")}</option>
+      </select>
+    </label>
+  );
+  const maturityNote = tr("일별 합계만으로 전환 지연을 복원할 수 없습니다. 계정의 전환 창·보고 기준을 확인하세요. 성숙도 미확인 또는 탭 8건·설치 3건 미만은 조치를 보류합니다. 이 표본 기준은 서비스 운영 휴리스틱이며 통계적 유의성을 뜻하지 않습니다.", "Daily totals cannot reconstruct conversion delay. Check your account's conversion window and reporting basis. Unknown maturity, fewer than 8 taps, or fewer than 3 installs holds actions. These service heuristics do not establish statistical significance.");
+  const ruleNote = tr("소진이 예산의 70% 미만이면서 목표를 달성하면 CPT를 +10%(40% 미만이면 +15%) 제안합니다. 110%를 넘겨 소진하면서 목표를 못 맞추면 −10%(140% 초과면 −15%)를 제안합니다. 목표가 없으면 임의로 입찰을 추천하지 않습니다.", "Below 70% pacing and meeting target: suggest +10% CPT (+15% below 40%). Above 110% pacing while missing target: suggest −10% (−15% above 140%). Without a target, the tool will not invent a bid recommendation.");
+  const thresholdInputs = (
+    <div className="asa-tool__inputs">
+      <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input disabled={!clientReady} inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
+      <label>{tr("목표 CPA", "Target CPA")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
+      <label>{tr("목표 CPT", "Target CPT")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
+    </div>
+  );
+  const conditionSummary = [
+    settings.cpa ? tr(`목표 CPA ${compact(Number(String(settings.cpa).replaceAll(",", "")))}`, `Target CPA ${compact(Number(String(settings.cpa).replaceAll(",", "")))}`) : tr("목표 CPA: CSV 값", "Target CPA: from CSV"),
+    settings.budget ? tr(`일일 예산 ${compact(Number(String(settings.budget).replaceAll(",", "")))}`, `Daily budget ${compact(Number(String(settings.budget).replaceAll(",", "")))}`) : null,
+    tr(`검색어 ${recommendations.length}개`, `${recommendations.length} search terms`),
+    dateRange,
+  ].filter(Boolean).join(" · ");
+  const actionChips = (row) => <span className="asa-tool__chips">
+    {row.action.code === "raise" && <VerdictChip tone="good">{tr("증액", "Raise")}</VerdictChip>}
+    {row.action.code === "lower" && <VerdictChip tone="bad">{tr("감액", "Lower")}</VerdictChip>}
+    {row.isExactCandidate && <VerdictChip tone="info">{tr("Exact 승격", "Promote to Exact")}</VerdictChip>}
+  </span>;
+  // 권장 CPT의 기준값은 엔진과 같다: CSV 현재 입찰 → 목표 CPT → 실제 평균 CPT 순(asaKeywordMath bidBase).
+  const cptBase = (row) => row.currentCpt > 0 ? { value: row.currentCpt, label: tr("현재 입찰", "Current bid") }
+    : row.targetCpt > 0 ? { value: row.targetCpt, label: tr("목표 CPT", "Target CPT") }
+      : row.cpt > 0 ? { value: row.cpt, label: tr("실제 평균", "Actual average") } : null;
+  const reportColumns = [
+    { key: "term", label: tr("검색어", "Search term"), cellClassName: "result-table__primary", fmt: (value, row) => <><strong>{value}</strong><small className="asa-tool__sub">{[row.country, row.campaign, row.adgroup].filter(Boolean).join(" · ") || "—"}</small></> },
+    { key: "matchType", label: tr("매치", "Match"), fmt: matchLabel },
+    { key: "action", label: tr("조치", "Action"), fmt: (_, row) => actionChips(row) },
+    { key: "cpt", label: tr("CPT 기준 → 권장", "CPT base → suggested"), align: "right", fmt: (_, row) => {
+      const base = cptBase(row);
+      if (row.recommendedCpt == null) return base ? <>{compact(base.value)} <small className="asa-tool__sub">{tr("변경 없음", "No change")}</small></> : "—";
+      return <><ChangeBar value={row.action.pct} max={0.15} tone={row.action.pct < 0 ? "down" : "up"} />{base ? compact(base.value) : "—"} → <strong>{compact(row.recommendedCpt)}</strong>{base && <small className="asa-tool__sub">{base.label} {row.action.pct > 0 ? "+" : "−"}{Math.round(Math.abs(row.action.pct) * 100)}%</small>}</>;
+    } },
+    { key: "cpa", label: tr("CPA / 목표", "CPA / target"), align: "right", fmt: (value, row) => <>{Number.isFinite(value) ? <strong className={row.targetCpa > 0 ? (value <= row.targetCpa ? "asa-tool__good" : "asa-tool__bad") : undefined}>{compact(value)}</strong> : "—"}{row.targetCpa > 0 && <> / {compact(row.targetCpa)}</>}</> },
+    { key: "why", label: tr("사유", "Why"), cellClassName: "result-table__why", fmt: (_, row) => asaReasonText(row, locale) },
+  ];
 
   const downloadActions = () => {
     const header = ["search_term", "country", "campaign", "adgroup", "match_type", "action", "recommended_cpt", "actual_cpt", "actual_cpa", "campaign_pace", "exact_candidate", "negative_candidate", "quality_status"];
@@ -75,45 +136,78 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
       titleLevel={0}
       title={tr("ASA 키워드 발굴 · CPT 조정", "ASA Keyword Finder · CPT Actions")}
       summary={<p>{tr("Search Match·Broad 검색어를 Exact로 승격할 후보와, 예산 대비 소진률·목표 CPA를 함께 반영한 CPT 증감 제안을 만듭니다. 실제 변경 전에는 최근 검색어와 앱스토어 콘솔의 정책·입찰 한도를 확인하세요.", "Find Exact-promotion candidates from Search Match and Broad terms, then combine pacing and target CPA for CPT changes. Check recent terms, policy, and bid limits in the Apple Ads console before changing anything.")}</p>}
-      toc={hasData && analyzed ? [{ id: "asa-summary", title: tr("조치 요약", "Action summary") }, { id: "asa-actions", title: tr("키워드별 조치", "Keyword actions") }] : []}
+      toc={showResult ? [{ id: "asa-summary", title: tr("조치 요약", "Action summary") }, { id: "asa-details", title: tr("자세히 보기", "Details") }] : []}
     >
-      <section className="block asa-tool__setup" id="asa-setup">
+      {!showResult && <section className="block asa-tool__setup" id="asa-setup">
         <h2 className="section-title">{tr("판정 기준", "Decision thresholds")}</h2>
         <p>{tr("CSV에 캠페인 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요. 예산 소진률은 캠페인 단위로 계산하고, 검색어 성과와 함께 CPT 조치에 반영합니다. 입력값은 이 화면에서만 사용됩니다.", "When campaign daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below. Pacing is calculated per campaign, then paired with each search term's performance for CPT actions. These inputs are used only in this screen.")}</p>
-        <div className="asa-tool__inputs">
-          <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input disabled={!clientReady} inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
-          <label>{tr("목표 CPA", "Target CPA")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
-          <label>{tr("목표 CPT", "Target CPT")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
-        </div>
-        <p className="asa-tool__note">{tr("소진이 예산의 70% 미만이면서 목표를 달성하면 CPT를 +10%(40% 미만이면 +15%) 제안합니다. 110%를 넘겨 소진하면서 목표를 못 맞추면 −10%(140% 초과면 −15%)를 제안합니다. 목표가 없으면 임의로 입찰을 추천하지 않습니다.", "Below 70% pacing and meeting target: suggest +10% CPT (+15% below 40%). Above 110% pacing while missing target: suggest −10% (−15% above 140%). Without a target, the tool will not invent a bid recommendation.")}</p>
-      </section>
-
-      <CsvUploader toolId="5-26" locale={locale} />
-      {hasData && <section className="block analysis-design-check">
-        <label>{tr("최근 며칠은 전환이 아직 더 들어올 수 있나요?", "Can conversions still arrive for the most recent days?")}
-          <select value={maturity} onChange={(e) => setMaturityDeclaration({ raw: csvData.raw, value: e.target.value })}>
-            <option value="unknown">{tr("아직 모름", "Not sure yet")}</option>
-            <option value="immature">{tr("네, 아직 들어오는 중인 날이 있습니다", "Yes, some days are still filling in")}</option>
-            <option value="mature">{tr("아니요, 전환이 다 들어온 기간만 올렸습니다", "No, only fully settled days are included")}</option>
-          </select>
-        </label>
-        <p>{tr("일별 합계만으로 전환 지연을 복원할 수 없습니다. 계정의 전환 창·보고 기준을 확인하세요. 성숙도 미확인 또는 탭 8건·설치 3건 미만은 조치를 보류합니다. 이 표본 기준은 서비스 운영 휴리스틱이며 통계적 유의성을 뜻하지 않습니다.", "Daily totals cannot reconstruct conversion delay. Check your account's conversion window and reporting basis. Unknown maturity, fewer than 8 taps, or fewer than 3 installs holds actions. These service heuristics do not establish statistical significance.")}</p>
+        {thresholdInputs}
+        <p className="asa-tool__note">{ruleNote}</p>
       </section>}
 
-      {hasData && analyzed && (
+      <CsvUploader toolId="5-26" locale={locale} />
+      {hasData && !showResult && <section className="block analysis-design-check">
+        {maturityField}
+        <p>{maturityNote}</p>
+      </section>}
+
+      {showResult && (
         <>
+          {/* 분석 조건은 한 줄 + "조건 바꾸기" 창(§5.5). 성숙도 선언은 조치 전체를 여닫는 단 하나의 판정이라 줄 안에 남긴다. */}
+          <ConditionLine
+            id="asa-setup"
+            className="asa-tool__condition"
+            locale={locale}
+            before={maturityField}
+            summary={conditionSummary}
+            dialogTitle={tr("판정 기준", "Decision thresholds")}
+          >
+            <p>{tr("CSV에 캠페인 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요.", "When campaign daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below.")}</p>
+            {thresholdInputs}
+            <p className="asa-tool__note">{ruleNote}</p>
+            <p className="asa-tool__note">{maturityNote}</p>
+          </ConditionLine>
           <div id="asa-summary"><ResultActionCard
-            resultState={recommendations.some((row) => row.qualityStatus === "reviewable") ? "ready" : "insufficient"}
-            tone={exact.length || raises.length ? "good" : lowers.length || negatives.length ? "bad" : "neutral"}
+            resultState={report.resultState}
+            tone={report.tone}
             title={tr("조치 요약", "Action summary")}
-            headline={!recommendations.some((row) => row.qualityStatus === "reviewable") ? tr("근거 미확인: 키워드 조치를 보류합니다", "Evidence unconfirmed: keyword actions are held") : tr(`Exact 승격 ${exact.length}건 · CPT 증액 ${raises.length}건 · 감액 ${lowers.length}건 후보입니다.`, `${exact.length} Exact, ${raises.length} raise-CPT, and ${lowers.length} lower-CPT candidates are ready.`)}
-            points={[{ text: tr(`근거 부족으로 조치 보류 ${recommendations.filter((row) => row.qualityStatus !== "reviewable").length}건`, `${recommendations.filter((row) => row.qualityStatus !== "reviewable").length} actions held for insufficient evidence`) }, { text: tr("권장안은 자동 적용이 아니라 Apple Ads 콘솔에서 하나씩 검토할 운영 후보입니다.", "These are review candidates, not automatic Apple Ads changes.") }]}
-            stats={[
-              { label: tr("Exact 승격", "Exact candidates"), value: String(exact.length), detail: tr("Broad·Search Match 후보", "Broad/Search Match candidates") },
-              { label: tr("CPT 증액", "Raise CPT"), value: String(raises.length), detail: tr("저소진 + 목표 달성", "Under-paced + meets target") },
-              { label: tr("CPT 감액", "Lower CPT"), value: String(lowers.length), detail: tr("과소진 + 목표 미달", "Over-paced + misses target") },
-              { label: tr("제외 검토", "Review negatives"), value: String(negatives.length), detail: tr("고비용 저성과", "High-cost underperformance") },
+            headline={report.text}
+            headlineContent={<ResultHeadline lines={report.lines} />}
+            points={[
+              ...report.actionRows.slice(0, 5).map((row) => ({ text: `${row.term}: ${[row.action.code === "raise" ? tr("CPT 증액", "raise CPT") : row.action.code === "lower" ? tr("CPT 감액", "lower CPT") : null, row.isExactCandidate ? tr("Exact 승격", "promote to Exact") : null].filter(Boolean).join(" · ")}${row.recommendedCpt != null ? ` → ${compact(row.recommendedCpt)}` : ""} — ${asaReasonText(row, locale)}` })),
+              ...report.issues.map((issue) => ({ text: `${issue.kind} · ${issue.target} — ${issue.text}`, cls: "muted" })),
+              { text: tr("권장안은 자동 적용이 아니라 Apple Ads 콘솔에서 하나씩 검토할 운영 후보입니다.", "These are review candidates, not automatic Apple Ads changes."), cls: "muted" },
             ]}
+            stats={report.stats}
+            pointsContent={<div className="result-report">
+              {report.actionRows.length > 0 && <div id="asa-actions"><ResultTable
+                title={tr("검색어별 조치", "Actions by search term")}
+                meta={tr(`조치 우선 · ${Math.min(6, report.actionRows.length)}/${report.actionRows.length}`, `Actions first · ${Math.min(6, report.actionRows.length)} of ${report.actionRows.length}`)}
+                locale={locale}
+                columns={reportColumns}
+                rows={report.actionRows}
+                rowKey={(row) => `${row.term}-${row.campaign}-${row.adgroup}-${row.matchType}`}
+                limit={6}
+                onShowAll={() => { setDetailsOpen(true); requestAnimationFrame(() => document.getElementById("asa-details")?.scrollIntoView({ block: "start" })); }}
+                showAllLabel={tr(`조치 ${report.actionRows.length}건 전체 보기`, `Show all ${report.actionRows.length} actions`)}
+              /></div>}
+              <IssueTable issues={report.issues} locale={locale} />
+            </div>}
+            analysisContent={<ResultDetails
+              id="asa-details"
+              locale={locale}
+              open={detailsOpen}
+              onOpenChange={setDetailsOpen}
+              items={[tr(`전체 검색어 ${recommendations.length}개(보류 포함)`, `All ${recommendations.length} search terms (incl. held)`), tr("판정 기준 설명", "How actions are decided"), tr("Exact 승격 주의", "Exact promotion note")]}
+            >
+              <section className="asa-tool__all" aria-labelledby="asa-all-title">
+                <h3 id="asa-all-title">{tr("전체 검색어 판정", "All search-term decisions")}</h3>
+                <DataTable columns={columns} rows={sortedRows} rowKey={(row) => `${row.term}-${row.campaign}-${row.adgroup}-${row.matchType}`} emptyText={tr("판정할 검색어 행이 없습니다. 검색어·비용·탭·설치 매핑을 확인하세요.", "No searchable term rows. Check the search term, cost, taps, and installs mapping.")} />
+              </section>
+              <p className="asa-tool__note">{ruleNote}</p>
+              <p className="asa-tool__note">{tr("Exact 승격은 기존 비-Exact 키워드를 멈추라는 뜻이 아닙니다. 중복 경합을 피하려면 승격 뒤 원래 타겟·네거티브 구조를 함께 확인하세요.", "Exact promotion does not mean pausing the original non-Exact target. After promotion, review the original target and negative structure to avoid overlap.")}</p>
+              <p className="asa-tool__note">{maturityNote}</p>
+            </ResultDetails>}
             workbookExport={() => ({
               calculationMode: "exact_after_preprocessing",
               calculationTables: [{
@@ -150,7 +244,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
             analysisKey={`${exact.length}:${raises.length}:${lowers.length}:${negatives.length}`}
             locale={locale}
             decisionPrefill={!isDemo ? {
-              conclusion: tr(`Exact 승격 ${exact.length}건 · CPT 증액 ${raises.length}건 · 감액 ${lowers.length}건 후보입니다.`, `${exact.length} Exact, ${raises.length} raise-CPT, and ${lowers.length} lower-CPT candidates are ready.`),
+              conclusion: report.text,
               action: exact.length
                 ? tr("Exact 승격 후보와 CPT 조치를 Apple Ads 콘솔에서 하나씩 검토한 뒤 제한적으로 적용한다", "Review Exact-promotion candidates and CPT actions one by one in Apple Ads, then apply a limited change")
                 : tr("목표 CPA와 예산을 다시 확인한 뒤 다음 검색어 기간을 재분석한다", "Confirm target CPA and budget, then reanalyze the next search-term period"),
@@ -174,10 +268,6 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
               />
             ) : null}
           /></div>
-          <section className="block" id="asa-actions">
-            <div className="asa-tool__section-head"><div><h2 className="section-title">{tr("키워드별 권장 조치", "Recommended keyword actions")}</h2><p>{tr("Exact 승격은 기존 비-Exact 키워드를 멈추라는 뜻이 아닙니다. 중복 경합을 피하려면 승격 뒤 원래 타겟·네거티브 구조를 함께 확인하세요.", "Exact promotion does not mean pausing the original non-Exact target. After promotion, review the original target and negative structure to avoid overlap.")}</p></div></div>
-            <DataTable columns={columns} rows={recommendations} rowKey={(row) => `${row.term}-${row.campaign}-${row.adgroup}-${row.matchType}`} emptyText={tr("판정할 검색어 행이 없습니다. 검색어·비용·탭·설치 매핑을 확인하세요.", "No searchable term rows. Check the search term, cost, taps, and installs mapping.")} />
-          </section>
         </>
       )}
     </ToolPageShell>

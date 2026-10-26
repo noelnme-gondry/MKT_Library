@@ -62,6 +62,6 @@ describe("Dochi action-survival adapter", () => {
       ...signatures,
     });
     expect(result.status).toBe("success");
-    expect(result.verdict.headline).toMatch(/action survival|생존/i);
+    expect(result.verdict.headline).toMatch(/이탈 위험|exit risk|보류|withheld/i);
   });
 });

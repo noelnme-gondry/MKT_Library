@@ -15,8 +15,9 @@ import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import FigurePngButton, { FigureHead } from "@/components/ds/FigurePngButton";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
-import InfoPopover from "@/components/ds/InfoPopover";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ConditionLine, IssueTable, LevelBar, ResultDetails, ResultHeadline, ResultTable, VerdictChip } from "@/components/ds/ResultReport";
+import { ahaNextStep, ahaReport, ahaWindowLabel } from "@/lib/execReports/ahaReport";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { csvBody } from "@/utils/download";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -660,9 +661,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   }, [viewResults, sortBy, minSupport]);
 
   const topAction = sortedResults.find((result) => result.holdout.support >= minSupport) || null;
-  const strongCandidateCount = sortedResults.filter(
-    (result) => ahaBucketOf(result, minSupport) === "strong",
-  ).length;
   const decisionMetric = domain === "content"
     ? tr("구독 전환율", "Subscription conversion rate")
     : tr("타겟 달성률", "Target attainment rate");
@@ -745,9 +743,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     });
 
   const actionCount = Object.keys(cache.groups || {}).length;
-  const totalTargets = cache.results.length
-    ? Math.round(cache.baseRate * cache.n)
-    : 0;
 
   // 드릴다운 대상: 사용자가 고른 액션 or Top (윈도우 필터 적용된 목록 기준)
   const drillTarget =
@@ -766,6 +761,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     if (!wc) return [];
     return AHA_STATS.thresholdSweep(wc.valuesAll, cache.targets, cache.trainIdx, cache.minSupport);
   }, [drillResult, cache]);
+  // "자세히 보기"는 열 때 마운트된다 — 그 안의 산점도·k 곡선은 이 컴포넌트가 소유하므로 열림 상태를 차트 effect 의존성에 넣는다.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // 결론·수치 3개·대상별 표·확인할 점(임원 보고 형식 §5.5). 엔진 출력만 묶는다(lib/execReports/ahaReport).
+  const report = ahaReport({ cache, sortedResults, topAction, minSupport, holdoutOn, windowConfirmed: temporalScope.confirmed, domain, locale });
+  const maxTableLift = Math.max(0, ...report.tableRows.map((row) => row.result.lift || 0));
 
   useEffect(() => {
     if (!hasData || !analyzed || !chartRef.current || !sortedResults.length) {
@@ -907,7 +907,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         chartInstance.current = null;
       }
     };
-  }, [hasData, analyzed, sortedResults, bucketsByAction, actionColorMap, selectedActions, minSupport, holdoutOn, locale, tr]);
+  }, [hasData, analyzed, sortedResults, bucketsByAction, actionColorMap, selectedActions, minSupport, holdoutOn, locale, tr, detailsOpen]);
 
   // 선택된 행동의 k-스윕 곡선(§"300회 vs 100회 vs 50회면 어느 정도?").
   useEffect(() => {
@@ -1003,7 +1003,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         sweepChartInstance.current = null;
       }
     };
-  }, [hasData, analyzed, kSweep, drillResult, locale, tr]);
+  }, [hasData, analyzed, kSweep, drillResult, locale, tr, detailsOpen]);
 
   const analysisResultState = cache.results?.length > 0 ? "ready" : "insufficient";
   const targetCol = cache.targetCol;
@@ -1025,6 +1025,15 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       locale,
     });
   }, [C.guideToolId, ahaAnalysisKey, analysisData, analyzed, csvData, isDemo, locale, showResults]);
+
+  const designCheckFields = <>
+        <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
+          <input type="number" min="1" step="1" value={outcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
+        </label>
+        {outcomeStartDay && outcomeWindowSource !== csvData.raw && <button type="button" className="btn" onClick={() => { setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }}>{tr("저장한 평가 시작일을 이 데이터에 적용", "Apply the saved outcome start day to this data")}</button>}
+        <p>{tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}</p>
+        <p role="status">{temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}</p>
+  </>;
 
   if (!hasData) {
     return (
@@ -1194,22 +1203,36 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       </RecipeBlock>
       </></MappingEditorDialog>
 
-      <section className="block analysis-design-check">
-        <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
-          <input type="number" min="1" step="1" value={outcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
-        </label>
-        {outcomeStartDay && outcomeWindowSource !== csvData.raw && <button type="button" className="btn" onClick={() => { setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }}>{tr("저장한 평가 시작일을 이 데이터에 적용", "Apply the saved outcome start day to this data")}</button>}
-        <p>{tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}</p>
-        <p role="status">{temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}</p>
-      </section>
+      {!showResults && <section className="block analysis-design-check">
+        {designCheckFields}
+      </section>}
       {showResults && (
         <>
-          {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
-          <section className="block" id="s-aha-hero" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
-            <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "-4px", marginBottom: "14px" }}>
-              {C.heroSub}
-            </p>
+          {/* 분석 조건은 한 줄 + "조건 바꾸기" 창(§5.5): 평가 시작일·최소 표본·학습/검증 분리. */}
+          <ConditionLine
+            id="s-aha-condition"
+            locale={locale}
+            dialogTitle={tr("분석 조건", "Analysis settings")}
+            summary={[
+              tr(`${cache.targetCol || "타깃"} = ${domain === "content" ? "전환" : "정착"}`, `${cache.targetCol || "target"} = outcome`),
+              temporalScope.confirmed ? tr(`평가 시작 D+${activeOutcomeStartDay}`, `Outcome from day ${activeOutcomeStartDay}`) : tr("평가 시작일 미선언", "Outcome start day undeclared"),
+              tr(`행동 후보 ${sortedResults.length}개`, `${sortedResults.length} candidate actions`),
+              tr(`최소 표본 ${minSupport}명`, `Min. sample ${minSupport}`),
+              holdoutOn ? tr("학습/검증 분리", "Train/holdout split") : tr("학습/검증 분리 꺼짐", "No holdout split"),
+            ].join(" · ")}
+          >
+            <section className="analysis-design-check">{designCheckFields}</section>
+            <div className="aha-condition-sample">
+              <label>{tr("최소 표본(support)", "Min. sample (support)")}
+                <input type="number" min="1" step="1" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} className="map-select" />
+              </label>
+              <label>
+                <input type="checkbox" checked={holdoutOn} onChange={(e) => setHoldoutOn(e.target.checked)} /> {tr("학습/검증 50:50 분리", "Train/holdout 50:50 split")}
+              </label>
+              <p className="muted">{tr("k는 학습 표본에서 고르고 검증 표본에서 다시 재 낙관 편향(과적합)을 줄입니다.", "k is chosen on the training sample and re-measured on the holdout to reduce optimism bias (overfitting).")}</p>
+            </div>
+          </ConditionLine>
+          <div id="s-aha-hero">
             <ResultActionCard
               toolId={domain === "content" ? "9-2" : "5-20"}
               locale={locale}
@@ -1218,20 +1241,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               resultState={analysisResultState}
               decisionReview={temporalScope.confirmed && Boolean(decisionPrefill)}
               decisionPrefill={temporalScope.confirmed ? decisionPrefill : null}
-              tone={strongCandidateCount > 0 ? "good" : topAction ? "neutral" : "bad"}
+              tone={report.tone}
               title={tr("선행 행동 결론", "Leading-action conclusion")}
-              headline={topAction
-                ? tr(
-                    `${topAction.action} · ${topAction.bestWindow === Infinity ? "전체 기간" : `${topAction.bestWindow}일`} 내 ${topAction.bestK}회`,
-                    `${topAction.action} · ${topAction.bestK} time(s) within ${topAction.bestWindow === Infinity ? "the full period" : `${topAction.bestWindow} days`}`,
-                  )
-                : tr("분석 가능한 행동 후보가 없습니다", "No analyzable behavior candidate")}
-              stats={[
-                { label: C.statAll, value: cache.n.toLocaleString() },
-                { label: C.statTarget, value: totalTargets.toLocaleString(), detail: `${C.statRate} ${(cache.baseRate * 100).toFixed(1)}%` },
-                { label: tr("강한 후보", "Strong candidates"), value: strongCandidateCount, detail: tr(`전체 ${sortedResults.length}개`, `${sortedResults.length} total`) },
-                { label: tr("정착률 배수 (1위 행동)", "Retention multiple (top action)"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? tr(`검증 데이터 정확도(F1) ${topAction.holdout.F1.toFixed(2)}`, `Holdout accuracy (F1) ${topAction.holdout.F1.toFixed(2)}`) : "" },
-              ]}
+              headline={report.text}
+              headlineContent={<ResultHeadline lines={report.lines} />}
+              stats={report.stats}
               workbookExport={() => ({
                 calculationMode: "hybrid_engine_output",
                 calculationTables: [{
@@ -1282,18 +1296,35 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   {tr("실험 설계", "Design experiment")} →
                 </button>
               ) : null}
-            >
-            <div className="analysis-evidence-strip">
-              <p>{tr("행동과 정착의 연관 후보입니다. 효과 확인은 실험이 필요합니다.", "This is a candidate association with retention. An experiment is needed to test its effect.")}</p>
-              <InfoPopover label={tr("해석·검증 기준", "Interpretation and validation")} glyph={tr("해석·검증 기준", "Interpretation and validation")} className="analysis-evidence-button">
-                <p>{C.causationBody}</p>
-                <p>{tr("F1은 정밀도와 재현율의 조화평균이며 인과효과나 통계적 신뢰도가 아닙니다.", "F1 is the harmonic mean of precision and recall, not a causal effect or statistical confidence.")}</p>
-                <p>{tr("최소 지지도와 행동 윈도우 설정에 민감합니다. 홀드아웃을 끄면 예측력 검증이 약해집니다.", "Results are sensitive to minimum support and action-window settings. Turning off holdout weakens predictive validation.")}</p>
-              </InfoPopover>
-            </div>
-            </ResultActionCard>
-          </section>
-
+              pointsContent={<div className="result-report">
+                {report.tableRows.length > 0 && <ResultTable
+                  title={domain === "content" ? tr("전환과 연관된 행동", "Actions associated with conversion") : tr("정착과 연관된 행동", "Actions associated with the target")}
+                  meta={tr(`배수 큰 순 · ${Math.min(5, report.tableRows.length)}/${sortedResults.length} · 비율은 검증 표본 기준`, `Largest multiple first · ${Math.min(5, report.tableRows.length)} of ${sortedResults.length} · rates on the holdout`)}
+                  locale={locale}
+                  rows={report.tableRows}
+                  rowKey={(row) => row.result.action}
+                  limit={5}
+                  onShowAll={() => setDetailsOpen(true)}
+                  showAllLabel={tr(`전체 ${sortedResults.length}개 행동 보기`, `Show all ${sortedResults.length} actions`)}
+                  columns={[
+                    { key: "action", label: tr("행동", "Action"), cellClassName: "result-table__primary", fmt: (_, row) => row.result.action },
+                    { key: "rule", label: tr("기준", "Rule"), fmt: (_, row) => tr(`${ahaWindowLabel(row.result, locale)} · ${row.result.bestK}회`, `${ahaWindowLabel(row.result, locale)} · ${row.result.bestK}+`) },
+                    { key: "reach", label: tr("충족 유저", "Met"), align: "right", fmt: (_, row) => (row.result.allSupport || 0).toLocaleString() },
+                    { key: "rates", label: domain === "content" ? tr("전환율 충족 / 미충족", "Rate met / not met") : tr("정착률 충족 / 미충족", "Rate met / not met"), align: "right", fmt: (_, row) => <><strong>{(row.result.holdout.P * 100).toFixed(0)}%</strong> / {row.rates?.restRate == null ? "—" : `${(row.rates.restRate * 100).toFixed(0)}%`}</> },
+                    { key: "lift", label: tr("배수", "Multiple"), fmt: (_, row) => <><LevelBar ratio={maxTableLift > 0 ? (row.result.lift || 0) / maxTableLift : 0} tone={row.bucket === "strong" ? "good" : "down"} /><strong>{row.result.lift == null ? "—" : tr(`${row.result.lift.toFixed(1)}배`, `${row.result.lift.toFixed(1)}x`)}</strong></> },
+                    { key: "next", label: tr("다음 단계", "Next step"), fmt: (_, row) => <VerdictChip tone={row.bucket === "strong" && row.result.train.F1 - row.result.holdout.F1 <= 0.2 ? "good" : "muted"}>{ahaNextStep(row, locale)}</VerdictChip> },
+                  ]}
+                />}
+                <IssueTable issues={report.issues} locale={locale} />
+              </div>}
+              analysisContent={<ResultDetails
+                id="s-aha-details"
+                locale={locale}
+                open={detailsOpen}
+                onOpenChange={setDetailsOpen}
+                items={[tr("칸반(강·보통·약)", "Signal kanban"), tr("기간×횟수 히트맵", "Window × count heatmap"), tr("k 곡선", "k sweep"), tr("산점도", "Scatter"), tr("전체 지표 표", "Full metrics table"), tr("해석 기준", "How to read")]}
+              >
+                <>
           {/* ── §1 칸반 그룹핑 — 신호 세기별 3버킷(배지 반복 대신 칼럼 헤더가 곧 상태) ── */}
           {(() => {
             const buckets = { strong: [], maybe: [], weak: [] };
@@ -1303,7 +1334,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               ? C.kanbanHeadStrong(sortedResults.length, nS)
               : buckets.maybe.length > 0
                 ? tr(`뚜렷하게 강한 신호는 없지만 ${buckets.maybe.length}개는 살펴볼 만해요.`, `No clearly strong signal, but ${buckets.maybe.length} are worth a look.`)
-                : tr(`표본이 충분한 후보가 적어요 — 전문가 뷰에서 최소 표본을 낮추거나 데이터를 더 모아보세요.`, `Few candidates have enough sample — lower the minimum sample in the expert view or collect more data.`);
+                : tr(`표본이 충분한 후보가 적어요 — 조건 바꾸기에서 최소 표본을 낮추거나 데이터를 더 모아보세요.`, `Few candidates have enough sample — lower the minimum sample in Change settings or collect more data.`);
             const col = (key, title, icon) => {
               const list = buckets[key];
               const c = AHA_TONE[key];
@@ -1324,8 +1355,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               );
             };
             return (
-              <section className="block" id="s-aha-kanban">
-                <h2 className="section-title">{C.kanbanTitle}</h2>
+              <section className="report-detail" id="s-aha-kanban">
+                <h3 className="report-detail__title">{C.kanbanTitle}</h3>
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", padding: "10px 0", marginBottom: "10px" }}>
                   <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
                 </div>
@@ -1340,8 +1371,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           })()}
 
           {/* ── §2 드릴다운 — 평어 해석(디테일화) + 윈도우×k 히트맵 ── */}
-          <section className="block" id="s-aha-drill">
-            <h2 className="section-title">{C.drillTitle}{drillTarget ? ` — ${drillTarget}` : ""}</h2>
+          <section className="report-detail" id="s-aha-drill">
+            <h3 className="report-detail__title">{C.drillTitle}{drillTarget ? ` — ${drillTarget}` : ""}</h3>
             {drillResult && viewResults.length > 0 && (
               <div style={{ marginBottom: "10px" }}>
                 <select className="map-select" value={drillTarget} onChange={(e) => setDrilldownAction(e.target.value)}>
@@ -1482,10 +1513,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </section>
 
           {/* ── 2층: 전문가 뷰(기본 접힘) — 정렬·표본 설정, 산점도, 전체 지표 표 ── */}
-          <section data-information-section="" className="block" >
-            <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
-              {tr("전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬·표본 설정", "Expert view — precision/recall scatter, full metrics table, sort & sample settings")}
-            </header>
+          <section className="report-detail" id="s-aha-expert">
+            <h3 className="report-detail__title">
+              {tr("전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬", "Expert view — precision/recall scatter, full metrics table, sort")}
+            </h3>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
                 <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -1503,13 +1534,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     ))}
                   </div>
                 )}
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tr("최소 표본(support):", "Min. sample (support):")}</span>
-                  <input type="number" min="1" step="1" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} style={{ width: "70px" }} className="map-select" />
-                </div>
-                <label style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "var(--fs-xs)", color: MUTED, cursor: "pointer" }}>
-                  <input type="checkbox" checked={holdoutOn} onChange={(e) => setHoldoutOn(e.target.checked)} /> Train/Holdout 50:50 split
-                </label>
               </div>
               <p className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "14px" }}>{tr("윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.", "The window is auto-selected from the grid. k is chosen on the training set and re-evaluated on the holdout to reduce optimism bias (overfitting).")}</p>
 
@@ -1676,6 +1700,17 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               {tr("이 분석에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기", "Want a detailed explanation of this analysis? — Get the detailed doc")}
             </button>
           </div>
+          <section className="report-detail" id="s-aha-reading">
+            <h3 className="report-detail__title">{tr("해석·검증 기준", "Interpretation and validation")}</h3>
+            <p>{C.causationBody}</p>
+            <p>{tr("F1은 정밀도와 재현율의 조화평균이며 인과효과나 통계적 신뢰도가 아닙니다.", "F1 is the harmonic mean of precision and recall, not a causal effect or statistical confidence.")}</p>
+            <p>{tr("최소 지지도와 행동 윈도우 설정에 민감합니다. 홀드아웃을 끄면 예측력 검증이 약해집니다.", "Results are sensitive to minimum support and action-window settings. Turning off holdout weakens predictive validation.")}</p>
+          </section>
+                </>
+              </ResultDetails>}
+            />
+          </div>
+
         </>
       )}
     </div>

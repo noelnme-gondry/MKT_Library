@@ -5,9 +5,11 @@ import {
   decomposeStoreConversion,
   storeFunnel,
 } from "@/utils/asoStoreMath";
+import { asoStoreReport } from "@/lib/execReports/asoStoreReport";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
+import { creativeReport } from "@/lib/execReports/creativeReport";
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
 import { creativeStatusFigure } from "./coreFigures";
@@ -78,13 +80,6 @@ function storeEngineRows(csvData) {
   }));
 }
 
-function storeHeadline(locale, verdict) {
-  if (verdict === "mix") return tr(locale, "트래픽 구성 변화가 주도 — 페이지가 아니라 유입 믹스", "Traffic mix drove it — not the page");
-  if (verdict === "efficiency") return tr(locale, "소스별 전환율 변화가 주도 — 페이지·스토어 요소 점검", "Per-source conversion drove it — check the page");
-  if (verdict === "mixed") return tr(locale, "구성과 효율이 함께 움직임", "Mix and efficiency moved together");
-  return tr(locale, "의미 있는 변화 없음", "No meaningful change");
-}
-
 function asoStoreAdapter(input) {
   const { csvData, inputSignature, mappingSignature, locale } = readInput(input);
   requireSignatures({ inputSignature, mappingSignature });
@@ -128,7 +123,8 @@ function asoStoreAdapter(input) {
     mappingSignature,
     verdict: {
       evidenceState: "descriptive",
-      headline: storeHeadline(locale, classification.verdict),
+      // 결론 문장은 도구 화면과 같은 함수에서 받는다(전환율 앞→뒤 · 구성/효율 몫, §7 메타 4).
+      headline: asoStoreReport({ overall, split: periods, decomposed: decomposition, verdict: classification }, { locale }).text,
       stats: [
         { id: "overall-view-to-install", label: tr(locale, "전체 조회→설치", "Overall view-to-install"), value: overall.viewToInstall, unit: "rate" },
         { id: "before-view-to-install", label: tr(locale, "앞 기간 조회→설치", "Earlier view-to-install"), value: decomposition.funnelBefore.viewToInstall, unit: "rate" },
@@ -198,11 +194,23 @@ function creativeAdapter(input) {
   const alerts = CREATIVE_FATIGUE.buildAlerts(validCreativeRows(csvData), CREATIVE_CONFIG.fatigueAlert);
   const alertNowCount = alerts.filter((item) => item.alert).length;
   const fatiguedCount = fatigue.filter((item) => item.fatigued).length;
-  const headline = alertNowCount
-    ? tr(locale, `${alertNowCount}개 소재가 현재 교체 경보 기준에 도달했습니다.`, `${alertNowCount} creative(s) currently meet the replacement-alert threshold.`)
-    : fatiguedCount
-      ? tr(locale, `${fatiguedCount}개 소재에서 CTR 피로 신호가 관측됐습니다.`, `${fatiguedCount} creative(s) show observed CTR-fatigue signals.`)
-      : tr(locale, "판정 가능한 소재에서 현재 CTR 피로 신호는 관측되지 않았습니다.", "No current CTR-fatigue signal was observed among analyzable creatives.");
+  // 결론 문장은 도구 화면과 같은 함수에서 받는다(교체 개수·집행비 비중·CTR 고점 대비·필요 제작 속도, §7 메타 4).
+  // 작업대는 노출 하한 판정·위험 구역을 계산하지 않으므로 그 두 입력은 비워 둔다(도구 화면과 남는 차이).
+  const creativeRows = validCreativeRows(csvData);
+  const mapped = new Set(Object.values(csvData?.mapping || {}));
+  const velocity = CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity;
+  const headline = creativeReport({
+    metrics: CREATIVE_STATS.deriveMetrics(creativeRows),
+    fatigue,
+    fatigueAlerts: alerts,
+    autoPlan: CREATIVE_FATIGUE.buildPlan(alerts, velocity, CREATIVE_CONFIG.autoPlanner),
+    weeklyVelocity: velocity,
+    hasSpend: mapped.has("spend") || mapped.has("cost"),
+    hasFatigueEvidence: analyzable.length > 0,
+    minImpressions: CREATIVE_CONFIG.minImpressions,
+    locale,
+    currency: csvData?.currency || "KRW",
+  }).text;
 
   return createAnalysisResult({
     toolId: "9-6",

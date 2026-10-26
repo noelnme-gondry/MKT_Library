@@ -198,6 +198,28 @@
   .planner-plan-review__list li { display: grid; gap: .35rem; padding-top: .75rem; border-top: 1px solid var(--border-subtle); }
   .planner-plan-review__list li p { margin: 0; font-size: var(--fs-sm); line-height: 1.55; }
   /* exec-report 묶음 E: 이 묶음 도구의 결과 화면 전용 규칙은 이 줄 바로 아래에 둔다(병합 충돌 방지). */
+  /* 묶음 E 공용: "자세히 보기" 안 근거 구획(상자 없이 제목 + 본문, 구획 사이는 여백) */
+  .report-detail { min-width: 0; margin-top: 1.5rem; }
+  .report-detail:first-child { margin-top: 0; }
+  .report-detail__title { margin: 0 0 .5rem; font-size: var(--fs-md); font-weight: 600; line-height: 1.5; }
+  .report-detail p, .report-detail__note { margin: .5rem 0 0; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.6; }
+  /* 5-20 Aha: 조건 창 안 최소 표본·검증 분리 */
+  .aha-condition-sample { display: grid; gap: .5rem; }
+  .aha-condition-sample label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); }
+  .aha-condition-sample input[type="number"] { width: 6rem; }
+  /* 9-1 콘텐츠 요소: 단위 꼬리표 · 유의 연관 방향 색 */
+  .content-element__unit { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
+  .result-table .content-element__up { color: var(--success); }
+  .result-table .content-element__down { color: var(--danger); }
+  /* 9-6 소재: 표 안 소재 ID는 본문 글꼴로, 긴 ID는 줄바꿈 */
+  .result-table .creative-report__id { padding: 0; background: transparent; color: var(--text-primary); font-family: inherit; font-size: inherit; overflow-wrap: anywhere; }
+  /* 5-26 ASA: 조건 줄 안 성숙도 선언 · 조치 칩 · CPA 목표 대비 색 */
+  .asa-tool__condition .asa-tool__maturity { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); font-weight: 600; }
+  .asa-tool__chips { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
+  .result-table .asa-tool__good { color: var(--success); }
+  .result-table .asa-tool__bad { color: var(--danger); }
+  .asa-tool__all h3 { margin: 0 0 .5rem; font-size: var(--fs-md); font-weight: 600; }
+  .condition-dialog__body .asa-tool__inputs { margin-top: 0; }
   .planner-plan-review__list .btn { justify-self: start; }
 }
 

@@ -1,6 +1,7 @@
 import { buildVifSpendPanel } from "@/lib/analysis-router/vifReadiness";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
+import { asaKeywordReport } from "@/lib/execReports/asaKeywordReport";
 import { computeVif, correlationMatrix, DIAG_THRESHOLDS } from "@/utils/modelDiagnostics";
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
@@ -185,7 +186,8 @@ function asaAdapter(input) {
     mappingSignature,
     verdict: {
       evidenceState: "descriptive",
-      headline: tr(locale, `Exact 승격 ${exact.length}건 · CPT 증액 ${raises.length}건 · 감액 ${lowers.length}건 후보입니다.`, `${exact.length} Exact, ${raises.length} raise-CPT, and ${lowers.length} lower-CPT candidates are ready.`),
+      // 결론 문장은 도구 화면과 같은 함수에서 받는다(§7 메타 4 — 두 곳에서 만들면 갈린다).
+      headline: asaKeywordReport(recommendations, { locale, currency: csvData?.currency || "KRW" }).text,
       stats: [
         { id: "exact-candidates", label: tr(locale, "Exact 승격", "Exact candidates"), value: exact.length },
         { id: "raise-cpt", label: tr(locale, "CPT 증액", "Raise CPT"), value: raises.length },

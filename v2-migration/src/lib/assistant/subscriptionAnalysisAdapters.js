@@ -9,6 +9,7 @@ import {
   restrictedMeanSurvival,
   survivalEvidence,
 } from "@/utils/subscriptionSurvivalMath";
+import { survivalReport } from "@/lib/execReports/survivalReport";
 
 const TOOL_ID = "5-28";
 
@@ -83,9 +84,8 @@ function runSubscriptionSurvival({ csvData, inputSignature, mappingSignature, lo
   const rmst = restrictedMeanSurvival(table, horizon);
   const hazard = discreteHazard(table);
   const evidenceState = evidence.status === "READY" ? "estimated" : "descriptive";
-  const headline = median == null
-    ? tr(locale, `관측 ${horizon}개월 안에서 핵심 액션 생존율이 50% 아래로 내려가지 않았습니다.`, `Action survival did not fall below 50% within the observed ${horizon}-month horizon.`)
-    : tr(locale, `관측된 핵심 액션 생존기간 중앙값은 ${median}개월입니다.`, `The observed median action-survival duration is ${median} months.`);
+  // 결론 문장은 도구 화면과 같은 함수에서 받는다(조건부 위험 최고 구간 + KM 유지율, §7 메타 4).
+  const headline = survivalReport({ evidence, hazard, table, horizon, timeUnit: "month", median, prepared: normalized, groups: [] }, { locale }).text;
 
   return createAnalysisResult({
     toolId: TOOL_ID,

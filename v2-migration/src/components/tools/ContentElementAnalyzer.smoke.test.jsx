@@ -13,6 +13,7 @@ import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
 import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
+import { openResultDetails } from "@/test/resultDetails";
 import { runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
 import { runWebRRandomForest } from "@/lib/analysis/webr/randomForest";
 
@@ -235,10 +236,21 @@ describe("ContentElementAnalyzer render smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
 
     expect(mapping.tagName).toBe("SECTION");
+    // 분석 뒤 매핑은 조건 한 줄 + "조건 바꾸기" 창으로 접힌다(§5.5).
+    expect(container.querySelector("#s-content-mapping.condition-line")).toBeTruthy();
+    expect(container.querySelector("#content-outcome")).toBeNull();
     const stats = container.querySelector(".result-action-card__stats");
-    const points = container.querySelector(".result-action-card__points");
-    expect(stats).toBeTruthy();
-    expect(stats.compareDocumentPosition(points) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const report = container.querySelector(".result-action-card .result-report");
+    expect(stats.querySelectorAll(":scope > div")).toHaveLength(3);
+    expect(stats.compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 결론은 결과 단위의 크기 + 95% 구간(연관) 또는 판단 보류. 포레스트 그림이 카드 안 핵심 그림이다.
+    expect(container.querySelector(".result-action-card__headline").textContent).toMatch(/평균 [\d.,]+ (높게|낮게) 관측 \(95% .+ ~ .+\).*연관|^판단 보류 —/);
+    expect(container.querySelector(".result-action-card #s-content-forest canvas")).toBeTruthy();
+    expect(report.querySelector("thead").textContent).toContain("판정");
+    expect(container.querySelector("[data-result-details-toggle]").getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("#s-content-expert")).toBeNull();
+    openResultDetails();
+    expect(container.querySelector("#s-content-expert")).toBeTruthy();
   });
 
   it("stores only a one-variable observational follow-up for a significant top element", () => {
@@ -303,8 +315,9 @@ describe("ContentElementAnalyzer render smoke", () => {
     if (!feature.classList.contains("active")) fireEvent.click(feature);
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
 
-    expect(screen.getByText("유의한 요소를 확정할 증거가 아직 부족합니다.")).toBeTruthy();
+    expect(container.querySelector(".result-action-card__headline").textContent).toMatch(/^판단 보류 — 다중비교 보정 후 확정할 요소 없음/);
     expect(screen.queryByText("다음 마케팅 프로젝트로 만들기")).toBeNull();
+    openResultDetails();
     const rfHelp = screen.getByText("왜 Random Forest 분석이 안 되나요?").closest("[data-information-section]");
     expect(rfHelp).toBeTruthy();
     expect(rfHelp.tagName).toBe("SECTION");
@@ -334,6 +347,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     }
 
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+    openResultDetails();
 
     expect(await screen.findByText(/title_has_number의 오즈비 2\.10/)).toBeTruthy();
     expect(runWebRLogisticRegression).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
@@ -357,6 +371,7 @@ describe("ContentElementAnalyzer render smoke", () => {
       if (!button.classList.contains("active")) fireEvent.click(button);
     }
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "▶ Analyze" : "▶ 분석하기" }));
+    openResultDetails();
     await screen.findByText(locale === "en" ? "Predictive-accuracy winner: Random Forest" : "예측 정확도 승자: Random Forest");
     fireEvent.change(screen.getByLabelText(locale === "en" ? "Repeated-unit column" : "반복 단위 열"), { target: { value: "post_id" } });
     expect(screen.getByText(locale === "en" ? /Validation separates units/ : /단위가 겹치지 않는/)).toBeTruthy();
@@ -380,6 +395,7 @@ describe("ContentElementAnalyzer render smoke", () => {
       if (!button.classList.contains("active")) fireEvent.click(button);
     }
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+    openResultDetails();
 
     expect(await screen.findByText("예측 정확도 승자: Random Forest")).toBeTruthy();
     expect(runWebRRandomForest).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
@@ -388,7 +404,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(randomForest.getAttribute("aria-checked")).toBe("true");
     expect(screen.getAllByRole("radio").filter((choice) => choice.getAttribute("aria-checked") === "true")).toHaveLength(1);
     expect(screen.getByText(/Permutation importance/)).toBeTruthy();
-    const expertPanel = screen.getByText(/전문가 뷰/).closest("[data-information-section]");
+    const expertPanel = container.querySelector("#s-content-expert");
     const randomForestPanel = container.querySelector("#s-content-webr-random-forest");
     expect(expertPanel.compareDocumentPosition(randomForestPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /로지스틱 회귀/ }));

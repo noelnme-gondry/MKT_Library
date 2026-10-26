@@ -11,6 +11,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { CREATIVE_STATS } from "@/utils/creativeMath";
 import { useAppStore } from "@/store/useDataStore";
 import CreativeAnalyzer from "@/components/tools/CreativeAnalyzer";
+import { openResultDetails } from "@/test/resultDetails";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -157,6 +158,7 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(derive).not.toHaveBeenCalled();
     act(() => useAppStore.getState().setGroupAnalyzed("5-6"));
     expect(derive).toHaveBeenCalled();
+    openResultDetails();
     expect(document.querySelector("#s-fatigue")).toBeTruthy();
     const count = derive.mock.calls.length;
     const csv = useAppStore.getState().csvData;
@@ -172,6 +174,7 @@ describe("CreativeAnalyzer render smoke", () => {
     seedWithData();
     useAppStore.getState().setGroupAnalyzed("5-6");
     render(<CreativeAnalyzer />);
+    openResultDetails();
     expect(document.querySelector("#s-fatigue").hidden).toBe(false);
     expect(document.querySelector("#s-matrix").hidden).toBe(true);
     expect(document.querySelector("#s-validation").hidden).toBe(false);
@@ -193,6 +196,7 @@ describe("CreativeAnalyzer render smoke", () => {
     useAppStore.setState({ csvData: slice, csvGroups: { ...useAppStore.getState().csvGroups, creative: slice } });
     useAppStore.getState().setGroupAnalyzed("5-6");
     const { container } = render(<CreativeAnalyzer locale={locale} />);
+    openResultDetails();
     expect(container.querySelector("#s-fatigue").textContent).toContain(locale === "en" ? "6 held for insufficient exposure or history" : "근거 부족으로 보류 6개");
     expect(container.querySelector("#s-fatigue").textContent).toContain(locale === "en" ? "Insufficient data is not a healthy verdict" : "데이터 부족을 건강함으로 판정하지 않습니다");
   });
@@ -203,6 +207,16 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(() => {
       ({ container } = render(<CreativeAnalyzer />));
     }).not.toThrow();
+    // 임원 보고 형식: 교체 결론(개수·집행비 비중 또는 보류) · 수치 3개 이하 · 소재별 상태 표 · 자세히 보기 닫힘.
+    const headline = container.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/교체|판단 보류 —/);
+    expect(headline).not.toContain("⚠️");
+    expect(container.querySelectorAll(".result-action-card__stats > div").length).toBeLessThanOrEqual(3);
+    expect(container.querySelector("[data-result-details-toggle]").getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector(".creative-control-room")).toBeNull();
+    // 예전에 결론 위에 늘 펼쳐 있던 "통계 분석 및 해석 한계" 문단은 확인할 점 표로 옮겼다.
+    expect(container.querySelector(".result-table--issues").textContent).toContain("해석 한계");
+    openResultDetails();
     expect(screen.getByText(/어떤 소재가 성과를 만들었나/)).toBeTruthy();
     expect(screen.getByText(/운영 건강도/)).toBeTruthy();
     // 결과 작업대와 같은 핵심 그림: 소재 상태 띠. 띠의 합이 "전체 소재 N개"와 같아야 한다(한 소재 = 한 상태).
@@ -239,6 +253,7 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(() => {
       ({ container } = render(<CreativeAnalyzer />));
     }).not.toThrow();
+    openResultDetails();
     // CPA/ROAS toggle buttons should be enabled (inputs mapped + decompose computed).
     const btns = [...container.querySelectorAll("button.ab-pill")];
     const cpaBtn = btns.find((b) => b.textContent.trim() === "CPA");
@@ -253,6 +268,7 @@ describe("CreativeAnalyzer render smoke", () => {
   it("uses native buttons to filter the performance table from the concept matrix", () => {
     seedWithData();
     render(<CreativeAnalyzer />);
+    openResultDetails();
     // 조합 매트릭스와 성과 표는 "성과가 바뀐 이유" 탭에 있다(A6).
     fireEvent.click(screen.getByRole("tab", { name: /성과가 바뀐 이유/ }));
 
