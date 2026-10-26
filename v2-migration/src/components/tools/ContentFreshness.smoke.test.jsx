@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import ContentFreshness from "@/components/tools/ContentFreshness";
+import { openResultDetails } from "@/test/resultDetails";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -88,6 +89,8 @@ describe("ContentFreshness (9-6 소재 분석) render smoke", () => {
   it("mounts without throwing with a valid seeded creative CSV", () => {
     seedWithData();
     expect(() => render(<ContentFreshness />)).not.toThrow();
+    // 운영 패널·피로·제작 구획은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다.
+    openResultDetails();
     expect(screen.getByText(/어떤 소재가 성과를 만들었나/)).toBeTruthy();
     expect(screen.getAllByText(/어떤 소재가 지치기 시작했나/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/다음에 무엇을 만들까/).length).toBeGreaterThan(0);

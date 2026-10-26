@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
 import { eventsFromRows } from "@/utils/storeEvents";
 import AsoStoreConversion from "@/components/tools/AsoStoreConversion";
+import { openResultDetails } from "@/test/resultDetails";
 
 function seedAnalyzed() {
   const slice = buildDemoCsv("aso_store");
@@ -32,6 +33,8 @@ describe("StoreEventLog 입력 경로", () => {
     expect(fromCsv.length).toBeGreaterThan(0);
 
     const { container } = render(<AsoStoreConversion />);
+    // 이벤트 기록은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다 — 사람이 하듯 연다.
+    openResultDetails();
     const panel = container.querySelector("#aso-events");
     expect(panel).toBeTruthy();
     for (const event of fromCsv) expect(panel.textContent).toContain(event.label);
@@ -42,6 +45,8 @@ describe("StoreEventLog 입력 경로", () => {
   it("③ 직접 추가한 이벤트가 목록에 더해진다", () => {
     seedAnalyzed();
     const { container } = render(<AsoStoreConversion />);
+    // 이벤트 기록은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다 — 사람이 하듯 연다.
+    openResultDetails();
     const form = container.querySelector(".event-log__form");
     fireEvent.change(form.querySelector('input[type="date"]'), { target: { value: "2025-03-15" } });
     fireEvent.change(form.querySelector('input[type="text"]'), { target: { value: "리뷰 이벤트 시작" } });
@@ -54,6 +59,8 @@ describe("StoreEventLog 입력 경로", () => {
   it("③ 붙여넣기로 여러 건을 한 번에 넣는다", () => {
     seedAnalyzed();
     const { container } = render(<AsoStoreConversion />);
+    // 이벤트 기록은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다 — 사람이 하듯 연다.
+    openResultDetails();
     const textarea = container.querySelector(".event-log__form textarea");
     fireEvent.change(textarea, { target: { value: "2025-03-05, 가격 인하 A, price\n2025-03-06, 피처링 노출, external" } });
     fireEvent.click([...container.querySelectorAll("#aso-events button")].find((button) => button.textContent === "읽어들이기"));
@@ -66,6 +73,8 @@ describe("StoreEventLog 입력 경로", () => {
     const slice = seedAnalyzed();
     useAppStore.getState().addStoreEvents([{ date: "2025-03-15", label: "지울 것" }]);
     const { container } = render(<AsoStoreConversion />);
+    // 이벤트 기록은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다 — 사람이 하듯 연다.
+    openResultDetails();
 
     const removeButtons = container.querySelectorAll(".event-log__remove");
     // CSV 이벤트에는 삭제 버튼이 없으므로 직접 추가분 수와 같아야 한다.
@@ -79,6 +88,8 @@ describe("StoreEventLog 입력 경로", () => {
     seedAnalyzed();
     useAppStore.getState().addStoreEvents([{ date: "2020-01-01", label: "옛날 일" }]);
     const { container } = render(<AsoStoreConversion />);
+    // 이벤트 기록은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다 — 사람이 하듯 연다.
+    openResultDetails();
     expect(container.querySelector("#aso-events").textContent).toContain("2020-01-01");
     expect(container.querySelector("#aso-events").textContent).toMatch(/기간 밖/);
   });
