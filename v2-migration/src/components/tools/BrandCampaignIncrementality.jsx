@@ -13,14 +13,15 @@ import CausalDesignCheck, { useCausalDesign } from "@/components/ds/CausalDesign
 import { designEvidenceTable } from "@/lib/analysis-results/causalDesignEvidence";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import InfoPopover from "@/components/ds/InfoPopover";
-import ModalDialog from "@/components/ds/ModalDialog";
 import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { CHART_THEME, CHART_FONT_STACK, chartCommonOpts } from "@/utils/chartUtils";
 import { csvBody, downloadCsv } from "@/utils/download";
 import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
-import { fmtNum, fmtCurrency, sourceCurrencyOf, parseNum } from "@/utils/format";
+import { fmtNum, fmtCurrency, fmtCurrencyCompact, sourceCurrencyOf, parseNum } from "@/utils/format";
+import { ResultHeadline, headlineText, IssueTable, ResultDetails, ConditionLine } from "@/components/ds/ResultReport";
+import { brandItsReport, designDeclarationText } from "@/lib/incrementalityReport";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 import { buildDemoCsv } from "@/utils/demoData";
 import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
@@ -53,8 +54,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const [dateColumn, setDateColumn] = useSavedToolInput("5-24", "dateColumn", "");
   // 결과가 나오면 설명·데이터 선택·열 지정은 한 줄로 접는다(결과가 먼저 보이게).
   const [setupOpen, setSetupOpen] = useState(false);
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
-  const evidenceTriggerRef = useRef(null);
+  // 실제 vs 미집행 추정 선 차트·모형 근거는 "자세히 보기"(기본 닫힘) 안 — 열 때 캔버스가 마운트되므로 차트 효과가 이 값을 본다.
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [costColumnChoice, setCostColumnChoice] = useSavedToolInput("5-24", "costColumnChoice", null);
   const [costCurrencyChoice, setCostCurrencyChoice] = useSavedToolInput("5-24", "costCurrencyChoice", null);
   const [outcomeColumn, setOutcomeColumn] = useSavedToolInput("5-24", "outcomeColumn", "");
@@ -202,8 +203,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       },
     });
     requestAnimationFrame(() => chartInstance.current?.resize());
-    return () => chartInstance.current?.destroy();
-  }, [locale, result]);
+    return () => { chartInstance.current?.destroy(); chartInstance.current = null; };
+  }, [locale, result, detailsOpen]);
 
   const loadRows = (rows, fileName, { isDemo = false, workspaceSource = null } = {}) => {
     const headers = Object.keys(rows[0] || {});
@@ -266,17 +267,20 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     { id: "its", icon: "↗", title: tx(locale, "날짜별 성과와 ON/OFF 시점이 있다", "I have dated outcomes and a clear ON/OFF date"), body: tx(locale, "일별·주별·월별 cadence에 맞는 최소 관측 기간으로 AR(1) ITS 반사실을 추정합니다.", "Run an AR(1) ITS counterfactual with cadence-appropriate minimum history."), cta: tx(locale, "ITS 분석 준비", "Set up ITS") },
     { id: "prepost", icon: "△", title: tx(locale, "전후 합계만 있다", "I only have before / after totals"), body: tx(locale, "탐색적 전후 비교는 가능하지만 계절성과 공통 변화를 분리하기 어렵습니다.", "An exploratory pre/post read is possible, but seasonality and common change remain mixed."), cta: tx(locale, "전후 비교 열기", "Open pre/post comparison") },
   ];
-  const brandHeadline = !design.ready
-    ? tx(locale, "비교 조건 미확인 — ITS 추정은 탐색용이며 행동 판단을 보류합니다", "Comparison conditions unconfirmed — ITS estimates are exploratory; action is withheld")
-    : !profileReady
-    ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없습니다", "An interval including AR(1) uncertainty could not be formed")
-    : directionalVerdictWithheld
-      ? tx(locale, "방향 판정 보류 · 추정치는 탐색용입니다", "Direction withheld · estimate is exploratory")
-      : hasProfileLiftSignal
-        ? tx(locale, "관찰상 증가 신호가 남지만 인과 증명은 아닙니다", "An observational lift signal remains, but it is not causal proof")
-        : hasProfileDropSignal
-          ? tx(locale, "관찰상 감소 신호가 남지만 인과 증명은 아닙니다", "An observational decline signal remains, but it is not causal proof")
-          : tx(locale, "증가를 변화 없음과 구분하기 어렵습니다", "Lift cannot be separated from no change");
+  // 보고서 층(결론 줄·수치 3개·확인할 점) — 엔진 값만 묶는다(lib/incrementalityReport). 2026-10-23 결정 #3:
+  // 비교 조건이 선언되지 않아도 추정치와 95% 구간을 보이고 "탐색용"을 붙인다.
+  const withheldReason = !profileReady ? null : profile.hitsBoundary
+    ? { ko: "자기상관 범위가 넓어 방향 판정 불가", en: "the autocorrelation range is too wide to set a direction" }
+    : result.diagnostics.ar1EvidenceTier === "exploratory"
+      ? { ko: `사전 ${result.prePeriods}기간은 짧아 방향 판정 불가`, en: `${result.prePeriods} pre-periods are too short to set a direction` }
+      : null;
+  const brandReport = result?.ok ? brandItsReport({
+    result, metric: resolvedOutcomeColumn, design, profileReady, estimate: profileEstimate, counterfactual: profileCounterfactual, withheldReason, unitCost,
+    unitCostText: unitCost.value == null ? tx(locale, "추정 불가", "Not estimable") : fmtCurrency(unitCost.value, { currency: costCurrency, precise: true }),
+    spendText: brandSpend.ok ? tx(locale, `브랜드 비용 ${fmtCurrencyCompact(brandSpend.total, { currency: costCurrency, locale })}`, `Brand cost ${fmtCurrencyCompact(brandSpend.total, { currency: costCurrency, locale })}`) : tx(locale, "브랜드 비용 연결 필요", "Brand cost required"),
+    costReason, locale,
+  }) : null;
+  const brandHeadline = brandReport ? headlineText(brandReport.lines) : "";
   // 결과 내보내기. 이 도구는 오래도록 **입력 템플릿만** 받을 수 있고 추정 증가분·
   // 반사실·AR(1) 구간을 화면 밖으로 꺼낼 방법이 없었다(§12.27 "계산한 인사이트만"에
   // 정면으로 어긋남 — 원자료가 아니라 계산 결과가 없어서 못 받던 경우).
@@ -382,69 +386,75 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
 
     {result && !result.ok && <section className="block" id="brand-its-result"><div className="callout warn"><div className="body"><strong>{tx(locale, "아직 정직한 ITS 추정을 만들 수 없습니다", "ITS is not yet identifiable")}</strong><p>{result.reason === "multiple_campaign_windows" ? tx(locale, "ON/OFF 구간이 여러 번입니다. 이번 버전은 한 번의 연속 캠페인 구간만 분석합니다. 구간 하나만 남기거나 통제군 설계를 사용하세요.", "There are multiple ON/OFF windows. This version analyzes one continuous campaign window; isolate one window or use a control-group design.") : result.reason === "insufficient_pre_periods" ? tx(locale, `집행 전 기간이 ${result.prePeriods}개입니다. 현재 cadence에는 최소 ${result.minPrePeriods}개 기간이 필요합니다.`, `There are ${result.prePeriods} pre periods; this cadence requires at least ${result.minPrePeriods}.`) : result.reason === "insufficient_post_periods" ? tx(locale, `집행 후 기간이 ${result.postPeriods}개입니다. 현재 cadence에는 최소 ${result.minPostPeriods}개 기간이 필요합니다.`, `There are ${result.postPeriods} post periods; this cadence requires at least ${result.minPostPeriods}.`) : result.reason === "zero_pretrend_variance" ? tx(locale, "집행 전 성과가 완벽한 직선이라 불확실성을 추정할 수 없습니다. 노이즈가 없는 샘플 데이터 또는 지나친 집계 여부를 확인하세요.", "The pre-period is a perfect line, so uncertainty cannot be estimated. Check for noiseless sample data or over-aggregation.") : result.reason === "ar1_variance_not_estimable" ? tx(locale, "사전 기간의 AR(1) 불확실성을 추정할 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "AR(1) uncertainty cannot be estimated from the pre-period. Add history or use a control-group design.") : tx(locale, "날짜·성과·집행 여부를 다시 확인하세요.", "Check date, outcome, and campaign-status columns.")}</p></div></div></section>}
 
-    {hasData && <CausalDesignCheck design={design} locale={locale} />}
+    {result?.ok && <ConditionLine
+      id="brand-its-conditions"
+      locale={locale}
+      dialogTitle={tx(locale, "비교 조건과 비용", "Comparison conditions and cost")}
+      summary={[
+        tx(locale, `캠페인 ${result.campaignStartDate} ~ ${result.points.at(-1)?.date || ""}`, `Campaign ${result.campaignStartDate} – ${result.points.at(-1)?.date || ""}`),
+        tx(locale, `사전 ${result.prePeriods}기간`, `${result.prePeriods} pre-periods`),
+        resolvedOutcomeColumn,
+        costColumn ? tx(locale, `비용 ${costColumn} (${costCurrency})`, `cost ${costColumn} (${costCurrency})`) : tx(locale, "비용 미연결", "no cost linked"),
+        designDeclarationText(design, locale),
+      ].join(" · ")}
+    >
+      <div className="brand-cost-inline" data-currency-scope="declare" data-design-exempt="nested: cost source and currency form one compact editable input group (product-ssot purpose grouping)">
+        <label className="brand-cost-inline__column">
+          <span>{tx(locale, "브랜드 비용 열", "Brand cost column")}</span>
+          <select aria-label={tx(locale, "브랜드 캠페인 비용 열", "Brand campaign cost column")} value={costColumn} onChange={event => setCostOption("column", event.target.value)}>
+            <option value="">{tx(locale, "연결 안 함", "Not linked")}</option>
+            {headers.map(header => <option key={header} value={header}>{header}</option>)}
+          </select>
+        </label>
+        <label className="brand-cost-inline__currency">
+          <span>{tx(locale, "원본 통화", "Source currency")}</span>
+          <select aria-label={tx(locale, "비용 원본 통화", "Source cost currency")} value={costCurrency} onChange={event => setCostOption("currency", event.target.value)}>
+            <option value="KRW">{tx(locale, "원 ₩ · KRW", "KRW ₩")}</option>
+            <option value="USD">{tx(locale, "달러 $ · USD", "USD $")}</option>
+          </select>
+        </label>
+        <div className="brand-cost-inline__note">
+          <span>{tx(locale, "집행 기간 비용 합산 · 환산 없음", "Campaign-window cost · no conversion")}</span>
+          <InfoPopover label={tx(locale, "증분 단가 계산 기준", "Incremental unit-cost calculation")}>{costReason}</InfoPopover>
+        </div>
+      </div>
+      <CausalDesignCheck design={design} locale={locale} />
+    </ConditionLine>}
     {result?.ok && <section className="block brand-its-result" id="brand-its-result">
       <ResultActionCard
-        coreFigure={<div className="brand-its-chart">
-          <div className="brand-cost-inline" data-currency-scope="declare" data-design-exempt="nested: cost source and currency form one compact editable input group (product-ssot purpose grouping)">
-            <label className="brand-cost-inline__column">
-              <span>{tx(locale, "브랜드 비용 열", "Brand cost column")}</span>
-              <select aria-label={tx(locale, "브랜드 캠페인 비용 열", "Brand campaign cost column")} value={costColumn} onChange={event => setCostOption("column", event.target.value)}>
-                <option value="">{tx(locale, "연결 안 함", "Not linked")}</option>
-                {headers.map(header => <option key={header} value={header}>{header}</option>)}
-              </select>
-            </label>
-            <label className="brand-cost-inline__currency">
-              <span>{tx(locale, "원본 통화", "Source currency")}</span>
-              <select aria-label={tx(locale, "비용 원본 통화", "Source cost currency")} value={costCurrency} onChange={event => setCostOption("currency", event.target.value)}>
-                <option value="KRW">{tx(locale, "원 ₩ · KRW", "KRW ₩")}</option>
-                <option value="USD">{tx(locale, "달러 $ · USD", "USD $")}</option>
-              </select>
-            </label>
-            <div className="brand-cost-inline__note">
-              <span>{tx(locale, "집행 기간 비용 합산 · 환산 없음", "Campaign-window cost · no conversion")}</span>
-              <InfoPopover label={tx(locale, "증분 단가 계산 기준", "Incremental unit-cost calculation")}>{costReason}</InfoPopover>
-            </div>
-          </div>
-          {unitCost.value == null && <p className="brand-cost-status" role="status">{costReason}</p>}
-          {(!profileReady || directionalVerdictWithheld) && <div className="callout"><div className="body"><p>{!profileReady
-            ? tx(locale, "AR(1) 계수 불확실성까지 포함한 구간을 만들 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "We cannot construct an interval that includes AR(1) parameter uncertainty. Add history or use a control-group design.")
-            : profile.hitsBoundary
-              ? tx(locale, "자기상관의 가능한 범위가 넓어 증분 방향을 판정하지 않습니다. 추정치와 구간은 참고용입니다.", "The plausible autocorrelation range is too wide to determine direction. Treat the estimate and interval as reference only.")
-              : tx(locale, `사전 ${result.prePeriods}기간은 짧아 증분 방향을 판정하지 않습니다. 추정치와 구간은 탐색용이며 증분 확정 근거가 아닙니다.`, `With only ${result.prePeriods} pre-periods, we do not determine incrementality direction. The estimate and interval are exploratory, not confirmation.`)}</p></div></div>}
-
-          <FigureHead level={3} title={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} target={chartRef} fileName="brand_its_counterfactual" locale={locale} />
-          <div className="chart-container" style={{ height: "300px" }}><canvas ref={chartRef} role="img" aria-label={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} /></div>
-          <p className="brand-its-chart-note">{tx(locale, "초록은 실제 성과, 회색 점선은 미집행 시 추정 성과입니다. 주황선은 캠페인 시작일입니다.", "Green shows actual outcomes; the gray dashed line shows estimated outcomes without the campaign. Amber marks the campaign start.")}</p>
+        coreFigure={profileReady && <ToolCoreFigure embedded
+          figure={effectIntervalFigure({
+            id: "brand-its-lift",
+            question: tx(locale, "캠페인 기간의 추정 차이", "Estimated difference during the campaign"),
+            rows: [{ entity: tx(locale, `캠페인 기간 누적 차이 (${resolvedOutcomeColumn})`, `Cumulative difference over the campaign (${resolvedOutcomeColumn})`), estimate: profileEstimate, low: result.profileInterval[0], high: result.profileInterval[1] }],
+            unit: "count",
+            goodDirection: "up",
+            withheld: !design.ready || directionalVerdictWithheld,
+          })}
+          locale={locale}
+          downloadName="brand_its_lift"
+        />}
+        pointsContent={<div className="result-report">
+          <IssueTable issues={brandReport.issues} locale={locale} />
         </div>}
-        pointsContent={<>
-          <div className="brand-its-evidence-action">
-            <p>{tx(locale, "대조군이 없어 계절성·PR·프로모션 영향을 분리하지 못합니다. 인과효과 확정은 아닙니다.", "Without a control, seasonality, PR and promotions remain mixed. This is not a confirmed causal effect.")}</p>
-            <button ref={evidenceTriggerRef} type="button" className="btn" aria-haspopup="dialog" onClick={() => setEvidenceOpen(true)}>{tx(locale, "분석 근거 보기", "View analysis evidence")}</button>
-          </div>
-          <ModalDialog open={evidenceOpen} onClose={() => setEvidenceOpen(false)} returnFocusRef={evidenceTriggerRef} ariaLabel={tx(locale, "브랜드 증분 분석 근거", "Brand incrementality evidence")} overlayClassName="csv-guide-overlay" panelClassName="csv-guide-modal">
-            <div className="csv-guide-modal-head">
-              <strong>{tx(locale, "분석 근거", "Analysis evidence")}</strong>
-              <button type="button" className="btn ghost" onClick={() => setEvidenceOpen(false)}>{tx(locale, "닫기", "Close")}</button>
-            </div>
-            <div className="csv-guide-modal-body brand-its-evidence-body">
-              {profileReady && <ToolCoreFigure embedded
-                figure={effectIntervalFigure({
-                  id: "brand-its-lift",
-                  question: tx(locale, "캠페인 기간의 추정 차이", "Estimated difference during the campaign"),
-                  rows: [{ entity: tx(locale, `캠페인 기간 누적 차이 (${resolvedOutcomeColumn})`, `Cumulative difference over the campaign (${resolvedOutcomeColumn})`), estimate: profileEstimate, low: result.profileInterval[0], high: result.profileInterval[1] }],
-                  unit: "count",
-                  goodDirection: "up",
-                  withheld: !design.ready || directionalVerdictWithheld,
-                })}
-                locale={locale}
-                downloadName="brand_its_lift"
-              />}
+        analysisContent={<ResultDetails
+          id="brand-its-details"
+          locale={locale}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+          items={[tx(locale, "실제 vs 미집행 추정 차트", "Actual vs no-campaign chart"), tx(locale, "모형 설명 (AR(1)·HAC·누락 기간)", "Model notes (AR(1), HAC, gaps)"), tx(locale, "비용 근거", "Cost basis")]}
+        >
+          <div className="brand-its-details">
+            <section className="brand-its-detail brand-its-chart">
+              <FigureHead level={3} title={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} target={chartRef} fileName="brand_its_counterfactual" locale={locale} />
+              <div className="chart-container" style={{ height: "300px" }}><canvas ref={chartRef} role="img" aria-label={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} /></div>
+              <p className="brand-its-chart-note">{tx(locale, "초록은 실제 성과, 회색 점선은 미집행 시 추정 성과입니다. 주황선은 캠페인 시작일입니다.", "Green shows actual outcomes; the gray dashed line shows estimated outcomes without the campaign. Amber marks the campaign start.")}</p>
+            </section>
+            <section className="brand-its-detail">
+              <h3>{tx(locale, "근거·한계", "Evidence and limitations")}</h3>
               {brandSpend.ok && <p>{brandSpend.start} ~ {brandSpend.end} · {tx(locale, "브랜드 집행 비용", "Brand campaign cost")} {fmtCurrency(brandSpend.total, { currency: costCurrency })}</p>}
               <p>{tx(locale, `성과 지표: ${resolvedOutcomeColumn}. 검색·가입·설치 등 합산 가능한 건수 지표의 1단위당 비용입니다.`, `Outcome: ${resolvedOutcomeColumn}. Unit cost applies to additive counts such as searches, signups or installs.`)}</p>
               {unitCost.range && <p>{tx(locale, "증분 95% 구간을 단가로 환산한 범위", "Unit-cost range derived from the increment's 95% interval")}: {fmtCurrency(unitCost.range[0], { currency: costCurrency, precise: true })} ~ {fmtCurrency(unitCost.range[1], { currency: costCurrency, precise: true })}</p>}
-              <section data-information-section="" style={{ marginTop: "14px" }}>
-              <header data-information-heading="">{tx(locale, "근거·한계 확인", "Review evidence and limitations")}</header>
               <ul>
                 <li>{tx(locale, `사전 ${result.prePeriods}기간 · 집행 ${result.postPeriods}기간 · AR(1) MLE 사전 추세 일평균 변화 ${result.profileTrend?.slope == null ? "추정 불가" : result.profileTrend.slope.toFixed(2)}`, `${result.prePeriods} pre periods · ${result.postPeriods} campaign periods · AR(1) MLE pre-trend daily change ${result.profileTrend?.slope == null ? "not estimable" : result.profileTrend.slope.toFixed(2)}`)}</li>
                 <li>{tx(locale, `95% 프로파일 구간은 rho MLE ${profile?.rhoMle == null ? "추정 불가" : profile.rhoMle.toFixed(2)}와 가능한 rho 범위 ${profile ? `${profile.rhoInterval[0].toFixed(2)} ~ ${profile.rhoInterval[1].toFixed(2)}` : "추정 불가"}를 함께 반영합니다.`, `The 95% profile interval includes rho MLE ${profile?.rhoMle == null ? "not estimable" : profile.rhoMle.toFixed(2)} and plausible rho range ${profile ? `${profile.rhoInterval[0].toFixed(2)} to ${profile.rhoInterval[1].toFixed(2)}` : "not estimable"}.`)}</li>
@@ -457,19 +467,14 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
                 <li>{tx(locale, "다음 캠페인에서는 비집행 지역·오디언스를 남겨 홀드아웃/DiD로 인과 근거를 강화하세요.", "For the next campaign, retain an unexposed region or audience to strengthen causal evidence with holdout / DiD.")}</li>
               </ul>
             </section>
-            </div>
-          </ModalDialog>
-        </>}
-        tone={!design.ready ? "neutral" : hasProfileLiftSignal ? "good" : hasProfileDropSignal ? "bad" : "neutral"}
+          </div>
+        </ResultDetails>}
+        tone={brandReport.tone}
         title={tx(locale, "브랜드 캠페인 증분 추정", "Estimated brand-campaign lift")}
         headline={brandHeadline}
+        headlineContent={<ResultHeadline lines={brandReport.lines} />}
         points={[{ text: tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`) }]}
-        stats={[
-          { label: tx(locale, "추정 증분 성과", "Estimated incremental outcomes"), value: formatValue(profileEstimate, locale), detail: profileRate == null ? resolvedOutcomeColumn : `${resolvedOutcomeColumn} · ${profileRate >= 0 ? "+" : ""}${(profileRate * 100).toFixed(1)}% ${tx(locale, "기준선 대비", "vs baseline")}` },
-          { label: tx(locale, "미집행 시 추정 성과", "Estimated outcome without campaign"), value: formatValue(profileCounterfactual, locale), detail: tx(locale, `${result.prePeriods}개 사전 기간`, `${result.prePeriods} pre periods`) },
-          { label: tx(locale, "95% AR(1) 프로파일 구간", "95% AR(1) profile interval"), value: profileReady ? `${formatValue(result.profileInterval[0], locale)} ~ ${formatValue(result.profileInterval[1], locale)}` : "—" },
-          { label: unitCost.status === "reference" ? tx(locale, "증분 성과당 비용 · 참고", "Cost per incremental outcome · reference") : tx(locale, "증분 성과당 비용", "Cost per incremental outcome"), value: unitCost.value == null ? tx(locale, "추정 불가", "Not estimable") : fmtCurrency(unitCost.value, { currency: costCurrency, precise: true }), detail: brandSpend.ok ? tx(locale, `브랜드 비용 ${fmtCurrency(brandSpend.total, { currency: costCurrency })}`, `Brand cost ${fmtCurrency(brandSpend.total, { currency: costCurrency })}`) : tx(locale, "브랜드 비용 연결 필요", "Brand cost required") },
-        ]}
+        stats={brandReport.stats}
         workbookExport={brandWorkbookExport}
         download={<DownloadHub
           toolId="5-24"

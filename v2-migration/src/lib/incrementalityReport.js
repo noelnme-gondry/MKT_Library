@@ -196,3 +196,78 @@ export function prepostReport({ effect, low, high, total, preN, postN, isDiD, lo
   if (!hasSignificance) issues.push({ kind: tr("유의성", "Significance"), target: metric, text: tr("공통 날짜와 변동이 부족해 추정할 수 없습니다", "Too few common dates or too little variation to estimate") });
   return { lines, tone, stats, issues: issues.filter(Boolean), hold, ready };
 }
+
+const GRAIN_UNIT = { day: ["일", "days"], week: ["주", "weeks"], month: ["개월", "months"] };
+
+/**
+ * 5-24 브랜드 캠페인 ITS. 누적 증분과 AR(1) 프로파일 95% 구간(엔진 출력)만 쓴다.
+ * 상대 %는 미집행 추정 합계 대비 점추정만 — 반사실 자체의 불확실성을 무시한 % 구간은 만들지 않는다.
+ * withheldReason: {ko, en} — 엔진이 방향 판정을 보류한 사유(짧은 사전 기간·넓은 자기상관 범위).
+ */
+export function brandItsReport({ result, metric, design, profileReady, estimate, counterfactual, withheldReason, unitCost, unitCostText, spendText, costReason, locale = "ko" }) {
+  const en = locale === "en";
+  const tr = (ko, eng) => (en ? eng : ko);
+  const [low, high] = profileReady ? result.profileInterval : [null, null];
+  const interval = intervalText(low, high);
+  const rate = Number.isFinite(counterfactual) && counterfactual !== 0 && Number.isFinite(estimate) ? estimate / Math.abs(counterfactual) : null;
+  const rateChunk = rate == null ? null : tr(`· 미집행 추정 대비 ${signedValue(rate * 100, 1)}%`, `· ${signedValue(rate * 100, 1)}% vs. no-campaign estimate`);
+  const valueChunks = [
+    tr(`캠페인 기간 ${metric} ${signedValue(estimate)} 관찰`, `Campaign-period ${metric} ${signedValue(estimate)} observed`),
+    interval ? `(${interval})` : null,
+    rateChunk,
+  ];
+  const ready = Boolean(design?.ready);
+  let lines;
+  let tone = "neutral";
+  if (!profileReady) {
+    lines = [
+      { kind: "main", chunks: [tr("판단 보류 — AR(1) 불확실성을 포함한 구간을 만들 수 없음", "Hold — no interval including AR(1) uncertainty")] },
+      { kind: "effect", chunks: [tr("사전 기간을 늘리거나 다음 캠페인은 비집행 지역을 남기기", "Add history or keep an unexposed region next time")] },
+    ];
+  } else if (withheldReason) {
+    lines = [
+      { kind: "main", chunks: valueChunks },
+      { kind: "effect", chunks: [tr(`판단 보류 — ${withheldReason.ko} · 탐색용`, `Hold — ${withheldReason.en} · exploratory`)] },
+    ];
+  } else if (crossesZero(low, high)) {
+    lines = [
+      { kind: "main", chunks: [tr("판단 보류 — 구간이 0 포함", "Hold — the interval includes 0"), ...valueChunks] },
+      { kind: "effect", chunks: [ready ? tr("증가를 변화 없음과 구분하기 어렵습니다", "Lift cannot be separated from no change") : tr("탐색용 — 비교 조건이 확인되면 판정합니다", "Exploratory — a verdict needs confirmed comparison conditions")] },
+    ];
+  } else if (!ready) {
+    lines = [
+      { kind: "main", chunks: valueChunks },
+      { kind: "effect", chunks: [tr("탐색용 — 비교 조건이 확인되면 판정합니다", "Exploratory — a verdict needs confirmed comparison conditions")] },
+    ];
+  } else if (low > 0) {
+    tone = "good";
+    lines = [
+      { kind: "main", chunks: valueChunks },
+      { kind: "effect", chunks: [tr("인과 확정 아님 — 다음 캠페인은 비집행 지역을 남기기", "Not causal proof — keep an unexposed region in the next campaign")] },
+    ];
+  } else {
+    tone = "bad";
+    lines = [
+      { kind: "main", chunks: valueChunks },
+      { kind: "effect", chunks: [tr("관찰상 감소 신호 — 인과 증명은 아님", "Observed decline signal — not causal proof")] },
+    ];
+  }
+
+  const grain = GRAIN_UNIT[result?.diagnostics?.grain] || GRAIN_UNIT.day;
+  const tier = result?.diagnostics?.ar1EvidenceTier;
+  const tierLabel = tier === "exploratory" ? tr("탐색", "exploratory") : tier === "assumption_sensitive" ? tr("가정 민감", "assumption-sensitive") : tr("참고 가능", "usable");
+  const stats = [
+    { label: tr("추정 증분 (누적)", "Estimated increment (cumulative)"), value: profileReady ? signedValue(estimate) : "—", detail: interval || tr("구간 추정 불가", "Interval not estimable") },
+    { label: unitCost?.status === "reference" ? tr("증분 성과당 비용 · 참고", "Cost per incremental outcome · reference") : tr("증분 성과당 비용", "Cost per incremental outcome"), value: unitCostText, detail: spendText },
+    { label: tr("사전 기간", "Pre-period"), value: tr(`${result.prePeriods}${grain[0]}`, `${result.prePeriods} ${grain[1]}`), detail: tr(`근거 등급: 관측 · ${tierLabel}`, `Evidence: observational · ${tierLabel}`) },
+  ];
+
+  const issues = [
+    { kind: tr("대조군 없음", "No control"), target: tr("전 지역 집행", "All regions exposed"), text: tr("계절성·PR·프로모션 영향을 분리하지 못합니다 — 인과효과 확정은 아닙니다", "Seasonality, PR and promotions remain mixed — not a confirmed causal effect") },
+    designIssue(design, locale, false),
+    withheldReason ? { kind: tr("근거 등급", "Evidence"), target: tr(`사전 ${result.prePeriods}${grain[0]}`, `${result.prePeriods} pre ${grain[1]}`), text: tr(`${withheldReason.ko} — 증분 방향을 판정하지 않습니다`, `${withheldReason.en} — we do not determine incrementality direction`) } : null,
+    unitCost?.value == null && costReason ? { kind: tr("비용", "Cost"), target: tr("브랜드 비용", "Brand cost"), text: costReason } : null,
+    result?.diagnostics?.hasPeriodGaps ? { kind: tr("누락 기간", "Gaps"), target: tr(`${result.diagnostics.missingPeriods}개`, `${result.diagnostics.missingPeriods}`), text: tr(`가장 긴 간격 ${result.diagnostics.maxGapDays}일`, `Longest gap ${result.diagnostics.maxGapDays} days`) } : null,
+  ];
+  return { lines, tone, stats, issues: issues.filter(Boolean), ready, low, high };
+}
