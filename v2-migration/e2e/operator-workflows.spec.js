@@ -111,8 +111,12 @@ async function verifyHoldoutDesign(page, locale) {
   const declarationLabels = en
     ? ["What did you compare?", "How were the two groups split?", "Did you fix the dates before seeing results?", "Did a promotion, season or tracking change happen in the same period?", "Is each person counted once over the whole period?"]
     : ["비교한 대상은 무엇인가요?", "두 그룹은 어떻게 나눴나요?", "결과를 보기 전에 기간을 정했나요?", "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "기간 전체에서 한 대상을 한 번씩만 셌나요?"];
+  // 설계 선언은 결과 위 조건 줄의 "조건 바꾸기" 창 안에 있다(2026-10-23 임원 보고형 결과 화면).
+  const conditions = page.locator("#incr-holdout-conditions");
+  const dialog = page.locator(".condition-dialog");
+  await conditions.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기" }).click();
   for (const [index, label] of declarationLabels.entries()) {
-    const select = page.getByLabel(label);
+    const select = dialog.getByLabel(label);
     await select.focus();
     await expect(select).toBeFocused();
     // Native menu arrow events are not supported by the local macOS Chromium harness.
@@ -122,10 +126,13 @@ async function verifyHoldoutDesign(page, locale) {
     await expect(select).not.toBeFocused();
     await expect(select).not.toHaveValue("");
   }
+  await dialog.getByRole("button", { name: en ? "Close" : "닫기" }).click();
   await openDetails(page.locator(".decision-review"));
   await expect(action).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
-  await page.getByLabel(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?").selectOption("changed");
+  await conditions.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기" }).click();
+  await dialog.getByLabel(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?").selectOption("changed");
+  await dialog.getByRole("button", { name: en ? "Close" : "닫기" }).click();
   await expect(action).toHaveCount(0);
 }
 

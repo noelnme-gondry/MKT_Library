@@ -18,7 +18,6 @@ import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { effectIntervalFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
-import ModalDialog from "@/components/ds/ModalDialog";
 import DownloadHub from "@/components/ds/DownloadHub";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -30,6 +29,8 @@ import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 import { showToast } from "@/utils/toast";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+import { ResultHeadline, headlineText, ChangeBar, VerdictChip, ResultTable, IssueTable, ResultDetails, ConditionLine } from "@/components/ds/ResultReport";
+import { suppressionReport, prepostReport, designDeclarationText, signedValue, intervalText } from "@/lib/incrementalityReport";
 
 // All three methods share the same visual grammar: observed green, neutral
 // comparisons, and amber intervention dates. Values and estimators stay separate.
@@ -394,6 +395,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
   const hasExplicitWindow = !!start && !!end;
   const isWindowOrderValid = hasExplicitWindow && start <= end;
   const design = useCausalDesign(`${computeAnalyzeSig(csvData)}|${start}|${end}`, true);
+  // 일별 차트·검정 상세는 "자세히 보기"(기본 닫힘) 안 — 열 때 캔버스가 마운트되므로 차트 효과가 이 값을 본다.
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   // 창 기간 내 집계 → 증분 (창 밖 pre/post는 균형 확인용)
   const win = useMemo(() => {
@@ -448,7 +451,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [series, start, end, isWindowOrderValid, tr]);
+  }, [series, start, end, isWindowOrderValid, tr, detailsOpen]);
 
   if (invalidRows) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("증분을 계산할 수 없는 행이 있습니다", "Some rows cannot be used for incrementality")}</strong><p>{tr(`${invalidRows.toLocaleString()}행의 날짜·그룹·전환수·분모를 확인하세요. 날짜는 실제 달력 날짜여야 하며, 전환수는 0 이상 분모 이하여야 하고 분모는 0보다 커야 합니다.`, `Check date, group, conversions, and denominator in ${invalidRows.toLocaleString()} row(s). Dates must be valid calendar dates; conversions must be between 0 and the denominator, and the denominator must be greater than 0.`)}</p></div></div>;
   if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div>;
@@ -458,25 +461,12 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
   const positive = r ? r.incrementalConv > 0 : false;
 
   // 결론 카드 props + 다운로드(계산된 인사이트만). 엔진 결과 재사용.
+  // 보고서 층(결론 줄·수치 3개·확인할 점) — 엔진 값만 묶는다(lib/incrementalityReport).
+  const report = r ? suppressionReport({ r, win, design, locale, currency }) : null;
   const card = r && (() => {
     // CI가 0을 걸치면 확정 서술을 하지 않는다. 무유의는 "효과 없음"의 증거가 아니라
-    // 현재 표본에서의 판단 보류다(§8.6, 감사 P1-1).
-    const headline = !design.ready
-      ? tr("설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다", "Design conditions unconfirmed — estimated differences are exploratory; action is withheld")
-      : !r.conclusive
-      ? tr(
-          `증분 추정치는 ${fmtNum(inc)}건이지만 95% 신뢰구간이 0을 지나 판단을 보류합니다 — 표본이 더 필요합니다.`,
-          `The point estimate is ${fmtNum(inc)} incremental conversions, but the 95% CI crosses zero — inconclusive; more sample is needed.`
-        )
-      : positive
-      ? tr(
-          `홀드아웃 대비 추정 전환 차이는 ${fmtNum(inc)}건입니다${r.iroas != null ? ` (iROAS ${r.iroas.toFixed(2)}×)` : ""}. 인과 해석에는 설계 조건 확인이 필요합니다.`,
-          `The estimated conversion difference versus holdout is ${fmtNum(inc)}${r.iroas != null ? ` (iROAS ${r.iroas.toFixed(2)}×)` : ""}. Causal interpretation requires design checks.`
-        )
-      : tr(
-          "홀드아웃 대비 증분이 통계적으로 음수입니다 — 이 기간 광고의 순증분 효과가 확인되지 않습니다.",
-          "Incrementality vs. holdout is statistically negative — no net incremental ad effect is confirmed for this period."
-        );
+    // 현재 표본에서의 판단 보류다(§8.6, 감사 P1-1). 화면·공유·내보내기는 같은 결론 줄을 쓴다.
+    const headline = headlineText(report.lines);
     const points = [];
     if (!r.conclusive) points.push({ cls: "muted", text: tr("‘효과 없음’이 아니라 ‘아직 판단할 수 없음’입니다. 사전 계획한 기간·표본에서 판독하고 추가 실험은 별도 설계하세요.", "This is 'not yet decidable', not 'no effect'. Read at the preplanned duration or sample size, and design any additional experiment separately.") });
     if (win.balanced === false) points.push({ cls: "bad", text: tr("홀드아웃 前 두 그룹이 이미 벌어져 있어 균형이 의심됩니다 — 증분이 왜곡됐을 수 있습니다.", "The two groups already differed before the holdout — balance is questionable and incrementality may be distorted.") });
@@ -579,25 +569,42 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
         ? "insufficient_data"
         : null;
 
-  return (
-    <section className="block" id="s-incr-result">
-      <CausalDesignCheck design={design} locale={locale} />
-      {blockedState && (
-        <AnalysisBlockedTelemetry
-          toolId="5-23"
-          source={isDemoData(csvData) ? "demo" : csvData?.importSource || "csv"}
-          state={blockedState}
-          signature={`suppression|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}|${csvData?.raw?.length || 0}`}
-          rowCount={csvData?.raw?.length || 0}
-          scopeEvidence={{ periods: [{ id: "after", start, end }] }}
-          analysisType="incrementality"
-          locale={locale}
-        />
-      )}
-      <h2 className="section-title">{tr("홀드아웃 기간 설정 및 결과", "Holdout period setup and result")}</h2>
+  // 자세히 보기: 일별 차트 · 검정 상세 · 사전 균형 · 해석과 한계(예전에 결론 아래 펼쳐 있던 수치 격자·안내 상자의 내용).
+  const holdoutDetails = r && win && <div className="incr-details">
+    <section className="incr-detail">
+      <FigureHead level={3} title={tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")} target={() => document.getElementById("incr-suppression-chart")} fileName="incrementality_holdout_daily" locale={locale} />
+      <p>{tr("홀드아웃 기간(주황 세로선 사이)의 두 그룹 전환율 차이를 확인합니다. 사전 추세와 동시 변경도 함께 점검하세요. 선의 간격만으로 광고의 인과효과를 확정할 수는 없습니다.", "Compare group conversion rates during the holdout period (between the orange vertical lines), together with pre-period trends and concurrent changes. The gap alone does not establish a causal ad effect.")}</p>
+      <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
+    </section>
+    <section className="incr-detail">
+      <h3>{tr("검정 상세", "Test details")}</h3>
+      <ul>
+        <li>{tr("홀드아웃 전환율", "Holdout conversion rate")} {fmtPct(r.cRate)} ({fmtNum(win.cN)}/{fmtNum(win.cD)}) · {tr("노출 전환율", "Exposed conversion rate")} {fmtPct(r.tRate)} ({fmtNum(win.tN)}/{fmtNum(win.tD)})</li>
+        <li>{tr("상대 Lift", "Relative lift")} {r.liftRel != null ? fmtPct(r.liftRel) : "—"} · {tr("전환율 차이 95% CI", "Conv.-rate diff 95% CI")} {r.ciLow95 != null && r.ciHigh95 != null ? `${fmtPct(r.ciLow95)} ~ ${fmtPct(r.ciHigh95)}` : "—"} · p {r.pValue == null ? "—" : r.pValue < 0.001 ? "<0.001" : r.pValue.toFixed(3)}</li>
+        <li>{tr("증분 전환의 95% 구간은 전환율 차이 구간에 노출 그룹 인원을 곱한 값입니다(증분 전환 = 노출 인원 × 전환율 차이).", "The incremental-conversion interval is the rate-difference interval times the exposed group size (incremental = exposed users × rate difference).")}</li>
+        {r.cpia != null && <li>{tr("증분 전환당 비용", "Cost per incremental conversion")} {fmtCurrency(r.cpia, { currency })}{r.iroas != null ? ` · iROAS ${r.iroas.toFixed(2)}×` : ""}</li>}
+        {card.points.map((point, index) => <li key={index}>{point.text}</li>)}
+      </ul>
+    </section>
+    {win.hasPre && <section className="incr-detail">
+      <h3>{tr("그룹 균형 확인 (홀드아웃 전)", "Group balance check (before holdout)")}</h3>
+      <p>{tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("사전 전환율 차이가 작게 관측됐지만, 이것만으로 두 그룹의 비교 가능성을 입증하지는 않습니다.", "The observed pre-period rate difference is small; this alone does not establish comparability.") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}</p>
+    </section>}
+    <section className="incr-detail">
+      <h3>{tr("해석과 한계", "Interpretation and limits")}</h3>
+      <p>{tr(<>대상 광고를 제외하도록 배정한 홀드아웃 그룹의 전환율을 비교 기준으로 삼은 증분 전환 추정치 {fmtNum(inc)}건입니다. 실제 배정·오염·추적 조건이 확인되지 않으면 탐색적 차이로 해석합니다.</>, <>Using the conversion rate of the group assigned to withhold the target ads gives an estimate of {fmtNum(inc)} incremental conversions. Treat it as an exploratory difference unless assignment, contamination and tracking conditions are verified.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("추정 증분 매출이 광고비 이상입니다. 마진과 다른 비용을 반영하지 않아 이익 여부를 뜻하지 않습니다.", "Estimated incremental revenue is at least as large as ad spend. This excludes margins and other costs and does not establish profitability.") : tr("추정 증분 매출이 광고비보다 작습니다. 추정의 불확실성과 설계 조건을 함께 확인하세요.", "Estimated incremental revenue is below ad spend. Check uncertainty and design conditions alongside this estimate.")}</>}</p>
+      <p>{tr("인과 해석에는 무작위 배정뿐 아니라 관측 단위, 기간 전체의 중복 집계, 광고 노출 오염, 동시 변경과 추적 조건을 확인해야 합니다. 사전 차이가 작거나 설계 조건을 입력했다는 사실만으로 인과효과가 검증되지는 않습니다.", "A causal interpretation requires checking random assignment, observation units, duplicate counts across the full period, exposure contamination, concurrent changes and tracking. A small pre-period difference or a design declaration alone does not verify causality.")}</p>
+    </section>
+  </div>;
 
-      {series && (
-        <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
+  return (
+    <>
+      {/* 분석 조건: 기간은 표시된 날짜 자체에서 고치고, 설계 선언은 "조건 바꾸기" 창에서 한다(§5.5). */}
+      {series && <ConditionLine
+        id="incr-holdout-conditions"
+        locale={locale}
+        dialogTitle={tr("설계 조건", "Design conditions")}
+        before={<div className="incr-condition-fields">
           <Field label={tr("홀드아웃 시작일", "Holdout start date")}>
             <select className="map-select" value={start} onChange={(e) => { const next = e.target.value; setWinStart(next); if (winEnd && winEnd < next) setWinEnd(""); }}>
               <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
@@ -610,10 +617,24 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
               {series.labels.filter((d) => !start || d >= start).map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </Field>
-          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", maxWidth: "440px", lineHeight: 1.5 }}>{tr("실험 계획이나 광고 운영 기록에 적힌 실제 차단 기간을 직접 지정해야 계산합니다.", "The calculation only runs after you enter the actual blocked period from the experiment plan or ad-operations record.")}</span>
-        </div>
+        </div>}
+        summary={[tr("통제군 방식", "Control-group holdout"), hasExplicitWindow ? null : tr("기간 미지정 — 실험 계획의 차단 기간을 고르세요", "Select the planned holdout window"), designDeclarationText(design, locale)].filter(Boolean).join(" · ")}
+      >
+        <CausalDesignCheck design={design} locale={locale} />
+      </ConditionLine>}
+    <section className="block" id="s-incr-result">
+      {blockedState && (
+        <AnalysisBlockedTelemetry
+          toolId="5-23"
+          source={isDemoData(csvData) ? "demo" : csvData?.importSource || "csv"}
+          state={blockedState}
+          signature={`suppression|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}|${csvData?.raw?.length || 0}`}
+          rowCount={csvData?.raw?.length || 0}
+          scopeEvidence={{ periods: [{ id: "after", start, end }] }}
+          analysisType="incrementality"
+          locale={locale}
+        />
       )}
-
       {!hasExplicitWindow && (
         <div className="callout warn" style={{ marginBottom: "12px" }}><div className="ico">!</div><div className="body"><strong>{tr("홀드아웃 기간을 먼저 지정하세요", "Specify the holdout period first")}</strong><p>{tr("결과 그래프에서 차이가 큰 구간을 보고 기간을 고르면 효과가 과대평가될 수 있습니다. 결과를 보기 전 정한 시작일·종료일만 사용합니다.", "Choosing the period after inspecting where the outcome lines diverge can overstate the effect. Use only start and end dates defined before viewing the result.")}</p></div></div>
       )}
@@ -627,9 +648,9 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           coreFigure={Number.isFinite(r?.liftAbs) && <ToolCoreFigure embedded
             figure={effectIntervalFigure({
               id: "holdout-lift",
-              question: tr("홀드아웃 대비 전환율 차이", "Conversion-rate difference vs. holdout"),
-              rows: [{ entity: tr("전환율 차이 (노출 − 홀드아웃)", "Conversion-rate difference (exposed − holdout)"), estimate: r.liftAbs, low: r.ciLow95, high: r.ciHigh95 }],
-              unit: "rate",
+              question: tr("홀드아웃 대비 증분 전환 (95% 구간)", "Incremental conversions vs. holdout (95% interval)"),
+              rows: [{ entity: tr("증분 전환 (노출 − 홀드아웃 기준 반사실)", "Incremental conversions (exposed − holdout counterfactual)"), estimate: r.incrementalConv, low: report.interval.low, high: report.interval.high }],
+              unit: "count",
               goodDirection: "up",
               withheld: !design.ready || !r.conclusive || win.balanced !== true,
             })}
@@ -642,11 +663,41 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           analysisType="incrementality"
           resultState={design.ready && r.conclusive && win.balanced === true ? "ready" : "inconclusive"}
           trackAnalysisStart
-          tone={design.ready && win.balanced === true ? card.tone : "neutral"}
+          tone={report.tone}
           title={tr("결론 — 홀드아웃 대비 추정 차이", "Conclusion — estimated difference versus holdout")}
           headline={card.headline}
+          headlineContent={<ResultHeadline lines={report.lines} />}
           points={card.points}
-          stats={card.stats}
+          stats={report.stats}
+          pointsContent={<div className="result-report">
+            <ResultTable
+              title={tr("그룹별 결과", "Results by group")}
+              meta={`${start} ~ ${end}`}
+              locale={locale}
+              rows={[
+                { key: "exposed", name: tr("노출", "Exposed"), n: win.tD, x: win.tN, rate: r.tRate, pre: win.preExp },
+                { key: "holdout", name: tr("홀드아웃", "Holdout"), n: win.cD, x: win.cN, rate: r.cRate, pre: win.preHold },
+              ]}
+              rowKey={(row) => row.key}
+              columns={[
+                { key: "name", label: tr("그룹", "Group") },
+                { key: "n", label: tr("표본 n", "Sample n"), align: "right", fmt: (v) => fmtNum(v) },
+                { key: "rate", label: tr("전환율", "Conv. rate"), align: "right", fmt: (v, row) => <>{fmtPct(v, 2)} <small>({fmtNum(row.x)})</small></> },
+                { key: "diff", label: tr("차이 %p (95%)", "Diff. %p (95%)"), align: "right", fmt: (_, row) => row.key === "holdout" ? tr("기준", "Baseline") : <><ChangeBar value={r.liftAbs} max={Math.max(Math.abs(r.ciLow95 ?? 0), Math.abs(r.ciHigh95 ?? 0), Math.abs(r.liftAbs))} tone={report.ready && report.conclusive && win.balanced === true ? (r.liftAbs > 0 ? "good" : "bad") : "down"} /><strong>{signedValue(r.liftAbs * 100, 2)}%p</strong> <small>({signedValue((r.ciLow95 ?? NaN) * 100, 2)} ~ {signedValue((r.ciHigh95 ?? NaN) * 100, 2)})</small></> },
+                { key: "pre", label: tr("홀드아웃 전 전환율", "Pre-holdout rate"), align: "right", fmt: (v, row) => v == null ? "—" : row.key === "holdout" ? fmtPct(v, 2, { asRatio: false }) : <>{fmtPct(v, 2, { asRatio: false })} <VerdictChip tone={win.balanced ? "good" : "warn"}>{win.balanced ? tr("균형", "Balanced") : tr("불균형 의심", "Imbalance")}</VerdictChip></> },
+              ]}
+            />
+            <IssueTable issues={report.issues} locale={locale} />
+          </div>}
+          analysisContent={<ResultDetails
+            id="incr-holdout-details"
+            locale={locale}
+            open={detailsOpen}
+            onOpenChange={setDetailsOpen}
+            items={[tr("일별 차트", "Daily chart"), tr("p값 · 검정", "p-value · test"), tr("사전 균형 상세", "Pre-period balance"), tr("해석과 한계", "Interpretation and limits")]}
+          >
+            {holdoutDetails}
+          </ResultDetails>}
           workbookExport={() => ({
             calculationMode: "exact_after_preprocessing",
             calculationTables: [designEvidenceTable(design.values, design.ready), {
@@ -724,42 +775,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       )}
 
 
-      {series && win?.hasPre && (
-        <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-          <strong>{tr("그룹 균형 확인 (홀드아웃 전):", "Group balance check (before holdout):")}</strong> {tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("사전 전환율 차이가 작게 관측됐지만, 이것만으로 두 그룹의 비교 가능성을 입증하지는 않습니다.", "The observed pre-period rate difference is small; this alone does not establish comparability.") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}
-        </p></div></div>
-      )}
-
-      {r && (
-        <div className="alloc-card">
-          <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-            <Stat label={tr("홀드아웃 전환율", "Holdout conversion rate")} value={fmtPct(r.cRate)} hint={`${fmtNum(win.cN)}/${fmtNum(win.cD)}`} />
-            <Stat label={tr("노출 전환율", "Exposed conversion rate")} value={fmtPct(r.tRate)} hint={`${fmtNum(win.tN)}/${fmtNum(win.tD)}`} />
-            <Stat label={tr("상대 Lift", "Relative lift")} value={r.liftRel != null ? fmtPct(r.liftRel) : "—"} color={positive ? "var(--success)" : "var(--danger)"} />
-            <Stat label={tr("증분 전환", "Incremental conversions")} value={fmtNum(inc)} hint={tr("홀드아웃 기준 반사실 대비 추정 차이", "Estimated difference versus the holdout counterfactual")} />
-            {r.cpia != null && <Stat label={tr("증분 전환당 비용", "Cost per incremental conversion")} value={fmtCurrency(r.cpia, { currency })} />}
-            {r.iroas != null && <Stat label="iROAS" value={`${r.iroas.toFixed(2)}×`} color={r.iroas >= 1 ? "var(--success)" : "var(--danger)"} hint={tr("증분 매출/광고비", "Incremental revenue / ad spend")} />}
-          </div>
-        </div>
-      )}
-
-      {series && isWindowOrderValid && (
-        <div style={{ marginTop: "14px" }}>
-          <FigureHead level={3} title={tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")} target={() => document.getElementById("incr-suppression-chart")} fileName="incrementality_holdout_daily" locale={locale} />
-          <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)의 두 그룹 전환율 차이를 확인합니다. 사전 추세와 동시 변경도 함께 점검하세요. 선의 간격만으로 광고의 인과효과를 확정할 수는 없습니다.", "Compare group conversion rates during the holdout period (between the orange vertical lines), together with pre-period trends and concurrent changes. The gap alone does not establish a causal ad effect.")}</p>
-          <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
-        </div>
-      )}
-
-      {r && (
-        <div className="callout" style={{ marginTop: "14px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-          <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>대상 광고를 제외하도록 배정한 홀드아웃 그룹의 전환율을 비교 기준으로 삼은 <strong>증분 전환 추정치 {fmtNum(inc)}건</strong>입니다. 실제 배정·오염·추적 조건이 확인되지 않으면 탐색적 차이로 해석합니다.</>, <>Using the conversion rate of the group assigned to withhold the target ads gives an estimate of <strong>{fmtNum(inc)} incremental conversions</strong>. Treat it as an exploratory difference unless assignment, contamination and tracking conditions are verified.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("추정 증분 매출이 광고비 이상입니다. 마진과 다른 비용을 반영하지 않아 이익 여부를 뜻하지 않습니다.", "Estimated incremental revenue is at least as large as ad spend. This excludes margins and other costs and does not establish profitability.") : tr("추정 증분 매출이 광고비보다 작습니다. 추정의 불확실성과 설계 조건을 함께 확인하세요.", "Estimated incremental revenue is below ad spend. Check uncertainty and design conditions alongside this estimate.")}</>}
-        </p></div></div>
-      )}
-      <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-        <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(<>인과 해석에는 <strong>무작위 배정</strong>뿐 아니라 관측 단위, 기간 전체의 중복 집계, 광고 노출 오염, 동시 변경과 추적 조건을 확인해야 합니다. 사전 차이가 작거나 설계 조건을 입력했다는 사실만으로 인과효과가 검증되지는 않습니다.</>, <>A causal interpretation requires checking <strong>random assignment</strong>, observation units, duplicate counts across the full period, exposure contamination, concurrent changes and tracking. A small pre-period difference or a design declaration alone does not verify causality.</>)}
-      </p></div></div>
     </section>
+    </>
   );
 }
 
@@ -796,6 +813,8 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const effCutoff = cutoff || (isDemoData(csvData) ? csvData.designCutoff || "" : "");
   const design = useCausalDesign(`${computeAnalyzeSig(csvData)}|${direction}|${effCutoff}|${metricCol}|${groupCol}|${selectedControl}|${selectedTreatment}|${useDiD}`);
   const chartInst = useRef(null);
+  // 날짜별 차트·검정 근거는 "자세히 보기"(기본 닫힘) 안 — 열 때 캔버스가 마운트된다.
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const selectedInputAudit = useMemo(() => {
     const rows = csvData.raw || [];
@@ -886,7 +905,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [csvData.raw, metricCol, groupCol, selectedTreatment, effCutoff, dateCol, r, direction, tr]);
+  }, [csvData.raw, metricCol, groupCol, selectedTreatment, effCutoff, dateCol, r, direction, tr, detailsOpen]);
 
   if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div>;
 
@@ -908,19 +927,14 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const good = confirmedLoss || confirmedGain;
 
   // 결론 카드 props + 다운로드(계산된 인사이트). 엔진 결과 재사용.
+  // 보고서 층(결론 줄·수치 3개·확인할 점) — 엔진 값만 묶는다(lib/incrementalityReport).
+  const effectSig = r ? (isDiD ? r.did.sig : r.sig) : null;
+  const report = r ? prepostReport({
+    effect: effVal, low: effectSig?.ciLow95 ?? null, high: effectSig?.ciHigh95 ?? null,
+    total: totalEffect, preN: displayPreN, postN: displayPostN, isDiD, lost, metric: metricCol, design, hasSignificance, locale,
+  }) : null;
   const card = r && (() => {
-    const change = `${effVal >= 0 ? "+" : ""}${fmtNum(effVal, 1)}`;
-    const headline = !design.ready
-      ? tr("비교 조건 미확인 — 전후 변화는 탐색용이며 행동 판단을 보류합니다", "Comparison conditions unconfirmed — pre/post changes are exploratory; action is withheld")
-      : !sig
-      ? tr(`전환 뒤 일평균이 ${change} 변했습니다. 현재 표본만으로 전환의 효과를 확정할 수 없습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `The daily average changed by ${change} after the switch. The current sample does not establish an effect of the switch${isDiD ? " (control's natural change removed)" : ""}.`)
-      : lost
-        ? effVal < 0
-          ? tr(`끈 뒤 일평균이 ${change} 변했습니다 — 종료와 연관된 손실 후보입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it off, the daily average changed by ${change} — a candidate loss associated with the shutdown${isDiD ? " (control's natural change removed)" : ""}.`)
-          : tr(`끈 뒤 일평균이 ${change} 변했습니다 — 종료로 인한 손실은 확인되지 않습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it off, the daily average changed by ${change} — a shutdown loss is not supported${isDiD ? " (control's natural change removed)" : ""}.`)
-        : effVal > 0
-          ? tr(`켠 뒤 일평균이 ${change} 변했습니다 — 신규 실행과 연관된 증가 후보입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it on, the daily average changed by ${change} — a candidate increase associated with the launch${isDiD ? " (control's natural change removed)" : ""}.`)
-          : tr(`켠 뒤 일평균이 ${change} 변했습니다 — 신규 실행에 의한 증가는 확인되지 않습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it on, the daily average changed by ${change} — a launch-driven increase is not supported${isDiD ? " (control's natural change removed)" : ""}.`);
+    const headline = headlineText(report.lines);
     const points = [];
     points.push({ cls: sig ? "good" : "muted", text: sig
       ? tr(`통계적으로 유의합니다 (p=${sigP.toFixed(4)}).`, `Statistically significant (p=${sigP.toFixed(4)}).`)
@@ -1028,7 +1042,35 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
 
   return (
     <>
-      <CausalDesignCheck design={design} locale={locale} />
+      {/* 분석 조건: 지표·전환 시점은 이 줄에서 바로 고치고, 대조군·설계 선언은 "조건 바꾸기" 창에서 한다(§5.5). */}
+      <ConditionLine
+        id="incr-prepost-conditions"
+        locale={locale}
+        dialogTitle={tr("비교 조건", "Comparison conditions")}
+        before={<div className="incr-condition-fields">
+          <Field label={tr("성과 지표", "Performance metric")}><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+            <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}>
+              <select className="map-select" value={effCutoff} onChange={(e) => setCutoff(e.target.value)}>
+                <option value="">{tr("운영 기록에서 선택", "Select from operations record")}</option>
+                {dates.slice(1).map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </Field>
+        </div>}
+        summary={[
+          direction === "off" ? tr("종료 (전후)", "Shutdown (pre/post)") : tr("신규 켜기 (전후)", "New launch (pre/post)"),
+          useDiD && groupCol && selectedControl ? tr(`DiD 대조군 ${selectedControl}`, `DiD control ${selectedControl}`) : tr("대조군 없음", "No control"),
+          designDeclarationText(design, locale),
+        ].join(" · ")}
+      >
+        {groupCols.length > 0 && <div className="incr-condition-fields">
+              <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => { const next = e.target.value; setGroupCol(next); setControlGroup(""); setTreatmentGroup(""); if (!next) setUseDiD(false); }}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+              {groupCol && <Field label={tr("대조군 값", "Control value")}><select className="map-select" value={selectedControl || ""} onChange={(e) => setControlGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
+              {groupCol && <Field label={tr("처리군 값", "Treatment value")}><select className="map-select" value={selectedTreatment || ""} onChange={(e) => setTreatmentGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.filter((g) => g !== selectedControl).map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
+              <label style={{ fontSize: "var(--fs-xs)", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 공통 변화 보정)", "DiD (adjust common change with a control)")}</label>
+        </div>}
+        <p style={{ margin: "9px 0 0", fontSize: "var(--fs-xs)", lineHeight: 1.5, color: "var(--text-muted)" }}>{tr(`전환 시점은 결과 차트를 보기 전에 캠페인 운영 기록에 적힌 실제 시작일 또는 종료일로 지정하세요. 같은 날짜에 여러 행이 있으면 일별 합계로 먼저 집계합니다. DiD는 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다.`, `Set the cutoff from the actual launch or shutdown date in the campaign operations record before viewing the outcome chart. Multiple rows on the same date are aggregated to a daily total first. DiD requires at least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates.`)}</p>
+        <CausalDesignCheck design={design} locale={locale} />
+      </ConditionLine>
       {blockedState && (
         <AnalysisBlockedTelemetry
           toolId="5-23"
@@ -1040,28 +1082,6 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           locale={locale}
         />
       )}
-      <section className="block" style={{ marginBottom: "12px" }}>
-        <h2 className="section-title">{tr("비교 설정", "Comparison settings")}</h2>
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
-          <Field label={tr("성과 지표", "Performance metric")}><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
-          <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}>
-            <select className="map-select" value={effCutoff} onChange={(e) => setCutoff(e.target.value)}>
-              <option value="">{tr("운영 기록에서 선택", "Select from operations record")}</option>
-              {dates.slice(1).map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </Field>
-          {groupCols.length > 0 && (
-            <>
-              <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => { const next = e.target.value; setGroupCol(next); setControlGroup(""); setTreatmentGroup(""); if (!next) setUseDiD(false); }}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
-              {groupCol && <Field label={tr("대조군 값", "Control value")}><select className="map-select" value={selectedControl || ""} onChange={(e) => setControlGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
-              {groupCol && <Field label={tr("처리군 값", "Treatment value")}><select className="map-select" value={selectedTreatment || ""} onChange={(e) => setTreatmentGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.filter((g) => g !== selectedControl).map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
-              <label style={{ fontSize: "var(--fs-xs)", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 공통 변화 보정)", "DiD (adjust common change with a control)")}</label>
-            </>
-          )}
-        </div>
-        <p style={{ margin: "9px 0 0", fontSize: "var(--fs-xs)", lineHeight: 1.5, color: "var(--text-muted)" }}>{tr(`전환 시점은 결과 차트를 보기 전에 캠페인 운영 기록에 적힌 실제 시작일 또는 종료일로 지정하세요. 같은 날짜에 여러 행이 있으면 일별 합계로 먼저 집계합니다. DiD는 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다.`, `Set the cutoff from the actual launch or shutdown date in the campaign operations record before viewing the outcome chart. Multiple rows on the same date are aggregated to a daily total first. DiD requires at least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates.`)}</p>
-      </section>
-
       {!effCutoff && (
         <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("전환 시점을 먼저 지정하세요", "Specify the cutoff date first")}</strong><p>{tr("데이터 중간 날짜를 자동으로 고르거나 결과가 크게 달라지는 날짜를 사후 선택하지 않습니다. 운영 기록에 남은 실제 날짜를 선택해야 분석합니다.", "The tool does not auto-select the middle date or retrospectively choose a date with the largest outcome change. Select the actual date recorded in operations before analysis runs.")}</p></div></div>
       )}
@@ -1088,21 +1108,9 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
 
       {r && (
         <section className="block incr-prepost-result" id="s-incr-result">
-          <h2 className="section-title">{lost ? tr("광고 종료 영향", "After advertising stops") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
           {card && (
             <ResultActionCard
-              coreFigure={<div className="incr-prepost-chart">
-                <div className="incr-prepost-interval" aria-label={tr("변화 추정 범위", "Estimated change interval")}>
-                  <span>{tr("일평균 변화의 95% 신뢰구간", "95% confidence interval for daily change")}</span>
-                  <strong>{Number.isFinite((isDiD ? r.did.sig : r.sig)?.ciLow95) && Number.isFinite((isDiD ? r.did.sig : r.sig)?.ciHigh95)
-                    ? `${fmtNum((isDiD ? r.did.sig : r.sig).ciLow95, 1)} ~ ${fmtNum((isDiD ? r.did.sig : r.sig).ciHigh95, 1)}`
-                    : tr("추정 불가", "Not estimable")}</strong>
-                </div>
-                <FigureHead level={3} title={lost ? tr("날짜별 성과 — 광고 종료 전후", "Daily outcomes — before and after advertising stops") : tr("날짜별 성과 — 광고 시작 전후", "Daily outcomes — before and after advertising starts")} target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
-                <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("주황 세로선은 광고 시작·종료 시점입니다. 초록 실선은 실제 성과, 회색 점선은 처리군의 전후 평균입니다.", "The amber line marks the advertising change. The green line shows observed outcomes; gray dashed lines show treatment-group averages before and after.")}{isDiD && <> {tr("평균선은 대조군을 보정한 순효과와 다릅니다.", "These averages are not the control-adjusted net effect.")}</>}</p>
-                <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-prepost-chart"></canvas></div>
-              </div>}
-              pointsContent={<PrePostEvidence locale={locale} points={card.points} figure={Number.isFinite(effVal) && <ToolCoreFigure embedded
+              coreFigure={Number.isFinite(effVal) && <ToolCoreFigure embedded
                 figure={effectIntervalFigure({
                   id: "prepost-effect",
                   question: lost ? tr("광고 종료 전후의 변화", "Change after stopping advertising") : tr("광고 시작 전후의 변화", "Change after starting advertising"),
@@ -1118,7 +1126,52 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
                 })}
                 locale={locale}
                 downloadName="incrementality_prepost_effect"
-              />} />}
+              />}
+              pointsContent={<div className="result-report">
+                <ResultTable
+                  title={tr("기간별 일평균", "Daily average by period")}
+                  meta={tr(`전환 시점 ${effCutoff} · 전 ${displayPreN}일 · 후 ${displayPostN}일`, `Cutoff ${effCutoff} · ${displayPreN} pre · ${displayPostN} post days`)}
+                  locale={locale}
+                  rows={[
+                    { key: "treatment", name: isDiD ? tr(`처리군 (${selectedTreatment})`, `Treatment (${selectedTreatment})`) : (groupCol && selectedTreatment ? selectedTreatment : tr("전체", "All")), pre: displayPreMean, post: displayPostMean, change: displayPostMean - displayPreMean, low: isDiD ? null : effectSig?.ciLow95, high: isDiD ? null : effectSig?.ciHigh95 },
+                    ...(isDiD ? [
+                      { key: "control", name: tr(`대조군 (${selectedControl})`, `Control (${selectedControl})`), pre: r.did.ctrlPreMean, post: r.did.ctrlPostMean, change: r.did.ctrlPostMean - r.did.ctrlPreMean },
+                      { key: "net", name: tr("순효과 (처리 − 대조)", "Net effect (treatment − control)"), pre: null, post: null, change: effVal, low: effectSig?.ciLow95, high: effectSig?.ciHigh95 },
+                    ] : []),
+                  ]}
+                  rowKey={(row) => row.key}
+                  columns={[
+                    { key: "name", label: tr("구분", "Series") },
+                    { key: "pre", label: tr("전 (일평균)", "Before (daily)"), align: "right", fmt: (v) => Number.isFinite(v) ? fmtNum(v, 1) : "—" },
+                    { key: "post", label: tr("후 (일평균)", "After (daily)"), align: "right", fmt: (v) => Number.isFinite(v) ? fmtNum(v, 1) : "—" },
+                    { key: "change", label: tr("변화 (95%)", "Change (95%)"), align: "right", fmt: (v, row) => <><ChangeBar value={v} max={Math.max(Math.abs(effectSig?.ciLow95 ?? 0), Math.abs(effectSig?.ciHigh95 ?? 0), Math.abs(displayPostMean - displayPreMean), Math.abs(v))} tone="down" /><strong>{signedValue(v, 1)}</strong>{intervalText(row.low, row.high, 1) && <> <small>({intervalText(row.low, row.high, 1).replace("95% ", "")})</small></>}</> },
+                  ]}
+                />
+                <IssueTable issues={report.issues} locale={locale} />
+              </div>}
+              analysisContent={<ResultDetails
+                id="incr-prepost-details"
+                locale={locale}
+                open={detailsOpen}
+                onOpenChange={setDetailsOpen}
+                items={[tr("날짜별 차트", "Daily chart"), tr("p값 · 사전추세 검사", "p-value · pretrend check"), tr("해석과 한계", "Interpretation and limits")]}
+              >
+                <div className="incr-details">
+                  <section className="incr-detail incr-prepost-chart">
+                    <FigureHead level={3} title={lost ? tr("날짜별 성과 — 광고 종료 전후", "Daily outcomes — before and after advertising stops") : tr("날짜별 성과 — 광고 시작 전후", "Daily outcomes — before and after advertising starts")} target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
+                    <p>{tr("주황 세로선은 광고 시작·종료 시점입니다. 초록 실선은 실제 성과, 회색 점선은 처리군의 전후 평균입니다.", "The amber line marks the advertising change. The green line shows observed outcomes; gray dashed lines show treatment-group averages before and after.")}{isDiD && <> {tr("평균선은 대조군을 보정한 순효과와 다릅니다.", "These averages are not the control-adjusted net effect.")}</>}</p>
+                    <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-prepost-chart"></canvas></div>
+                  </section>
+                  <section className="incr-detail">
+                    <h3>{tr("검정과 근거", "Tests and evidence")}</h3>
+                    <ul>{card.points.map((point, index) => <li key={index}>{point.text}</li>)}</ul>
+                  </section>
+                  <section className="incr-detail">
+                    <h3>{tr("해석과 한계", "Interpretation and limits")}</h3>
+                    <p>{tr("관측된 변화이며 인과효과 확정은 아닙니다. 단순 전후 비교는 계절성·추세·프로모션과 섞일 수 있고, DiD도 평행추세를 증명하지 않습니다. 실행 전 비교 조건을 확인하세요.", "An observed change, not a confirmed causal effect. Simple before/after comparisons can mix with seasonality, trend and promotions, and DiD does not prove parallel trends. Review the study conditions before acting.")}</p>
+                  </section>
+                </div>
+              </ResultDetails>}
               toolId="5-23"
               locale={locale}
               analysisKey={`${Object.values(design.values).join(":")}|prepost|${direction}|${csvData.raw?.length || 0}|${csvData.headers?.length || 0}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${groupCols.indexOf(groupCol)}|${groupVals.indexOf(selectedControl)}|${groupVals.indexOf(selectedTreatment)}|${useDiD ? 1 : 0}`}
@@ -1129,11 +1182,12 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               ] }}
               resultState={design.ready && sig ? "ready" : "inconclusive"}
               trackAnalysisStart
-              tone={design.ready ? card.tone : "neutral"}
+              tone={report.tone}
               title={lost ? tr(confirmedLoss ? "결론 — 종료와 연관된 손실 후보" : "결론 — 종료 후 관측 변화", confirmedLoss ? "Conclusion — loss candidate after shutdown" : "Conclusion — observed post-shutdown change") : tr(confirmedGain ? "결론 — 신규 실행과 연관된 증가 후보" : "결론 — 신규 실행 후 관측 변화", confirmedGain ? "Conclusion — increase candidate after launch" : "Conclusion — observed post-launch change")}
               headline={card.headline}
+              headlineContent={<ResultHeadline lines={report.lines} />}
               points={card.points}
-              stats={card.stats}
+              stats={report.stats}
               workbookExport={() => ({
                 calculationMode: "exact_after_preprocessing",
                 calculationTables: [designEvidenceTable(design.values, design.ready), {
@@ -1209,38 +1263,6 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   );
 }
 
-function PrePostEvidence({ locale, points, figure }) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef(null);
-  const en = locale === "en";
-  const title = en ? "Analysis evidence" : "분석 근거";
-  return <>
-    <div className="incr-prepost-evidence">
-      <p>{en ? "An observed change, not a confirmed causal effect. Review the study conditions before acting." : "관측된 변화이며 인과효과 확정은 아닙니다. 실행 전 비교 조건을 확인하세요."}</p>
-      <button ref={triggerRef} type="button" className="btn" aria-haspopup="dialog" onClick={() => setOpen(true)}>{en ? "View analysis evidence" : "분석 근거 보기"}</button>
-    </div>
-    <ModalDialog open={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} ariaLabel={title} overlayClassName="csv-guide-overlay" panelClassName="csv-guide-modal">
-      <div className="csv-guide-modal-head">
-        <strong>{title}</strong>
-        <button type="button" className="btn ghost" onClick={() => setOpen(false)}>{en ? "Close" : "닫기"}</button>
-      </div>
-      <div className="csv-guide-modal-body incr-prepost-evidence-body">
-        {figure}
-        <ul>{points.map((point, index) => <li key={index}>{point.text}</li>)}</ul>
-      </div>
-    </ModalDialog>
-  </>;
-}
-
-function Stat({ label, value, hint, color }) {
-  return (
-    <div className="ab-stat">
-      <div className="ab-stat-label">{label}</div>
-      <div className="ab-stat-value tnum" style={color ? { color } : undefined}>{value}</div>
-      {hint && <div className="ab-stat-hint">{hint}</div>}
-    </div>
-  );
-}
 function Field({ label, children }) {
   return (
     <div className="ab-field" style={{ minWidth: "160px" }}>

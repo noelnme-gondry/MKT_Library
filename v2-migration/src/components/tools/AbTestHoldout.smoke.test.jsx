@@ -14,6 +14,7 @@ import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 import { describe, it, expect, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
+import { openResultDetails } from "@/test/resultDetails";
 import AbTestHoldout from "@/components/tools/AbTestHoldout";
 
 // Empty CSV slice = the "no data yet, show uploader" state.
@@ -28,9 +29,12 @@ function seedNoData() {
   });
 }
 
+// 설계 선언은 결과 위 조건 줄의 "조건 바꾸기" 창 안에 있다 — 사람이 하듯 열고, 선언하고, 닫는다.
 function confirmDesign(locale = "ko", share = "50") {
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" }));
   fireEvent.change(screen.getByLabelText(locale === "en" ? "Planned Control share (%)" : "계획 Control 배정 비율 (%)"), { target: { value: share } });
   fireEvent.click(screen.getByRole("checkbox", { name: locale === "en" ? /distinct assigned units/ : /중복 없는 배정 단위/ }));
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Close" : "닫기" }));
 }
 
 // A minimal but VALID experiment CSV: readout (is_control/numerator/denominator
@@ -191,9 +195,47 @@ describe("AbTestHoldout render smoke", () => {
     render(<AbTestHoldout />);
     fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
 
+    // 결론은 합산 Test가 아니라 Holm 보정 arm별 판정에서 온다.
+    const headline = document.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/variant_c/);
+    expect(headline).toMatch(/Holm 보정/);
+    expect(screen.queryByText("대량 검정 (arm_id별)")).toBeNull();
+    openResultDetails();
     expect(screen.getByText("대량 검정 (arm_id별)")).toBeTruthy();
-    expect(screen.getByText(/2개 variant를 합친 참고값/)).toBeTruthy();
+    expect(screen.getByText(/전체 변형 합산/)).toBeTruthy();
     expect(screen.queryByText(/다음 마케팅 프로젝트로 만들기/)).toBeNull();
+  });
+
+  it.each(["ko", "en"])("reads out as an executive report: conclusion with 95%% interval, three figures, arm table, details closed (%s)", (locale) => {
+    seedWithData({ variantBNumerator: 590, includeVariantC: false });
+    const { container } = render(<AbTestHoldout locale={locale} />);
+    const en = locale === "en";
+    fireEvent.click(screen.getByRole("tab", { name: en ? /A\/B readout/ : /A\/B 판독/ }));
+    const card = container.querySelector(".result-action-card");
+    const headline = card.querySelector(".result-action-card__headline").textContent;
+    // 배정 비율을 선언하기 전에는 채택 권고가 아니라 개선 후보다.
+    expect(headline).toMatch(en ? /variant_b improvement candidate/ : /variant_b 개선 후보/);
+    expect(headline).toMatch(/\+0\.90%p \(95% \+0\.\d{2} ~ \+1\.\d{2}%p\)/);
+    expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    expect(card.querySelector(".tool-core-figure .result-effect")).toBeTruthy();
+    const table = card.querySelector(".result-table");
+    expect(table.textContent).toMatch(en ? /Results by arm/ : /실험군별 결과/);
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(2);
+    const toggle = card.querySelector("[data-result-details-toggle]");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("#ab-bar")).toBeNull();
+    confirmDesign(locale);
+    expect(card.querySelector(".result-action-card__headline").textContent).toMatch(en ? /Adopt variant_b/ : /variant_b 채택 권고/);
+  });
+
+  it("holds with the extra sample the engine requires when the interval includes zero", () => {
+    seedWithData({ variantBNumerator: 520, includeVariantC: false });
+    render(<AbTestHoldout />);
+    fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
+    const headline = document.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/^판단 보류 — 차이 \+0\.20%p \(95% −0\.\d{2} ~ \+0\.\d{2}%p\)/);
+    expect(headline).toMatch(/관측 차이 기준 그룹당 약 [\d,]+명 더 필요/);
+    expect(headline).not.toMatch(/효과 없음$/);
   });
 
   it.each(["ko", "en"])("withholds the action when observed allocation contradicts the plan (%s)", (locale) => {
