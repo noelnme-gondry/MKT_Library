@@ -3,6 +3,7 @@
 // 판정은 "검정 p < 0.05"와 "95% 구간이 0을 벗어남"이 같은 말을 할 때만 내린다.
 // 둘이 엇갈리면(경계) 판단 보류 — 입증 책임은 효과가 있다는 쪽에 있다(§8.6).
 import { STATS } from "@/utils/abTestMath";
+import { parseNumericOrNaN } from "@/utils/parseNumeric";
 
 const MINUS = "−";
 
@@ -100,7 +101,7 @@ export function summarizeAbReadout({ readoutData, srm, plannedShare, locale = "k
   if (srmMismatch) {
     const total = control.n + variants.reduce((sum, arm) => sum + arm.n, 0);
     const observedA = total > 0 ? Math.round((control.n / total) * 100) : null;
-    const plannedA = Math.round(Number(String(plannedShare ?? "").replace(/,/g, "")));
+    const plannedA = Math.round(parseNumericOrNaN(plannedShare));
     lines = [
       { kind: "main", chunks: [tr(`판단 보류 — 배정 ${observedA}:${100 - observedA}`, `Hold — allocation ${observedA}:${100 - observedA}`), Number.isFinite(plannedA) ? tr(`(계획 ${plannedA}:${100 - plannedA}, SRM p<0.001)`, `(planned ${plannedA}:${100 - plannedA}, SRM p<0.001)`) : "(SRM p<0.001)"] },
       { kind: "effect", chunks: [tr("배정 로직을 확인하기 전에는 효과를 판단하지 않습니다", "Treatment effects are not judged until assignment is checked")] },
