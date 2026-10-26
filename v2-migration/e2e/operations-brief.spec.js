@@ -5,9 +5,9 @@ import Papa from "papaparse";
 import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import { measureDesignRules } from "./support/designRules";
 
-function csvFixture({ gap = false } = {}) {
+function csvFixture({ gap = false, days = 70 } = {}) {
   const lines = ["Date,Country,Platform,Channel,Campaign,Creative,Cost,Installs,Impressions,Clicks"];
-  for (let day = 0; day < 70; day++) for (let campaign = 0; campaign < 2; campaign++) {
+  for (let day = 0; day < days; day++) for (let campaign = 0; campaign < 2; campaign++) {
     const date = new Date(Date.UTC(2026, 6, 1 + day)).toISOString().slice(0, 10);
     if (gap && day === 67 && campaign === 1) continue;
     const cost = 100000 + day % 11 * 14000;
@@ -60,13 +60,18 @@ for (const locale of ["ko", "en"]) {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tooltip")).toHaveCount(0);
     if (testInfo.project.use.viewport.width > 1100) {
-      const budgetHeading = await page.locator("#ops-budget-title").boundingBox();
+      const overview = await page.locator(".operations-panel--budget").boundingBox();
+      const comparisons = await page.locator(".operations-workbench__group--budget > .operations-comparison").boundingBox();
+      expect(Math.abs(overview.x - comparisons.x), "shared budget summary starts at the comparison gutter").toBeLessThanOrEqual(1);
+      expect(Math.abs(overview.width - comparisons.width), "shared budget summary spans both charts").toBeLessThanOrEqual(1);
+      expect(overview.y + overview.height, "shared conditions and summary precede both charts").toBeLessThan(comparisons.y);
+      const budgetHeading = await page.locator(".operations-panel--allocation .figure-head h3").boundingBox();
       const trendHeading = await page.locator("#ops-trend-title").boundingBox();
-      expect(Math.abs(budgetHeading.y - trendHeading.y), "paired task headings share a top edge").toBeLessThanOrEqual(1);
-      const subtitles = await page.locator(".operations-panel--budget .operations-brief__heading p, .operations-trend .figure-head__description").evaluateAll(nodes => nodes.map(node => ({ top: node.getBoundingClientRect().top, size: getComputedStyle(node).fontSize, color: getComputedStyle(node).color })));
-      expect(Math.abs(subtitles[0].top - subtitles[1].top), "paired subtitles share a baseline").toBeLessThanOrEqual(1);
-      expect(subtitles[0].size).toBe(subtitles[1].size);
-      expect(subtitles[0].color).toBe(subtitles[1].color);
+      expect(Math.abs(budgetHeading.y - trendHeading.y), "paired chart headings share a top edge below the summary").toBeLessThanOrEqual(1);
+      const titles = await page.locator(".operations-panel--allocation .figure-head h3, #ops-trend-title").evaluateAll(nodes => nodes.map(node => ({ size: getComputedStyle(node).fontSize, color: getComputedStyle(node).color })));
+      expect(titles).toHaveLength(2);
+      expect(titles[0].size).toBe(titles[1].size);
+      expect(titles[0].color).toBe(titles[1].color);
       const figureHeads = await page.locator(".operations-decomposition-grid .section-head").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().bottom));
       expect(Math.abs(figureHeads[0] - figureHeads[1]), "stage and mix plots start below aligned figure headers").toBeLessThanOrEqual(1);
     }
@@ -187,6 +192,30 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".operations-brief")).toContainText(en ? "Budget and improvement estimates withheld" : "예산·개선치 추정 보류");
     await expect(page.getByRole("table", { name: en ? "Recent efficiency by creative" : "소재별 최근 효율", exact: true })).toBeVisible();
     await expect(page.locator(".operations-brief__forecast")).toHaveCount(0);
+  });
+
+  test(`operations planner: short history withholds predictions and retains observed evidence (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    // 업로드 자격(14일)을 통과한 뒤 초기 2일만 분석한다. 뒤의 12일은 학습에 쓰면 안 된다.
+    await openOperations(page, en, { days: 14 });
+    await page.locator(".operations-planner__conditions > summary").click();
+    await page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ }).click();
+    const dialog = page.getByRole("dialog", { name: en ? "Analysis period" : "분석 기간", exact: true });
+    await dialog.getByLabel(en ? "Start date" : "시작일").fill("2026-07-01");
+    await dialog.getByLabel(en ? "End date" : "종료일").fill("2026-07-02");
+    await dialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+    const budget = page.locator(".operations-workbench__group--budget");
+    await expect(budget).toContainText(en ? "Budget and improvement estimates withheld" : "예산·개선치 추정 보류");
+    await expect(budget).toContainText(en ? "observations or model fit are insufficient" : "관측 수 또는 모형 적합도가 부족");
+    await expect(budget.locator(".operations-brief__forecast, .operations-panel--allocation")).toHaveCount(0);
+    await expect(budget.locator(".operations-comparison--single > .operations-panel--trend")).toBeVisible();
+    await expect(page.locator(".operations-observed-queue tbody tr")).toHaveCount(2);
+    await expect(page.locator("#ops-input-detail")).toContainText(en ? "Complete total" : "유효한 합계");
+    await expect(page.locator(".operations-review-choices")).not.toContainText(en ? "Budget adjustment" : "예산 조정");
+    const grid = await budget.locator(".operations-comparison--single").boundingBox();
+    const trend = await budget.locator(".operations-panel--trend").boundingBox();
+    expect(Math.abs(grid.width - trend.width), "observed trend uses the full column when predictions are withheld").toBeLessThanOrEqual(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 
   test(`operations planner: chart decision saved and opened in weekly review (${locale})`, async ({ page }) => {

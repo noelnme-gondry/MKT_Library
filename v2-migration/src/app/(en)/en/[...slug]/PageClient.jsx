@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
+import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
 import AnalysisDataGuide from "@/components/AnalysisDataGuide";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
@@ -146,6 +147,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />}
             {isAnalysisAdRoute(routeId) && <PartnerAdSlot placement="analysis-bottom" locale="en" />}
+            <SourceSurveyPopup locale="en" />
             </article>
           </main>
         </div>

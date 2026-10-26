@@ -20,6 +20,7 @@ import { comparisonWarnings } from "@/lib/analysisPeriod";
 import { scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import { prepareOperationsBrief, planOperationsBudget, OPERATIONS_HOLDS } from "@/lib/operations/operationsBrief";
 import { operationsReviewCandidates } from "@/lib/operations/operationsReview";
+import { operationsInputEvidence } from "@/lib/operations/operationsEvidence";
 import OperationsWorkbench from "./OperationsWorkbench";
 import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
 import ResultActionCard from "@/components/ds/ResultActionCard";
@@ -38,7 +39,7 @@ function EvidenceTable({ title, columns, rows, locale, emptyText }) {
   </div>;
 }
 
-function OperationsResults({ csvData, filter, periods, denomBasis, currency, locale = "ko" }) {
+function OperationsResults({ csvData, filter, periods, denomBasis, currency, locale = "ko", onInspectMapping }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const metric = effectiveDenomBasis(csvData, denomBasis);
   const metricName = metric === "actions" ? "CPA" : "CPI";
@@ -63,7 +64,8 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
         const rows = getMonFilteredRows(input.csvData, { ...input.filter, dateStart: null, dateEnd: null });
         const brief = prepareOperationsBrief({ rows, periods: input.periods, metric: input.metric,
           mappedFields: Object.values(input.csvData.mapping || {}) });
-        setBundle({ input, brief, plan: planOperationsBudget(brief, { changeLimit: limitRef.current, currency: input.currency }) });
+        const evidence = operationsInputEvidence({ rows, mapping: input.csvData.mapping, period: input.periods.current, metric: input.metric });
+        setBundle({ input, brief, evidence, plan: planOperationsBudget(brief, { changeLimit: limitRef.current, currency: input.currency }) });
         setFailure(null);
       } catch { setFailure(input); }
     }); });
@@ -107,10 +109,11 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
     observedCpr: campaignById.get(row.id).current.cpr, baselineCpr: row.current / row.currentResults }));
   const isDemo = isDemoData(csvData);
   const reviewCandidates = operationsReviewCandidates({ brief, plan, currency, locale });
-  const chooseReview = id => {
+  const chooseReview = (id, { reveal = true } = {}) => {
     const current = reviewCandidates.find(row => row.id === reviewSelection) || reviewCandidates[0];
     if (id !== current?.id && !confirmReviewExit(useAppStore.getState().activeProjectId, locale)) return;
     setReviewSelection(id);
+    if (!reveal) return;
     requestAnimationFrame(() => {
       const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
       reviewRef.current?.scrollIntoView?.({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
@@ -135,6 +138,13 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
     { name: "OPS_DECOMPOSITION", title: tr("단가 분해 엔진 출력", "Unit-cost decomposition engine outputs"), rows: [
       ["entity", "context", "creative", "mix_engine", "rate_engine", "total_contribution_engine"],
       ...brief.campaigns.flatMap(row => (row.pvm?.finest || []).map(item => [entity(row), row.context, item.crKey || "", item.mix, item.rate, item.contribution])) ] },
+    { name: "OPS_METRIC_INPUTS", title: tr("지표에 사용한 실제 입력", "Actual inputs behind metrics"), rows: [
+      ["field", "source_columns", "period_start", "period_end", "observations", "complete_total", "invalid_rows", "unavailable_reason"],
+      ...bundle.evidence.inputs.map(row => [row.key, row.headers.join(" · "), periods.current.start, periods.current.end,
+        bundle.evidence.observations, row.total ?? "", row.invalidCount, row.reason || ""]) ] },
+    { name: "OPS_METRICS", title: tr("기존 지표 정의의 계산값", "Values from existing metric definitions"), rows: [
+      ["metric", "outcome_basis", "unit", "value_registry", "input_fields", "unavailable_reason"],
+      ...bundle.evidence.metrics.map(row => [row.id, metric, row.unit, row.value ?? "", row.dependencies.map(input => input.key).join(" · "), row.reason || ""]) ] },
   ], method: { name: "operations-brief", version: "1", assumptions: ["Same daily budget; observed daily coverage; historical curves, recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range."], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
 
   return <ResultActionCard title={tr("이번 운영에서 확인할 일", "Checks for your next operating plan")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
@@ -157,7 +167,7 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
     analysisContent={<div className="operations-brief">
       <OperationsWorkbench {...{ brief, plan, budgetRows, campaign, creative, setSelected, setCreativeSelection,
         limit, replanning, changeLimit, holdMessages, metricName, outcomeName, currency, locale, periods, isDemo,
-        money, number, pct, reviewCandidates, reviewSelection, chooseReview, reviewRef }} />
+        money, number, pct, reviewCandidates, reviewSelection, chooseReview, reviewRef, onInspectMapping }} evidence={bundle.evidence} />
       <details className="operations-data">
         <summary>{tr("차트의 상세 데이터", "Data behind the charts")}<span>{tr("예산·캠페인·소재·단계별 지표", "Budget, campaigns, creatives and stage metrics")}</span></summary>
         <div className="operations-data__body">
@@ -237,10 +247,14 @@ export default function OperationsPlanner({ locale = "ko" }) {
     const data = buildToolDemo(OPERATIONS_TOOL_ID, locale);
     downloadCsv(csvBody(data.headers, data.raw.map(row => data.headers.map(header => row[header]))), "fictional_operations_98days");
   };
+  const inspectMapping = () => {
+    setConditionsOpen(true);
+    requestAnimationFrame(() => document.getElementById("ops-analysis-settings")?.focus());
+  };
   return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false}>
     <details className={`operations-planner__conditions${ready ? " has-results" : ""}`} open={!ready || conditionsOpen}
       onToggle={event => { if (ready) setConditionsOpen(event.currentTarget.open); }}>
-      <summary>
+      <summary id="ops-analysis-settings">
         <span className="operations-planner__context">
           <strong>{ready ? tr("분석 조건", "Analysis settings") : tr("데이터 준비", "Prepare data")}</strong>
           {ready && <><span>{tr("최근", "Recent")} {periods.current.start} – {periods.current.end}<span className="operations-planner__prior"> · {tr("직전", "Prior")} {periods.previous.start} – {periods.previous.end}</span></span>
@@ -269,6 +283,6 @@ export default function OperationsPlanner({ locale = "ko" }) {
       <button className="btn primary" type="button" onClick={applyDemo}>{tr("예시로 교체", "Replace with sample")}</button>
       <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
     </ModalDialog>
-    {ready && <OperationsResults csvData={csvData} filter={filter} periods={periods} denomBasis={denomBasis} currency={sourceCurrencyOf(csvData)} locale={locale} />}
+    {ready && <OperationsResults csvData={csvData} filter={filter} periods={periods} denomBasis={denomBasis} currency={sourceCurrencyOf(csvData)} locale={locale} onInspectMapping={inspectMapping} />}
   </ToolPageShell>;
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 import BrandCampaignIncrementality from "@/components/tools/BrandCampaignIncrementality";
 import MulticollinearityChecker from "@/components/tools/MulticollinearityChecker";
@@ -98,19 +98,26 @@ describe("decision review coverage for diagnostic tools", () => {
     const { container } = render(<BrandCampaignIncrementality locale={locale} />);
     fireEvent.click(screen.getByRole("button", { name: en ? "Estimate incrementality" : "증분 추정하기" }));
     expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeNull();
+    // 비교 조건 선언은 결과 위 조건 줄의 "조건 바꾸기" 창 안에 있다.
+    const openConditions = () => fireEvent.click(screen.getByText(en ? "Change settings" : "조건 바꾸기", { selector: "button" }));
+    const closeConditions = () => fireEvent.click(within(document.querySelector(".condition-dialog")).getByText(en ? "Close" : "닫기", { selector: "button" }));
+    openConditions();
     for (const [label, value] of [
       [en ? "What did you compare?" : "비교한 대상은 무엇인가요?", "time"],
       [en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?", "observational"],
       [en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?", "planned"],
       [en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "none"],
     ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    closeConditions();
     await waitFor(() => expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeTruthy());
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
       tool_id: "5-24",
       analysis_type: "brand_incrementality",
       placement: "result_action_card",
     }));
+    openConditions();
     fireEvent.change(screen.getByLabelText(en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?"), { target: { value: "present" } });
+    closeConditions();
     expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeNull();
   });
 

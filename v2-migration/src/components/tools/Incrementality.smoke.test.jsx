@@ -11,9 +11,21 @@ import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import Incrementality from "@/components/tools/Incrementality";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
+import { openResultDetails } from "@/test/resultDetails";
+
+// 설계 선언·대조군 설정은 결과 위 조건 줄의 "조건 바꾸기" 창 안에 있다 — 사람이 하듯 열고 닫는다.
+// 결정 기록 창이 열려 있으면 바깥이 보조기술에서 숨겨지므로(역할 조회 불가) 조건 줄의 버튼은 이름 글자로 찾는다.
+function openConditions(locale = "ko") {
+  fireEvent.click(screen.getByText(locale === "en" ? "Change settings" : "조건 바꾸기", { selector: "button" }));
+}
+function closeConditions(locale = "ko") {
+  const dialog = document.querySelector(".condition-dialog");
+  fireEvent.click(within(dialog).getByText(locale === "en" ? "Close" : "닫기", { selector: "button" }));
+}
 
 function declareDesign(locale = "ko") {
   const en = locale === "en";
+  openConditions(locale);
   for (const [label, value] of [
     [en ? "What did you compare?" : "비교한 대상은 무엇인가요?", "person"],
     [en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?", "randomized"],
@@ -22,6 +34,7 @@ function declareDesign(locale = "ko") {
   ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
   const counts = screen.queryByLabelText(en ? "Is each person counted once over the whole period?" : "기간 전체에서 한 대상을 한 번씩만 셌나요?");
   if (counts) fireEvent.change(counts, { target: { value: "unique" } });
+  closeConditions(locale);
 }
 
 const EMPTY = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -111,20 +124,29 @@ describe("Incrementality render smoke", () => {
     const en = locale === "en";
     fireEvent.change(screen.getByLabelText(en ? "Holdout start date" : "홀드아웃 시작일"), { target: { value: "2024-05-12" } });
     fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-05" } });
-    expect(screen.getByText(en ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
+    // 결정 #3: 설계 미선언이어도 추정치와 95% 구간을 보이고 "탐색용"을 붙인다 — 권고 단어는 없다.
+    const headline = document.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(en ? /^Incremental conversions \+[\d,]+ \(95% \+[\d,]+ ~ \+[\d,]+\)/ : /^증분 전환 \+[\d,]+건 \(95% \+[\d,]+ ~ \+[\d,]+건\)/);
+    expect(headline).toMatch(en ? /Exploratory — a verdict needs confirmed random assignment/ : /탐색용 — 무작위 배정이 확인되면 판정합니다/);
+    expect(headline).not.toMatch(en ? /Keep the ads|Adopt/ : /권고|채택/);
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     const figure = document.querySelector(".result-action-card .tool-core-figure .result-effect");
     expect(figure).toBeTruthy();
     expect(figure.querySelector("li").dataset.tone).toBe("flat");
     declareDesign(locale);
     expect(figure.querySelector("li").dataset.tone).toBe("better");
+    expect(document.querySelector(".result-action-card__headline").textContent).toMatch(en ? /^Keep the ads:/ : /^광고 유지 권고:/);
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeTruthy();
+    openConditions(locale);
     fireEvent.change(screen.getByLabelText(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?"), { target: { value: "changed" } });
+    closeConditions(locale);
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     declareDesign(locale);
     fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-04" } });
+    openConditions(locale);
     expect(screen.getByLabelText(en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?").value).toBe("");
+    closeConditions(locale);
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
   });
 
@@ -138,10 +160,16 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
     expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(screen.getAllByText(/결과 받기/).length).toBeGreaterThan(0);
-    // 핵심 그림: 전환율 차이(%p)와 95% 구간 — 결론 카드의 CI와 같은 값이다.
+    // 핵심 그림: 증분 전환과 95% 구간 — 결론 줄·수치와 같은 값이다(전환율 차이 구간 × 노출 인원).
     const effect = container.querySelector(".tool-core-figure .result-effect");
     expect(effect).toBeTruthy();
-    expect(effect.textContent).toMatch(/%p · 95% 구간 [+−][\d.]+%p ~ [+−][\d.]+%p/);
+    expect(effect.textContent).toMatch(/[+−][\d,]+ · 95% 구간 [+−][\d,]+ ~ [+−][\d,]+/);
+    const card = container.querySelector(".result-action-card");
+    expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    expect(card.querySelector(".result-table").textContent).toMatch(/그룹별 결과/);
+    expect(card.querySelector("[data-result-details-toggle]").getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector("#incr-suppression-chart")).toBeNull();
+    expect(container.querySelector(".alloc-card")).toBeNull();
     expect(container.querySelector("#s-incr-method")).toBeTruthy();
     expect(container.querySelector("#s-incr-result")).toBeTruthy();
     declareDesign();
@@ -179,6 +207,7 @@ describe("Incrementality render smoke", () => {
   it.each(["ko", "en"])("keeps supporting holdout explanations conditional (%s)", (locale) => {
     seed(buildIncrSuppressionDemo());
     const { container } = render(<Incrementality locale={locale} />);
+    openResultDetails();
     const text = container.textContent;
     expect(text).not.toMatch(/\(이득\)|\(profitable\)|균형\)했다는 증거|evidence the two groups were comparable/);
     expect(text).toContain(locale === "en" ? "does not establish profitability" : "이익 여부를 뜻하지 않습니다");
@@ -203,9 +232,8 @@ describe("Incrementality render smoke", () => {
     // 예시 데이터는 켠 시점을 함께 싣는다 — 누르자마자 결론이다(2026-09-24).
     expect(on.queryByText("전환 시점을 먼저 지정하세요")).toBeNull();
     expect(on.getByText(/결론 — 신규/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "분석 근거 보기" }));
-    expect(screen.getByRole("dialog").querySelector(".tool-core-figure .result-effect")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    // 구간 그림은 창 안이 아니라 결론 바로 아래 핵심 그림이다.
+    expect(on.container.querySelector(".result-action-card .tool-core-figure .result-effect")).toBeTruthy();
     on.unmount();
     seed(buildIncrPrepostDemo("off"));
     const off = render(<Incrementality />);
@@ -219,29 +247,25 @@ describe("Incrementality render smoke", () => {
     const view = render(<Incrementality locale={locale} />);
     const en = locale === "en";
     fireEvent.click(screen.getByRole("tab", { name: en ? /Shutdown/ : /종료/ }));
-    // Tab navigation restores focus on the next animation frame. Settle that
-    // transition before testing the separate dialog's focus restoration.
     await act(async () => new Promise(resolve => requestAnimationFrame(resolve)));
     const result = view.container.querySelector(".incr-prepost-result");
-    expect(within(result).getAllByText(en ? "Pre avg (daily)" : "전환 전 평균(일)")).toHaveLength(1);
     expect(result.querySelectorAll(".result-action-card__stats")).toHaveLength(1);
+    expect(result.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
     expect(result.querySelector(".alloc-card")).toBeNull();
-    expect(within(result).getByLabelText(en ? "Estimated change interval" : "변화 추정 범위").textContent).not.toContain(en ? "Not estimable" : "추정 불가");
-    expect(within(result).getByText(en ? /Comparison conditions unconfirmed/ : /비교 조건 미확인/)).toBeTruthy();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    const headline = result.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/\(95% [+−][\d,.]+ ~ [+−][\d,.]+\)/);
+    expect(headline).toMatch(en ? /Exploratory|Hold —/ : /탐색용|판단 보류 —/);
+    expect(result.querySelector(".tool-core-figure .result-effect")).toBeTruthy();
+    expect(result.querySelector(".result-table").textContent).toMatch(en ? /Daily average by period/ : /기간별 일평균/);
+    // 자세히 보기는 기본 닫힘: 날짜별 차트·사전추세 근거는 열어야 보인다.
+    expect(result.querySelector("#incr-prepost-chart")).toBeNull();
     expect(within(result).queryByText(en ? /No pretrend violation was detected/ : /사전추세 위반은 발견되지/)).toBeNull();
+    openResultDetails(result);
+    expect(within(result).getByText(en ? /No pretrend violation was detected/ : /사전추세 위반은 발견되지/)).toBeTruthy();
     const chart = result.querySelector("#incr-prepost-chart");
     const actions = result.querySelector(".result-action-card__utilities");
     expect(chart.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const trigger = screen.getByRole("button", { name: en ? "View analysis evidence" : "분석 근거 보기" });
-    trigger.focus();
-    fireEvent.click(trigger);
-    const dialog = screen.getByRole("dialog", { name: en ? "Analysis evidence" : "분석 근거" });
-    expect(within(dialog).getByText(en ? /No pretrend violation was detected/ : /사전추세 위반은 발견되지/)).toBeTruthy();
-    expect(dialog.querySelector(".result-effect")).toBeTruthy();
-    fireEvent.keyDown(dialog, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("clears the explicit cutoff when switching launch → shutdown framing", () => {
@@ -283,7 +307,9 @@ describe("Incrementality render smoke", () => {
     seed(asRealResult(buildIncrPrepostDemo("on"), "prepost-result.csv"));
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
+    openConditions();
     fireEvent.click(screen.getByRole("checkbox", { name: /DiD/ }));
+    closeConditions();
     fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
 
     declareDesign();
