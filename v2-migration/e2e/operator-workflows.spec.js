@@ -468,6 +468,9 @@ async function verifyDirectAnalysisGates(page, en = false) {
   const creativeConfirmations = page.getByRole("button", { name: en ? "Confirm" : "확인", exact: true });
   while (await creativeConfirmations.count()) await creativeConfirmations.first().click();
   await page.locator(".csv-uploader").getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+  // 피로 구획은 결과 카드의 "자세히 보기"(기본 닫힘) 안에 있다(임원 보고 형식 §5.5).
+  await expect(page.locator(".result-action-card").first()).toBeVisible();
+  await openResultDetails(page);
   await expect(page.locator("#s-fatigue")).toBeVisible();
 }
 

@@ -19,6 +19,9 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import { CHART_THEME } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ChangeBar, ConditionLine, IssueTable, ResultDetails, ResultHeadline, ResultTable, VerdictChip } from "@/components/ds/ResultReport";
+import { creativeReport } from "@/lib/execReports/creativeReport";
+import { fmtCurrencyCompact, sourceCurrencyOf } from "@/utils/format";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { creativeStatusFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
@@ -483,6 +486,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .replace("추세 외삽", "Trend extrapolation"));
   const decMetaAll = useMemo(() => buildDecomposeMeta(locale), [locale]);
   const csvData = useAppStore((state) => state.csvData);
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
   const [metric, setMetric] = useSavedToolInput("9-6", "metric", "ctr");
   const [activeProblem, setActiveProblem] = useSavedToolInput("9-6", "activeProblem", "swaps");
   // 탭 계약(product-ssot §6.1): 화살표·Home·End로 이동하고 선택 항목만 tab 순서에 남는다.
@@ -511,6 +515,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   const fatigueChartRef = useRef(null);
   const conceptChartRef = useRef(null);
   const chartInstances = useRef({});
+  // "자세히 보기"는 열 때 마운트된다. 피로 곡선·속성 포레스트 캔버스는 그 안에 있고 차트는 이 컴포넌트가 소유하므로
+  // 열림 상태를 차트 effect 의존성에 넣고, 정리 때 파괴한 인스턴스를 비운다(파괴된 차트에 resize가 닿지 않게).
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const hasRawData = csvData?.raw?.length > 0;
   const analyzed = useAppStore((state) => state.isGroupAnalyzed(C.uploaderToolId));
@@ -679,8 +686,10 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   useEffect(() => {
     if (!hasData || !analysis) return;
 
-    if (chartInstances.current["fatigue"]) chartInstances.current["fatigue"].destroy();
-    if (chartInstances.current["concept"]) chartInstances.current["concept"].destroy();
+    for (const key of ["fatigue", "concept"]) {
+      if (chartInstances.current[key]) chartInstances.current[key].destroy();
+      chartInstances.current[key] = null;
+    }
 
     // 1. Fatigue Decay Chart — 하락률 상위 5개 fatigued 소재의 일별 rolling CTR
     if (fatigueChartRef.current) {
@@ -826,10 +835,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
     const currentCharts = chartInstances.current;
     return () => {
-      if (currentCharts["fatigue"]) currentCharts["fatigue"].destroy();
-      if (currentCharts["concept"]) currentCharts["concept"].destroy();
+      for (const key of ["fatigue", "concept"]) {
+        if (currentCharts[key]) currentCharts[key].destroy();
+        currentCharts[key] = null;
+      }
     };
-  }, [analysis, hasData, curMetricKey, curDecompose, locale, decMetaAll, tr, activeProblem]);
+  }, [analysis, hasData, curMetricKey, curDecompose, locale, decMetaAll, tr, activeProblem, detailsOpen]);
 
   if (!hasData) {
     return (
@@ -940,6 +951,18 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     ? `${decisionEntityDates[0]} ~ ${decisionEntityDates[decisionEntityDates.length - 1]}`
     : "";
   const hasDecisionTarget = Boolean(immediateDecisionTarget || fatiguedDecisionTarget);
+  const currency = sourceCurrencyOf(csvData, displayCurrency || "KRW");
+  // 결론·수치 3개·소재별 상태 표·확인할 점 — 엔진 출력만 묶는다(lib/execReports/creativeReport).
+  const report = creativeReport({
+    metrics, fatigue, fatigueAlerts, riskZoneRows, autoPlan, weeklyVelocity, hasSpend,
+    hasFatigueEvidence, minImpressions: CREATIVE_CONFIG.minImpressions, droppedRows: validation.droppedRows,
+    entity: C.entity, domain, locale, currency,
+  });
+  const maxDrop = Math.max(0, ...report.rows.map((row) => Math.abs(row.change || 0)));
+  const statusChip = (status) => status === "replace"
+    ? <VerdictChip tone="bad">{tr("교체", "Replace")}</VerdictChip>
+    : status === "soon" ? <VerdictChip tone="warn">{tr("임박", "Soon")}</VerdictChip> : <VerdictChip tone="info">{tr("관찰", "Watch")}</VerdictChip>;
+  const creativeDates = analysis.cleanRows.map((row) => String(row.date || "")).filter(Boolean).sort();
   const problemChoices = [
     { id: "swaps", icon: "↻", label: tr("교체 필요", "Needs swapping"), count: alertNowN, desc: tr("이번 주 빼야 할 소재", "Creatives to remove this week") },
     { id: "production", icon: "✦", label: tr("새 소재 제작", "Next production"), count: nextTest?.length || 0, desc: tr("다음 실험 후보", "Next test candidates") },
@@ -949,38 +972,17 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
   return (
     <div className="tab-pane active" id="tab-creative">
-      {/* 도구 소개는 한 줄만 유지한다. 실제 판단은 바로 아래 결론·컨트롤룸이 담당한다. */}
-      <section
-        className="block"
+      {/* 분석 조건은 한 줄로(§5.5). 예전 "통계 분석 및 해석 한계" 문단은 확인할 점 표와 자세히 보기로 옮겼다. */}
+      <ConditionLine
         id="s-creative-hero"
-        style={{
-          background: "transparent",
-          border: "1px solid rgba(122,162,247,0.25)",
-          borderRadius: "14px",
-          padding: "18px 20px",
-          marginBottom: "16px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
-          <div>
-            <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{C.heroTitle}</h2>
-            <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: "660px" }}>
-              {tr("교체할 소재, 다음 제작 후보, 성과 변화 신호를 한 번에 정리합니다.", "See what to replace, what to produce next, and what changed performance.")}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
-            <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
-          </div>
-        </div>
-
-        <section data-information-section="" style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
-          <header data-information-heading="">{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</header>
-          <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
-            {C.heroCausationBody}
-          </div>
-        </section>
-      </section>
+        locale={locale}
+        summary={[
+          tr(`${C.entity} 일별`, `Daily by ${domain === "content" ? "content" : "creative"}`),
+          creativeDates.length ? `${creativeDates[0]} ~ ${creativeDates.at(-1)}` : null,
+          tr(`${C.entity} ${metrics.length}개`, `${metrics.length} ${entityPluralEn}`),
+          tr(`노출 ${CREATIVE_CONFIG.minImpressions.toLocaleString()} 이상만 판정`, `Judged only with ${CREATIVE_CONFIG.minImpressions.toLocaleString()}+ impressions`),
+        ].filter(Boolean).join(" · ")}
+      />
 
       <ResultActionCard
         coreFigure={domain !== "content" && <ToolCoreFigure embedded
@@ -1000,7 +1002,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         locale={locale}
         decisionReview={hasDecisionTarget}
         decisionPrefill={hasDecisionTarget ? {
-          conclusion: `${fatigueHeadline} · ${decisionEntityLabel}`,
+          conclusion: `${report.text} · ${decisionEntityLabel}`,
           action: domain === "content"
             ? tr(`${decisionEntityLabel}의 한 요소만 바꾼 새 버전을 발행한다`, `Publish a refreshed version of ${decisionEntityLabel} with one element changed`)
             : tr(`${decisionEntityLabel}의 한 요소만 바꾼 대체 소재를 투입한다`, `Launch a replacement for ${decisionEntityLabel} with one element changed`),
@@ -1012,15 +1014,36 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           sourcePeriod: decisionSourcePeriod,
           reviewQuestion: tr("교체·발행 7일 뒤 CTR이 기준값을 넘었는가?", "Seven days after launch, did CTR beat the baseline?"),
         } : null}
-        tone={fatigueTone}
+        tone={report.tone}
         title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
-        headline={fatigueHeadline}
-        points={fatiguePoints}
-        stats={[
-          { label: tr("즉시 교체", "Replace now"), value: `${alertNowN}${tr("개", "")}` },
-          { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
-          { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
+        headline={report.text}
+        headlineContent={<ResultHeadline lines={report.lines} />}
+        points={[
+          ...report.rows.slice(0, 5).map((row) => ({ text: `${row.id.slice(0, 24)}: ${row.status === "replace" ? tr("교체", "replace") : row.status === "soon" ? tr("임박", "soon") : tr("관찰", "watch")}${row.change != null ? ` · CTR ${fmtPct(row.peak)} → ${fmtPct(row.current)}` : ""}${hasSpend && row.spend != null ? ` · ${fmtCurrencyCompact(row.spend, { currency, locale })}` : ""}` })),
+          ...fatiguePoints,
         ]}
+        stats={report.stats}
+        pointsContent={<div className="result-report">
+          {report.rows.length > 0 && <ResultTable
+            title={tr(`${C.entity}별 상태`, `Status by ${domain === "content" ? "content" : "creative"}`)}
+            meta={tr(`교체 우선 · ${Math.min(6, report.rows.length)}/${report.rows.length}`, `Swaps first · ${Math.min(6, report.rows.length)} of ${report.rows.length}`)}
+            locale={locale}
+            rows={report.rows}
+            rowKey={(row) => row.id}
+            limit={6}
+            onShowAll={() => { setActiveProblem("swaps"); setDetailsOpen(true); }}
+            showAllLabel={tr(`전체 ${report.rows.length}개 보기`, `Show all ${report.rows.length}`)}
+            columns={[
+              { key: "id", label: C.entity, cellClassName: "result-table__primary", fmt: (value) => <code className="creative-report__id">{value.slice(0, 24)}</code> },
+              { key: "status", label: tr("상태", "Status"), fmt: (value) => statusChip(value) },
+              ...(hasSpend ? [{ key: "spend", label: tr("집행비", "Spend"), align: "right", fmt: (value) => value == null ? "—" : fmtCurrencyCompact(value, { currency, locale }) }] : []),
+              { key: "ctr", label: tr("CTR 고점 → 현재", "CTR peak → now"), align: "right", fmt: (_, row) => row.peak == null ? "—" : `${fmtPct(row.peak)} → ${fmtPct(row.current)}` },
+              { key: "change", label: tr("변화", "Change"), align: "right", fmt: (value) => value == null ? "—" : <><ChangeBar value={value} max={maxDrop} tone={value < 0 ? "bad" : "good"} /><strong>{Math.round(value * 100) === 0 ? "0%" : `${value > 0 ? "+" : "−"}${Math.abs(Math.round(value * 100))}%`}</strong></> },
+              { key: "eta", label: tr("예상 시점", "When"), fmt: (_, row) => row.status === "replace" ? tr("지금", "Now") : row.etaDays != null && row.etaDays > 0 ? tr(`약 ${row.etaDays}일`, `~${row.etaDays}d`) : tr("추세 관찰", "Monitor") },
+            ]}
+          />}
+          <IssueTable issues={report.issues} locale={locale} />
+        </div>}
         workbookExport={() => ({
           calculationMode: "hybrid_engine_output",
           calculationTables: [{
@@ -1077,8 +1100,14 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             warnings={[tr("희소 소재·짧은 집행 기간·공선 속성은 판정 신뢰도를 낮춥니다.", "Sparse creatives, short flighting, and collinear attributes reduce confidence.")]}
           />
         )}
-      />
-
+        analysisContent={<ResultDetails
+          id="s-creative-details"
+          locale={locale}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+          items={[tr("운영 패널(교체·제작·동인·운영)", "Operations panel (swaps, production, drivers, operations)"), tr("피로 차트", "Fatigue chart"), tr("위험 구역", "Risk zone"), tr("매핑·데이터 충분성", "Mapping and data sufficiency"), tr("해석 한계", "Limits")]}
+        >
+          <>
       <section className="creative-control-room" aria-label={tr("소재 운영 실행 패널", "Creative operations action panel")}>
         <div className="creative-control-room__head">
           <div>
@@ -1897,6 +1926,13 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 충분히 관측되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations have enough observations or there isn't enough data).")}</p>
         )}
       </section>
+      <section className="report-detail" id="s-creative-limits">
+        <h3 className="report-detail__title">{tr("통계 분석 및 해석 한계 (상관 ≠ 인과)", "Statistical analysis & interpretation limits (correlation ≠ causation)")}</h3>
+        <p>{C.heroCausationBody}</p>
+      </section>
+          </>
+        </ResultDetails>}
+      />
     </div>
   );
 }

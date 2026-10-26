@@ -211,6 +211,8 @@
   .content-element__unit { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
   .result-table .content-element__up { color: var(--success); }
   .result-table .content-element__down { color: var(--danger); }
+  /* 9-6 소재: 표 안 소재 ID는 본문 글꼴로, 긴 ID는 줄바꿈 */
+  .result-table .creative-report__id { padding: 0; background: transparent; color: var(--text-primary); font-family: inherit; font-size: inherit; overflow-wrap: anywhere; }
   /* 5-26 ASA: 조건 줄 안 성숙도 선언 · 조치 칩 · CPA 목표 대비 색 */
   .asa-tool__condition .asa-tool__maturity { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; color: var(--text-secondary); font-size: var(--fs-sm); font-weight: 600; }
   .asa-tool__chips { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
