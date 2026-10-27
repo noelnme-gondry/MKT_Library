@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { finderCards, finderSituations } from "../src/lib/finder/analysisFinder";
+import { measureDesignRules } from "./support/designRules";
 
 // 분석 찾기(/start) — 홈 목록·내 데이터로 시작·분석 방법 둘러보기·/data-guide를 합친 화면(product-ssot §1.1c).
 // 옛 data-guide e2e의 의도(홈 → 데이터 준비 → 양식 → 도구, 테마·접근성, 비교 방식 유지)를 그대로 옮겼다.
@@ -95,5 +96,43 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/data-guide`);
     await expect(page).toHaveURL(`${prefix}/start`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "Find an analysis" : "분석 찾기");
+  });
+
+  // 3단계 데이터 준비: 파일을 놓으면 "바로 가능 · 조금만 더 · 다른 파일 필요"로 나눠 말한다(product-ssot §1.1c).
+  test(`dropped file splits analyses into ready, almost and other files (${locale})`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("mkt-library-source-survey-answered", "1"));
+    await page.goto(`${prefix}/start`);
+    const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
+    await uploader.locator('input[type="file"]').first().setInputFiles("public/examples/weekly-report-three-weeks.csv");
+    await uploader.locator(".csv-analysis-action").click();
+    // 올린 파일 한 줄: 행 수와 실제 기간.
+    const summary = page.locator(".workspace-input-summary");
+    await expect(summary).toContainText("weekly-report-three-weeks.csv");
+    await expect(summary).toContainText(en ? "42 rows · 2026-08-31 – 2026-09-20" : "42행 · 2026-08-31 – 2026-09-20");
+    const workspace = page.locator(".dochi-workspace");
+    await expect(workspace).toHaveAttribute("data-queue-settled", "true", { timeout: 30000 });
+    await expect(workspace.locator(".tool-index__stage--ready .tool-index__chip").first()).toBeVisible();
+    // 조금만 더: 소재 피로도는 소재 ID 열 하나와 그 열이 보통 있는 파일을 말한다.
+    const near = workspace.locator(".tool-index__stage--near");
+    const creative = near.locator(".tool-index__chip", { hasText: en ? "Add Creative ID to open this." : "소재ID 열을 더하면 열립니다." });
+    await expect(creative).toContainText(en ? "Daily ad performance by creative" : "광고 일별 성과 (소재 단위)");
+    // 다른 파일 필요: 접혀 있고, 펴면 파일 이름이 소제목이다.
+    const other = workspace.locator(".tool-index__stage--other details");
+    await expect(other).not.toHaveAttribute("open", "");
+    await other.locator("summary").click();
+    await expect(other.locator(".tool-index__file-name", { hasText: en ? "Order line items" : "주문별 상품 내역" })).toBeVisible();
+    const rules = await measureDesignRules(page);
+    expect(rules.horizontalOverflow).toBeLessThanOrEqual(1);
+    expect(rules.overlaps).toEqual([]);
+  });
+
+  test(`file type entry groups analyses by the file they read (${locale})`, async ({ page }) => {
+    await page.goto(`${prefix}/start`);
+    const nav = page.getByRole("navigation", { name: en ? "Which files do you have?" : "어떤 파일을 갖고 계세요?" });
+    await nav.getByRole("button", { name: en ? /Orders, customers and sales records/ : /주문·고객·영업 기록/ }).click();
+    await expect(page).toHaveURL(/[?&]file=commerce/);
+    await expect(page.locator(".analysis-finder__group-head h2")).toContainText([en ? "Purchase and refund ledger" : "구매·환불 거래 원장"]);
+    await expect(page.locator('.finder-card[data-tool-id="5-41"]')).toBeVisible();
+    await expect(page.locator('.finder-card[data-tool-id="5-2"]')).toHaveCount(0);
   });
 }

@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { Bookmark } from "lucide-react";
 import ModalDialog from "@/components/ds/ModalDialog";
 import AnalysisDataPrep from "@/components/finder/AnalysisDataPrep";
-import { filterFinderCards, finderCards, finderSituations } from "@/lib/finder/analysisFinder";
+import { filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
+import { groupToolsByFile } from "@/lib/dataSources";
 import { localizedHref } from "@/lib/localizedHref";
 import { trackProductEvent } from "@/lib/analytics";
 import { parseSavedTools, readSavedTools, savedToolsServerSnapshot, subscribeSavedTools, toggleSavedTool } from "@/lib/savedTools";
@@ -23,6 +24,8 @@ import { parseSavedTools, readSavedTools, savedToolsServerSnapshot, subscribeSav
 const COPY = {
   ko: {
     situationTitle: "어떤 상황인가요?",
+    familyTitle: "어떤 파일을 갖고 계세요?",
+    familyHint: "고르면 그 파일로 되는 분석을 파일별로 모아 보여 드립니다.",
     all: "전체 보기",
     saved: "저장한 분석",
     count: (n) => `${n}개`,
@@ -51,6 +54,8 @@ const COPY = {
   },
   en: {
     situationTitle: "What is going on?",
+    familyTitle: "Which files do you have?",
+    familyHint: "Pick one to see the analyses those files support, grouped by file.",
     all: "Show all",
     saved: "Saved analyses",
     count: (n) => `${n}`,
@@ -81,21 +86,25 @@ const COPY = {
 
 const SAME_FILE_SHOWN = 3;
 
-function writeSituationToUrl(situation) {
+function writeFilterToUrl(situation, family) {
   try {
     const url = new URL(window.location.href);
     if (situation === "all") url.searchParams.delete("situation");
     else url.searchParams.set("situation", situation);
+    if (family) url.searchParams.set("file", family);
+    else url.searchParams.delete("file");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   } catch { /* 주소 동기화는 편의 기능이다 — 실패해도 화면 상태는 유지된다. */ }
 }
 
-export default function AnalysisFinder({ locale = "ko", initialSituation = "all", aside = null }) {
+export default function AnalysisFinder({ locale = "ko", initialSituation = "all", initialFamily = null, aside = null }) {
   const en = locale === "en";
   const T = COPY[en ? "en" : "ko"];
   const situations = useMemo(() => finderSituations(locale), [locale]);
   const cards = useMemo(() => finderCards(locale), [locale]);
-  const [situation, setSituation] = useState(initialSituation);
+  const families = useMemo(() => finderFamilies(locale), [locale]);
+  const [situation, setSituation] = useState(initialFamily ? "all" : initialSituation);
+  const [family, setFamily] = useState(initialFamily);
   const [query, setQuery] = useState("");
   const [prepId, setPrepId] = useState(null);
   const [saveError, setSaveError] = useState(false);
@@ -103,11 +112,19 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
   const prepTrigger = useRef(null);
   const rootRef = useRef(null);
   const savedIds = parseSavedTools(useSyncExternalStore(subscribeSavedTools, readSavedTools, savedToolsServerSnapshot));
-  const visible = filterFinderCards(cards, { situation, query, savedIds });
+  const visible = filterFinderCards(cards, { situation, family, query, savedIds });
   const searching = query.trim().length > 0;
   // 전체 보기는 상황별로 묶어 읽게 한다. 검색·저장 목록은 상황이 섞이므로 평평하게 두고 카드에 상황을 적는다.
   const grouped = !searching && situation !== "saved";
-  const groups = grouped
+  // 파일 종류로 고르면 파일별로 묶는다 — "이 파일 하나로 이것들이 된다"가 먼저 읽혀야 한다.
+  const groups = grouped && family
+    ? groupToolsByFile(visible.map((card) => card.id), locale).map((file) => ({
+      id: `file-${file.key}`,
+      title: file.source?.file || "",
+      description: file.source?.where || "",
+      cards: visible.filter((card) => file.toolIds.includes(card.id)),
+    }))
+    : grouped
     ? situations
       .filter((item) => situation === "all" || item.id === situation)
       .map((item) => ({ ...item, cards: visible.filter((card) => card.situation.id === item.id) }))
@@ -122,10 +139,18 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  // 상황과 파일 종류는 서로 다른 입구다 — 하나를 고르면 다른 하나는 풀린다(둘을 겹치면 빈 목록이 잦다).
   const chooseSituation = (next) => {
     setSituation(next);
-    writeSituationToUrl(next);
+    setFamily(null);
+    writeFilterToUrl(next, null);
     trackProductEvent("finder_situation_selected", { locale, source: "analysis_finder", section_id: next });
+  };
+  const chooseFamily = (next) => {
+    setFamily(next);
+    setSituation("all");
+    writeFilterToUrl("all", next);
+    if (next) trackProductEvent("finder_file_selected", { locale, source: "analysis_finder", section_id: next });
   };
   const track = (name, card) => trackProductEvent(name, { locale, source: "analysis_finder", tool_id: card.id, section_id: card.situation.id });
 
@@ -145,7 +170,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
               </li>
             ))}
             <li className="analysis-finder__situation-extra">
-              <button type="button" aria-pressed={situation === "all"} aria-controls="finder-results" onClick={() => chooseSituation("all")}>
+              <button type="button" aria-pressed={situation === "all" && !family} aria-controls="finder-results" onClick={() => chooseSituation("all")}>
                 <strong>{T.all}</strong><small>{T.count(cards.length)}</small>
               </button>
             </li>
@@ -157,6 +182,21 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           </ul>
         </nav>
         {aside && <div className="analysis-finder__file">{aside}</div>}
+        <nav className="analysis-finder__families" aria-labelledby="finder-family-title">
+          <h2 id="finder-family-title">{T.familyTitle}</h2>
+          <p>{T.familyHint}</p>
+          <ul>
+            {families.map((item) => (
+              <li key={item.id}>
+                <button type="button" aria-pressed={family === item.id} aria-controls="finder-results" onClick={() => chooseFamily(family === item.id ? null : item.id)}>
+                  <strong>{item.name}</strong>
+                  <small>{item.where}</small>
+                  <span className="analysis-finder__family-count">{T.count(item.count)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
 
       <div className="analysis-finder__toolbar">
@@ -176,7 +216,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           <section className="analysis-finder__group" key={group.id} aria-labelledby={group.title ? `finder-group-${group.id}` : undefined} aria-label={group.title ? undefined : T.results(group.cards.length)}>
             {group.title && (
               <header className="analysis-finder__group-head">
-                <h2 id={`finder-group-${group.id}`}><span className="analysis-finder__no">{group.label}</span> {group.title}</h2>
+                <h2 id={`finder-group-${group.id}`}>{group.label && <><span className="analysis-finder__no">{group.label}</span> </>}{group.title}</h2>
                 <p>{group.description}</p>
               </header>
             )}

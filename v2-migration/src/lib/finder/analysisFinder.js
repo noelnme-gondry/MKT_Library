@@ -3,6 +3,7 @@ import { TOOL_GROUP } from "@/lib/toolGroups";
 import { TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { exampleHref } from "@/lib/exampleLink";
 import FINDER_EXAMPLES from "@/lib/finder/finderExamples.json";
+import { DATA_SOURCE_FAMILIES, DATA_SOURCE_FAMILY_IDS } from "@/lib/dataSources";
 
 /* ============================================================
  * 분석 찾기 — 앱 안의 입구(홈 목록·/start·분석 방법 둘러보기·/data-guide)를
@@ -74,12 +75,30 @@ export function finderCards(locale = "ko") {
 }
 
 /**
- * 상황·검색어·저장 여부로 거른다. 검색어는 공백으로 나눈 모든 낱말이 들어 있어야 한다.
- * situation: 상황 id | "all" | "saved".
+ * 파일 종류(출처 묶음 6종) — "어떤 파일을 갖고 계세요?"로 고르는 두 번째 입구.
+ * 분석이 하나도 없는 묶음은 내지 않는다(누르면 빈 목록이 되는 버튼을 만들지 않는다).
  */
-export function filterFinderCards(cards, { situation = "all", query = "", savedIds = [] } = {}) {
+export function finderFamilies(locale = "ko") {
+  const cards = finderCards(locale);
+  const pick = (pair) => (locale === "en" ? pair.en : pair.ko);
+  return DATA_SOURCE_FAMILY_IDS
+    .map((id) => ({ id, name: pick(DATA_SOURCE_FAMILIES[id].name), where: pick(DATA_SOURCE_FAMILIES[id].where), count: cards.filter((card) => card.source?.familyId === id).length }))
+    .filter((family) => family.count > 0);
+}
+
+/** 주소의 ?file= 값을 알려진 파일 종류로만 받는다(모르는 값은 null). */
+export function parseFinderFamily(value) {
+  return DATA_SOURCE_FAMILY_IDS.includes(value) ? value : null;
+}
+
+/**
+ * 상황·파일 종류·검색어·저장 여부로 거른다. 검색어는 공백으로 나눈 모든 낱말이 들어 있어야 한다.
+ * situation: 상황 id | "all" | "saved". family: 출처 묶음 id | null.
+ */
+export function filterFinderCards(cards, { situation = "all", family = null, query = "", savedIds = [] } = {}) {
   const terms = String(query || "").trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return cards.filter((card) => {
+    if (family && card.source?.familyId !== family) return false;
     if (situation === "saved" && !savedIds.includes(card.id)) return false;
     if (situation !== "all" && situation !== "saved" && card.situation.id !== situation) return false;
     return terms.every((term) => card.searchText.includes(term));

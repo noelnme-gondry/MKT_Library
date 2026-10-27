@@ -191,3 +191,20 @@ export function dataSourceForGroup(group, locale = "ko") {
 export function dataSourceForTool(toolId, locale = "ko") {
   return dataSourceForGroup(TOOL_GROUP[toolId], locale);
 }
+
+/**
+ * "다른 파일 필요"를 파일별로 묶는다 — 같은 파일 하나로 여러 분석이 열린다는 것이
+ * 컬럼 목록보다 먼저 읽혀야 한다. 출처 묶음 순서(dataSources) → 파일 이름 순.
+ * 파일 정보가 없는 도구는 마지막 묶음(file=null)에 모은다.
+ */
+export function groupToolsByFile(toolIds = [], locale = "ko") {
+  const groups = new Map();
+  for (const toolId of toolIds) {
+    const source = dataSourceForTool(toolId, locale);
+    const key = source ? source.group : "__unknown__";
+    if (!groups.has(key)) groups.set(key, { key, source, toolIds: [] });
+    groups.get(key).toolIds.push(toolId);
+  }
+  const rank = (group) => (group.source ? DATA_SOURCE_FAMILY_IDS.indexOf(group.source.familyId) : DATA_SOURCE_FAMILY_IDS.length);
+  return [...groups.values()].sort((a, b) => rank(a) - rank(b) || String(a.source?.file || "").localeCompare(String(b.source?.file || ""), locale));
+}

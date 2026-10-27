@@ -8,7 +8,7 @@ import { ROUTES, hasEnVersion } from "../src/lib/routeMap";
 // 생기는 겹침·상자 안 상자는 빈 업로드 화면으로는 절대 안 잡힌다.
 const STATIC_PAGES = [
   // /start = 분석 찾기(상황·파일·분석 카드). 옛 /data-guide는 여기로 영구 이동했다.
-  "/", "/start", "/start?situation=budget", "/en/start?situation=proof", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
+  "/", "/start", "/start?situation=budget", "/en/start?situation=proof", "/start?file=commerce", "/en/start?file=store", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
   "/guide/kpi-analysis", "/glossary", "/templates", "/compare",
   "/en", "/en/blog/ad-performance-diagnosis", "/en/start",
   // 2026-09-24 점검에서 눈금 막대·상자 안 상자·작은 라벨이 남아 있던 화면.

@@ -74,3 +74,12 @@ export function platformExportsForTool(toolId, locale = "ko") {
     ignored: Object.entries(entry.ignored).map(([header, reason]) => ({ header, reason: reason[locale] || reason.ko })),
   }));
 }
+
+/**
+ * 올린 파일의 헤더가 확인된 내보내기 형식과 같은지. 그 형식의 열 이름이 전부 들어 있을 때만
+ * 돌려준다 — 일부만 겹치면 "그 매체 파일"이라고 말할 근거가 없다(§8). 앞뒤 공백·BOM은 무시한다.
+ */
+export function detectPlatformExport(headers = []) {
+  const present = new Set(headers.map((header) => String(header ?? "").replace(/^﻿/, "").trim()));
+  return PLATFORM_EXPORTS.find((entry) => Object.keys(entry.columns).every((header) => present.has(header))) || null;
+}

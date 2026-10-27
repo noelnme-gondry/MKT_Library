@@ -968,14 +968,29 @@
 /* "다른 데이터가 필요한 분석"은 열린 격자 — 바깥 상자 없이 칸마다 윗선 하나. 칸마다 이름 · 필요한 값 한 문장 ·
    (샘플이면) 예시로 열기. 한 줄씩 세로로 쌓던 목록은 16개가 약 1,850px를 차지해 그 아래 다음 단계가
    화면 밖으로 밀렸다(2026-09-29). 상세는 누른 칸 다음 줄 전체(.tool-index__panel-row, §12.31). */
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__cell { border-top: 1px solid var(--library-border, var(--border)); }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip { grid-template-columns: minmax(0, 1fr); gap: 4px; min-height: 0; padding: 14px 0; border: 0; border-radius: 0; background: transparent; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip > * { grid-column: 1; grid-row: auto; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip .tool-index__cta { justify-self: start; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip .tool-index__stage-tag { display: none; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip:hover .tool-index__q { color: var(--primary); }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__panel { border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; background: transparent; padding: 16px 0; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__cell { border-top: 1px solid var(--library-border, var(--border)); }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip { grid-template-columns: minmax(0, 1fr); gap: 4px; min-height: 0; padding: 14px 0; border: 0; border-radius: 0; background: transparent; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip > * { grid-column: 1; grid-row: auto; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip .tool-index__cta { justify-self: start; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip .tool-index__stage-tag { display: none; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip:hover .tool-index__q { color: var(--primary); }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__panel { border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; background: transparent; padding: 16px 0; }
+/* 데이터 준비 세 칸(product-ssot §1.1c 3단계). "다른 파일 필요"는 접힌 묶음이고 안에서 파일별로 나눈다 —
+   파일 이름이 소제목, 출처가 한 줄, 그 아래 같은 열린 격자. 접힌 요약은 제목 크기를 그대로 쓴다. */
+.app .content .dochi-workspace .tool-index__other > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; cursor: pointer; list-style: none; }
+.app .content .dochi-workspace .tool-index__other > summary .tool-index__stage-title { display: inline; margin: 0; }
+.app .content .dochi-workspace .tool-index__other > summary::-webkit-details-marker { display: none; }
+.app .content .dochi-workspace .tool-index__other-toggle { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; min-height: 44px; color: var(--primary); font-size: var(--fs-sm); font-weight: 600; }
+.app .content .dochi-workspace .tool-index__other-toggle svg { transition: transform .15s ease; }
+.app .content .dochi-workspace .tool-index__other[open] .tool-index__other-toggle svg { transform: rotate(180deg); }
+.app .content .dochi-workspace .tool-index__other > summary:hover .tool-index__other-toggle-text { text-decoration: underline; }
+.app .content .dochi-workspace .tool-index__other-count { font-size: var(--fs-sm); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.app .content .dochi-workspace .tool-index__other > .tool-index__stage-desc { margin: 6px 0 4px; }
+.app .content .dochi-workspace .tool-index__file-group { margin-top: 18px; }
+.app .content .dochi-workspace .tool-index__file-name { margin: 0; font-size: var(--fs-base); font-weight: 600; }
+.app .content .dochi-workspace .tool-index__file-where { margin: 2px 0 6px; font-size: var(--fs-sm); color: var(--text-muted); }
+.tool-index__near-file { font-size: var(--fs-xs); color: var(--text-muted); }
 .tool-index__need { font-size: var(--fs-sm); color: var(--text-secondary); }
 .tool-index__need > span { color: var(--text-muted); }
 .app .content .tool-index__chip .tool-index__cta { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--primary); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
@@ -1522,3 +1537,4 @@ body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--
     .app > .main:has(> .partner-ad-rail:not([hidden])) { display: block; }
   }
 }
+.app .content .start-next-project { margin-top: 28px; }

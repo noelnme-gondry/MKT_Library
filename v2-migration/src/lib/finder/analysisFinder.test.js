@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import data from "@/lib/blogExamples/data.json";
 import FINDER_EXAMPLES from "@/lib/finder/finderExamples.json";
 import { deriveFinderExamples } from "@/lib/finder/finderExamples";
-import { filterFinderCards, finderCards, finderHref, finderSituations, parseFinderSituation } from "@/lib/finder/analysisFinder";
+import { filterFinderCards, finderCards, finderFamilies, finderHref, finderSituations, parseFinderFamily, parseFinderSituation } from "@/lib/finder/analysisFinder";
 import { publishedToolIds } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 
@@ -82,5 +82,24 @@ describe("analysis finder cards (product-ssot §1.1c card contract)", () => {
     expect(parseFinderSituation(undefined)).toBe("all");
     expect(finderHref("budget")).toBe("/start?situation=budget#finder");
     expect(finderHref("all", "en")).toBe("/en/start#finder");
+  });
+
+  it("offers the file-type entry: every card sits in exactly one non-empty file family", () => {
+    for (const locale of ["ko", "en"]) {
+      const cards = finderCards(locale);
+      const families = finderFamilies(locale);
+      expect(families.length).toBeGreaterThanOrEqual(4);
+      expect(families.every((family) => family.count > 0)).toBe(true);
+      expect(families.reduce((sum, family) => sum + family.count, 0)).toBe(cards.length);
+      for (const family of families) {
+        const filtered = filterFinderCards(cards, { family: family.id });
+        expect(filtered).toHaveLength(family.count);
+        expect(filtered.every((card) => card.source.familyId === family.id)).toBe(true);
+      }
+      if (locale === "en") expect(/[가-힣]/.test(JSON.stringify(families))).toBe(false);
+    }
+    expect(parseFinderFamily("commerce")).toBe("commerce");
+    expect(parseFinderFamily("<script>")).toBeNull();
+    expect(parseFinderFamily(null)).toBeNull();
   });
 });

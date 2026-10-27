@@ -10,7 +10,7 @@ import CsvUploader from "@/components/CsvUploader";
 import { trackProductEvent, trackProductEventOnce, productEventKey } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import AnalysisFinder from "@/components/finder/AnalysisFinder";
-import { parseFinderSituation } from "@/lib/finder/analysisFinder";
+import { parseFinderFamily, parseFinderSituation } from "@/lib/finder/analysisFinder";
 import { blockerFieldLabels, blockersText } from "@/lib/assistant/blockerText";
 import JourneyProgress from "@/components/ds/JourneyProgress";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
@@ -21,6 +21,9 @@ import { groupForRoute } from "@/lib/toolGroups";
 import { START_PAGE_COPY as COPY } from "@/lib/startPageCopy";
 import StartGateIntroduction from "./StartGateIntroduction";
 import { isExampleUrl } from "@/lib/exampleLink";
+import { summarizeUpload } from "@/lib/data-import/uploadSummary";
+
+const hasPreparedDataOf = (data) => Boolean(data?.canonicalData?.records?.length);
 
 // 분석 찾기(/start) — 상황으로 고르거나 파일을 놓아 분석을 찾는 한 화면(product-ssot §1.1c 결정 1).
 // 예전의 "내 데이터로 시작"과 "분석 방법 둘러보기"(?view=methods)·/data-guide를 합쳤다.
@@ -33,6 +36,7 @@ function StartGateContent({ locale = "ko" }) {
   const searchParams = useSearchParams();
   const browseMethods = searchParams.get("view") === "methods";
   const [initialSituation] = useState(() => parseFinderSituation(searchParams.get("situation"), locale));
+  const [initialFamily] = useState(() => parseFinderFamily(searchParams.get("file")));
   // 자식 CsvGuide가 먼저 예시를 열고 URL 파라미터를 지워도 최초 진입 의도는 유지한다.
   // 지연 로드된 부모 effect가 그 직후 startMyData로 샘플을 지우면 결과 화면이 비게 된다.
   const [isExampleEntry] = useState(() => isExampleUrl(searchParams.toString()));
@@ -50,6 +54,8 @@ function StartGateContent({ locale = "ko" }) {
     try { window.sessionStorage.removeItem(DOCHI_HANDOFF_KEY); } catch { /* Optional legacy handoff marker. */ }
   }, [startMyData, browseMethods, isExampleEntry]);
 
+  // 올린 파일 한 줄 — 파일 · 행 수 · 기간 · 확인된 내보내기 형식(product-ssot §1.1c 3단계).
+  const uploadSummary = useMemo(() => (hasPreparedDataOf(csvData) ? summarizeUpload({ ...csvData, locale }) : null), [csvData, locale]);
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
   const hasSubmitted = hasPreparedData && submittedInput?.raw === csvData.raw && submittedInput?.mapping === csvData.mapping;
@@ -122,10 +128,13 @@ function StartGateContent({ locale = "ko" }) {
     <>
       <StartGateIntroduction locale={locale} />
       {hasSubmitted && <JourneyProgress stage={eligibleIds?.length ? "analyze" : "prepare"} completed={eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
-      {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · file loaded" : "행 · 파일 읽기 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}
+      {hasSubmitted && uploadSummary && <section className="block workspace-input-summary" aria-label={locale === "en" ? "Your file" : "올린 파일"}>
+        <div><strong>{uploadSummary.fileName}</strong><span>{[uploadSummary.rows, uploadSummary.period, uploadSummary.format].filter(Boolean).join(" · ")}</span></div>
+        <button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button>
+      </section>}
       {/* 파일을 제출하기 전에는 분석 찾기 전체(상황·파일·카드). 업로더 상태를 잃지 않도록 감추기만 한다. */}
       <div className="start-finder" hidden={hasSubmitted}>
-        <AnalysisFinder locale={locale} initialSituation={initialSituation} aside={uploader} />
+        <AnalysisFinder locale={locale} initialSituation={initialSituation} initialFamily={initialFamily} aside={uploader} />
         <p className="start-no-file">
           <span>{C.noFileLead}</span>
           <Link href={locale === "en" ? "/en/calculator" : "/calculator"} onClick={() => trackProductEvent("calculator_entry_clicked", { source: "start", placement: "no_file", locale })}>{C.calculatorCta} →</Link>
@@ -141,7 +150,7 @@ function StartGateContent({ locale = "ko" }) {
         </section>}
         <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
         <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart />
-        {eligibleIds?.includes("5-2") && <Link className="btn" href={locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</Link>}
+        {eligibleIds?.includes("5-2") && <Link className="btn start-next-project" href={locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</Link>}
       </div>}
     </>
   );

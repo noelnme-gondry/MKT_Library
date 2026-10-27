@@ -28,7 +28,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `landing_data_start_clicked` | (2026-10-27 이전) 랜딩 주 버튼 선택 — 지금은 발생하지 않는다. 옛 기간 비교용으로 남긴다 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
 | `landing_situation_clicked` | 홈 첫 화면에서 상황 하나를 골라 분석 찾기로 이동 | `interaction_source=landing`, `placement=hero`, `section_id=<상황 id>`, `locale` |
 | `landing_finder_opened` | 홈 첫 화면에서 "분석 N개 모두 보기" 선택 | `interaction_source=landing`, `placement=hero_all`, `locale` |
-| `finder_situation_selected` · `finder_example_clicked` · `finder_tool_clicked` · `finder_prep_opened` | 분석 찾기(`/start`)에서 상황 선택 · 예시 보고서 · 내 파일로 하기 · 준비 방법 창 | `interaction_source=analysis_finder`, `section_id`, `tool_id`, `locale` |
+| `finder_situation_selected` · `finder_file_selected` · `finder_example_clicked` · `finder_tool_clicked` · `finder_prep_opened` | 분석 찾기(`/start`)에서 상황 선택 · 파일 종류 선택 · 예시 보고서 · 내 파일로 하기 · 준비 방법 창 | `interaction_source=analysis_finder`, `section_id`, `tool_id`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
 | `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
 | `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |

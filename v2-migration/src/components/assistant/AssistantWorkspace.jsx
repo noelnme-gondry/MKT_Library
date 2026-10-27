@@ -4,6 +4,7 @@ import { metricChangeTone, formatComparisonMetric } from "@/lib/assistant/metric
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
 import ToolIndex from "@/components/ds/ToolIndex";
+import { classifyDataReadiness } from "@/lib/assistant/dataReadiness";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
 import { isDemoData } from "@/lib/dataOrigin";
@@ -973,6 +974,11 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   </section>;
   const hasSheet = Boolean(summaryHead || summaryFoot);
 
+  // 자격은 있었지만 돌려 보니 판정을 못 낸 분석 — 엔진이 말한 사유를 그대로 쓴다.
+  const notComputable = Object.fromEntries(eligibility
+    .filter(result => ["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status))
+    .map(result => [result.toolId, queueItemFor(result.toolId).result.verdict?.headline || C.notComputableFallback]));
+  const readiness = classifyDataReadiness({ eligibility, notComputable, locale });
   return (<>
     {hasSheet && <section className="result-sheet" aria-labelledby="dochi-result-title">
       {summaryHead}
@@ -989,11 +995,12 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       {!hasSheet && conclusion}
       <ToolIndex locale={locale} density="grid"
         blockedCta={sampleMode ? (locale === "en" ? "Open with example data" : "예시로 열기") : null}
-        blockedInfo={Object.fromEntries(eligibility
-          .filter(result => ["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status))
-          .map(result => [result.toolId, { reason: queueItemFor(result.toolId).result.verdict?.headline || C.notComputableFallback }]))}
+        blockedInfo={Object.fromEntries(Object.entries(notComputable).map(([toolId, reason]) => [toolId, { reason }]))}
+        // 내 파일이면 세 칸(바로 가능 · 조금만 더 · 다른 파일 필요). 예시 작업대는 "예시로 열기"가
+        // 길이라 예전 두 칸을 유지한다.
+        nearInfo={sampleMode ? null : readiness.near}
         activeToolId={selectedAnalysis} onActiveToolChange={setSelectedAnalysis}
-        eligibleIds={eligibility.filter(result => result.status === "ready" && !["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status)).map(result => result.toolId)}
+        eligibleIds={eligibility.filter(result => result.status === "ready" && !notComputable[result.toolId]).map(result => result.toolId)}
         renderSummary={toolId => {
           const item = currentResults.find(({ result }) => result.toolId === toolId);
           if (!item) return null;

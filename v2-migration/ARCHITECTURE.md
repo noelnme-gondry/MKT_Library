@@ -85,7 +85,7 @@ v2-migration/
 | `/content/killer-content` | 9-2 | tools/KillerContentFinder.jsx → AhaMomentFinder `domain="content"` |
 | `/content/traffic-variance` | 9-3 | tools/ContentTrafficVariance.jsx → CampaignPvm `domain="content"` |
 | `/content/dashboard` | 9-7 | tools/ContentDashboard.jsx → Dashboard `domain="content"` |
-| `/start` | start-gate | StartGate.jsx = 분석 찾기: finder/AnalysisFinder(상황·검색·카드·저장, 카드의 준비 방법 창 = finder/AnalysisDataPrep) + 업로드 → 제출 뒤 AssistantWorkspace. `/data-guide`는 301 |
+| `/start` | start-gate | StartGate.jsx = 분석 찾기: finder/AnalysisFinder(상황·파일 종류(`?file=`)·검색·카드·저장, 카드의 준비 방법 창 = finder/AnalysisDataPrep) + 업로드 → 제출 뒤 파일 한 줄(`lib/data-import/uploadSummary`) + AssistantWorkspace 세 칸(`lib/assistant/dataReadiness` → `ds/ToolIndex nearInfo`). `/data-guide`는 301 |
 | `/guide` | guide-index | GuideIndex.jsx |
 | `/guide/<kebab>` | 1-x~4-x·8-1 | sops/SopContent.jsx |
 | `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·유효 Pro·프로젝트 선택; 첫 체험은 선택한 초안 메모의 계정 보관 동의 후 시작) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import AnalysisFinder from "./AnalysisFinder";
-import { finderCards, finderSituations } from "@/lib/finder/analysisFinder";
+import { finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
+import { groupToolsByFile } from "@/lib/dataSources";
 
 // 분석 찾기 — 홈 목록·/start·분석 방법 둘러보기·/data-guide를 합친 화면(product-ssot §1.1c).
 // 옛 HomeToolFinder의 검색·저장·파일 표시 계약을 그대로 옮겨 지킨다.
@@ -106,5 +107,32 @@ describe("analysis finder", () => {
     expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
     expect(within(dialog).getByRole("link", { name: en ? "Use my file" : "내 파일로 하기" }).className).toContain("primary");
     if (en) expect(/[가-힣]/.test(dialog.textContent)).toBe(false);
+  });
+
+  it.each(["ko", "en"])("picks by file type: groups the analyses by the file they read, and a situation releases it (%s)", (locale) => {
+    const en = locale === "en";
+    window.history.replaceState(null, "", "/start");
+    const { container } = render(<AnalysisFinder locale={locale} />);
+    const commerce = finderFamilies(locale).find((family) => family.id === "commerce");
+    const nav = screen.getByRole("navigation", { name: en ? "Which files do you have?" : "어떤 파일을 갖고 계세요?" });
+    const button = within(nav).getByRole("button", { name: new RegExp(commerce.name) });
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(window.location.search).toContain("file=commerce");
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(commerce.count);
+    // 파일별 묶음: 소제목이 파일 이름이다(같은 파일을 쓰는 분석은 한 묶음).
+    const files = groupToolsByFile(finderCards(locale).filter((card) => card.source?.familyId === "commerce").map((card) => card.id), locale);
+    expect([...container.querySelectorAll(".analysis-finder__group-head h2")].map((node) => node.textContent)).toEqual(files.map((file) => file.source.file));
+    // 상황을 고르면 파일 종류는 풀린다 — 둘을 겹쳐 빈 목록을 만들지 않는다.
+    const budget = finderSituations(locale).find((item) => item.id === "budget");
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(budget.title.replace(/[?]/g, "\\?")) }));
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    expect(window.location.search).not.toContain("file=");
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(budget.count);
+  });
+
+  it("opens on the file type given by the address", () => {
+    const { container } = render(<AnalysisFinder initialFamily="store" />);
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(finderFamilies("ko").find((family) => family.id === "store").count);
   });
 });
