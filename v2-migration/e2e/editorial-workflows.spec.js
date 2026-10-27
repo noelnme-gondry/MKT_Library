@@ -3,6 +3,7 @@ import { REPORT_CONTEXT_TOOL_IDS } from "../src/lib/report/reportContextTools";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
+import { chooseDashboardView } from "./support/dashboardView.js";
 
 const articles = ["weekly-marketing-report-template", "cac-payback-period", "marketing-report-sheets-bigquery", "ga4-data-traps", "ltv-cac-ratio", "cpi-cpa-cpm-difference", "cannibalization-organic-paid"];
 const localOnly = route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort();
@@ -88,8 +89,8 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".blog-arrival")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
-    await page.getByRole("tab", { name: "LTV & ROAS", exact: true }).click();
-    await expect(page.getByRole("tab", { name: "LTV & ROAS", exact: true })).toHaveAttribute("aria-selected", "true");
+    await chooseDashboardView(page, "ltv");
+    await expect(page.locator("#dashboard-tab-ltv")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel")).toContainText(/LTV/);
     await expect(page.getByRole("tabpanel")).toContainText(locale === "en" ? "A ratio of 3× alone does not justify scaling." : "3× 이상이라는 이유만으로 증액을 결정할 수는 없습니다.");
   });

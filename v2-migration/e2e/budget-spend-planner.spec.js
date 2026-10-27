@@ -37,8 +37,15 @@ for (const locale of ["ko", "en"]) {
     await end.fill("2026-08-23");
     await period.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
     await expect(period).toHaveCount(0);
-    const settings = page.getByRole("button", { name: en ? "Data and curve settings" : "자료·곡선 설정", exact: true });
-    await settings.click();
+    // 실행안이 있으면 조건이 한 줄로 접히고 "자료·곡선 설정"은 "조건 바꾸기" 창 안으로 들어간다.
+    const settingsName = { name: en ? "Data and curve settings" : "자료·곡선 설정", exact: true };
+    if (!(await page.getByRole("button", settingsName).isVisible())) {
+      await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
+      await expect(conditions).toBeVisible();
+      await conditions.getByRole("button", settingsName).click();
+    } else {
+      await page.getByRole("button", settingsName).click();
+    }
     const dialog = page.getByRole("dialog", { name: en ? "Data and curve settings" : "자료·곡선 설정", exact: true });
     await expect(dialog.getByLabel(en ? "Data as-of date" : "추출 기준일", { exact: true })).toHaveValue("2026-09-01");
     await dialog.getByLabel(en ? "Curve fitting period" : "곡선 사용 구간", { exact: true }).selectOption("auto");

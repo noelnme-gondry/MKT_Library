@@ -10,10 +10,15 @@ for (const en of [false, true]) {
     await expect(preview.locator("canvas")).toHaveAttribute("data-chart-ready", "true");
     // 큰 소개 상자가 실제 결과를 밀어내지 않도록 결과까지의 간격을 확인한다.
     await expect(intro).toHaveCSS("border-top-width", "0px");
-    await expect(page.locator(".dc-hero__actions a")).toHaveCount(3);
-    const entry = await intro.boundingBox();
+    // 첫 화면 입구는 상황 7개 + "모두 보기" 한 칸과 파일 놓기다(product-ssot §5.1.1).
+    await expect(page.locator(".home-entry__situations a")).toHaveCount(8);
+    await expect(page.locator(".home-entry__file")).toBeVisible();
+    const introBox = await intro.boundingBox();
+    const entry = await page.locator(".home-entry").boundingBox();
+    const noFile = await page.locator(".home-entry__no-file").boundingBox();
     const result = await preview.boundingBox();
-    expect(result.y - entry.y - entry.height).toBeLessThanOrEqual(40);
+    expect(entry.y - introBox.y - introBox.height).toBeLessThanOrEqual(40);
+    expect(result.y - noFile.y - noFile.height).toBeLessThanOrEqual(40);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
     const utilities = page.getByRole("button", { name: en ? "More settings" : "기타 설정", exact: true });

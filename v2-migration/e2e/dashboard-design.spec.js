@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { chooseDashboardView } from './support/dashboardView.js';
 
 for (const locale of ['ko', 'en']) {
   test(`dashboard dates, grouping and keyboard dialogs (${locale})`, async ({ page }) => {
@@ -37,12 +38,12 @@ for (const locale of ['ko', 'en']) {
     // 맥락 줄도 바뀐 비교 기간을 그대로 말한다.
     await conditions.getByRole('button', { name: en ? 'Close' : '닫기', exact: true }).first().click();
     await expect(page.locator('.report-context__line')).toContainText('2024-03-01');
-    await page.locator('#dashboard-tab-scorecard').click();
+    await chooseDashboardView(page, 'scorecard');
     await expect(page.locator('#s-score')).toContainText(en ? 'Selected-period KPIs' : '선택 기간 KPI 비교');
     // Both views must use the same current period, independent of the comparison.
     const card = page.locator('#s-score .ab-stat-button').nth(1);
     expect((await card.locator('.ab-stat-value').textContent()).replace(/\D/g, '')).toBe(installs.replace(/\D/g, ''));
-    await page.locator('#dashboard-tab-viz').click();
+    await chooseDashboardView(page, 'viz');
     const history = page.getByRole('button', { name: en ? 'View decision history' : '판단 기록 보기' });
     await history.click();
     const historyDialog = page.getByRole('dialog', { name: en ? 'Decision history' : '판단 기록', exact: true });

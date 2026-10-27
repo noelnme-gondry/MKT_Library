@@ -106,7 +106,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
                 const isActive = dashboardTab === tabId;
                 return (
                   <li key={tabId}>
-                    <button type="button" aria-current={isActive ? "true" : undefined} onClick={() => { selectTab(tabId); setPickerOpen(false); }}>
+                    <button type="button" data-view-id={tabId} aria-current={isActive ? "true" : undefined} onClick={() => { selectTab(tabId); setPickerOpen(false); }}>
                       <span className="dashboard-view-sheet__icon" aria-hidden="true">{info.icon}</span>
                       <strong>{en ? info.labelEn : info.label}{isActive && <em className="dashboard-view-sheet__current">{en ? "Showing" : "지금 보기"}</em>}</strong>
                       <small>{en ? info.descEn : info.desc}</small>
