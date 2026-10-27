@@ -47,6 +47,10 @@ async function addVisibleResultToReport(page) {
 }
 
 async function setComparableEfficiencyWindow(page) {
+  // 결론이 있으면 비교 기간은 조건 바꾸기 창 안에 있다(product-ssot §1.1c).
+  const change = page.getByRole("button", { name: "조건 바꾸기", exact: true });
+  const folded = await change.isVisible();
+  if (folded) await change.click();
   const comparison = page.locator(".dashboard-comparison-period");
   for (const [label, start, end] of [["분석 기간", "2026-08-05", "2026-08-08"], ["비교 기간", "2026-08-01", "2026-08-04"]]) {
     await comparison.getByRole("button", { name: new RegExp(`^${label}`) }).click();
@@ -57,6 +61,7 @@ async function setComparableEfficiencyWindow(page) {
     await expect(comparison).toContainText(start);
     await expect(comparison).toContainText(end);
   }
+  if (folded) await page.getByRole("dialog", { name: "결론 비교 기간", exact: true }).getByRole("button", { name: "닫기", exact: true }).first().click();
 }
 
 async function navigateToTool(page, href, section, query) {

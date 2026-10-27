@@ -12170,7 +12170,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .result-period-picker__trigger time { white-space: nowrap; }
 .result-period-picker__trigger svg { flex: none; }
 .result-period-picker__trigger[data-state="open"] { border-color: var(--primary); }
-.result-period-picker__popover { z-index: 150; width: min(390px, calc(100vw - 24px)); max-height: var(--radix-popover-content-available-height); overflow-y: auto; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-primary); }
+/* 조건 바꾸기 창(.tutorial-overlay 400) 안에서도 열리므로 그 위에 그린다(ds/ReportContext). */
+.result-period-picker__popover { z-index: 410; width: min(390px, calc(100vw - 24px)); max-height: var(--radix-popover-content-available-height); overflow-y: auto; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-primary); }
 .result-period-picker__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .result-period-picker__fields label { display: grid; min-width: 0; gap: 6px; font-size: var(--fs-sm); }
 .result-period-picker__fields input { min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text-primary); font: 400 var(--fs-md) var(--font-sans); }
@@ -12321,6 +12322,16 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .tool-reference-panel__head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
 .tool-reference-panel__head h2 { margin: 0; font-size: var(--fs-lg); }
 .tool-reference-panel__head button { min-height: 44px; min-width: 44px; }
+/* 결과 뒤의 분석 조건: 맥락 한 줄 + 조건 바꾸기 창(product-ssot §1.1c). 5-3 alloc-condition과 같은 줄 구조. */
+.report-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; }
+.report-context__line { flex: 1 1 18rem; min-width: 0; margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
+.report-context__line strong { color: var(--text-primary); font-weight: 600; }
+.report-context__edit { min-height: 44px; }
+.report-context__warning { margin: -8px 0 16px; color: var(--warning); font-size: var(--fs-sm); }
+.report-context-dialog__hint { margin: 12px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.report-context-dialog__body { display: grid; gap: 16px; padding-top: 16px; min-width: 0; }
+/* 결과 위에 펼칠 때 결론과 가르던 아래 선은 창 안에서는 필요 없다. */
+.report-context-dialog__body .pvm-result-controls { margin: 0; padding: 0; border-bottom: 0; }
 @media (max-width: 768px) {
   .app .result-action-card__utilities, .pvm-observation-note { margin-left: 0; }
   .pvm-stage-analysis, .tool-next-step-panel { padding: 16px; }

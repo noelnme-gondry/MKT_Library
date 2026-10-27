@@ -14,7 +14,12 @@ for (const locale of ['ko', 'en']) {
     await expect(header.locator('details')).toHaveCount(0);
     expect(await page.locator('#s-custom-charts').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
     expect(await page.locator('.dashboard-next-actions').evaluate(el => el.compareDocumentPosition(document.querySelector('#s-charts')) & Node.DOCUMENT_POSITION_PRECEDING)).toBeTruthy();
-    const period = page.getByRole('button', { name: en ? /^Comparison period/ : /^비교 기간/ });
+    // 결론이 있으면 비교 기간은 맥락 한 줄 + 조건 바꾸기 창이다(product-ssot §1.1c).
+    const openConditions = () => page.getByRole('button', { name: en ? 'Change settings' : '조건 바꾸기', exact: true }).click();
+    const conditions = page.getByRole('dialog', { name: en ? 'Conclusion comparison periods' : '결론 비교 기간', exact: true });
+    await expect(page.locator('.report-context__line')).toContainText(en ? 'Compared with' : '비교');
+    await openConditions();
+    const period = conditions.getByRole('button', { name: en ? /^Comparison period/ : /^비교 기간/ });
     const original = await period.textContent();
     const initialStats = await page.locator('.result-action-card__stats').textContent();
     await period.click();
@@ -29,6 +34,9 @@ for (const locale of ['ko', 'en']) {
     await expect(period).toContainText('2024-03-01');
     await expect(page.locator('.result-action-card__stats')).not.toHaveText(initialStats);
     const installs = await page.locator('.result-action-card__stats > div').nth(1).locator('strong').textContent();
+    // 맥락 줄도 바뀐 비교 기간을 그대로 말한다.
+    await conditions.getByRole('button', { name: en ? 'Close' : '닫기', exact: true }).first().click();
+    await expect(page.locator('.report-context__line')).toContainText('2024-03-01');
     await page.locator('#dashboard-tab-scorecard').click();
     await expect(page.locator('#s-score')).toContainText(en ? 'Selected-period KPIs' : '선택 기간 KPI 비교');
     // Both views must use the same current period, independent of the comparison.
@@ -50,6 +58,7 @@ for (const locale of ['ko', 'en']) {
     await expect(page.locator('.result-action-card__stats')).not.toContainText(installs);
     await command.getByRole('button', { name: en ? 'Remove Channel: Meta AAP' : '채널: Meta AAP 빼기' }).click();
     await expect(page.locator('.result-action-card__stats')).toContainText(installs);
+    await openConditions();
     const appliedPeriod = await period.textContent();
     const appliedStats = await page.locator('.result-action-card__stats').textContent();
     await period.click();
@@ -80,6 +89,7 @@ for (const locale of ['ko', 'en']) {
     await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: 'gap-periods.csv', mimeType: 'text/csv', buffer: Buffer.from(lines.join('\r\n')) });
     await uploader.getByRole('button', { name: en ? 'Analyze data' : '데이터 분석하기', exact: true }).click();
     await expect(page.locator('.result-action-card')).toBeVisible();
+    await page.getByRole('button', { name: en ? 'Change settings' : '조건 바꾸기', exact: true }).click();
     await page.getByRole('button', { name: en ? /^Comparison period/ : /^비교 기간/ }).click();
     const dialog = page.getByRole('dialog', { name: en ? 'Comparison period' : '비교 기간', exact: true });
     await dialog.getByLabel(en ? 'Start date' : '시작일').fill('2026-01-08');

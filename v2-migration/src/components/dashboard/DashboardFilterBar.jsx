@@ -122,7 +122,7 @@ function MultiSelect({ label, options, selected, onChange, T }) {
 
 // commandSlot: 도구가 붙이는 분석 설정 입력창(5-21). 필터와 한 자리에 두어 같은 조건을 두 곳에서
 // 고르지 않게 한다 — 입력창의 "Meta만 분석" 같은 단어는 아래 필터 선택으로 들어간다.
-export default function DashboardFilterBar({ locale = "ko", commandSlot = null, compact = false, hideDate = false, dateLabel }) {
+export default function DashboardFilterBar({ locale = "ko", commandSlot = null, compact = false, hideDate = false, dateOnly = false, dateLabel }) {
   const T = FILTER_BAR_COPY[locale] || FILTER_BAR_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -216,6 +216,14 @@ export default function DashboardFilterBar({ locale = "ko", commandSlot = null, 
     ...(basisKey ? [{ text: T.basis[basisKey], active: false }] : []),
     { text: T.currency[sourceCurrencyOf(csvData)] || sourceCurrencyOf(csvData), active: false },
   ];
+
+  // 결과 뒤 조건 바꾸기 창 안의 기간 선택기(product-ssot §1.1c). 분석 대상 버튼은 머리에
+  // 남아 있으므로 여기서는 기간만 그린다 — 같은 조건을 두 자리에 두지 않는다.
+  if (dateOnly) return dates.length > 0 ? (
+    <ResultPeriodPicker label={dateLabel || (locale === "en" ? "Analysis period" : "분석 기간")} locale={locale}
+      minDate={minDate} maxDate={maxDate} range={{ start: dashboardFilter.dateStart || minDate, end: dashboardFilter.dateEnd || maxDate }}
+      onApply={({ start, end }) => setDashboardFilter({ dateStart: start, dateEnd: end })} />
+  ) : null;
 
   if (compact) return (
     <div className="dashboard-filter-bar dashboard-filter-bar--recipe">

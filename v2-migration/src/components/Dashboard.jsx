@@ -5,6 +5,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useDashboardRecipe } from "@/lib/recipe/useDashboardRecipe";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
 import DashboardComparisonPeriod from "@/components/dashboard/DashboardComparisonPeriod";
+import ReportContext from "@/components/ds/ReportContext";
+import { comparisonWarnings } from "@/lib/analysisPeriod";
 import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import { getMonFilteredRows, getMappedRows } from "@/utils/dashboardAggregator";
 import { dateBounds } from "@/lib/analysisPeriod";
@@ -315,7 +317,20 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
-            {!["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
+            {/* 결론이 있으면 비교 기간은 맥락 한 줄 + 조건 바꾸기 창이다(product-ssot §1.1c 결정 4).
+                해석을 바꾸는 기간 경고는 결과 위에 그대로 남긴다. 스코어카드 탭은 기간이 곧 조작 대상이라 펼친다. */}
+            {activeTab === "viz" && verdict && !verdict.insufficient ? (
+              <>
+                <ReportContext locale={locale} dialogTitle={tr("결론 비교 기간", "Conclusion comparison periods")} parts={[
+                  { text: tr(`분석 ${periods.current.start} – ${periods.current.end}`, `Analysis ${periods.current.start} – ${periods.current.end}`), emphasis: true },
+                  { text: tr(`비교 ${periods.previous.start} – ${periods.previous.end}`, `Compared with ${periods.previous.start} – ${periods.previous.end}`) },
+                  { text: periods.custom ? tr("직접 지정한 기간", "Custom periods") : tr(`최근 ${dashWindowDays}일`, `Last ${dashWindowDays} days`) },
+                ]}>
+                  <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />
+                </ReportContext>
+                {comparisonWarnings(periods.current, periods.previous, locale).map((warning) => <p className="report-context__warning" role="status" key={warning}>{warning}</p>)}
+              </>
+            ) : !["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
             {workerPending && (
               <div className="callout" role="status" aria-live="polite" style={{ marginBottom: "1rem" }}>
                 <div className="ico">◌</div>

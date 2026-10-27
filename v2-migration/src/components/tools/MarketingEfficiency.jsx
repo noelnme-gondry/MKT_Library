@@ -23,6 +23,8 @@ import {
 import { effectiveDenomBasis, getMonFilteredRows } from "@/utils/dashboardAggregator";
 import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
+import ReportContext from "@/components/ds/ReportContext";
+import { saturationHeadline } from "@/lib/report/saturationHeadline";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
 import { buildDataContext, dimensionLabelFor } from "@/lib/vocabulary/dataContext";
 import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
@@ -38,10 +40,8 @@ import { scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import { localizedTool } from "@/lib/toolConnections";
 import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
-import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
-import { stripHtmlTags } from "@/lib/htmlText";
 import { sourceCurrencyOf } from "@/utils/format";
 import ScaleDecisionMap from "@/components/tools/ScaleDecisionMap";
 import MarginalEfficiencyGapChart from "@/components/tools/MarginalEfficiencyGapChart";
@@ -427,17 +427,77 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     );
   }
 
-  let head = okRows.length
-    ? tr("분석 가능한 항목은 적정 구간", "Analyzable items are in the steady zone")
-    : tr("판단 보류 — 분석 가능한 항목 없음", "Abstain — no analyzable items");
-  if (sat.length || scale.length) {
-    const parts = [];
-    if (sat.length) parts.push(`<span style="color:var(--danger);">${tr(`포화 ${sat.length}개`, `${sat.length} saturated`)}</span> (${tr("증액 위험", "risk if you increase")})`);
-    if (scale.length) parts.push(`<span style="color:var(--success);">${tr(`여유 ${scale.length}개`, `${scale.length} with headroom`)}</span> (${tr("증액 기회", "opportunity to increase")})`);
-    head = parts.join(" · ");
-  }
+  // 결론 문장(§1.1c 보고서 틀) — 개수만이 아니라 무엇을 할지 말한다. 화면·저장 프리필이 같은 문장을 쓴다.
+  const satConclusion = saturationHeadline({ total: okRows.length, saturated: sat.map((row) => row.name), headroom: scale.map((row) => row.name), grain: grainLabel, locale });
 
   const activeStyle = { background: "var(--bg-2)", borderColor: "var(--text-1)", color: "var(--text-1)" };
+
+  // 결과가 나오면 기간·표시 기준은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 결정 4).
+  // 판단할 대상이 하나도 없으면 접지 않는다 — 조건을 바로 고쳐야 하는 상태다.
+  // 분석 설정 입력창과 "분석 대상"은 머리에 남긴다(결과를 보며 바로 고쳐 보는 경로, §12.32).
+  const satReportMode = analyzed && okRows.length > 0;
+  const satDataSection = (
+    <section className="saturation-data" aria-label={tr("데이터·매핑", "Data & mapping")}>
+      <CsvUploader toolId="5-22" locale={locale} />
+      <button className="btn ghost saturation-data__template" onClick={() => downloadSatTemplateCsv("5-22")}>
+        {tr("템플릿 CSV 받기", "Download template CSV")}
+      </button>
+    </section>
+  );
+  const satViewToolbar = (
+    <div className="saturation-view-toolbar" role="group" aria-label={tr("포화도 결과 표시 기준", "Saturation result display options")}>
+      <strong>{tr("표시 기준", "View by")}</strong>
+      <div>
+        <span>{tr("분석 단위", "Analysis unit")}</span>
+        <button
+          type="button"
+          className="ab-pill"
+          disabled={!mappedKeys.has("channel")}
+          aria-pressed={field === "channel"}
+          style={field === "channel" ? activeStyle : {}}
+          onClick={() => { addRecipeStep({ id: "level.field", params: { field: "channel" } }); setSelected(null); }}
+        >
+          {tr("채널", "Channel")}
+        </button>
+        <button
+          type="button"
+          className="ab-pill"
+          disabled={!hasCampaign}
+          aria-pressed={effectiveGrain === "campaign"}
+          style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
+          onClick={() => { addRecipeStep({ id: "level.field", params: { field: "campaign_name" } }); setSelected(null); }}
+        >
+          {tr("캠페인", "Campaign")}
+        </button>
+      </div>
+      <div>
+        <span>{tr("효율 기준", "Efficiency metric")}</span>
+        <button
+          type="button"
+          className="ab-pill"
+          aria-pressed={effectiveMetric === "cpa"}
+          style={effectiveMetric === "cpa" ? activeStyle : {}}
+          onClick={() => addRecipeStep({ id: "metric.saturation.cpa", params: {} })}
+        >
+          {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
+        </button>
+        <button
+          type="button"
+          className="ab-pill"
+          disabled={!revField}
+          aria-pressed={effectiveMetric === "roas"}
+          style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
+          onClick={() => addRecipeStep({ id: "metric.saturation.roas", params: {} })}
+        >
+          {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
+        </button>
+      </div>
+      <BlockedOptionsNote items={[
+        { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
+        { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
+      ]} />
+    </div>
+  );
 
   const allDates = rows.flatMap((row) => row.kept || []).map((point) => point.date).filter(Boolean).sort();
   const scopeEvidence = {
@@ -470,71 +530,16 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       className="saturation-workspace"
       stickyHeader={false}
       toc={analyzed && okRows.length ? buildSatToc(tr).filter((item) => isVisible(item.id)) : undefined}
-      stickyFilter={<><DashboardFilterBar locale={locale} compact commandSlot={commandContext ? (
+      stickyFilter={<><DashboardFilterBar locale={locale} compact hideDate={satReportMode} commandSlot={commandContext ? (
         <RecipeCommandInput vocabulary={SAT_VOCABULARY} context={commandContext} steps={recipeSteps}
           onStepsChange={setRecipeSteps} onMapping={({ column, field }) => setCsvData(withMappingChange(csvData, column, field, "5-22"))}
           {...sharedFilters} extraChips={sharedFilters.extraChips.filter((chip) => chip.id !== "date")} presets={accountRecipes} rejected={fold.rejected} notices={notices} locale={locale} />
       ) : null} />
-      <div className="saturation-view-toolbar" role="group" aria-label={tr("포화도 결과 표시 기준", "Saturation result display options")}>
-        <strong>{tr("표시 기준", "View by")}</strong>
-        <div>
-          <span>{tr("분석 단위", "Analysis unit")}</span>
-          <button
-            type="button"
-            className="ab-pill"
-            disabled={!mappedKeys.has("channel")}
-            aria-pressed={field === "channel"}
-            style={field === "channel" ? activeStyle : {}}
-            onClick={() => { addRecipeStep({ id: "level.field", params: { field: "channel" } }); setSelected(null); }}
-          >
-            {tr("채널", "Channel")}
-          </button>
-          <button
-            type="button"
-            className="ab-pill"
-            disabled={!hasCampaign}
-            aria-pressed={effectiveGrain === "campaign"}
-            style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
-            onClick={() => { addRecipeStep({ id: "level.field", params: { field: "campaign_name" } }); setSelected(null); }}
-          >
-            {tr("캠페인", "Campaign")}
-          </button>
-        </div>
-        <div>
-          <span>{tr("효율 기준", "Efficiency metric")}</span>
-          <button
-            type="button"
-            className="ab-pill"
-            aria-pressed={effectiveMetric === "cpa"}
-            style={effectiveMetric === "cpa" ? activeStyle : {}}
-            onClick={() => addRecipeStep({ id: "metric.saturation.cpa", params: {} })}
-          >
-            {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
-          </button>
-          <button
-            type="button"
-            className="ab-pill"
-            disabled={!revField}
-            aria-pressed={effectiveMetric === "roas"}
-            style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
-            onClick={() => addRecipeStep({ id: "metric.saturation.roas", params: {} })}
-          >
-            {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
-          </button>
-        </div>
-        <BlockedOptionsNote items={[
-          { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
-          { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
-        ]} />
-      </div>
+      {!satReportMode && satViewToolbar}
       </>}
     >
-      <section className="saturation-data" aria-label={tr("데이터·매핑", "Data & mapping")}>
-        <CsvUploader toolId="5-22" locale={locale} />
-        <button className="btn ghost saturation-data__template" onClick={() => downloadSatTemplateCsv("5-22")}>
-          {tr("템플릿 CSV 받기", "Download template CSV")}
-        </button>
-      </section>
+      {/* 결과가 나오면 데이터 요약은 맥락 줄이 말하고, 파일·매핑 변경은 조건 바꾸기 창에서 한다. */}
+      {!satReportMode && satDataSection}
       {!analyzed ? (
         <section className="block" id="s-sat-gate">
           <div className="callout" style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
@@ -552,6 +557,18 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       <>
       <AnalysisExportProvider value={figureSettings}>
       <section className="block saturation-conclusion" id="s-sat-summary">
+        {satReportMode && (
+          <ReportContext locale={locale} dialogTitle={tr("분석 조건", "Analysis settings")} parts={[
+            { text: `${isDemoData(csvData) ? tr("예시 데이터", "Sample data") : (csvData?.fileName || "")} · ${tr(`${(csvData?.raw?.length || 0).toLocaleString()}행`, `${(csvData?.raw?.length || 0).toLocaleString()} rows`)}` },
+            { text: allDates.length ? tr(`기간 ${allDates[0]} – ${allDates[allDates.length - 1]}`, `Period ${allDates[0]} – ${allDates[allDates.length - 1]}`) : "", emphasis: true },
+            { text: tr(`${grainLabel}별`, `By ${String(grainLabel).toLowerCase()}`) },
+            { text: tr(`${metricLabel} 기준`, metricLabel), emphasis: true },
+          ]}>
+            <DashboardFilterBar locale={locale} compact dateOnly />
+            {satViewToolbar}
+            {satDataSection}
+          </ReportContext>
+        )}
         <ResultActionCard
           toolId="5-22"
           analysisType="saturation"
@@ -561,7 +578,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           locale={locale}
           decisionReview={Boolean(okRows.length)}
           decisionPrefill={decisionTarget ? {
-            conclusion: stripHtmlTags(head),
+            conclusion: satConclusion,
             action: saturatedCandidate && scaleCandidate
               ? tr(
                 `${saturatedCandidate.name}의 추가 예산 일부를 ${scaleCandidate.name}으로 소규모 이동 시험한다`,
@@ -589,7 +606,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           } : null}
           tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
           title={tr("포화도 결론", "Saturation conclusion")}
-          headline={stripHtmlTags(head)}
+          headline={satConclusion}
           workbookExport={() => ({
             calculationMode: "hybrid_engine_output",
             calculationTables: [{
@@ -627,30 +644,18 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               limitations: exportLimitations([tr("곡선 적합은 워크북에서 재학습되지 않으며 인과효과가 아닙니다.", "The curve is not refit in the workbook and is not a causal effect.")], recipe.export.includeCaveats, locale),
             },
           })}
-          points={[{ label: tr("판단과 다음 행동", "Decision and next action"), text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
+          points={[{ label: tr("다음 행동", "Next action"), text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
           stats={[
-            { label: tr("분석 가능", "Analyzable"), value: `${okRows.length}/${rows.length}` },
-            { label: tr("포화", "Saturated"), value: sat.length },
-            { label: tr("여유", "Headroom"), value: scale.length },
+            { label: tr("판단한 대상", "Judged"), value: `${okRows.length}/${rows.length}`, detail: rows.length > okRows.length ? tr(`${rows.length - okRows.length}곳은 데이터 부족`, `${rows.length - okRows.length} lack data`) : "" },
+            { label: tr("증액 멈춤 (포화)", "Hold increases (saturated)"), value: sat.length, detail: sat.slice(0, 2).map((row) => row.name).join(", ") },
+            { label: tr("증액 여유", "Headroom"), value: scale.length, detail: scale.slice(0, 2).map((row) => row.name).join(", ") },
           ]}
-          analysisDetails={(
-            <AnalysisDetails
-              locale={locale}
-              statusLabel={okRows.length ? tr("관측 범위 내 참고", "In-range reference") : tr("판정 보류", "Abstain")}
-              statusTone={!okRows.length || badRows.length ? "warning" : "neutral"}
-              metric={metricLabel}
-              unit={effectiveMetric === "roas" ? "ratio" : "currency / result"}
-              meaning={tr("비용-성과 곡선의 관측 범위 내 한계효율 참고값이며 인과효과가 아닙니다.", "An in-range marginal-efficiency reference from the cost-performance curve; not a causal effect.")}
-              sampleSize={{ value: rows.reduce((sum, row) => sum + (row.raw || 0), 0), label: tr("관측 행", "Observed rows"), detail: tr(`${grainLabel}별 최소 ${SAT_CONFIG.minPoints}개 관측 필요`, `At least ${SAT_CONFIG.minPoints} observations per ${grainLabel} are required`) }}
-              method="saturation-curve-fit"
-              version="sat-v1"
-              metricDefinition={tr(`${costMetricLabel}는 Cost/성과, ROAS는 Revenue/Cost 기준입니다.`, `${costMetricLabel} uses Cost/results; ROAS uses Revenue/Cost.`)}
-              warnings={[
-                ...(badRows.length ? [tr(`${badRows.length}개 대상은 표본·변동성 부족으로 판정에서 제외됐습니다.`, `${badRows.length} target(s) were excluded because of insufficient sample or variation.`)] : []),
-                tr("관측 지출 범위 밖의 외삽은 추천 근거로 사용하지 않습니다.", "Extrapolation beyond observed spend is not used as recommendation evidence."),
-              ]}
-            />
-          )}
+          // 확인할 점은 결론 옆 버튼 하나로 모은다(product-ssot §5.5). 예전에는 범위 근거와 분석 상세가
+          // 각자 "확인 1"을 그려 폰에서 결론 칸을 좁혔다.
+          issues={[
+            ...(badRows.length ? [tr(`${badRows.length}개 대상은 표본·변동성 부족으로 판정에서 제외됐습니다.`, `${badRows.length} target(s) were excluded because of insufficient sample or variation.`)] : []),
+            tr("관측 지출 범위 밖의 외삽은 추천 근거로 사용하지 않습니다.", "Extrapolation beyond observed spend is not used as recommendation evidence."),
+          ]}
         />
 
       </section>

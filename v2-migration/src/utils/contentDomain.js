@@ -136,7 +136,7 @@ export const PVM_COPY = {
     explainerMix: "결과 비중이 평균보다 비싼/싼 채널로 옮겨가며 생긴 변화.",
     explainerRate: (ml) => `채널 자체 ${ml}가 변해서 생긴 변화.`,
     // 표 헤더 — 결과 비중
-    shareHeader: "결과 비중 (P1→P2)",
+    shareHeader: "결과 비중 (직전→최근)",
     shareHeaderTitle:
       "전체 결과(전환) 건수 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.",
     // §3/§4 lock(필드명은 엔진 계약이라 유지, 단계 표현만 도메인화)
@@ -175,7 +175,7 @@ export const PVM_COPY = {
       "association(연관)일 뿐 인과를 증명하지 않습니다. 유입경로·카테고리·콘텐츠 모두 최소 단위(유입경로×카테고리×콘텐츠)에서 한 번 분해 후 합산해 세 보기는 항상 정확히 중첩됩니다.",
     explainerMix: "결과 비중이 평균보다 비싼/싼 유입경로로 옮겨가며 생긴 변화.",
     explainerRate: (ml) => `유입경로 자체 ${ml}가 변해서 생긴 변화.`,
-    shareHeader: "트래픽 비중 (P1→P2)",
+    shareHeader: "트래픽 비중 (직전→최근)",
     shareHeaderTitle:
       "전체 트래픽(방문·PV) 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.",
     lockCampaign: "campaign_id 컬럼을 매핑하면 카테고리 단계를 볼 수 있습니다",

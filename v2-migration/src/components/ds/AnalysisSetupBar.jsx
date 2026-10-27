@@ -9,6 +9,7 @@ import { TOOL_GROUP } from "@/lib/toolGroups";
 import { captureSavedAnalysis, MAX_SAVED_ANALYSES } from "@/lib/project/savedAnalyses";
 import { updateProject } from "@/lib/project/repository";
 import { toolIndexEntry } from "@/lib/toolIndex";
+import { REPORT_CONTEXT_TOOL_IDS } from "@/lib/report/reportContextTools";
 
 /* ============================================================
  * 한 컴포넌트가 두 자리에 나눠 렌더된다.
@@ -35,6 +36,8 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
   const applied = useAppStore(state => state.savedSetupAppliedTool === toolId && state.savedSetupAppliedProject === state.activeProjectId && Boolean(state.savedSetupApplied));
   const pending = useAppStore(state => state.pendingSavedAnalysis);
   const applicablePending = pending?.projectId === activeId && pending.item.toolId === toolId ? pending : null;
+  // 결과가 나오면 결과 위 맥락 줄(ds/ReportContext)이 입력을 말한다 — 분석 전에는 여기서 말한다.
+  const inputInReport = useAppStore(state => REPORT_CONTEXT_TOOL_IDS.includes(toolId) && state.isGroupAnalyzed(toolId));
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -59,7 +62,7 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
   };
   if (slot === "context") {
     // 도구 자체의 출처·행 수 요약과 중복하지 않는다. 저장 설정 적용/검토 안내는 유지한다.
-    const showDataLine = Boolean(data?.raw?.length) && !["5-2", "5-22", "5-3", "5-31"].includes(toolId);
+    const showDataLine = Boolean(data?.raw?.length) && !["5-2", "5-22", "5-3", "5-31"].includes(toolId) && !inputInReport;
     if (!showDataLine && !applicablePending && !applied) return null;
     const hasDateFilter = Boolean(filter?.dateStart || filter?.dateEnd);
     return <section className="analysis-setup no-print" aria-label={en ? "Data and applied setup" : "데이터와 적용된 설정"}>
