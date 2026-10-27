@@ -77,10 +77,17 @@ for (const locale of ["ko", "en"]) {
   });
 
   test(`pre/post template and tool keep the chosen comparison method (${locale})`, async ({ page }) => {
+    // 첫 방문 설문 창이 함께 뜨면 이름 없는 dialog가 그 창을 잡는다 — 설문을 끄고 창은 이름으로 찾는다.
+    await page.addInitScript(() => localStorage.setItem("mkt-library-source-survey-answered", "1"));
     await page.goto(`${prefix}/start?situation=proof`);
     const card = page.locator('.finder-card[data-tool-id="5-23"]');
-    await card.getByRole("button", { name: en ? "How to prepare" : "준비 방법" }).click();
-    const dialog = page.getByRole("dialog");
+    const incrementality = finderCards(locale).find((item) => item.id === "5-23");
+    const dialog = page.getByRole("dialog", { name: en ? `How to prepare · ${incrementality.name}` : `준비 방법 · ${incrementality.name}` });
+    // 하이드레이션 전의 클릭은 창을 열지 못한다 — 창이 열릴 때까지 다시 누른다.
+    await expect(async () => {
+      await card.getByRole("button", { name: en ? "How to prepare" : "준비 방법" }).click();
+      await expect(dialog).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 15000 });
     await dialog.getByRole("button", { name: en ? "Before and after ads started" : "광고를 켠 전후 비교" }).click();
     const pending = page.waitForEvent("download");
     await dialog.getByRole("button", { name: en ? "Download blank CSV" : "빈 CSV 양식 받기" }).click();
