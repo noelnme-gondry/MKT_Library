@@ -1,6 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import { EMPTY_COMPARISON_CONDITIONS, comparisonConditionsReady } from "@/lib/analysis-results/comparisonConditions";
+import DeclaredConditions from "./DeclaredConditions";
 
 export function useComparisonConditions(scope) {
   const [record, setRecord] = useState({ scope, values: EMPTY_COMPARISON_CONDITIONS });
@@ -22,15 +23,18 @@ export default function ComparisonConditions({ conditions, locale = "ko" }) {
     ["seasonality", "같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", [["reviewed", "확인했고 없었습니다", "Checked; none"], ["changed", "있었습니다", "Yes"]]],
     ["delivery", "광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", [["continuous", "아니요, 계속 집행했습니다", "No, delivery was steady"], ["interrupted", "네, 있었습니다", "Yes"]]],
   ];
-  return <section className="analysis-design-check analysis-design-check--comparison" aria-label={en ? "Observational comparison conditions" : "관찰 비교 조건"}>
-    <h3>{en ? "Before you trust this result" : "이 결과를 믿기 전에"}</h3>
-    <p>{en ? "CSV totals cannot distinguish tracking changes from real demand or advertising changes. These declarations are not independently verified and reset when the input or analysis scope changes." : "CSV 합계만으로 추적 변경과 실제 수요·광고 변화를 구분할 수 없습니다. 아래는 독립 검증된 사실이 아닌 입력자의 선언이며 입력·분석 범위를 바꾸면 초기화됩니다."}</p>
+  const answered = fields.filter(([key]) => conditions.values[key]).length;
+  return <DeclaredConditions className="declared-conditions--comparison" locale={locale}
+    title={en ? "Comparison conditions" : "비교 조건 확인"}
+    intro={en ? "CSV totals cannot distinguish tracking changes from real demand or advertising changes. These declarations are not independently verified and reset when the input or analysis scope changes." : "CSV 합계만으로 추적 변경과 실제 수요·광고 변화를 구분할 수 없습니다. 아래는 독립 검증된 사실이 아닌 입력자의 선언이며 입력·분석 범위를 바꾸면 초기화됩니다."}
+    ready={conditions.ready} answered={answered} total={fields.length}
+    status={conditions.ready ? (en ? "Recorded — still not an ad effect" : "기록함 — 광고 효과로 단정하지는 않음") : (en ? "Read as description until confirmed" : "확인 전에는 현상 설명으로만 읽기")}
+    note={comparisonConditionsNote(conditions.ready, locale)}>
     <div className="comparison-condition-grid">{fields.map(([key, ko, english, options]) => <label key={key} htmlFor={`${id}-${key}`}>{en ? english : ko}
       <select id={`${id}-${key}`} value={conditions.values[key]} onChange={(event) => conditions.set(key, event.target.value)}>
         <option value="">{en ? "Not sure yet" : "아직 모름"}</option>
         {options.map(([value, koOption, enOption]) => <option key={value} value={value}>{en ? enOption : koOption}</option>)}
       </select>
     </label>)}</div>
-    <p role="status">{comparisonConditionsNote(conditions.ready, locale)}</p>
-  </section>;
+  </DeclaredConditions>;
 }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { confirmReviewSave } from "@/test/reviewSaveBoundary";
+import { withDeclared } from "@/test/declaredConditions";
 //
 // Render-smoke for Incrementality (5-23). Asserts the component MOUNTS without
 // throwing in the no-data state and with each method's demo data loaded
@@ -13,6 +14,10 @@ import Incrementality from "@/components/tools/Incrementality";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
 function declareDesign(locale = "ko") {
+  withDeclared(() => declareDesignFields(locale));
+}
+
+function declareDesignFields(locale = "ko") {
   const en = locale === "en";
   for (const [label, value] of [
     [en ? "What did you compare?" : "비교한 대상은 무엇인가요?", "person"],
@@ -111,7 +116,7 @@ describe("Incrementality render smoke", () => {
     const en = locale === "en";
     fireEvent.change(screen.getByLabelText(en ? "Holdout start date" : "홀드아웃 시작일"), { target: { value: "2024-05-12" } });
     fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-05" } });
-    expect(screen.getByText(en ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
+    expect(document.querySelector(".result-action-card__headline").textContent).toMatch(en ? /exploratory until the test design is confirmed/ : /실험 설계를 확인하기 전에는 탐색용 수치입니다/);
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     const figure = document.querySelector(".result-action-card .tool-core-figure .result-effect");
     expect(figure).toBeTruthy();
@@ -120,11 +125,11 @@ describe("Incrementality render smoke", () => {
     expect(figure.querySelector("li").dataset.tone).toBe("better");
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?"), { target: { value: "changed" } });
+    withDeclared(() => fireEvent.change(screen.getByLabelText(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?"), { target: { value: "changed" } }));
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     declareDesign(locale);
     fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-04" } });
-    expect(screen.getByLabelText(en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?").value).toBe("");
+    withDeclared(() => expect(screen.getByLabelText(en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?").value).toBe(""));
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
   });
 
@@ -227,7 +232,7 @@ describe("Incrementality render smoke", () => {
     expect(result.querySelectorAll(".result-action-card__stats")).toHaveLength(1);
     expect(result.querySelector(".alloc-card")).toBeNull();
     expect(within(result).getByLabelText(en ? "Estimated change interval" : "변화 추정 범위").textContent).not.toContain(en ? "Not estimable" : "추정 불가");
-    expect(within(result).getByText(en ? /Comparison conditions unconfirmed/ : /비교 조건 미확인/)).toBeTruthy();
+    expect(within(result).getByText(en ? /exploratory until the comparison is confirmed/ : /비교 조건을 확인하기 전에는 탐색용 수치입니다/)).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(within(result).queryByText(en ? /No pretrend violation was detected/ : /사전추세 위반은 발견되지/)).toBeNull();
     const chart = result.querySelector("#incr-prepost-chart");

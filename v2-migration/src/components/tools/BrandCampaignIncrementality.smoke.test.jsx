@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { fmtCurrency } from "@/utils/format";
 
 import * as brandMath from "@/utils/brandIncrementalityMath";
+import { withDeclared } from "@/test/declaredConditions";
 
 const EMPTY = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -123,10 +124,12 @@ it.each([
   const { container } = render(<BrandCampaignIncrementality />);
   fireEvent.click(screen.getByRole("button", { name: /예시 데이터/ }));
   await waitFor(() => expect(screen.getByRole("button", { name: "분석 근거 보기" })).toBeTruthy());
-  for (const [label, value] of [
-    ["비교한 대상은 무엇인가요?", "time"], ["두 그룹은 어떻게 나눴나요?", "observational"],
-    ["결과를 보기 전에 기간을 정했나요?", "planned"], ["같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "none"],
-  ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  withDeclared(() => {
+    for (const [label, value] of [
+      ["비교한 대상은 무엇인가요?", "time"], ["두 그룹은 어떻게 나눴나요?", "observational"],
+      ["결과를 보기 전에 기간을 정했나요?", "planned"], ["같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "none"],
+    ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  });
   expect(container.querySelector(".result-action-card").classList.contains(tone)).toBe(true);
   expect(container.querySelector(".result-action-card__stats").children[3].textContent).toContain("추정 불가");
   fireEvent.click(screen.getByRole("button", { name: "분석 근거 보기" }));

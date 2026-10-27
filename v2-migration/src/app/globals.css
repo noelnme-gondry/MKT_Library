@@ -12316,6 +12316,18 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .report-context__warning { margin: -8px 0 16px; color: var(--warning); font-size: var(--fs-sm); }
 .report-context-dialog__hint { margin: 12px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
 .report-context-dialog__body { display: grid; gap: 16px; padding-top: 16px; min-width: 0; }
+/* 선언 조건(ds/DeclaredConditions) — 결과 위에는 한 줄만. 질문은 창 안에서 답한다(§1.1c 4단계). 상자 없이 맥락 줄과 같은 재질. */
+.declared-conditions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; min-width: 0; }
+.declared-conditions__line { display: flex; flex: 1 1 18rem; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: var(--text-secondary); }
+.declared-conditions__line strong { color: var(--text-primary); font-weight: 600; }
+.declared-conditions__count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* 보류 상태는 글자가 말한다 — --warning 글자색은 라이트 13px에서 4.26:1이라 대비 미달이다. */
+.declared-conditions[data-ready="false"] .declared-conditions__status { color: var(--text-primary); font-weight: 600; }
+.declared-conditions__open { min-height: 44px; }
+.declared-conditions-dialog__intro { margin: 12px 0 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
+.declared-conditions-dialog__fields { display: grid; gap: 4px; padding-top: 8px; min-width: 0; }
+.declared-conditions-dialog__fields label { flex-direction: column; align-items: stretch; gap: 6px; }
+.declared-conditions-dialog__status { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.6; }
 /* 결과 위에 펼칠 때 결론과 가르던 아래 선은 창 안에서는 필요 없다. */
 .report-context-dialog__body .pvm-result-controls { margin: 0; padding: 0; border-bottom: 0; }
 /* 5-3: 실행안이 있으면 조건 상자가 맥락 한 줄로 접힌다. 창은 결론을 가리므로 지금 결론을 창 위에 같이 둔다. */
@@ -12707,8 +12719,10 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .tool-autonomy .chart-container { min-width: 0; }
   .tool-autonomy [hidden] { display: none !important; }
   .tool-instrument-header--surface { background: var(--surface-container-lowest) !important; padding: 24px !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; margin-bottom: 20px; }
-  .tool-recipe-controls { position: relative; z-index: 11; padding: 20px 24px; margin-block: 20px; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-xl); }
+  .tool-recipe-controls { position: relative; z-index: 11; padding: 14px 20px; margin-block: 12px; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-xl); }
   .tool-recipe-controls__hint { margin: 10px 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.6; }
+  /* 저장 위치 설명은 설정을 고칠 때만 필요하다 — 결론을 밀어내지 않게 입력 중에만 펼친다(§1.1c 4단계). */
+  .tool-recipe-controls:not(:focus-within) .tool-recipe-controls__hint { display: none; }
   .tool-autonomy .page-sticky-bar { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface-container-lowest); padding: 16px 24px; margin-block: 20px; position: static; box-shadow: none; }
   .tool-autonomy .analysis-design-check { background: var(--surface-container-lowest); padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-xl); margin-block: 20px; }
   .analysis-design-check--comparison h3 { margin: 0 0 8px; }

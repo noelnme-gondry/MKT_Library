@@ -26,6 +26,8 @@ import { buildToolDemo } from "@/lib/toolDemo";
 import { trackProductEvent } from "@/lib/analytics";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import useExampleLink from "@/components/ds/useExampleLink";
+import ReportContext from "@/components/ds/ReportContext";
+import { abHeadline } from "@/lib/report/abHeadline";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -405,10 +407,23 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     setActiveTab("readout");
   };
   useExampleLink(!readoutData ? runExample : null);
+  // "광고 자체 효과는 증분 분석" 안내 — 결과 전에는 위에서 길을 알려 주고, 결과가 나오면 결과 뒤로 내린다.
+  const incrementalityHint = (
+        <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
+          {tr(
+            <><strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.</>,
+            <>Want to see <strong>conversions that would have happened anyway (incrementality)</strong>? → Use the <strong>Incrementality Analysis</strong> tool in the left menu (holdout, before/after). A/B answers &quot;which one is better&quot;, incrementality answers &quot;was running the ad itself worth it&quot;.</>,
+          )}
+        </p><div style={{ display: "flex", gap: "7px", flexWrap: "wrap", marginTop: "8px" }}>
+          <Link className="ab-pill" href={localizedTool("9-6", locale).href}>{tr("소재 가설 찾기", "Find a creative hypothesis")} ←</Link>
+          <Link className="ab-pill" href={localizedTool("5-23", locale).href}>{tr("광고 자체 효과 검증", "Test advertising incrementality")} →</Link>
+        </div></div></div>
+  );
 
   return (
     <div className="tab-pane active" id="tab-ab">
-      <section className="experiment-journey experiment-journey--compact" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
+      {/* 결과가 나오면 결론이 첫 화면을 차지한다 — 아래 탭과 같은 일을 하는 단계 버튼은 결과 전에만(§1.1c). */}
+      {!readoutData && <section className="experiment-journey experiment-journey--compact" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
         <div className="experiment-journey__head">
           <h2>{tr("설계하거나, 바로 판독하세요", "Design a test or read results now")}</h2>
         </div>
@@ -425,8 +440,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           </button>
         </div>
         {/* 첫 탭은 계산기라 예시 결과로 가는 길이 없었다 — 예시는 판독 결과로 바로 연다(2026-09-24). */}
-        {!readoutData && <button type="button" className="csv-guide-example-btn" onClick={() => runExample()}>{tr("예시 데이터로 결과 바로 보기", "Run the example and see results")}<span aria-hidden>→</span></button>}
-      </section>
+        <button type="button" className="csv-guide-example-btn" onClick={() => runExample()}>{tr("예시 데이터로 결과 바로 보기", "Run the example and see results")}<span aria-hidden>→</span></button>
+      </section>}
       <div className="ab-tabs" role="tablist" aria-label={tr("실험 분석 보기", "Experiment analysis views")} style={{ marginBottom: "8px" }}>
         <button type="button" id="ab-primary-tab-design" role="tab" aria-selected={activeTab === "design"} aria-controls="ab-primary-panel" tabIndex={activeTab === "design" ? 0 : -1} className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")} onKeyDown={(event) => onPrimaryTabKeyDown(event, "design")}>
           {tr("① 설계 · 얼마나 모아야 하나?", "① Design · How much data do I need?")}
@@ -439,19 +454,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
       {/* 탭별 한 줄 평어 안내 (claude-ux §1 여정=질문) */}
       <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
         {activeTab === "design" && tr("실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다.", "Before you launch the test — calculate how many samples (people) you need to trust the result.")}
-        {activeTab === "readout" && tr("두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다.", "After exposing both variants (A vs B) — determine which conversion rate is higher and whether the difference is more than chance.")}
+        {activeTab === "readout" && !readoutData && tr("두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다.", "After exposing both variants (A vs B) — determine which conversion rate is higher and whether the difference is more than chance.")}
       </p>
-      {activeTab === "readout" && (
-        <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-          {tr(
-            <><strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.</>,
-            <>Want to see <strong>conversions that would have happened anyway (incrementality)</strong>? → Use the <strong>Incrementality Analysis</strong> tool in the left menu (holdout, before/after). A/B answers &quot;which one is better&quot;, incrementality answers &quot;was running the ad itself worth it&quot;.</>,
-          )}
-        </p><div style={{ display: "flex", gap: "7px", flexWrap: "wrap", marginTop: "8px" }}>
-          <Link className="ab-pill" href={localizedTool("9-6", locale).href}>{tr("소재 가설 찾기", "Find a creative hypothesis")} ←</Link>
-          <Link className="ab-pill" href={localizedTool("5-23", locale).href}>{tr("광고 자체 효과 검증", "Test advertising incrementality")} →</Link>
-        </div></div></div>
-      )}
+      {activeTab === "readout" && !readoutData && incrementalityHint}
 
       {activeTab === "design" && (
         <>
@@ -869,7 +874,18 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
 
       {activeTab === "readout" && (
         <>
-          <section className="block" id="s-prep">
+          {/* 결과가 있으면 데이터·설계 확인은 맥락 한 줄 + "조건 바꾸기" 창으로 접는다(§1.1c 결정 4). */}
+          {readoutData && !readoutData.invalidRows && (
+            <ReportContext locale={locale} dialogTitle={tr("데이터와 실험 설계", "Data and test design")} parts={[
+              { text: isDemoData(csvData) ? tr("예시 데이터", "Sample data") : (csvData?.fileName || tr("업로드한 데이터", "Uploaded data")), emphasis: true },
+              { text: tr(`${(csvData?.raw?.length || 0).toLocaleString()}행`, `${(csvData?.raw?.length || 0).toLocaleString()} rows`) },
+              { text: readoutData.mass?.rows?.length ? tr(`그룹 ${readoutData.mass.rows.length}개`, `${readoutData.mass.rows.length} groups`) : "Control vs Test" },
+              { text: isDesignConfirmed ? tr("설계 확인함", "Design confirmed") : tr("설계 미확인", "Design not confirmed") },
+            ]}>
+              {designCheck}
+            </ReportContext>
+          )}
+          {!readoutData && <section className="block" id="s-prep">
             <h2 className="section-title">{tr("데이터 준비", "Data setup")}</h2>
             {!readoutData ? (
               <div className="callout warning">
@@ -892,16 +908,13 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} locale={locale} /></div>
                 </div>
               </div>
-            ) : (
-              <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0 }}>{csvData?.fileName ? <strong>{csvData.fileName}</strong> : tr("업로드된 데이터", "Uploaded data")} · {tr(`${csvData?.raw?.length?.toLocaleString?.()}행`, `${csvData?.raw?.length?.toLocaleString?.()} rows`)}. {tr("Control/Test 집계 후 two-proportion z-test로 유의성 검정.", "Aggregates Control/Test then tests significance with a two-proportion z-test.")}</p></div></div>
-            )}
-          </section>
+            ) : null}
+          </section>}
 
           {readoutData?.invalidRows ? (
             <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("판독할 수 없는 행이 있습니다", "Some rows cannot be read")}</strong><p>{tr(`${readoutData.invalidRows.toLocaleString()}행에서 전환수는 0 이상이고 분모 이하여야 하며, 분모는 0보다 커야 합니다. 원본 값을 수정한 뒤 다시 분석하세요.`, `In ${readoutData.invalidRows.toLocaleString()} row(s), conversions must be between 0 and the denominator, and the denominator must be greater than 0. Correct the source values and analyze again.`)}</p></div></div>
           ) : readoutData && (
             <>
-              {designCheck}
               <section className="block" id="s-readout-sig">
                 <div className="section-head">
                   <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
@@ -970,9 +983,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       resultState={srm.status === "mismatch" ? "insufficient" : "ready"}
                       tone={srm.status === "mismatch" ? "neutral" : isSignificant ? (liftPositive ? "good" : "bad") : "neutral"}
                       title={tr("결론 — Control vs Test", "Conclusion — Control vs Test")}
-                      headline={srm.status === "mismatch" ? tr("배정 비율 이상: 효과에 따른 결정 보류", "Allocation mismatch: hold treatment decisions") : isSignificant
-                        ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
-                        : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
+                      headline={abHeadline({ srmMismatch: srm.status === "mismatch", significant: isSignificant, liftRel: s.liftRel, controlRate: readoutData.cRate, testRate: readoutData.tRate, testArmCount, locale })}
                       points={testArmCount > 1 ? [{
                         cls: "muted",
                         text: tr(
@@ -1078,6 +1089,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   <canvas id="ab-bar"></canvas>
                 </div>
               </RecipeBlock>
+              {incrementalityHint}
             </>
           )}
         </>

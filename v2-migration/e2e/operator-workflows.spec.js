@@ -93,6 +93,18 @@ test.beforeEach(async ({ page }, testInfo) => {
   }, [theme, SOURCE_SURVEY_ANSWERED_KEY]);
 });
 
+async function openDeclaredConditions(page, name) {
+  await page.getByRole("region", { name }).locator(".declared-conditions__open").click();
+  const dialog = page.getByRole("dialog", { name });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+async function closeDeclaredConditions(page, dialog, en) {
+  await dialog.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
+
 async function verifyHoldoutDesign(page, locale) {
   const en = locale === "en";
   await page.goto(`${en ? "/en" : ""}/tools/incrementality`);
@@ -116,8 +128,10 @@ async function verifyHoldoutDesign(page, locale) {
   const declarationLabels = en
     ? ["What did you compare?", "How were the two groups split?", "Did you fix the dates before seeing results?", "Did a promotion, season or tracking change happen in the same period?", "Is each person counted once over the whole period?"]
     : ["비교한 대상은 무엇인가요?", "두 그룹은 어떻게 나눴나요?", "결과를 보기 전에 기간을 정했나요?", "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "기간 전체에서 한 대상을 한 번씩만 셌나요?"];
+  // 설계 질문은 결과 위 한 줄 + 창 안에서 답한다(ds/DeclaredConditions).
+  const designDialog = await openDeclaredConditions(page, en ? "Test design" : "실험 설계 확인");
   for (const [index, label] of declarationLabels.entries()) {
-    const select = page.getByLabel(label);
+    const select = designDialog.getByLabel(label);
     await select.focus();
     await expect(select).toBeFocused();
     // Native menu arrow events are not supported by the local macOS Chromium harness.
@@ -127,10 +141,18 @@ async function verifyHoldoutDesign(page, locale) {
     await expect(select).not.toBeFocused();
     await expect(select).not.toHaveValue("");
   }
+  await closeDeclaredConditions(page, designDialog, en);
   await openDetails(page.locator(".decision-review"));
   await expect(action).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
-  await page.getByLabel(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?").selectOption("changed");
+  // 결정 기록 창이 열려 있으면 뒤 화면은 가려진다 — 닫고 설계 답을 고친 뒤 다시 연다.
+  await page.keyboard.press("Escape");
+  await expect(action).toHaveCount(0);
+  const reopened = await openDeclaredConditions(page, en ? "Test design" : "실험 설계 확인");
+  await reopened.getByLabel(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?").selectOption("changed");
+  await closeDeclaredConditions(page, reopened, en);
+  // 설계가 무너지면 결정 기록 자리 자체가 빠진다 — 행동 칸이 남아 있으면 안 된다.
+  await expect(page.locator(".decision-review")).toHaveCount(0);
   await expect(action).toHaveCount(0);
 }
 
@@ -145,13 +167,17 @@ async function verifyMovementConditions(page, locale) {
   const chooser = await chooserPromise;
   const rows = Array.from({ length: 8 }, (_, i) => `${new Date(Date.UTC(2026, 1, 2 + i * 7)).toISOString().slice(0, 10)},1300,${300 + i * 35}`);
   await chooser.setFiles({ name: "movement.csv", mimeType: "text/csv", buffer: Buffer.from(`week,total_signups,paid_signups\r\n${rows.join("\r\n")}`) });
-  const panel = page.getByRole("region", { name: en ? "Observational comparison conditions" : "관찰 비교 조건" });
-  await expect(panel).toBeVisible();
+  const conditionsName = en ? "Comparison conditions" : "비교 조건 확인";
+  await expect(page.getByRole("region", { name: conditionsName })).toBeVisible();
+  const panel = await openDeclaredConditions(page, conditionsName);
   const review = page.locator('[data-decision-review-tool="5-18-paid-organic"]');
   await expect(review).toHaveCount(0);
   for (const [ko, english, value] of [["기간 중 추적·어트리뷰션 기준이 바뀌었나요?", "Did tracking or attribution rules change in this period?", "consistent"], ["같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", "reviewed"], ["광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", "continuous"]]) await panel.getByLabel(en ? english : ko).selectOption(value);
+  await closeDeclaredConditions(page, panel, en);
   await expect(review).toBeVisible();
-  await panel.getByLabel(en ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?").selectOption("changed");
+  const reopened = await openDeclaredConditions(page, conditionsName);
+  await reopened.getByLabel(en ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?").selectOption("changed");
+  await closeDeclaredConditions(page, reopened, en);
   await expect(review).toHaveCount(0);
   await expectNoSeriousAccessibilityViolations(page);
 }

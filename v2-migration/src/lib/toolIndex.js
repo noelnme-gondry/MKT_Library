@@ -6,6 +6,7 @@ import { findMeta } from "@/store/useDataStore";
 import { trItemTitle } from "@/lib/enNavCopy";
 import { toolDataNeed } from "@/lib/toolDataNeeds";
 import { dataSourceForTool } from "@/lib/dataSources";
+import { finderPlainCopy } from "@/lib/finder/finderPlainCopy";
 
 /* ============================================================
  * toolIndex — "무엇을 할 수 있나" 목록의 단일 출처.
@@ -74,19 +75,22 @@ export function toolIndexEntry(toolId, locale = "ko") {
   if (!PUBLISHED_TOOL_IDS.includes(toolId)) return null;
   const meta = findMeta(toolId);
   const content = getToolSearchContent(toolId, locale) || {};
+  const plain = finderPlainCopy(toolId, locale);
   return {
     id: toolId,
     href: idToPath(toolId),
     // EN 이름은 사이드바와 같은 경로로 뽑는다 — 두 곳이 다르면 같은 도구가
     // 목록과 내비에서 다른 이름으로 보인다.
     name: (locale === "en" ? trItemTitle(toolId, locale, meta?.titleEn || meta?.title) : meta?.title) || toolId,
-    searchText: [content.title, content.lead, ...(content.sections || []).flat(), locale === "en" ? meta?.seoTitleEn : meta?.seoTitle].filter(Boolean).join(" "),
-    question: content.question || "",
+    // 검색 원문(방법 이름이 든 outputs)은 검색어로만 남긴다 — 화면 문구는 아래 쉬운 말을 쓴다.
+    searchText: [content.title, content.lead, ...(content.sections || []).flat(), locale === "en" ? meta?.seoTitleEn : meta?.seoTitle, ...(Array.isArray(content.outputs) ? content.outputs : [])].filter(Boolean).join(" "),
+    question: plain?.question || content.question || "",
     description: content.lead || "",
     guidance: (content.sections || []).slice(-1)[0] || null,
     answer: content.answer || "",
     // 이 도구를 열면 실제로 화면에 나오는 것 3가지. 짧은 이름이 못 말하는 부분을 메운다.
-    outputs: Array.isArray(content.outputs) ? content.outputs : [],
+    // 검색 페이지용 원문에 방법 이름(HC3·Qini…)이 있으면 쉬운 말(lib/finder/finderPlainCopy)로 바꿔 보여 준다.
+    outputs: plain?.outputs || (Array.isArray(content.outputs) ? content.outputs : []),
     needs: requiredLabels(toolId, locale),
     // 결과 화면의 "다른 데이터가 필요한 분석"이 읽는 한 문장 — 컬럼 이름이 아니라 들어 있어야 할 값.
     dataNeed: toolDataNeed(toolId, locale),

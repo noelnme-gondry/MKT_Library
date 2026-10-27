@@ -462,7 +462,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     // CI가 0을 걸치면 확정 서술을 하지 않는다. 무유의는 "효과 없음"의 증거가 아니라
     // 현재 표본에서의 판단 보류다(§8.6, 감사 P1-1).
     const headline = !design.ready
-      ? tr("설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다", "Design conditions unconfirmed — estimated differences are exploratory; action is withheld")
+      // 판단 보류여도 계산한 값은 문장 안에 둔다 — 숫자 없는 보류는 읽는 사람이 다음에 할 일을 모른다(§1.1c 보고서 틀).
+      ? tr(`홀드아웃 대비 추정 증분 전환은 ${fmtNum(inc)}건이지만, 실험 설계를 확인하기 전에는 탐색용 수치입니다.`, `The holdout suggests ${fmtNum(inc)} incremental conversions, but treat it as exploratory until the test design is confirmed.`)
       : !r.conclusive
       ? tr(
           `증분 추정치는 ${fmtNum(inc)}건이지만 95% 신뢰구간이 0을 지나 판단을 보류합니다 — 표본이 더 필요합니다.`,
@@ -911,7 +912,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const card = r && (() => {
     const change = `${effVal >= 0 ? "+" : ""}${fmtNum(effVal, 1)}`;
     const headline = !design.ready
-      ? tr("비교 조건 미확인 — 전후 변화는 탐색용이며 행동 판단을 보류합니다", "Comparison conditions unconfirmed — pre/post changes are exploratory; action is withheld")
+      ? tr(`${lost ? "끈" : "켠"} 뒤 일평균이 ${change} 변했지만, 비교 조건을 확인하기 전에는 탐색용 수치입니다.`, `The daily average changed by ${change} after turning it ${lost ? "off" : "on"}, but treat it as exploratory until the comparison is confirmed.`)
       : !sig
       ? tr(`전환 뒤 일평균이 ${change} 변했습니다. 현재 표본만으로 전환의 효과를 확정할 수 없습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `The daily average changed by ${change} after the switch. The current sample does not establish an effect of the switch${isDiD ? " (control's natural change removed)" : ""}.`)
       : lost
