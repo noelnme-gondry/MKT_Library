@@ -125,7 +125,7 @@ describe("analysis finder", () => {
     expect([...container.querySelectorAll(".analysis-finder__group-head h2")].map((node) => node.textContent)).toEqual(files.map((file) => file.source.file));
     // 상황을 고르면 파일 종류는 풀린다 — 둘을 겹쳐 빈 목록을 만들지 않는다.
     const budget = finderSituations(locale).find((item) => item.id === "budget");
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(budget.title.replace(/[?]/g, "\\?")) }));
+    fireEvent.click(screen.getByRole("button", { name: (name) => name.includes(budget.title) }));
     expect(button.getAttribute("aria-pressed")).toBe("false");
     expect(window.location.search).not.toContain("file=");
     expect(container.querySelectorAll(".finder-card")).toHaveLength(budget.count);
