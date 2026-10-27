@@ -169,6 +169,28 @@ describe("Dashboard render smoke", () => {
     expect(container.querySelectorAll(".dashboard-tabs__items")).toHaveLength(3);
   });
 
+  for (const locale of ["ko", "en"]) it(`phone view picker lists every view with a description and switches the tab (${locale})`, () => {
+    // 폰에서는 탭 대신 한 줄 버튼(CSS가 가른다). 창은 탭과 같은 목록·같은 순서를 설명과 함께 보여야 한다.
+    const en = locale === "en";
+    seedWithData();
+    const { container } = render(<Dashboard locale={locale} />);
+    const tabs = [...container.querySelectorAll('.dashboard-tabs [role="tab"]')];
+    expect(tabs.length).toBeGreaterThan(0);
+    const picker = container.querySelector(".dashboard-view-picker__button");
+    expect(picker.textContent).toContain(en ? `1 of ${tabs.length}` : `${tabs.length}개 중 1`);
+    fireEvent.click(picker);
+    const sheet = screen.getByRole("dialog", { name: en ? "Choose a view" : "보기 고르기" });
+    const options = [...sheet.querySelectorAll(".dashboard-view-sheet__group button")];
+    expect(options.map((option) => option.querySelector("strong").firstChild.textContent)).toEqual(tabs.map((tab) => tab.textContent.trim()));
+    for (const option of options) expect(option.querySelector("small").textContent.trim().length).toBeGreaterThan(4);
+    if (en) for (const option of options) expect(/[가-힣]/.test(option.textContent)).toBe(false);
+    expect(options[0].getAttribute("aria-current")).toBe("true");
+    fireEvent.click(options[options.length - 1]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(tabs[tabs.length - 1].getAttribute("aria-selected")).toBe("true");
+    expect(picker.textContent).toContain(tabs[tabs.length - 1].textContent.trim());
+  });
+
   it("edits analyzed mappings in a separate dialog without pushing results down", () => {
     seedWithData();
     const { container } = render(<Dashboard />);

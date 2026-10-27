@@ -6,7 +6,7 @@
 // asserts the component MOUNTS without throwing in both the no-data and
 // with-data states. Copy this pattern verbatim for the other tool components.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, act, fireEvent, screen } from "@testing-library/react";
+import { render, act, fireEvent, screen, within } from "@testing-library/react";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
@@ -108,7 +108,13 @@ describe("BudgetAllocation render smoke", () => {
     });
     expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
+    // 실행안이 있으면 자료·곡선 설정은 "조건 바꾸기" 창 안으로 접힌다(product-ssot §1.1c).
+    const openDataSettings = () => {
+      const direct = screen.queryByRole("button", { name: "자료·곡선 설정" });
+      if (!direct) fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
+      fireEvent.click(direct || within(screen.getByRole("dialog")).getByRole("button", { name: "자료·곡선 설정" }));
+    };
+    openDataSettings();
     fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "weekly" } });
     fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "2026-02-01" } });
     fireEvent.change(screen.getByLabelText("분배 단위", { selector: "select" }), { target: { value: "channel" } });
@@ -121,7 +127,7 @@ describe("BudgetAllocation render smoke", () => {
     fireEvent.click(screen.getByRole("tab", { name: "예산 비교", exact: true }));
     expect(screen.getAllByRole("table", { name: "예산 실행안 비교" })).toHaveLength(1);
     expect(document.querySelector(".result-action-card")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
+    openDataSettings();
     fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "auto" } });
     fireEvent.change(screen.getByLabelText("분배 단위", { selector: "select" }), { target: { value: "os" } });
     fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "" } });
@@ -170,7 +176,7 @@ describe("BudgetAllocation render smoke", () => {
     useAppStore.getState().setGroupAnalyzed("5-3");
     render(<BudgetAllocation />);
     // 실행 방식은 "조건 바꾸기" 창에서 고르고, 바깥 요약 한 줄이 지금 방식을 말한다.
-    expect(document.querySelector(".alloc-condition__summary").textContent).toContain("이번 실행안");
+    expect(document.getElementById("s-controls").textContent).toContain("이번 실행안");
     fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     const buttons = [...document.querySelectorAll(".alloc-mode-toggle button")];
     expect(buttons.map((button) => button.textContent)).toEqual(["이번 실행안", "목표 배분"]);

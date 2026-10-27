@@ -401,6 +401,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const [methodOpen, setMethodOpen] = useState(false);
   const [plannerSettingsOpen, setPlannerSettingsOpen] = useState(false);
   const [conditionsOpen, setConditionsOpen] = useState(false);
+  // 창을 연 순간의 접힘 상태를 창이 닫힐 때까지 유지한다 — 예산을 움직이다 실행안이
+  // 잠시 사라져도 창이 통째로 닫히거나 컨트롤이 두 자리에 생기지 않게(product-ssot §1.1c).
+  const [conditionsFolded, setConditionsFolded] = useState(false);
+  // 실행안이 없어 본문에 펼친 예산 칸을 고치는 중이면, 실행안이 생겨도 칸을 떠날 때까지 접지 않는다
+  // (입력하던 칸이 손 밑에서 사라지지 않게).
+  const [inlineEditing, setInlineEditing] = useState(false);
   const conditionsTrigger = useRef(null);
   const [resultView, setResultView] = useState("allocation");
   // 결론 카드가 큰 변경 몇 개를 이미 말하므로, 자세히 보기는 전체 대상을 한 표로 먼저 보인다.
@@ -2568,10 +2574,21 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     </>,
   }} />;
 
+  // 결과 보고서 틀(product-ssot §1.1c): 실행안이 나오면 예산·지표·조건·데이터를 맥락 한 줄로
+  // 접고 결론을 첫 화면에 둔다. 실행안이 없으면 고칠 입력과 사유가 그대로 펼쳐져 있어야 한다.
+  const reportFoldLive = Boolean(verdict && canStorePlan);
+  const reportFolded = conditionsOpen ? conditionsFolded : reportFoldLive && !inlineEditing;
+  const openConditions = () => {
+    setConditionsFolded(reportFoldLive);
+    setConditionsOpen(true);
+  };
   const step3Toc = [
     { id: "s-controls", title: tr("계획 설정", "Plan settings") },
     { id: "s-result", title: tr("배분 분석", "Allocation analysis") },
   ];
+  const currencyControl = <BasisCurrencyToggleBar locale={locale} showBasis={false} />;
+  // 조건 창 안에서 누르면 창을 닫고 자료·곡선 창을 연다 — 창 위에 창을 쌓지 않는다.
+  const dataCurveButton = <button type="button" className="btn secondary" onClick={() => { setConditionsOpen(false); setPlannerSettingsOpen(true); }}>{tr("자료·곡선 설정", "Data and curve settings")}</button>;
   const step3StickyFilter = (
     <div className="allocation-context-controls">
       <RecipeCommandInput vocabulary={recipeControl.vocabulary} context={{ toolId: "5-3", toolSpec: recipeControl.spec, mappedFields: mappedKeys, currentLevels: [] }} steps={recipeControl.steps} onStepsChange={recipeControl.setSteps} onApplyPreset={recipeControl.applyPreset} isStepVisible={step => !step.id.startsWith("allocation.")} presets={{ ...accountRecipes, save: (name, steps) => accountRecipes.save(name, allocationAccountSteps(recipe, steps)) }} rejected={recipeControl.fold.rejected} locale={locale} label={tr("보기·다운로드 설정", "View & download settings")} />
@@ -2585,10 +2602,153 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           filterOptions={filterOptions} onApply={applyFiltersWith} locale={locale}
         />
       </div>
-      <div className="allocation-context-controls__display"><BasisCurrencyToggleBar locale={locale} showBasis={false} /></div>
-      <button type="button" className="btn secondary" onClick={() => setPlannerSettingsOpen(true)}>{tr("자료·곡선 설정", "Data and curve settings")}</button>
+      {!reportFolded && <div className="allocation-context-controls__display">{currencyControl}</div>}
+      {!reportFolded && dataCurveButton}
     </div>
   );
+  const planningDriverControl = planningBasis === "budget" ? (
+      <div className="prism-driver__control">
+        <div className="prism-driver__label-row">
+          <label htmlFor="prism-total-budget">{tr(`총 ${budgetPeriod === "monthly" ? "월" : "일"}예산`, `Total ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget`)}</label>
+          <output className="prism-driver__readout" htmlFor="prism-total-budget">
+            {/* 입력한 금액을 그대로 보인다. 가능 범위 밖이면 슬라이더만 끝에 멈추고 아래 안내가 이유를 말한다. */}
+            {fmtCurrency(budgetPeriod === "monthly" ? (dailyBudget > 0 ? dailyBudget : budgetSliderValue) * 30 : (dailyBudget > 0 ? dailyBudget : budgetSliderValue), currency)}
+          </output>
+        </div>
+        <input
+          id="prism-total-budget"
+          className="prism-driver__range"
+          type="range"
+          min={budgetRange.min}
+          max={budgetRange.max}
+          step={budgetRange.step}
+          value={budgetSliderValue}
+          aria-valuetext={fmtCurrency(budgetPeriod === "monthly" ? budgetSliderValue * 30 : budgetSliderValue, currency)}
+          onChange={(event) => setDailyBudgetFromControl(event.target.value)}
+        />
+        <div className="prism-driver__scale" aria-hidden="true">
+          <span>{fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)}</span>
+          <span>{tr("관측 지출 상한", "observed-spend ceiling")} {fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}</span>
+        </div>
+        <div className="prism-driver__exact">
+          <label htmlFor="prism-total-budget-exact">{tr("정확한 금액", "Exact amount")}</label>
+          <input
+            id="prism-total-budget-exact"
+            type="text"
+            inputMode={currency === "USD" ? "decimal" : "numeric"}
+            autoComplete="off"
+            value={budget}
+            onChange={(event) => setBudget(sanitizeBudgetInput(event.target.value, currency))}
+            onBlur={() => {
+              const parsed = allocParseNum(budget);
+              if (parsed != null) setBudget(formatBudgetInput(parsed, currency));
+            }}
+          />
+          <span className="budget-period-toggle" role="group" aria-label={tr("예산 기간", "Budget period")}>
+            <button type="button" className={budgetPeriod === "daily" ? "active" : ""} aria-pressed={budgetPeriod === "daily"} onClick={() => changeBudgetPeriod("daily")}>{tr("일", "Daily")}</button>
+            <button type="button" className={budgetPeriod === "monthly" ? "active" : ""} aria-pressed={budgetPeriod === "monthly"} onClick={() => changeBudgetPeriod("monthly")}>{tr("월", "Monthly")}</button>
+          </span>
+        </div>
+        {!planner.ok && planner.code === "UNIT_KEY_CONFLICT" ? (
+          <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+            {tr(
+              `같은 행이 배분 단위에서 서로 다른 이름으로 갈립니다(${planner.units.join(", ")}). 국가·채널 값이 비어 있는 행이 섞였는지 확인하거나 분배 단위를 바꾸세요. 섞어서 계산하지 않았습니다.`,
+              `The same rows split into different allocation names (${planner.units.join(", ")}). Check for rows with empty country or channel values, or change the allocation unit. They were not merged.`,
+            )}
+          </p>
+        ) : !hasCompleteEvidence ? (
+          <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+            {tr(
+              `전역 자동 배분에는 선택 채널 전체의 반응 곡선이 필요합니다. 현재 ${evidenceLimits.unavailableChannels.length}개 채널의 곡선 검증이 필요해 실행·저장 가능한 추천안을 만들지 않았습니다.`,
+              `Global auto-allocation needs a response curve for every selected channel. ${evidenceLimits.unavailableChannels.length} channel(s) still need curve verification, so PRISM has not created an executable or savable recommendation.`,
+            )}
+          </p>
+        ) : hasBudgetOutsideEvidence ? (
+          <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+            {tr(
+              `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 나눌 수 있는 최대 금액 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}(대상별 관측 지출 상한${allocPace === "paced" ? "·하루 증액 한도" : ""})을 넘습니다. 이 금액 전체에 대한 자동 실행안은 만들지 않았습니다. ${allocPace === "paced" ? "더 크게 늘리려면 '목표 배분'으로 최종 목표를 보고 여러 번에 나눠 늘리세요." : "상한 안으로 낮추거나 추가 데이터를 쌓은 뒤 다시 계산하세요."}`,
+              `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} exceeds the largest splittable amount of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)} (per-target observed-spend ceilings${allocPace === "paced" ? " and the daily increase limit" : ""}). PRISM has not created an executable plan for the full amount. ${allocPace === "paced" ? "To grow further, view the end state with Target allocation and increase in several steps." : "Lower it within the ceiling or collect more data and recalculate."}`,
+            )}
+          </p>
+        ) : hasBudgetBelowEvidence ? (
+          <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+            {tr(
+              `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 나눌 수 있는 최소 금액 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)}보다 작습니다(대상별 현재 지출 고정${allocPace === "paced" ? "·하루 감액 한도" : ""}). 이 금액에 대한 자동 실행안은 만들지 않았습니다. ${allocPace === "paced" ? "더 크게 줄이려면 '목표 배분'으로 최종 목표를 보고 여러 번에 나눠 줄이세요." : "최소 금액 이상으로 입력하거나 고정 설정을 확인하세요."}`,
+              `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} is below the smallest splittable amount of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)} (held targets${allocPace === "paced" ? " and the daily decrease limit" : ""}). PRISM has not created an executable plan for this amount. ${allocPace === "paced" ? "To cut further, view the end state with Target allocation and decrease in several steps." : "Enter at least the minimum or review the holds."}`,
+            )}
+          </p>
+        ) : hasPartiallyAllocatedPlan ? (
+          <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
+            {tr(
+              `현재 실행 방식은 일 ${fmtCurrency(allocation.totalAllocated, currency)}만 자동 배분하고 ${fmtCurrency(allocation.unallocated, currency)}은 남깁니다. 전액을 실행할 수 있는 계획이 아니므로 저장하지 않았습니다. 전역 예산을 낮추거나 실행 방식·고정 설정을 확인해 다시 계산하세요.`,
+              `The current execution pace can automatically allocate only ${fmtCurrency(allocation.totalAllocated, currency)} per day and leaves ${fmtCurrency(allocation.unallocated, currency)} unallocated. Because this is not a fully executable plan, it cannot be saved. Lower the global budget or review the execution pace and holds, then recalculate.`,
+            )}
+          </p>
+        ) : null}
+      </div>
+    ) : (
+      <div className="prism-driver__control">
+        {targetRange ? (
+          <>
+            <div className="prism-driver__label-row">
+              <label htmlFor="prism-efficiency-target">{tr(`목표 ${getCostMetricLabel(effectiveMetric)}`, `Target ${getCostMetricLabel(effectiveMetric)}`)}</label>
+              <output className="prism-driver__readout" htmlFor="prism-efficiency-target">{fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}</output>
+            </div>
+            <input
+              id="prism-efficiency-target"
+              className="prism-driver__range"
+              type="range"
+              min={targetRange.min}
+              max={targetRange.max}
+              step={targetRange.step}
+              value={plannedTargetValue ?? targetRange.min}
+              aria-valuetext={fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}
+              onChange={(event) => setTargetValue(Number(event.target.value))}
+            />
+            <div className="prism-driver__scale" aria-hidden="true">
+              <span>{fmtGoalMetric(targetRange.min, effectiveMetric, currency)}</span>
+              <span>{fmtGoalMetric(targetRange.max, effectiveMetric, currency)}</span>
+            </div>
+          </>
+        ) : (
+          <p className="prism-driver__empty">{tr("이 목표를 계산할 수 있는 유효한 반응 곡선이 아직 없습니다. 곡선 검증을 완료하거나 목표 지표가 있는 CSV를 사용하세요.", "There is not yet a valid response curve for this target. Complete curve verification or use a CSV with the target metric.")}</p>
+        )}
+        <div
+          className={`prism-driver__status prism-driver__status--${targetPlan?.status || "unavailable"}`}
+          aria-live="polite"
+        >
+          {(() => {
+            if (evidenceLimits.unavailableChannels.length > 0) {
+              return tr(
+                `목표 예산을 역산하려면 모든 선택 채널의 반응 곡선이 필요합니다. 현재 ${evidenceLimits.unavailableChannels.length}개 채널은 곡선 검증이 필요합니다.`,
+                `Target-budget planning needs a response curve for every selected channel. ${evidenceLimits.unavailableChannels.length} channel(s) still need curve verification.`,
+              );
+            }
+            if (!targetPlan?.candidate || plannedTargetValue == null) {
+              return tr("관측 최대 지출 상한 안에서 목표 예산을 계산할 수 없습니다.", "A target budget cannot be calculated below the observed-spend ceilings.");
+            }
+            const candidateMetric = fmtGoalMetric(targetPlan.candidate.value, effectiveMetric, currency);
+            const candidateBudget = fmtCurrency(targetPlan.candidate.allocation.totalAllocated, currency);
+            if (targetPlan.status === "met") {
+              return tr(
+                `목표 ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}를 지키는 최대 일예산은 약 ${candidateBudget}입니다. 채널별 관측 최대 지출을 넘지 않습니다. 예상 ${getCostMetricLabel(effectiveMetric)} ${candidateMetric}.`,
+                `The estimated largest daily budget that meets ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)} is ${candidateBudget}, without exceeding each channel's observed maximum spend. Projected ${getCostMetricLabel(effectiveMetric)}: ${candidateMetric}.`,
+              );
+            }
+            if (targetPlan.status === "cap_reached") {
+              return tr(
+                `목표 ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}를 관측 지출 상한 ${candidateBudget}까지 충족합니다. 이 상한 밖은 추천하지 않습니다.`,
+                `The target ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)} is met through the observed-spend ceiling of ${candidateBudget}. PRISM does not recommend beyond this ceiling.`,
+              );
+            }
+            return tr(
+              `채널별 관측 최대 지출 상한 안에서는 목표 ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}를 충족할 예산이 없습니다. 가장 가까운 참고안은 일 ${candidateBudget}, 예상 ${getCostMetricLabel(effectiveMetric)} ${candidateMetric}이며 실행·저장할 수 없습니다.`,
+              `No budget below the observed-spend ceilings meets ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}. The closest reference is ${candidateBudget}/day with projected ${getCostMetricLabel(effectiveMetric)} ${candidateMetric}; it cannot be executed or saved as a recommendation.`,
+            );
+          })()}
+        </div>
+      </div>
+    );
   const planningObjectiveKeys = ["install", "action", "roas"];
   const planningObjectiveControl = (
     <>
@@ -2620,6 +2780,32 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       .map((key) => ({ label: objI18n[key].short, reason: tr("현재 CSV에 이 지표가 없습니다", "not present in the current CSV") }))} />
     </>
   );
+  const allocationDataSection = <section className="allocation-data" aria-label={tr("데이터·매핑", "Data & mapping")}><CsvUploader toolId="5-3" locale={locale} /></section>;
+  const holdCount = holdLowConfidence ? Object.keys(lowConfidenceHolds).length : 0;
+  const paceText = allocPace === "paced" ? tr("이번 실행안(하루 변경폭 제한)", "Next-step plan (daily change limit)") : tr("목표 배분(변경폭 제한 없음)", "Target allocation (no daily limit)");
+  const compareText = tr(`최근 ${recentDays}일과 비교`, `vs the last ${recentDays} days`);
+  const holdText = holdCount > 0 ? tr(`${holdCount}개 대상 현재 지출 유지`, `${holdCount} target(s) held`) : "";
+  const conditionSummary = [
+    planningBasis === "target" ? tr("효율 목표로 예산 찾기", "Budget from an efficiency target") : null,
+    paceText,
+    compareText,
+    holdText || null,
+  ].filter(Boolean).join(" · ");
+  // 맥락 한 줄: 무엇으로(데이터) · 얼마를(예산·목표) · 무엇 기준으로(지표) 계산했는가 — 읽는 순서대로.
+  const budgetText = planningBasis === "target"
+    ? tr(`목표 ${metricLabel} ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}`, `Target ${metricLabel} ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}`)
+    : tr(
+      `${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}`,
+      `${budgetPeriod === "monthly" ? "Monthly" : "Daily"} budget ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}`,
+    );
+  const reportContextParts = [
+    { text: [isDemoInput ? tr("예시 데이터", "Example data") : csvData?.fileName, csvData?.raw?.length ? tr(`${csvData.raw.length.toLocaleString("ko-KR")}행`, `${csvData.raw.length.toLocaleString("en-US")} rows`) : ""].filter(Boolean).join(" · ") },
+    { text: budgetText, emphasis: true },
+    { text: tr(`${metricLabel} 기준`, `${metricLabel} basis`), emphasis: true },
+    { text: paceText },
+    { text: compareText },
+    { text: holdText },
+  ].filter((part) => String(part.text || "").trim());
 
   return (
     <div className="tab-pane active allocation-workspace" id="tab-alloc">
@@ -2638,166 +2824,48 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         stickyFilter={step3StickyFilter}
       >
       <AllocationPreviewNotice csvData={csvData} locale={locale} recentDays={recentDays} allocPace={allocPace} holdLowConfidence={holdLowConfidence} range={activeRange} excluded={observations.excluded.length} currency={currency} />
-      <section className="allocation-data" aria-label={tr("데이터·매핑", "Data & mapping")}><CsvUploader toolId="5-3" locale={locale} /></section>
-      {/* 조건은 한 줄로 읽고, 바꿀 때만 창을 연다(product-ssot §5.5). 예산·지표만 바로 바꾼다. */}
-      <section className="block prism-driver alloc-condition" id="s-controls" aria-label={tr("배분 조건", "Allocation settings")}>
-        <div className="alloc-condition__top">
-          {planningObjectiveControl}
-          <p className="alloc-condition__summary">{[
-            planningBasis === "target" ? tr("효율 목표로 예산 찾기", "Budget from an efficiency target") : null,
-            allocPace === "paced" ? tr("이번 실행안(하루 변경폭 제한)", "Next-step plan (daily change limit)") : tr("목표 배분(변경폭 제한 없음)", "Target allocation (no daily limit)"),
-            tr(`최근 ${recentDays}일과 비교`, `vs the last ${recentDays} days`),
-            holdLowConfidence && Object.keys(lowConfidenceHolds).length > 0 ? tr(`${Object.keys(lowConfidenceHolds).length}개 대상 현재 지출 유지`, `${Object.keys(lowConfidenceHolds).length} target(s) held`) : null,
-          ].filter(Boolean).join(" · ")}</p>
-          <button type="button" className="btn secondary alloc-condition__edit" ref={conditionsTrigger} onClick={() => setConditionsOpen(true)}>{tr("조건 바꾸기", "Change settings")}</button>
-        </div>
-        {planningBasis === "budget" ? (
-          <div className="prism-driver__control">
-            <div className="prism-driver__label-row">
-              <label htmlFor="prism-total-budget">{tr(`총 ${budgetPeriod === "monthly" ? "월" : "일"}예산`, `Total ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget`)}</label>
-              <output className="prism-driver__readout" htmlFor="prism-total-budget">
-                {/* 입력한 금액을 그대로 보인다. 가능 범위 밖이면 슬라이더만 끝에 멈추고 아래 안내가 이유를 말한다. */}
-                {fmtCurrency(budgetPeriod === "monthly" ? (dailyBudget > 0 ? dailyBudget : budgetSliderValue) * 30 : (dailyBudget > 0 ? dailyBudget : budgetSliderValue), currency)}
-              </output>
-            </div>
-            <input
-              id="prism-total-budget"
-              className="prism-driver__range"
-              type="range"
-              min={budgetRange.min}
-              max={budgetRange.max}
-              step={budgetRange.step}
-              value={budgetSliderValue}
-              aria-valuetext={fmtCurrency(budgetPeriod === "monthly" ? budgetSliderValue * 30 : budgetSliderValue, currency)}
-              onChange={(event) => setDailyBudgetFromControl(event.target.value)}
-            />
-            <div className="prism-driver__scale" aria-hidden="true">
-              <span>{fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)}</span>
-              <span>{tr("관측 지출 상한", "observed-spend ceiling")} {fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}</span>
-            </div>
-            <div className="prism-driver__exact">
-              <label htmlFor="prism-total-budget-exact">{tr("정확한 금액", "Exact amount")}</label>
-              <input
-                id="prism-total-budget-exact"
-                type="text"
-                inputMode={currency === "USD" ? "decimal" : "numeric"}
-                autoComplete="off"
-                value={budget}
-                onChange={(event) => setBudget(sanitizeBudgetInput(event.target.value, currency))}
-                onBlur={() => {
-                  const parsed = allocParseNum(budget);
-                  if (parsed != null) setBudget(formatBudgetInput(parsed, currency));
-                }}
-              />
-              <span className="budget-period-toggle" role="group" aria-label={tr("예산 기간", "Budget period")}>
-                <button type="button" className={budgetPeriod === "daily" ? "active" : ""} aria-pressed={budgetPeriod === "daily"} onClick={() => changeBudgetPeriod("daily")}>{tr("일", "Daily")}</button>
-                <button type="button" className={budgetPeriod === "monthly" ? "active" : ""} aria-pressed={budgetPeriod === "monthly"} onClick={() => changeBudgetPeriod("monthly")}>{tr("월", "Monthly")}</button>
-              </span>
-            </div>
-            {!planner.ok && planner.code === "UNIT_KEY_CONFLICT" ? (
-              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
-                {tr(
-                  `같은 행이 배분 단위에서 서로 다른 이름으로 갈립니다(${planner.units.join(", ")}). 국가·채널 값이 비어 있는 행이 섞였는지 확인하거나 분배 단위를 바꾸세요. 섞어서 계산하지 않았습니다.`,
-                  `The same rows split into different allocation names (${planner.units.join(", ")}). Check for rows with empty country or channel values, or change the allocation unit. They were not merged.`,
-                )}
-              </p>
-            ) : !hasCompleteEvidence ? (
-              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
-                {tr(
-                  `전역 자동 배분에는 선택 채널 전체의 반응 곡선이 필요합니다. 현재 ${evidenceLimits.unavailableChannels.length}개 채널의 곡선 검증이 필요해 실행·저장 가능한 추천안을 만들지 않았습니다.`,
-                  `Global auto-allocation needs a response curve for every selected channel. ${evidenceLimits.unavailableChannels.length} channel(s) still need curve verification, so PRISM has not created an executable or savable recommendation.`,
-                )}
-              </p>
-            ) : hasBudgetOutsideEvidence ? (
-              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
-                {tr(
-                  `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 나눌 수 있는 최대 금액 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)}(대상별 관측 지출 상한${allocPace === "paced" ? "·하루 증액 한도" : ""})을 넘습니다. 이 금액 전체에 대한 자동 실행안은 만들지 않았습니다. ${allocPace === "paced" ? "더 크게 늘리려면 '목표 배분'으로 최종 목표를 보고 여러 번에 나눠 늘리세요." : "상한 안으로 낮추거나 추가 데이터를 쌓은 뒤 다시 계산하세요."}`,
-                  `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} exceeds the largest splittable amount of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.max * 30 : budgetRange.max, currency)} (per-target observed-spend ceilings${allocPace === "paced" ? " and the daily increase limit" : ""}). PRISM has not created an executable plan for the full amount. ${allocPace === "paced" ? "To grow further, view the end state with Target allocation and increase in several steps." : "Lower it within the ceiling or collect more data and recalculate."}`,
-                )}
-              </p>
-            ) : hasBudgetBelowEvidence ? (
-              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
-                {tr(
-                  `입력한 ${budgetPeriod === "monthly" ? "월" : "일"}예산 ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)}은 나눌 수 있는 최소 금액 ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)}보다 작습니다(대상별 현재 지출 고정${allocPace === "paced" ? "·하루 감액 한도" : ""}). 이 금액에 대한 자동 실행안은 만들지 않았습니다. ${allocPace === "paced" ? "더 크게 줄이려면 '목표 배분'으로 최종 목표를 보고 여러 번에 나눠 줄이세요." : "최소 금액 이상으로 입력하거나 고정 설정을 확인하세요."}`,
-                  `The entered ${budgetPeriod === "monthly" ? "monthly" : "daily"} budget of ${fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency)} is below the smallest splittable amount of ${fmtCurrency(budgetPeriod === "monthly" ? budgetRange.min * 30 : budgetRange.min, currency)} (held targets${allocPace === "paced" ? " and the daily decrease limit" : ""}). PRISM has not created an executable plan for this amount. ${allocPace === "paced" ? "To cut further, view the end state with Target allocation and decrease in several steps." : "Enter at least the minimum or review the holds."}`,
-                )}
-              </p>
-            ) : hasPartiallyAllocatedPlan ? (
-              <p className="prism-driver__status prism-driver__status--unavailable" aria-live="polite">
-                {tr(
-                  `현재 실행 방식은 일 ${fmtCurrency(allocation.totalAllocated, currency)}만 자동 배분하고 ${fmtCurrency(allocation.unallocated, currency)}은 남깁니다. 전액을 실행할 수 있는 계획이 아니므로 저장하지 않았습니다. 전역 예산을 낮추거나 실행 방식·고정 설정을 확인해 다시 계산하세요.`,
-                  `The current execution pace can automatically allocate only ${fmtCurrency(allocation.totalAllocated, currency)} per day and leaves ${fmtCurrency(allocation.unallocated, currency)} unallocated. Because this is not a fully executable plan, it cannot be saved. Lower the global budget or review the execution pace and holds, then recalculate.`,
-                )}
-              </p>
-            ) : null}
+      {!reportFolded && allocationDataSection}
+      {/* 실행안이 있으면 결론이 첫 화면에 오도록 조건 전체를 한 줄로 접는다(product-ssot §1.1c).
+          실행안이 없으면 지표·예산과 "왜 안 되는지"를 그대로 펼쳐 바로 고치게 한다. */}
+      {reportFolded ? (
+        <section className="block prism-driver alloc-condition alloc-condition--folded report-context" id="s-controls" aria-label={tr("배분 조건", "Allocation settings")}>
+          <p className="report-context__line">{reportContextParts.map((part, index) => (
+            <React.Fragment key={part.text}>
+              {index > 0 && <span className="report-context__sep" aria-hidden="true"> · </span>}
+              {part.emphasis ? <strong>{part.text}</strong> : <span>{part.text}</span>}
+            </React.Fragment>
+          ))}</p>
+          <button type="button" className="btn secondary report-context__edit alloc-condition__edit" ref={conditionsTrigger} onClick={openConditions}>{tr("조건 바꾸기", "Change settings")}</button>
+        </section>
+      ) : (
+        <section
+          className="block prism-driver alloc-condition"
+          id="s-controls"
+          aria-label={tr("배분 조건", "Allocation settings")}
+          onFocus={() => setInlineEditing(true)}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setInlineEditing(false); }}
+        >
+          <div className="alloc-condition__top">
+            {planningObjectiveControl}
+            <p className="alloc-condition__summary">{conditionSummary}</p>
+            <button type="button" className="btn secondary alloc-condition__edit" ref={conditionsTrigger} onClick={openConditions}>{tr("조건 바꾸기", "Change settings")}</button>
           </div>
-        ) : (
-          <div className="prism-driver__control">
-            {targetRange ? (
-              <>
-                <div className="prism-driver__label-row">
-                  <label htmlFor="prism-efficiency-target">{tr(`목표 ${getCostMetricLabel(effectiveMetric)}`, `Target ${getCostMetricLabel(effectiveMetric)}`)}</label>
-                  <output className="prism-driver__readout" htmlFor="prism-efficiency-target">{fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}</output>
-                </div>
-                <input
-                  id="prism-efficiency-target"
-                  className="prism-driver__range"
-                  type="range"
-                  min={targetRange.min}
-                  max={targetRange.max}
-                  step={targetRange.step}
-                  value={plannedTargetValue ?? targetRange.min}
-                  aria-valuetext={fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}
-                  onChange={(event) => setTargetValue(Number(event.target.value))}
-                />
-                <div className="prism-driver__scale" aria-hidden="true">
-                  <span>{fmtGoalMetric(targetRange.min, effectiveMetric, currency)}</span>
-                  <span>{fmtGoalMetric(targetRange.max, effectiveMetric, currency)}</span>
-                </div>
-              </>
-            ) : (
-              <p className="prism-driver__empty">{tr("이 목표를 계산할 수 있는 유효한 반응 곡선이 아직 없습니다. 곡선 검증을 완료하거나 목표 지표가 있는 CSV를 사용하세요.", "There is not yet a valid response curve for this target. Complete curve verification or use a CSV with the target metric.")}</p>
-            )}
-            <div
-              className={`prism-driver__status prism-driver__status--${targetPlan?.status || "unavailable"}`}
-              aria-live="polite"
-            >
-              {(() => {
-                if (evidenceLimits.unavailableChannels.length > 0) {
-                  return tr(
-                    `목표 예산을 역산하려면 모든 선택 채널의 반응 곡선이 필요합니다. 현재 ${evidenceLimits.unavailableChannels.length}개 채널은 곡선 검증이 필요합니다.`,
-                    `Target-budget planning needs a response curve for every selected channel. ${evidenceLimits.unavailableChannels.length} channel(s) still need curve verification.`,
-                  );
-                }
-                if (!targetPlan?.candidate || plannedTargetValue == null) {
-                  return tr("관측 최대 지출 상한 안에서 목표 예산을 계산할 수 없습니다.", "A target budget cannot be calculated below the observed-spend ceilings.");
-                }
-                const candidateMetric = fmtGoalMetric(targetPlan.candidate.value, effectiveMetric, currency);
-                const candidateBudget = fmtCurrency(targetPlan.candidate.allocation.totalAllocated, currency);
-                if (targetPlan.status === "met") {
-                  return tr(
-                    `목표 ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}를 지키는 최대 일예산은 약 ${candidateBudget}입니다. 채널별 관측 최대 지출을 넘지 않습니다. 예상 ${getCostMetricLabel(effectiveMetric)} ${candidateMetric}.`,
-                    `The estimated largest daily budget that meets ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)} is ${candidateBudget}, without exceeding each channel's observed maximum spend. Projected ${getCostMetricLabel(effectiveMetric)}: ${candidateMetric}.`,
-                  );
-                }
-                if (targetPlan.status === "cap_reached") {
-                  return tr(
-                    `목표 ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}를 관측 지출 상한 ${candidateBudget}까지 충족합니다. 이 상한 밖은 추천하지 않습니다.`,
-                    `The target ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)} is met through the observed-spend ceiling of ${candidateBudget}. PRISM does not recommend beyond this ceiling.`,
-                  );
-                }
-                return tr(
-                  `채널별 관측 최대 지출 상한 안에서는 목표 ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}를 충족할 예산이 없습니다. 가장 가까운 참고안은 일 ${candidateBudget}, 예상 ${getCostMetricLabel(effectiveMetric)} ${candidateMetric}이며 실행·저장할 수 없습니다.`,
-                  `No budget below the observed-spend ceilings meets ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}. The closest reference is ${candidateBudget}/day with projected ${getCostMetricLabel(effectiveMetric)} ${candidateMetric}; it cannot be executed or saved as a recommendation.`,
-                );
-              })()}
-            </div>
-          </div>
-        )}
-      </section>
+          {planningDriverControl}
+        </section>
+      )}
       <ModalDialog open={conditionsOpen} onClose={() => setConditionsOpen(false)} returnFocusRef={conditionsTrigger} ariaLabel={tr("배분 조건", "Allocation settings")} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel alloc-condition-dialog">
         <header className="tool-reference-panel__head"><h2>{tr("배분 조건", "Allocation settings")}</h2><button type="button" className="btn ghost" onClick={() => setConditionsOpen(false)}>{tr("닫기", "Close")}</button></header>
+        {reportFolded && <p className="report-context-dialog__hint">{tr("바꾸면 결과에 바로 반영됩니다.", "Changes apply to the results right away.")}</p>}
+        {/* 창이 결론을 가리므로 지금 결론을 창 안에서 같이 보여 준다 — 예산을 움직이며 결과를 바로 읽는다. */}
+        {reportFolded && <p className="alloc-condition-dialog__preview" aria-live="polite">
+          <span>{tr("지금 결론", "Current conclusion")}</span>
+          {verdict && canStorePlan ? verdict.text : tr("이 조건으로는 실행안이 없습니다. 아래 안내를 확인하세요.", "There is no plan for these settings. See the note below.")}
+        </p>}
         <div className="alloc-condition-dialog__body">
+          {reportFolded && <section className="alloc-condition-dialog__driver" aria-label={tr("예산과 성과 기준", "Budget and metric")}>
+            {planningObjectiveControl}
+            {planningDriverControl}
+          </section>}
           <p className="allocation-observation-note">
             {cadence === "weekly" ? tr("주간 합계를 7일로 나눈 일평균으로 계산합니다. 주별 관측은 1개씩 유지합니다.", "Weekly totals are divided by seven for daily-average planning. Each week remains one observation.") : tr("일별 비용·성과를 기준으로 계산합니다.", "Planning uses daily spend and outcomes.")}
             {observations.excluded.length > 0 && ` ${tr(`기간·성숙도·자료 확인이 필요한 ${observations.excluded.length}행 제외.`, `${observations.excluded.length} rows excluded for period, maturity or data checks.`)}`}
@@ -2886,6 +2954,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               <p>{tr("PRISM은 각 채널의 관측 최대 지출을 넘지 않도록 자동 배분합니다. 마지막 효율을 관측 밖 비용에 연장해 목표 예산을 부풀리지 않습니다. 이는 관측된 비용·성과 관계를 쓴 시뮬레이션이며 인과 효과 보장은 아닙니다.", "PRISM auto-allocates without exceeding each channel's observed maximum spend. It does not extend the last efficiency beyond observed spend to inflate a target budget. This is a simulation from observed cost-performance relationships, not a causal guarantee.")}</p>
             </div>
           </section>
+          {reportFolded && <section className="alloc-condition-dialog__more" aria-label={tr("데이터와 금액 단위", "Data and currency")}>
+            <div className="alloc-condition-dialog__display">{currencyControl}{dataCurveButton}</div>
+            {allocationDataSection}
+          </section>}
         </div>
       </ModalDialog>
 

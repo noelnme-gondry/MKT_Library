@@ -12332,6 +12332,14 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .report-context-dialog__body { display: grid; gap: 16px; padding-top: 16px; min-width: 0; }
 /* 결과 위에 펼칠 때 결론과 가르던 아래 선은 창 안에서는 필요 없다. */
 .report-context-dialog__body .pvm-result-controls { margin: 0; padding: 0; border-bottom: 0; }
+/* 5-3: 실행안이 있으면 조건 상자가 맥락 한 줄로 접힌다. 창은 결론을 가리므로 지금 결론을 창 위에 같이 둔다. */
+.allocation-workspace .alloc-condition--folded { margin-bottom: 16px; }
+.alloc-condition-dialog__preview { display: grid; gap: 4px; margin: 12px 0 0; padding: 12px 0; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: var(--fs-md); font-weight: 600; line-height: 1.5; }
+.alloc-condition-dialog__preview > span { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
+.alloc-condition-dialog__driver { display: grid; gap: 12px; }
+.alloc-condition-dialog__more { display: grid; gap: 12px; padding-top: 1rem; border-top: 1px solid var(--border); }
+.alloc-condition-dialog__display { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.alloc-condition-dialog__more .allocation-data { margin: 0; padding: 0; border: 0; background: transparent; }
 @media (max-width: 768px) {
   .app .result-action-card__utilities, .pvm-observation-note { margin-left: 0; }
   .pvm-stage-analysis, .tool-next-step-panel { padding: 16px; }
@@ -12557,6 +12565,32 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .dashboard-utilities p { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); }
 .dashboard-utilities__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .dashboard-workspace [hidden] { display: none !important; }
+/* 5-2 폰: 하위 보기 9개를 세 줄 탭 대신 한 줄 버튼 + 아래에서 올라오는 창으로(product-ssot §1.1c).
+   폭이 아니라 입력 방식도 본다 — "데스크톱 사이트" 모드의 폰은 980px로 그려진다(AGENTS §7). */
+.dashboard-view-picker { display: none; }
+.dashboard-view-picker__button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; justify-content: flex-start; text-align: left; }
+.dashboard-view-picker__label { color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+.dashboard-view-picker__button strong { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--text-primary); font-weight: 600; }
+.dashboard-view-picker__count { margin-left: auto; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; white-space: nowrap; }
+.dashboard-view-sheet { width: min(560px, calc(100vw - 32px)); }
+.dashboard-view-sheet__group { margin-top: 16px; }
+.dashboard-view-sheet__group h3 { margin: 0 0 4px; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 600; }
+.dashboard-view-sheet__group ul { margin: 0; padding: 0; list-style: none; }
+.dashboard-view-sheet__group button { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 12px; row-gap: 2px; width: 100%; min-height: 56px; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.dashboard-view-sheet__group button:hover { background: var(--surface-container-low); }
+.dashboard-view-sheet__icon { grid-row: span 2; align-self: center; color: var(--text-muted); }
+.dashboard-view-sheet__group button strong { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-base); font-weight: 600; }
+.dashboard-view-sheet__group button small { color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
+.dashboard-view-sheet__group button[aria-current="true"] strong { color: var(--primary); }
+.dashboard-view-sheet__current { color: var(--primary); font-size: var(--fs-xs); font-style: normal; font-weight: 400; }
+@media (max-width: 720px), (pointer: coarse) and (max-width: 1000px) {
+  .dashboard-view-picker { display: block; margin-top: 16px; }
+  .dashboard-tabs { display: none; }
+}
+@media (max-width: 720px) {
+  .dashboard-view-sheet-overlay { place-items: end center; padding: 0; }
+  .dashboard-view-sheet { width: 100%; max-height: 85dvh; border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+}
 @media (max-width: 640px) {
   .app .content .dashboard-workspace .dashboard-workspace__header,
   .app .content .dashboard-workspace :is(.dashboard-comparison-period, .dashboard-next-actions, .dashboard-utilities, .dashboard-supporting-charts) { padding: 16px !important; }
@@ -12565,8 +12599,12 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .dashboard-workspace .dashboard-tabs__label { width: 100%; margin-left: 0; }
   .dashboard-workspace .dashboard-tabs__items { flex: 1 1 100%; }
   .dashboard-comparison-period__dates { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .dashboard-workspace .dashboard-sticky-context__meta { width: 100%; margin: 0; }
-  .dashboard-workspace .dashboard-sticky-context__edit { margin-left: 0; }
+  /* 폰: 데이터 한 줄과 편집 링크를 한 줄에 — 결론이 첫 화면에 오도록 머리 높이를 아낀다(product-ssot §1.1c). */
+  .dashboard-workspace .dashboard-sticky-context .tool-instrument-header__heading { flex: 1 1 100%; }
+  .dashboard-workspace .dashboard-sticky-context__meta { flex: 0 1 auto; margin: 0; }
+  .dashboard-workspace .dashboard-sticky-context__edit { margin-left: auto; }
+  .dashboard-workspace .dashboard-sticky-context { padding-bottom: 8px; }
+  .dashboard-workspace .dashboard-filter-bar__command { margin-top: 8px; }
 }
 
 .dashboard-workspace .dashboard-supporting-charts .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

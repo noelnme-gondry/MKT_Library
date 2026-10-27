@@ -14,13 +14,23 @@ import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import BudgetAllocation, { buildAllocationChartCountries, buildAllocationChartPoints, buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
 
-// 계산 기준(총 예산/효율 목표)은 "조건 바꾸기" 창 안에 있다. 창이 열려 있으면 바깥이 aria-hidden이므로 고른 뒤 닫는다.
-function chooseBasis(name, locale = "ko") {
+// 조건은 "조건 바꾸기" 창 안에 있다. 실행안이 있으면 예산·지표도 그 창으로 접힌다(product-ssot §1.1c).
+// 창이 열려 있으면 바깥이 aria-hidden이므로, 바깥을 누를 때는 닫는다.
+function openConditions(locale = "ko") {
   fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" }));
-  const dialog = screen.getByRole("dialog");
-  fireEvent.click(within(dialog).getByRole("button", { name }));
+  return screen.getByRole("dialog");
+}
+function closeConditions(dialog, locale = "ko") {
   fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Close" : "닫기", exact: true }));
 }
+function chooseBasis(name, locale = "ko", { keepOpen = false } = {}) {
+  const dialog = openConditions(locale);
+  fireEvent.click(within(dialog).getByRole("button", { name }));
+  if (!keepOpen) closeConditions(dialog, locale);
+  return dialog;
+}
+// 지표 선택은 접힘 여부에 따라 창 안이나 바깥에 있다 — 어느 쪽이든 하나만 렌더된다.
+const objectiveRadio = (name) => screen.getByRole("radio", { name, hidden: true });
 
 
 function seedWithData() {
@@ -157,11 +167,17 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   it("switches between named current/plan distribution and the full allocation table", () => {
     // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
     render(<BudgetAllocation />);
+    // 실행안이 있으면 결론이 먼저 오고, 예산은 조건 창에서 바꾼다.
+    expect(document.getElementById("prism-total-budget")).toBeNull();
+    expect(document.getElementById("s-controls").textContent).toContain("일예산");
+    const conditions = openConditions();
     const budgetSlider = document.getElementById("prism-total-budget");
     expect(budgetSlider).toBeTruthy();
     expect(() => {
       fireEvent.change(budgetSlider, { target: { value: budgetSlider.max } });
     }).not.toThrow();
+    expect(conditions.querySelector(".alloc-condition-dialog__preview").textContent).toContain("지금 결론");
+    closeConditions(conditions);
 
     const distribution = document.querySelector(".allocation-distribution");
     expect(distribution).toBeTruthy();
@@ -206,6 +222,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("PRISM은 전역 예산 슬라이더 하나만 렌더하고 채널 행을 직접 편집하지 않는다", () => {
     render(<BudgetAllocation />);
+    openConditions();
     const slider = document.getElementById("prism-total-budget");
     expect(slider).toBeTruthy();
     const sliders = document.querySelectorAll('input[type="range"]');
@@ -218,6 +235,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("일/월 전환은 같은 실제 일예산을 보존한다", () => {
     render(<BudgetAllocation />);
+    openConditions();
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: "100000" } });
     fireEvent.blur(exact);
@@ -230,6 +248,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   it("USD 전역 예산은 센트와 월/일 변환을 잃지 않는다", () => {
     useAppStore.setState({ displayCurrency: "USD" });
     render(<BudgetAllocation />);
+    openConditions();
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: "0.01" } });
     fireEvent.blur(exact);
@@ -243,17 +262,33 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("관측 상한을 넘는 정확 예산은 실행·저장 가능한 추천안으로 만들지 않는다", () => {
     render(<BudgetAllocation />);
+    const conditions = openConditions();
     const slider = document.getElementById("prism-total-budget");
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: String(Number(slider.max) * 2) } });
     fireEvent.blur(exact);
-    expect(screen.getByText(/자동 실행안은 만들지 않았습니다/)).toBeTruthy();
+    // 창을 연 채로는 컨트롤이 제자리에 남고, 창 위 결론 자리가 실행안이 없다고 말한다.
+    expect(within(conditions).getByText(/자동 실행안은 만들지 않았습니다/)).toBeTruthy();
+    expect(conditions.querySelector(".alloc-condition-dialog__preview").textContent).toContain("실행안이 없습니다");
     expect(document.querySelector(".result-action-card")).toBeNull();
+    // 닫으면 고칠 입력과 사유가 본문에 그대로 펼쳐진다.
+    closeConditions(conditions);
+    expect(document.getElementById("prism-total-budget-exact")).toBeTruthy();
+    expect(screen.getByText(/자동 실행안은 만들지 않았습니다/)).toBeTruthy();
+    // 본문 칸을 고치는 동안에는 실행안이 생겨도 칸이 사라지지 않고, 칸을 떠나면 한 줄로 접힌다.
+    const inline = document.getElementById("prism-total-budget-exact");
+    fireEvent.focus(inline);
+    fireEvent.change(inline, { target: { value: String(Math.round((Number(slider.min) + Number(slider.max)) / 2)) } });
+    expect(document.querySelector(".result-action-card")).toBeTruthy();
+    expect(document.getElementById("prism-total-budget-exact")).toBe(inline);
+    fireEvent.blur(inline);
+    expect(document.getElementById("prism-total-budget-exact")).toBeNull();
+    expect(document.getElementById("s-controls").textContent).toContain("일예산");
   });
 
   it("효율 목표 모드는 CPI/CPA/ROAS 중 현재 CSV에 있는 목표의 전역 슬라이더로 최대 안전 예산을 찾는다", () => {
     render(<BudgetAllocation />);
-    chooseBasis(/효율 목표/);
+    chooseBasis(/효율 목표/, "ko", { keepOpen: true });
     const sliders = document.querySelectorAll('input[type="range"]');
     expect(sliders).toHaveLength(1);
     const targetSlider = document.getElementById("prism-efficiency-target");
@@ -267,7 +302,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("달성 불가능한 효율 목표는 참고안만 보이고 실행·저장 가능한 결과를 만들지 않는다", () => {
     render(<BudgetAllocation />);
-    chooseBasis(/효율 목표/);
+    chooseBasis(/효율 목표/, "ko", { keepOpen: true });
     const targetSlider = document.getElementById("prism-efficiency-target");
     fireEvent.change(targetSlider, { target: { value: targetSlider.min } });
     expect(screen.getByText(/실행·저장할 수 없습니다/)).toBeTruthy();
@@ -276,21 +311,22 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("효율 목표에서 고른 KPI는 총 예산 모드에도 그대로 이어진다", () => {
     render(<BudgetAllocation />);
-    chooseBasis(/효율 목표/);
-    fireEvent.click(screen.getByRole("radio", { name: /ROAS/ }));
-    expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
+    const conditions = chooseBasis(/효율 목표/, "ko", { keepOpen: true });
+    fireEvent.click(objectiveRadio(/ROAS/));
+    expect(objectiveRadio(/ROAS/).getAttribute("aria-checked")).toBe("true");
+    closeConditions(conditions);
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     const finish = screen.getAllByRole("button", { name: /검증 완료 및 예산 배분/ })[0];
     fireEvent.click(finish);
     chooseBasis(/총 예산/);
-    expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
+    expect(objectiveRadio(/ROAS/).getAttribute("aria-checked")).toBe("true");
   });
 
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
     render(<BudgetAllocation />);
     chooseBasis(/효율 목표/);
-    expect(screen.getByRole("radio", { name: /CPI/ }).getAttribute("aria-checked")).toBe("true");
+    expect(objectiveRadio(/CPI/).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
@@ -321,8 +357,9 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("keeps the same global-driver behavior in English", () => {
     render(<BudgetAllocation locale="en" />);
-    expect(document.getElementById("prism-total-budget")).toBeTruthy();
-    chooseBasis("Efficiency target", "en");
+    expect(document.getElementById("s-controls").textContent).toContain("Daily budget");
+    closeConditions(openConditions("en"), "en");
+    chooseBasis("Efficiency target", "en", { keepOpen: true });
     expect(document.getElementById("prism-efficiency-target")).toBeTruthy();
     expect(document.querySelector(".prism-driver__status")?.textContent).toMatch(/largest daily budget|observed maximum spend|observed-spend ceiling|No budget below the observed-spend ceilings/);
   });

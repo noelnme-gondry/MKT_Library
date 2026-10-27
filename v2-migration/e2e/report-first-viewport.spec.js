@@ -8,16 +8,15 @@ const TOOLS = [
   { id: "5-22", path: "/tools/campaign-saturation" },
   { id: "5-31", path: "/tools/operations-planner" },
   { id: "5-2", path: "/dashboard" },
+  { id: "5-3", path: "/tools/budget-allocation" },
 ];
 const VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 980, height: 900 },
   { width: 390, height: 844 },
 ];
-const KNOWN_GAPS = {
-  // 하위 분석 탭 12개가 폰에서 세 줄을 차지한다 — 탭 구조 개편은 2단계 결정 사항이다.
-  "5-2@390": "dashboard sub-tabs take three rows on phones",
-};
+// 지금은 비어 있다 — 5-2 폰 하위 보기는 "보기 고르기" 한 줄로, 5-3 조건은 맥락 한 줄로 접었다(2026-10-27).
+const KNOWN_GAPS = {};
 
 for (const locale of ["ko", "en"]) {
   for (const viewport of VIEWPORTS) {
