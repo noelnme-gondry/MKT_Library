@@ -161,7 +161,7 @@ test("@light-en Movement map withholds actions after a tracking change", async (
 
 test("@light-en English start upload stays accessible in light mode", async ({ page }) => {
   await page.goto("/en/start");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Start with my data");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Find an analysis");
   await expect(page.locator("body")).toHaveClass(/light-mode/);
   await expectPageHierarchy(page, { primaryRegion: ".start-upload-panel" });
   await expectKeyboardFocusVisible(page);
@@ -188,7 +188,7 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
 
 test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간다", async ({ page }) => {
   await page.goto("/start");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("내 데이터로 시작");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("분석 찾기");
   await expectPageHierarchy(page, { primaryRegion: ".start-upload-panel" });
   await expectKeyboardFocusVisible(page);
 

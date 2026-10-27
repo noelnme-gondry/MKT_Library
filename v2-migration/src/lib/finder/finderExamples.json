@@ -1,0 +1,62 @@
+{
+  "5-18-paid-organic": {
+    "ko": "최근 4주 오가닉은 +10%, 유료는 −0.6% 움직였고, 둘이 반대로 움직인 주는 0주입니다. 잠식이라고 볼 신호는 아직 없습니다.",
+    "en": "In the last 4 weeks organic moved +10% and paid −0.6%, with 0 weeks moving in opposite directions. No sign of cannibalization yet."
+  },
+  "5-2": {
+    "ko": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+    "en": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%."
+  },
+  "5-20": {
+    "ko": "첫 7일 메시지 18회 이상인 사용자의 전환율은 95.8%로, 전체 평균(52.8%)의 1.8배입니다.",
+    "en": "Users with 18+ messages in first 7 days convert at 95.8%, 1.8× the average (52.8%)."
+  },
+  "5-21": {
+    "ko": "설치당 비용이 208원 올랐고, 그중 197원이 Meta AAP에서 나왔습니다.",
+    "en": "Cost per install rose by ₩208, and ₩197 of it came from Meta AAP."
+  },
+  "5-22": {
+    "ko": "채널 4개 중 4개는 광고비를 더 쓰면 설치당 비용이 평균보다 비싸집니다. 가장 높은 곳은 평균의 1.72배입니다.",
+    "en": "4 of 4 channels get more expensive per install with extra spend. Apple Search Ads is 1.72× its average."
+  },
+  "5-23": {
+    "ko": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
+    "en": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance."
+  },
+  "5-24": {
+    "ko": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,538건보다 558건(+15.8%) 많았습니다.",
+    "en": "Brand searches during the campaign were 4,096, 558 (+15.8%) above the 3,538 expected without it."
+  },
+  "5-25": {
+    "ko": "Meta·TikTok 두 채널의 지출이 거의 같이 움직여서(VIF 3,882) 기여를 따로 나눌 수 없습니다.",
+    "en": "Meta and TikTok spend move almost together (VIF 3,882), so their contributions cannot be separated."
+  },
+  "5-26": {
+    "ko": "검색어 보고서에서 바로 검토할 후보가 10건 나옵니다. Exact 승격 2건, CPT 조정 4건입니다.",
+    "en": "The search term report yields 10 candidates to review: 2 Exact promotions and 4 CPT adjustments."
+  },
+  "5-27": {
+    "ko": "조회→설치 전환율이 27.8%에서 24.4%로 떨어졌고, 그 하락의 71%는 페이지가 아니라 유입 구성 변화 때문입니다.",
+    "en": "View-to-install conversion fell from 27.8% to 24.4%, and 71% of the drop came from traffic mix, not the page."
+  },
+  "5-28": {
+    "ko": "핵심 행동을 시작한 사용자의 절반이 12개월 안에 멈췄습니다. 6개월째에는 77%가 남아 있었지만 12개월째에는 39%만 남았습니다.",
+    "en": "Half of the users who started the key action had stopped within 12 months. 77% were still active at month 6, but only 39% at month 12."
+  },
+  "5-29": {
+    "ko": "가입자 중 여성 비중이 21%에서 36.6%로 15.6%p 올랐습니다. 그중 47%는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.",
+    "en": "The share of women among signups rose from 21% to 36.6% (15.6 pp). 47% of that came from volume moving between campaigns; the rest came from change inside campaigns."
+  },
+  "5-4": {
+    "ko": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
+    "en": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001)."
+  },
+  "9-1": {
+    "ko": "‘제목에 숫자’ 요소가 있는 콘텐츠의 평균 클릭률이 1.47%p 높습니다. 요소가 겹치는 영향을 빼면 달라질 수 있습니다.",
+    "en": "Content with a number in title has 1.47 pp higher average CTR. This can change once overlapping elements are separated."
+  },
+  "9-6": {
+    "ko": "판정할 수 있는 소재 63개 중 30개에서 클릭률이 떨어지는 피로 신호가 보입니다.",
+    "en": "30 of the 63 creatives that can be judged show a falling-CTR fatigue signal."
+  }
+}

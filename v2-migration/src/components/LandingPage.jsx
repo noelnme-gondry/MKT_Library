@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
 import HeroArtwork from "@/components/landing/HeroArtwork";
-import { OPERATIONS_PATH, OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
-import { DATA_GUIDE_PATH } from "@/lib/analysisDataGuide";
+import { OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
 import { exampleHref } from "@/lib/exampleLink";
+import CsvUploader from "@/components/CsvUploader";
+import { finderHref, finderSituations } from "@/lib/finder/analysisFinder";
 import MobileQuickStart from "@/components/MobileQuickStart";
 import useSampleAnalysis from "@/components/useSampleAnalysis";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import HomeToolFinder from "@/components/ds/HomeToolFinder";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
@@ -23,16 +23,19 @@ const COPY = {
     titleAccent: "다음엔 뭘 해야 할까?",
     deck: ["최근 효율과 새 소재를 보고, 다음 예산을 정하세요."],
     actionAria: "바로 시작할 작업",
-    dataCta: "내 데이터로 운영하기",
+    situationTitle: "어떤 상황인가요?",
+    allAnalyses: (n) => `분석 ${n}개 모두 보기`,
+    situationCount: (n) => `분석 ${n}개`,
+    fileTitle: "파일로 시작",
+    fileDeck: "광고 리포트나 집계표를 놓으면 이 파일로 되는 분석부터 계산합니다.",
+    importing: "파일을 읽고 있습니다…",
+    noFileLead: "파일이 없다면",
     reviewCta: "내 프로젝트 열기",
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
     diagnoseCta: "성과 원인 찾기",
     demoCta: "데모 보기",
-    dataGuideCta: "필요한 데이터 양식 확인",
-    dataHint: "캠페인 CSV를 올려 분석합니다.",
     demoHint: "가상 데이터로 결과를 살펴봅니다.",
-    dataGuideHint: "분석별 데이터와 양식을 확인합니다.",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
     assurance: ["가입 없이 무료 분석", "CSV는 브라우저에서 처리"],
@@ -51,9 +54,6 @@ const COPY = {
     loopCondition: "기록 저장은 로그인과 유효한 Pro가 필요합니다. 7일 체험에도 포함됩니다.",
     // 이용 안내가 같은 조건을 문장으로 설명한다 — 기록 섹션은 이름표 한 줄만 둔다.
     loopTag: "Pro 기능 · 로그인 필요 · 7일 체험 포함",
-    shortcutLead: "도구를 고르기 어렵다면",
-    questionTitle: "목적별 분석 도구",
-    questionDeck: "확인하려는 문제에서 시작하세요.",
     libraryTitle: "실무 가이드와 분석 글",
     libraryDeck: "실무의 질문을 풀어내는 블로그와 바로 꺼내 쓰는 운영 가이드.",
     blogLabel: "마케팅 블로그",
@@ -72,16 +72,19 @@ const COPY = {
     titleAccent: "What should you do next?",
     deck: ["Review recent efficiency and new creatives, then plan your next budget."],
     actionAria: "Start a task",
-    dataCta: "Plan operations with my data",
+    situationTitle: "What is going on?",
+    allAnalyses: (n) => `See all ${n} analyses`,
+    situationCount: (n) => `${n} analyses`,
+    fileTitle: "Start with a file",
+    fileDeck: "Drop an ad report or summary sheet and we calculate what it can answer first.",
+    importing: "Reading your file…",
+    noFileLead: "No file yet?",
     reviewCta: "Open My projects",
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
     demoCta: "View demo",
-    dataGuideCta: "Check data requirements",
-    dataHint: "Upload a campaign CSV to analyze.",
     demoHint: "Explore results with fictional data.",
-    dataGuideHint: "Check data and formats for each analysis.",
     assurance: ["Free analysis, no sign-up", "CSV processed in your browser"],
     continueTitle: "Decisions to review",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
@@ -97,9 +100,6 @@ const COPY = {
     loopFollowup: "Return with new data to review the outcome and record what you learned.",
     loopCondition: "Saving requires sign-in and active Pro, including the 7-day trial.",
     loopTag: "Pro feature · Sign-in required · Included in the 7-day trial",
-    shortcutLead: "Not sure where to start?",
-    questionTitle: "Analyses by purpose",
-    questionDeck: "Start with the question you need to answer.",
     libraryTitle: "Guides and analysis articles",
     libraryDeck: "Practical articles to understand the question, and SOPs to put it into practice.",
     blogLabel: "Marketing blog",
@@ -121,6 +121,9 @@ export default function LandingPage({ locale = "ko", reading }) {
   const launchSample = useSampleAnalysis(lang);
   const rootRef = useRef(null);
   const router = useRouter();
+  const situations = finderSituations(lang);
+  const analysisCount = situations.reduce((sum, item) => sum + item.count, 0);
+  const [importing, setImporting] = useState(false);
   useEffect(() => {
     const revealFromHash = () => { if (window.location.hash === "#dochi-upload") router.replace(lang === "en" ? "/en/start" : "/start"); };
     revealFromHash();
@@ -205,62 +208,57 @@ export default function LandingPage({ locale = "ko", reading }) {
           </div>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
           </div>
-          <div className="dc-hero__entry">
-          <nav className="dc-hero__actions" aria-label={T.actionAria}>
-            <Link
-              className="dc-action-route dc-action-route--primary"
-              data-mobile-task=".dc-action-route--primary"
-              aria-label={T.dataCta}
-              aria-describedby="home-data-hint"
-              href={`${lang === "en" ? "/en" : ""}${OPERATIONS_PATH}`}
-              onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
-            >
-              <strong>{T.dataCta}</strong>
-              <span className="sr-only dc-action-route__hint" id="home-data-hint">{T.dataHint}</span>
-            </Link>
-            <Link className="dc-action-route dc-action-route--sample" aria-label={T.demoCta} aria-describedby="home-demo-hint" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}><strong>{T.demoCta}</strong><span className="sr-only dc-action-route__hint" id="home-demo-hint">{T.demoHint}</span></Link>
-            <Link className="dc-action-route dc-action-route--guide" aria-label={T.dataGuideCta} aria-describedby="home-guide-hint" href={`${lang === "en" ? "/en" : ""}${DATA_GUIDE_PATH}`} onClick={() => trackProductEvent("landing_data_guide_clicked", { locale: lang, source: "landing", placement: "hero" })}><strong>{T.dataGuideCta}</strong><span className="sr-only dc-action-route__hint" id="home-guide-hint">{T.dataGuideHint}</span></Link>
-          </nav>
-          <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
-          </div>
           </header>
+          {/* 첫 화면의 주 행동 = 상황 고르기 + 파일 놓기(product-ssot §1.1c 결정 2).
+              상황을 누르면 분석 찾기가 그 상황의 분석 카드(결론 예시·필요한 파일)로 열린다. */}
+          <div className="home-entry">
+            <nav className="home-entry__situations" aria-labelledby="home-situation-title">
+              <h2 id="home-situation-title">{T.situationTitle}</h2>
+              <ul>
+                {situations.map((item) => (
+                  <li key={item.id}>
+                    <Link href={finderHref(item.id, lang)} onClick={() => trackProductEvent("landing_situation_clicked", { source: "landing", placement: "hero", section_id: item.id, locale: lang })}>
+                      <span className="home-entry__no" aria-hidden="true">{item.label}</span>
+                      <strong>{item.title}</strong>
+                      <small>{T.situationCount(item.count)}</small>
+                    </Link>
+                  </li>
+                ))}
+                {/* 상황 7개 뒤의 여덟 번째 칸 — 7번째가 혼자 남지 않고, 전체 목록으로 가는 길이 같은 모양으로 놓인다. */}
+                <li className="home-entry__all-tile">
+                  <Link className="home-entry__all" href={finderHref("all", lang)} onClick={() => trackLandingNav("landing_finder_opened", "hero_all")}>
+                    <span className="home-entry__no" aria-hidden="true">→</span>
+                    <strong>{T.allAnalyses(analysisCount)}</strong>
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+            <section className="home-entry__file" data-mobile-task=".home-entry__file" aria-labelledby="home-file-title" data-importing={importing ? "true" : "false"}>
+              <h2 id="home-file-title">{T.fileTitle}</h2>
+              <p>{importing ? T.importing : T.fileDeck}</p>
+              <CsvUploader
+                toolId="start-gate"
+                locale={lang}
+                entryVariant="dochi"
+                analyticsPlacement="landing_hero"
+                onImportStart={() => setImporting(true)}
+                onPrepared={() => router.push(lang === "en" ? "/en/dochi-result" : "/dochi-result")}
+                onImportFailed={() => setImporting(false)}
+              />
+              <p className="home-entry__more">
+                <Link href={exampleHref(OPERATIONS_TOOL_ID, lang)} aria-describedby="home-demo-hint" onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}>{T.demoCta} →</Link>
+                <span className="sr-only" id="home-demo-hint">{T.demoHint}</span>
+              </p>
+              <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
+            </section>
+          </div>
+          <p className="home-entry__no-file">
+            <span>{T.noFileLead}</span>
+            <Link href={lang === "en" ? "/en/calculator" : "/calculator"} onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}>{T.calculatorCta}</Link>
+            <Link href={lang === "en" ? "/en/diagnose" : "/diagnose"} onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}>{T.diagnoseCta}</Link>
+          </p>
         </div>
         <OperationsSamplePreview locale={lang} />
-      </section>
-
-      <section className="dc-questions" id="questions" tabIndex={-1} aria-labelledby="dc-question-title">
-        <header className="dc-section-head">
-          <div>
-            <h2 id="dc-question-title">{T.questionTitle}</h2>
-          </div>
-          <p>{T.questionDeck}</p>
-        </header>
-        <div className="dc-tool-shortcuts">
-            <span>{T.shortcutLead}</span>
-            <Link
-              className="dc-text-link"
-              href={lang === "en" ? "/en/calculator" : "/calculator"}
-              onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
-            >
-              {T.calculatorCta}
-            </Link>
-            <Link
-              className="dc-text-link"
-              href={lang === "en" ? "/en/diagnose" : "/diagnose"}
-              onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
-            >
-              {T.diagnoseCta}
-            </Link>
-        </div>
-        <HomeToolFinder
-          locale={lang}
-          onItemClick={(toolId) => trackProductEvent("landing_tool_pick", {
-            tool_id: toolId,
-            source: "landing",
-            placement: "question_card",
-            locale: lang,
-          })}
-        />
       </section>
 
       <section className="dc-loop" aria-labelledby="dc-loop-title">

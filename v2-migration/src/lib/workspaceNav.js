@@ -24,13 +24,9 @@ export const WORKSPACE_NAV = [
     group: "work",
     href: "/start",
     icon: "⇧",
-    ko: { name: "내 데이터로 시작", desc: "파일·시트로 가능한 분석 찾기" },
-    en: { name: "Start with my data", desc: "Upload and see what's possible" },
-  },
-  {
-    id: "methods", group: "work", href: "/start?view=methods", icon: "▦",
-    ko: { name: "분석 방법 둘러보기", desc: "목적별 분석과 필요한 데이터 확인" },
-    en: { name: "Browse analyses", desc: "Explore analyses and data requirements" },
+    // "내 데이터로 시작"과 "분석 방법 둘러보기"는 같은 질문(무엇을 할 수 있나)에 따로 답했다 — 하나로 합쳤다(product-ssot §1.1c).
+    ko: { name: "분석 찾기", desc: "상황이나 파일로 분석 고르기" },
+    en: { name: "Find an analysis", desc: "Choose by situation or by file" },
   },
   {
     id: "results", secondary: true, group: "work", href: "/dochi-result", icon: "▦",
@@ -113,7 +109,7 @@ export function workspaceNavItem(id, locale = "ko") {
 }
 
 export function workspaceNavItems(locale = "ko") {
-  const order = ["home", "blog", "guide", "diagnose", "start", "methods", "account", "review", "storage", "subscription"];
+  const order = ["home", "blog", "guide", "diagnose", "start", "account", "review", "storage", "subscription"];
   return [...WORKSPACE_NAV].sort((a, b) => (order.indexOf(a.id) < 0 ? 99 : order.indexOf(a.id)) - (order.indexOf(b.id) < 0 ? 99 : order.indexOf(b.id))).map((entry) => workspaceNavItem(entry.id, locale));
 }
 

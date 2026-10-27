@@ -1,20 +1,21 @@
 import { test, expect } from "@playwright/test";
+// 분석 검색은 분석 찾기(/start) 한 곳에 있다 — 홈 목록을 합쳤다(product-ssot §1.1c).
 for (const locale of ["ko", "en"]) {
-  test(`metric search is visible beside its input (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
-    await page.goto(locale === "en" ? "/en" : "/");
-    const input = page.getByRole("searchbox", { name: locale === "en" ? "Find an analysis" : "필요한 분석 찾기" });
+  test(`analysis search stays beside its input and restores the full list (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    await page.goto(locale === "en" ? "/en/start" : "/start");
+    const input = page.getByRole("searchbox", { name: locale === "en" ? "Search analyses" : "분석 검색" });
+    const all = await page.locator(".finder-card").count();
     await input.fill("CPA");
-    const results = page.locator("#home-tool-results");
-    await expect(results).toBeVisible();
-    await expect(results.getByRole("link").first()).toBeAttached();
-    await expect(page.locator(".home-tool-finder__purposes")).toBeHidden();
-    const gap = await page.evaluate(() => document.querySelector("#home-tool-results").getBoundingClientRect().top - document.querySelector(".home-tool-finder__search").getBoundingClientRect().bottom);
+    const cards = page.locator(".finder-card");
+    await expect(cards.first()).toBeVisible();
+    expect(await cards.count()).toBeLessThan(all);
+    // 검색 결과는 상황이 섞이므로 카드가 상황을 말한다.
+    await expect(cards.first().locator(".finder-card__situation")).toBeVisible();
+    const gap = await page.evaluate(() => document.querySelector("#finder-results").getBoundingClientRect().top - document.querySelector(".analysis-finder__search").getBoundingClientRect().bottom);
     expect(gap).toBeGreaterThanOrEqual(0);
-    expect(gap).toBeLessThan(45);
-    // Result actions must remain compact even when the data requirements wrap.
-    const cards = page.locator(".home-tool-finder__tool");
+    expect(gap).toBeLessThan(80);
     for (const card of await cards.all()) {
-      const action = await card.locator(".home-tool-finder__open").boundingBox();
+      const action = await card.locator(".finder-card__actions .btn").first().boundingBox();
       expect(action.height).toBeGreaterThanOrEqual(44);
       expect(action.height).toBeLessThan(65);
       const bounds = await card.boundingBox();
@@ -26,6 +27,6 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: locale === "en" ? "Clear search" : "검색 지우기", exact: true }).click();
     await expect(input).toHaveValue("");
     await expect(input).toBeFocused();
-    await expect(page.locator(".home-tool-finder__purposes")).toBeVisible();
+    await expect(page.locator(".finder-card")).toHaveCount(all);
   });
 }

@@ -92,7 +92,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
         <span className="dashboard-view-picker__count">{en ? `${activeIndex + 1} of ${availableTabs.length}` : `${availableTabs.length}개 중 ${activeIndex + 1}`}</span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
-      <ModalDialog open={pickerOpen} onClose={() => setPickerOpen(false)} returnFocusRef={pickerTrigger} ariaLabel={en ? "Choose a view" : "보기 고르기"} overlayClassName="tutorial-overlay dashboard-view-sheet-overlay" panelClassName="tool-reference-panel dashboard-view-sheet">
+      <ModalDialog open={pickerOpen} onClose={() => setPickerOpen(false)} returnFocusRef={pickerTrigger} ariaLabel={en ? "Choose a view" : "보기 고르기"} overlayClassName="dashboard-view-sheet-overlay" panelClassName="tool-reference-panel dashboard-view-sheet">
         <header className="tool-reference-panel__head">
           <h2>{en ? "Choose a view" : "보기 고르기"}</h2>
           <button type="button" className="btn ghost" onClick={() => setPickerOpen(false)}>{en ? "Close" : "닫기"}</button>

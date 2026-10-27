@@ -75,7 +75,7 @@
 | 결정 | 확정 | 적용 단계 |
 |---|---|---|
 | 입구 통합 범위 | 앱 안 입구(홈 목록·`/start`·분석 방법 둘러보기·`/data-guide`)를 **분석 찾기** 하나로 모은다. `/compare`·`/guide` 분석 지도·`/diagnose`는 검색 유입 페이지로 두고 분석 찾기로 연결만 한다. 기존 주소는 유지하거나 301로 보존한다. | 2 |
-| 홈 첫 화면 주 행동 | **상황 고르기 + 파일 놓기**. 운영 플래너 미리보기는 그 아래로 내린다. 2단계 구현 전까지 §5.1.1의 현행 주 행동을 유지한다. | 2 |
+| 홈 첫 화면 주 행동 | **상황 고르기 + 파일 놓기**. 운영 플래너 미리보기는 그 아래로 내린다(2026-10-27 적용, §5.1.1). | 2 |
 | 고급 분석 12개(5-32~5-43) | 숨기지 않고 상황 안에 함께 두되, 같은 상황에서 광고 운영 분석 뒤에 놓는다. | 0 |
 | 결과 화면의 설정 블록 | 결과가 있으면 기간·지표·대상을 **맥락 한 줄 + `조건 바꾸기` 창**으로 접는다(`MappingEditorDialog`와 같은 방식). | 1 |
 
@@ -359,9 +359,11 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 홈·분석 화면의 우하단은 **튜토리얼 / Tutorial** 물음표 버튼으로 안내한다. 업로드 전에도 **업로드 방법 보기 / How to upload** 진입점을 제공한다. 설문·동의·모달이 열린 동안 플로팅 버튼은 숨기며, 일반 버튼에 포커스가 있다는 이유만으로 숨기지 않는다. 실제 입력 조작과 겹치면 물러나고 업로드 영역의 안내는 유지한다.
 
-홈 제목은 §1.1a를 유지하며 소개는 긴 캠페인 이력의 운영 점검을 설명한다. 주 행동은 **내 데이터로 운영하기 / Plan operations with my data**, 보조 행동은 **데모 보기 / View demo**다. 두 행동은 독립 운영 플래너로 연결한다. **필요한 데이터 양식 확인 / Check data requirements**은 `/data-guide`와 `/en/data-guide`로 연결한다. 보고 싶은 질문에서 공개 분석을 선택하고 출처·행 단위·필수/추가 항목의 쓰임·가상 작성 예시·준비 주의사항·실제 빈 CSV 양식을 확인한다. 질문·도구 목록은 홈 레지스트리, 요구사항과 예시는 업로더, 다운로드는 기존 템플릿 계약에서 가져온다. 내부 도구 번호를 화면에 표시하지 않는다. / The data guide maps questions to analyses and explains sources, row structure, field purpose, fictional sample rows, preparation checks and compatible CSV templates using the existing registries. `/start`의 범용 파일 진입은 분석 목록·내비게이션에서 유지한다. 업로드 후 매핑을 확인하고 명시적으로 분석을 시작하며 결과 이후 입력은 편집 가능한 한 줄 요약으로 접힌다. / Link both homepage actions to the standalone operations planner, preserving the general Start entry in navigation and tool discovery. Confirm mappings and explicitly analyze uploaded data; summarize input after results. 저장된 결정의 상단 재진입은 유지한다.
+홈 제목은 §1.1a를 유지한다. 제목 아래 주 행동은 **상황 고르기 + 파일 놓기**다(§1.1c 결정 2, 2026-10-27 적용). 왼쪽 **어떤 상황인가요? / What is going on?**은 7개 상황(`TOOL_JOURNEY`)을 번호·이름·분석 수와 함께 보여 주고, 누르면 분석 찾기(`/start?situation=<id>#finder`)가 그 상황의 카드로 열린다. **분석 N개 모두 보기**는 전체 목록으로 간다. 오른쪽 **파일로 시작 / Start with a file**은 공용 업로더 하나이며, 놓은 파일로 되는 분석을 결과 작업대(`/dochi-result`)에서 계산한다. 예시는 **데모 보기 / View demo**(운영 플래너 예시) 텍스트 링크, 파일이 없을 때는 계산기·질문에서 시작 링크를 한 줄로 둔다. 운영 플래너 미리보기는 그 아래에 둔다. 히어로에 파란 주 버튼을 여럿 두지 않는다. 홈 아래쪽의 전체 분석 목록(구 `HomeToolFinder`)은 분석 찾기로 합쳤다. 내부 도구 번호를 화면에 표시하지 않는다. / Home's primary actions are a seven-situation picker and one file drop; situations open the finder filtered to that situation, the file opens the result workspace. The old home directory moved into the finder.
 
-(2026-10-26: 홈 주 행동은 §1.1c에 따라 2단계에서 상황 고르기 + 파일 놓기로 바뀐다. 그때까지 아래 현행 계약을 유지한다.)
+**분석 찾기(`/start`, 2026-10-27 적용).** 앱 안 입구 넷(홈 목록·내 데이터로 시작·분석 방법 둘러보기·`/data-guide`)을 한 화면으로 합쳤다. 위는 상황으로 찾기(7개 + 전체 + 저장한 분석) | 파일로 찾기(업로드 → 매핑 확인 → 명시적 분석하기, 결과 이후 입력은 편집 가능한 한 줄 요약), 아래는 검색과 상황별 분석 카드다. 카드는 §1.1c 분석 카드 계약을 따른다: 이름 · 질문 · 결론 예시(`lib/finder/finderExamples.json` — 도구 예시 데이터로 실제 엔진이 계산한 문장만, 없으면 "받게 될 결과" 한 줄) · 필요한 파일(이름 → 출처 묶음 → 필수 → 있으면 더 좋음) · `예시 보고서 보기`/`내 파일로 하기`/`준비 방법` · 같은 파일로 되는 다른 분석. `준비 방법` 창은 옛 `/data-guide` 상세(행 단위·출처·필요한 값과 쓰임·가상 예시·준비 주의·빈 CSV 양식·5-23 비교 방식)를 그대로 담고, 고른 비교 방식을 예시·도구 주소로 넘긴다. 카드마다 파란 주 버튼을 두지 않는다(이 화면의 주 행동은 파일 놓기). `/data-guide`·`/en/data-guide`는 `/start`로 영구 이동하고, `?view=methods`는 같은 화면이다. 사이드바 항목은 **분석 찾기 / Find an analysis** 하나다. / The finder merges four entries: situations | file drop on top, searchable situation-grouped cards below; the old data guide lives in each card's preparation dialog; old addresses redirect.
+
+
 
 **목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 상황 분류(§1.1c)와 공개 도구를 처음부터 모두 보여주고, 도구마다 필요한 파일 이름을 함께 표시한다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
@@ -1020,7 +1022,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 
 ## 데이터 작업대 개편 (2026-09-22)
 
-- 데이터로 적용하기: 내 데이터로 시작 / 분석 방법 둘러보기. 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
+- 데이터로 적용하기: 분석 찾기(2026-10-27, 옛 내 데이터로 시작·분석 방법 둘러보기를 합침). 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
 - 파일·시트 업로드 → 매핑 확인 → 명시적 분석하기. 실행 후 입력은 요약 카드로 줄이고 수정 시 이전 결과를 무효화한다.
 - 분석 목록은 한 번만 표시한다. 선택한 카드에 근거·그래프·한계·다음 행동을 제공한다. 내부 번호·대기열·결정 테이프는 공개하지 않는다.
 - 추천 행동과 근거를 프로젝트로 추적한다. 근거 없는 증액률·목표를 생성하지 않는다.

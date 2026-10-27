@@ -64,7 +64,7 @@ v2-migration/
 
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
-| `/` | home | LandingPage → CSV·샘플 진입 + landing/HomeResultPreview(동일 픽스처 CPA 비교) + ds/HomeToolFinder(전체 toolIndex·TOOL_JOURNEY, 검색·savedTools) + HomeReading(서버 발행 글) |
+| `/` | home | LandingPage → 상황 고르기(`lib/finder` 7개 상황 → `/start?situation=`) + 파일 놓기(CsvUploader dochi 변형 → `/dochi-result`) + landing/OperationsSamplePreview + HomeReading(서버 발행 글) |
 | `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsBrief · operationsDemo · operationsEvidence → OperationsMetricEvidence / OperationsObservedQueue (기존 지표·매핑·관측 검토 연결) |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
@@ -85,7 +85,7 @@ v2-migration/
 | `/content/killer-content` | 9-2 | tools/KillerContentFinder.jsx → AhaMomentFinder `domain="content"` |
 | `/content/traffic-variance` | 9-3 | tools/ContentTrafficVariance.jsx → CampaignPvm `domain="content"` |
 | `/content/dashboard` | 9-7 | tools/ContentDashboard.jsx → Dashboard `domain="content"` |
-| `/start` | start-gate | StartGate.jsx (업로드 → 가능한 분석 추천) |
+| `/start` | start-gate | StartGate.jsx = 분석 찾기: finder/AnalysisFinder(상황·검색·카드·저장, 카드의 준비 방법 창 = finder/AnalysisDataPrep) + 업로드 → 제출 뒤 AssistantWorkspace. `/data-guide`는 301 |
 | `/guide` | guide-index | GuideIndex.jsx |
 | `/guide/<kebab>` | 1-x~4-x·8-1 | sops/SopContent.jsx |
 | `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·유효 Pro·프로젝트 선택; 첫 체험은 선택한 초안 메모의 계정 보관 동의 후 시작) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |
@@ -155,11 +155,11 @@ v2-migration/
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만이고, 글자는 `toolIndex.toolDisplayTitle`(목록 이름, 검색어형 이름은 제목 밑 `.tool-instrument-header__alias`) — Dashboard(5-2)·PaidOrganicTrend도 같은 헬퍼(`e2e/tool-title-consistency.spec.js`).
 - **첫 방문자 인사 오버레이**: KR/EN 홈만 `assistant/DochiWelcomeOverlay`를 mount한다(상시 접수처 `DochiAssistant`와 별개, 둘 다 렌더됨). 도치가 2단계 대사(사이트 설명+데이터 처리 위치 → 데이터 요청)를 말하고 마지막 단계에서 `CsvUploader`(toolId `start-gate`)로 CSV·공개 Google Sheets를 바로 받아 `/dochi-result`로 넘긴다. 노출 판정 SSOT는 `lib/dochiWelcome.js` — 영구 옵트아웃은 localStorage, 같은 방문 안의 반복 노출 차단은 sessionStorage다. 저장된 작업이 있는 기존 사용자도 노출하되 IndexedDB 복원 뒤 마지막 단계에서 시작하며, 가져오기를 시작한 뒤 닫거나 건너뛰어도 완료 시 결과 화면으로 이동한다. 서버 스냅샷이 항상 닫힘이라 프리렌더 HTML에는 오버레이가 없다. 모바일(≤700px)에서는 전면 대신 하단 시트로 내려간다.
-- **홈 전용 도치 데이터 접수**: KR/EN 랜딩만 `assistant/DochiAssistant`를 mount한다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤에만 `/start` 통합 작업대로 handoff한다(현재 매핑으로 안전한 light baseline만 자동 실행, 매핑 변경 시 결과 stale). 포즈는 `public/assets/dochi/` PNG 세트를 `assistant/DochiSprite`가 고르며 `prefers-reduced-motion`에서 장거리 이동·wipe를 생략한다. 도구 화면에는 도치가 남지 않는다(도구별 보조는 `ToolAssistRail`).
+- **홈 데이터 접수**: 랜딩 히어로의 "파일로 시작"과 첫 방문 `assistant/DochiWelcomeOverlay`가 같은 `CsvUploader entryVariant="dochi"`를 쓴다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤 `/dochi-result` 결과 작업대로 보낸다(`assistant/DochiAssistant`는 현재 마운트되는 곳이 없다). 포즈는 `public/assets/dochi/` PNG 세트를 `assistant/DochiSprite`가 고르며 `prefers-reduced-motion`에서 장거리 이동·wipe를 생략한다. 도구 화면에는 도치가 남지 않는다(도구별 보조는 `ToolAssistRail`).
 - **응답 패널 다섯 분석**: `5-18-trend`·`-paid-organic`·`-cannibal`·`-mmm`·`-forecast`가 각각 도구(모두 `MarketingResponse`를 `isolated`로 렌더). CSV·매핑은 `response` 그룹 하나를 공유하고, 목록에 없는 `5-18`(publication="subtool")이 업로드·매핑 허브다. 필드 계약은 `csvConstants`의 `RESPONSE_PANEL_TOOL_IDS`가 5-18에서 파생.
 - **유입 경로 서베이**: `assistant/SourceSurveyPopup`을 `GlobalModals`가 렌더하므로 어느 페이지로 처음 들어와도(홈·블로그·용어·가이드·도구) 같은 질문을 한 번 받는다. 주관식 한 칸이고 화면 가운데 뜨되 뒤를 덮는 백드롭이 없다(바깥은 계속 조작 가능). 판정·정규화 SSOT `lib/survey/sourceSurvey.js`(영구 차단 localStorage / 세션 반복 차단 sessionStorage), 다른 안내와의 겹침 방지 `lib/assistant/overlayPresence.js`. 저장은 `POST /api/survey/source` → `lib/survey/sourceSurveyServer.js` → `gop_source_survey`(답변·언어·분류된 진입면만, IP·계정·URL 없음). 스키마 `v2-migration/scripts/source-survey-schema.sql`은 앱 시작 마이그레이션에서 멱등 적용하며, 조회는 `v2-migration/scripts/source-survey-report.mjs`로 한다. 운영 DB 적용 여부는 배포 후 별도로 확인한다.
 - **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.
-- **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개 상황(성과·예산·효과 검증·겹침·소재·스토어·유저·상품 — product-ssot §1.1c). 필요한 파일 이름·출처 묶음은 `lib/dataSources.js`(데이터 그룹별, `/data-guide` 준비 안내 포함). 결과 화면의 "안 되는 분석" 줄은 `lib/toolDataNeeds.js`(도구별 필요한 값 한 문장, 발행 도구 파생 가드)를 쓴다.
+- **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → 업로드 전 `/start`는 `lib/finder/analysisFinder`(카드: 결론 예시 `finderExamples.json` = 블로그 예시 엔진 결과 중 도구 데모로 계산한 것의 파생본·필요한 파일·같은 파일 분석), 업로드 뒤 작업대는 `ds/ToolIndex` grid. 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개 상황(성과·예산·효과 검증·겹침·소재·스토어·유저·상품 — product-ssot §1.1c). 필요한 파일 이름·출처 묶음은 `lib/dataSources.js`(데이터 그룹별, 분석 찾기 "준비 방법"의 출처 안내 포함). 결과 화면의 "안 되는 분석" 줄은 `lib/toolDataNeeds.js`(도구별 필요한 값 한 문장, 발행 도구 파생 가드)를 쓴다.
 - **예시 링크**: 도구 URL `?example=1` → `lib/exampleLink.js`(`exampleHref`, 발행 도구만) + `ds/useExampleLink`(예시 버튼과 같은 핸들러를 라우트 설정·기기 저장 부팅이 끝난 뒤 한 번). 예시 버튼을 그리는 CsvGuide·AbTestHoldout·PaidOrganicTrend가 쓰고 템플릿 카드가 링크한다. `e2e/example-link.spec.js`.
 - **하단 마감**: 분석 아래는 `ToolPageOutro` 한 덩어리(`.tool-outro` 박스 + `.tool-outro__section` 구분선). 자식(`ToolConnections`·`ToolLongform`·`ToolEvidenceLinks`)은 자기 테두리·경계선을 그리지 않는다. 타이포 하한 9.5px는 `app/typographyFloor.test.js`가 강제(§12.30).
   - **5-21 파일럿**: `ToolNextStepPanel` → `ToolConnections compact`의 다음 분석 최대 2개만 펼친다. 방법·FAQ·관련 자료는 `ModalDialog` 안에서 기존 `ToolLongform`·`ToolEvidenceLinks`를 재사용하고 프로젝트 연결도 별도 명시적 버튼으로 연다. 공용 이동 계약과 기존 도구의 하단은 유지한다.

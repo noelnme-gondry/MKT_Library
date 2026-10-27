@@ -35,25 +35,23 @@ for (const locale of ["ko", "en"]) {
   });
   test(`library question entry and persistent navigation (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
-    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
+    await expect(page.locator(".home-entry__situations")).toBeVisible();
     await expect(page.getByRole("dialog")).toBeHidden();
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
     const intro = await page.locator(".dc-hero__intro").boundingBox();
     const inset = await page.locator(".dc-hero__intro").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft));
-    // CSV is the primary entry; sample exploration remains beside it.
-    const primary = await page.locator(".dc-action-route--primary").boundingBox();
-    expect(primary.x).toBeGreaterThanOrEqual(intro.x + inset - 1);
-    expect(primary.x + primary.width).toBeLessThanOrEqual(intro.x + intro.width - inset + 1);
-    // 시작 버튼은 소개 면 안의 같은 기준선에 놓이며 긴 설명 카드가 되지 않는다.
-    expect(primary.height).toBeGreaterThanOrEqual(44);
-    expect(primary.height).toBeLessThanOrEqual(72);
-    await expect(page.locator(".dc-hero__actions .dc-action-route__hint")).toHaveCount(3);
-    await page.locator(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`).click();
+    // 상황 고르기와 파일 놓기는 제목과 같은 왼쪽 기준선에서 시작한다.
+    const situations = await page.locator(".home-entry__situations").boundingBox();
+    expect(Math.abs(situations.x - (intro.x + inset))).toBeLessThanOrEqual(1);
+    const tile = await page.locator(".home-entry__situations li a").first().boundingBox();
+    expect(tile.height).toBeGreaterThanOrEqual(44);
+    expect(tile.height).toBeLessThanOrEqual(72);
+    await page.locator(`.home-entry__no-file a[href="${prefix}/diagnose"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
     await page.goto(prefix || "/");
-    await expect(page.locator(".home-tool-directory > section")).toHaveCount(toolIndexByStage(locale).length);
+    await expect(page.locator(".home-entry__situations li:not(.home-entry__all-tile) a")).toHaveCount(toolIndexByStage(locale).length);
     await expect(page.locator("#dochi-upload")).toBeHidden();
     await expect(page.locator(".home-reading-list__articles a")).toHaveCount(3);
     await expect(page.locator(`.home-guide-shelf a[href="${prefix}/guide"]`)).toBeVisible();
@@ -70,7 +68,7 @@ for (const locale of ["ko", "en"]) {
       await expect(toggle).toBeFocused();
       await toggle.click();
     }
-    for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start", "/start?view=methods"]) {
+    for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start"]) {
       await expect(page.locator(`.library-nav-item[href="${prefix}${path}"]`)).toBeVisible();
     }
     await page.locator(`.library-nav-item[href="${prefix}/blog"]`).click();

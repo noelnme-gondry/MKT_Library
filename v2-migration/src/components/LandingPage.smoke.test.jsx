@@ -51,38 +51,38 @@ describe("LandingPage render smoke", () => {
     // 히어로 우측의 예시 판단 카드(가짜 수치 + 장식 차트)는 제거됨 — 되살리지 말 것.
     expect(document.querySelector(".dc-instrument")).toBeNull();
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
-    const actions = [...document.querySelectorAll(".dc-action-route")];
-    expect(actions).toHaveLength(3);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 데이터로 운영하기", "데모 보기", "필요한 데이터 양식 확인"]);
-    expect(actions[0].getAttribute("href")).toBe("/tools/operations-planner");
-    expect(actions[1].getAttribute("href")).toBe("/tools/operations-planner?example=1");
-    expect(actions[2].getAttribute("href")).toBe("/data-guide");
-    expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
+    // 첫 화면의 주 행동 = 상황 고르기 + 파일 놓기(product-ssot §1.1c 결정 2). 버튼 셋(운영하기·데모·양식)은 없앴다.
+    expect(document.querySelectorAll(".dc-action-route")).toHaveLength(0);
+    const situations = [...document.querySelectorAll(".home-entry__situations li:not(.home-entry__all-tile) a")];
+    expect(situations).toHaveLength(TOOL_JOURNEY.length);
+    TOOL_JOURNEY.forEach((stage, index) => {
+      expect(situations[index].getAttribute("href")).toBe(`/start?situation=${stage.id}#finder`);
+      expect(situations[index].querySelector("strong").textContent).toBe(stage.title.ko);
+    });
+    // 상황 7개의 분석 수를 더하면 발행 분석 전체다 — 상황에서 빠진 분석이 없다.
+    const counts = situations.map((link) => Number(link.querySelector("small").textContent.replace(/\D/g, "")));
+    expect(counts.reduce((sum, n) => sum + n, 0)).toBe(PUBLISHED_TOOL_IDS.length);
+    expect(document.querySelector(".home-entry__all").getAttribute("href")).toBe("/start#finder");
+    expect(document.querySelector(".home-entry__all").textContent).toContain(String(PUBLISHED_TOOL_IDS.length));
+    // 파일 놓기는 하나 — 놓으면 그 파일로 되는 분석을 계산하는 결과 작업대로 간다.
+    expect(document.querySelectorAll(".home-entry__file .csv-uploader")).toHaveLength(1);
+    expect(document.querySelector(".home-entry__more a").getAttribute("href")).toBe("/tools/operations-planner?example=1");
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고, 다음엔 뭘 해야 할까?");
     expect(document.querySelector(".dc-hero__deck")?.textContent).toBe("최근 효율과 새 소재를 보고, 다음 예산을 정하세요.");
     expect(document.querySelectorAll(".dc-hero__deck p")).toHaveLength(1);
-    for (const action of actions) {
-      const hint = document.getElementById(action.getAttribute("aria-describedby"));
-      expect(hint.textContent.length).toBeGreaterThan(10);
-      expect(action.contains(hint)).toBe(true);
-      expect(hint.classList.contains("sr-only")).toBe(true);
-    }
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
     expect(document.querySelector(".dc-hero__assurance")?.textContent).toContain("가입 없이 무료 분석");
     expect(document.querySelector(".home-service-terms")?.textContent).toContain("7일 체험에는 포함되지 않습니다.");
-    expect(document.querySelector('a.dc-action-route[href="/tools/operations-planner"]')).toBeTruthy();
-    expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
-    expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
-    // 세 진입 아래의 결과 미리보기에서 같은 버튼을 또 반복하지 않는다.
+    expect(document.querySelector('.home-entry__no-file a[href="/calculator"]')).toBeTruthy();
+    expect(document.querySelector('.home-entry__no-file a[href="/diagnose"]')).toBeTruthy();
+    // 결과 미리보기에서 같은 버튼을 또 반복하지 않는다.
     expect(document.querySelector('.home-result-preview a[href]')).toBeNull();
     expect(document.querySelectorAll('.home-result-preview [role="tab"]')).toHaveLength(3);
-    expect(document.querySelector(".dc-action-route--sample")?.textContent).toContain("데모 보기");
-    expect(document.querySelectorAll('.dc-hero a[href="/diagnose"]')).toHaveLength(0);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".home-tool-directory > section")).toHaveLength(TOOL_JOURNEY.length);
-    expect(document.querySelectorAll(".home-tool-directory a")).toHaveLength(PUBLISHED_TOOL_IDS.length);
-    expect(document.querySelectorAll(".home-tool-finder__results a")).toHaveLength(0);
+    // 홈 아래쪽의 전체 분석 목록은 분석 찾기로 합쳤다 — 같은 목록을 두 곳에 두지 않는다.
+    expect(document.querySelector(".home-tool-directory")).toBeNull();
+    expect(document.querySelector(".dc-questions")).toBeNull();
     // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.
     expect(document.querySelector(".connected-tool-card")).toBeNull();
     // 소셜 채널을 사이드바에서 뺀 뒤로 랜딩의 자료·채널 줄이 유일한 도달 경로다
@@ -91,12 +91,16 @@ describe("LandingPage render smoke", () => {
       expect(document.querySelector(`.dc-resource-strip a[href*="${host}"]`)).toBeTruthy();
     }
   });
-  it("puts the question cards ahead of the weekly-loop explainer", () => {
-    render(<LandingPage />);
-    const questions = document.querySelector(".dc-questions");
-    const loop = document.querySelector(".dc-loop");
-    // 목적 선택이 개념 설명보다 먼저 와야 첫 화면에서 바로 도구를 찾는다.
-    expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  it.each(["ko", "en"])("puts the situation picker ahead of the sample preview and the weekly-loop explainer (%s)", (locale) => {
+    render(<LandingPage locale={locale} />);
+    const situations = document.querySelector(".home-entry__situations");
+    // 상황 고르기가 미리보기·개념 설명보다 먼저 와야 첫 화면에서 바로 분석을 찾는다.
+    expect(situations.compareDocumentPosition(document.querySelector(".home-result-preview, .operations-sample-preview, .dc-loop")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(situations.compareDocumentPosition(document.querySelector(".dc-loop")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    if (locale === "en") {
+      expect(document.querySelector(".home-entry__situations li:not(.home-entry__all-tile) a").getAttribute("href")).toBe(`/en/start?situation=${TOOL_JOURNEY[0].id}#finder`);
+      expect(/[가-힣]/.test(document.querySelector(".home-entry").textContent)).toBe(false);
+    }
   });
   it.each(["ko", "en"])("shows all source campaign comparisons and selects their actual daily observations (%s)", locale => {
     render(<LandingPage locale={locale} />);
@@ -235,7 +239,7 @@ describe("LandingPage render smoke", () => {
   it("starts the clearly labeled hero example without requiring a CSV", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    const link = container.querySelector(".dc-action-route--sample");
+    const link = container.querySelector(".home-entry__more a");
     expect(link.getAttribute("href")).toBe("/tools/operations-planner?example=1");
     clickWithoutNavigation(link);
     // 홈은 사용자 데이터를 바꾸지 않는다. 예시 진입은 대상 도구에서 처리한다.
@@ -248,123 +252,85 @@ describe("LandingPage render smoke", () => {
     });
     delete window.gtag;
   });
-  it("opens question-specific tools without replacing the user's dataset with a demo", () => {
+  it("opens a situation in the finder without replacing the user's dataset with a demo", () => {
     seedWithData();
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    for (const link of container.querySelectorAll(".home-tool-directory a")) clickWithoutNavigation(link);
+    for (const link of container.querySelectorAll(".home-entry__situations li:not(.home-entry__all-tile) a")) clickWithoutNavigation(link);
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("x.csv");
-    expect(window.gtag).toHaveBeenCalledWith("event", "landing_tool_pick", {
-      tool_id: "5-2",
+    expect(window.gtag).toHaveBeenCalledWith("event", "landing_situation_clicked", expect.objectContaining({
       interaction_source: "landing",
-      placement: "question_card",
+      placement: "hero",
+      section_id: TOOL_JOURNEY[0].id,
       locale: "ko",
-    });
+    }));
     expect(window.gtag).not.toHaveBeenCalledWith("event", "example_run_started", expect.anything());
     delete window.gtag;
   });
-  it("tracks each hero action without attaching CSV values", () => {
+  it("tracks the no-file shortcuts without attaching CSV values", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/tools/operations-planner"]'));
-    clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/calculator"]'));
-    clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/diagnose"]'));
-    expect(window.gtag).toHaveBeenCalledWith("event", "landing_data_start_clicked", {
-      journey_entry: "home",
-      interaction_source: "landing",
-      placement: "hero",
-      locale: "ko",
-    });
-    expect(window.gtag).toHaveBeenCalledWith("event", "calculator_entry_clicked", {
-      journey_entry: "home",
-      interaction_source: "landing",
-      placement: "hero",
-      locale: "ko",
-    });
-    expect(window.gtag).toHaveBeenCalledWith("event", "diagnose_entry_clicked", {
-      journey_entry: "home",
-      interaction_source: "landing",
-      placement: "hero",
-      locale: "ko",
-    });
+    clickWithoutNavigation(container.querySelector('.home-entry__no-file a[href="/calculator"]'));
+    clickWithoutNavigation(container.querySelector('.home-entry__no-file a[href="/diagnose"]'));
+    clickWithoutNavigation(container.querySelector(".home-entry__all"));
+    for (const name of ["calculator_entry_clicked", "diagnose_entry_clicked"]) {
+      // CSV 값은 싣지 않는다 — 범주형 필드만(출처·위치·언어).
+      const call = window.gtag.mock.calls.find(([, event]) => event === name);
+      expect(call, name).toBeTruthy();
+      expect(call[2]).toMatchObject({ interaction_source: "landing", placement: "hero", locale: "ko" });
+      expect(Object.keys(call[2]).every((key) => ["interaction_source", "placement", "locale", "journey_entry"].includes(key))).toBe(true);
+    }
+    expect(window.gtag).toHaveBeenCalledWith("event", "landing_finder_opened", expect.objectContaining({ placement: "hero_all", locale: "ko" }));
     delete window.gtag;
   });
-  // 첫 분석과 반복 검토를 구분하되 가장 강한 시작 버튼은 하나로 유지한다.
-  it("keeps exactly one primary action in the hero", () => {
+  // 첫 화면의 행동은 상황 고르기와 파일 놓기 둘이다. 파란 주 버튼을 여럿 두지 않는다(design.md §2).
+  it("keeps the hero to situations and one file drop, without competing primary buttons", () => {
     for (const locale of ["ko", "en"]) {
       const { container, unmount } = render(<LandingPage locale={locale} />);
-      const hero = container.querySelector(".dc-hero__actions");
       const prefix = locale === "en" ? "/en" : "";
+      const hero = container.querySelector(".dc-hero");
+      expect(hero.querySelector(".home-entry__situations"), `${locale}: 상황 고르기가 히어로 안에 없다`).toBeTruthy();
+      expect(hero.querySelectorAll(".home-entry__file .csv-uploader")).toHaveLength(1);
+      expect(hero.querySelectorAll(".btn.primary, .dc-action-route--primary")).toHaveLength(0);
       expect(container.querySelector(`a[href="${prefix}/blog"]`)).toBeTruthy();
       expect(container.querySelector(`a[href="${prefix}/guide"]`)).toBeTruthy();
-      expect(hero, `${locale}: 히어로 행동 영역이 없다`).toBeTruthy();
-      const routes = hero.querySelectorAll(".dc-action-route");
-      const primary = hero.querySelectorAll(".dc-action-route--primary");
-      expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
-      expect(primary[0].getAttribute("href")).toBe(`${prefix}/tools/operations-planner`);
-      expect(routes.length, `${locale}: 내 데이터·데모·데이터 안내 진입점`).toBe(3);
-      // 질문(진단)은 첫 화면이 아니라 아래 질문 목록에서 한 번만 연다(F2 — 같은 곳으로 가는 링크 중복 제거).
-      expect(container.querySelectorAll(".dc-hero__utility-actions")).toHaveLength(0);
-      expect(container.querySelectorAll(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`)).toHaveLength(1);
+      // 질문(진단)으로 가는 길은 한 번만 둔다.
+      expect(container.querySelectorAll(`.dc-hero a[href="${prefix}/diagnose"]`)).toHaveLength(1);
       unmount();
     }
   });
-  it("renders the same index and hero in English", () => {
+  it("renders the same hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Plan operations with my data", "View demo", "Check data requirements"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Why did performance change? What should you do next?");
-    expect(container.querySelector('a.dc-action-route[href="/en/tools/operations-planner"]')).toBeTruthy();
-    expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
-    expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
+    expect(container.querySelector("#home-situation-title").textContent).toBe("What is going on?");
+    expect(container.querySelector("#home-file-title").textContent).toBe("Start with a file");
+    const links = [...container.querySelectorAll(".home-entry__situations li:not(.home-entry__all-tile) a")];
+    expect(links).toHaveLength(TOOL_JOURNEY.length);
+    expect(links.every((link) => link.getAttribute("href").startsWith("/en/start?situation="))).toBe(true);
+    expect(links.map((link) => link.querySelector("strong").textContent)).toEqual(TOOL_JOURNEY.map((stage) => stage.title.en));
+    expect(container.querySelector(".home-entry__all").getAttribute("href")).toBe("/en/start#finder");
+    expect(container.querySelector('.home-entry__no-file a[href="/en/calculator"]')).toBeTruthy();
+    expect(container.querySelector('.home-entry__no-file a[href="/en/diagnose"]')).toBeTruthy();
+    expect(container.querySelector(".home-entry__more a").getAttribute("href")).toBe("/en/tools/operations-planner?example=1");
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
     expect(container.textContent).toContain("Decisions and follow-up reviews");
     expect(container.querySelector(".home-service-terms").textContent).toContain("They are not included in the 7-day trial.");
-    // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
-    const enLinks = [...container.querySelectorAll(".home-tool-directory a")];
-    expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
-    expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
-    expect(container.textContent).toContain("View demo");
   });
-
-  it("도구 목록이 첫 화면 슬롯에 온다 — 아래로 밀리면 없는 것과 같다", () => {
-    render(<LandingPage />);
-    const questions = document.querySelector(".dc-questions");
-    const loop = document.querySelector(".dc-loop");
-    // 히어로 바로 다음 블록이어야 하고, 루프 설명보다 앞이어야 한다.
-    expect(questions.querySelectorAll(".home-tool-directory > section")).toHaveLength(TOOL_JOURNEY.length);
-    expect(document.querySelector(".dc-hero").nextElementSibling).toBe(questions);
-    expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // 별도 카탈로그 섹션은 흡수됐다 — 같은 목록을 두 번 그리지 않는다.
-    expect(document.querySelector(".dc-catalog")).toBeNull();
-  });
-  it.each(["ko", "en"])("uses the shared data entry and covers all tools through purposes (%s)", (locale) => {
+  it.each(["ko", "en"])("covers every published analysis through the seven situations, each once (%s)", (locale) => {
     const { container } = render(<LandingPage locale={locale} />);
-    expect(container.querySelector(".dc-intake")).toBeNull();
-    clickWithoutNavigation(container.querySelector('.dc-action-route--primary'));
-    expect(container.querySelector(".dc-intake")).toBeNull();
-    expect(container.querySelector('.dc-action-route--primary').getAttribute("href")).toBe(locale === "en" ? "/en/tools/operations-planner" : "/tools/operations-planner");
-    const found = new Set();
-    for (const section of container.querySelectorAll(".home-tool-directory > section")) {
-      const links = section.querySelectorAll("a");
-      expect(links.length).toBeGreaterThan(0);
-      for (const link of links) {
-        expect(found.has(link.getAttribute("href"))).toBe(false);
-        found.add(link.getAttribute("href"));
-      }
-    }
-    expect(found.size).toBe(PUBLISHED_TOOL_IDS.length);
-    expect(container.querySelector(".home-tool-directory").hidden).toBe(false);
-    expect(container.querySelectorAll(".home-tool-finder__results a")).toHaveLength(0);
+    const hrefs = [...container.querySelectorAll(".home-entry__situations li:not(.home-entry__all-tile) a")].map((link) => link.getAttribute("href"));
+    expect(new Set(hrefs).size).toBe(TOOL_JOURNEY.length);
+    const counts = [...container.querySelectorAll(".home-entry__situations li:not(.home-entry__all-tile) a small")].map((node) => Number(node.textContent.replace(/\D/g, "")));
+    expect(counts.every((n) => n > 0)).toBe(true);
+    expect(counts.reduce((sum, n) => sum + n, 0)).toBe(PUBLISHED_TOOL_IDS.length);
   });
-
   it.each(["ko", "en"])("keeps question entry reachable without replacing uploaded data (%s)", (locale) => {
     seedWithData();
     const source = useAppStore.getState().csvData;
     const { container } = render(<LandingPage locale={locale} />);
-    const questionLink = container.querySelector(`.dc-tool-shortcuts a[href="${locale === "en" ? "/en" : ""}/diagnose"]`);
+    const questionLink = container.querySelector(`.home-entry__no-file a[href="${locale === "en" ? "/en" : ""}/diagnose"]`);
     expect(questionLink).toBeTruthy();
     clickWithoutNavigation(questionLink);
-    expect(questionLink.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/diagnose`);
     expect(useAppStore.getState().csvData).toBe(source);
     expect(container.querySelector(`a[href="${locale === "en" ? "/en" : ""}/subscription"]`)).toBeTruthy();
   });

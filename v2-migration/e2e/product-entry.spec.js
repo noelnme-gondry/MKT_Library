@@ -7,9 +7,10 @@ for (const locale of ["ko", "en"]) {
     await page.setViewportSize({ width: 320, height: 800 });
     const prefix = locale === "en" ? "/en" : "";
     await page.goto(prefix || "/");
-    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
+    // 폰에서도 첫 화면의 주 행동(상황 고르기)과 예시 진입이 남는다(product-ssot §5.1.1).
+    await expect(page.locator(".home-entry__situations")).toBeVisible();
     const mobile = page.locator(".mobile-quick-start").first();
-    const sample = page.locator(".dc-hero__actions .dc-action-route--sample");
+    const sample = page.locator(".home-entry__more a");
     await expect(sample).toBeVisible();
     await expect(page.locator(".dc-hero .mobile-quick-start")).toHaveCount(0);
     await expect(page.locator(".home-result-preview > h2")).toBeVisible();
@@ -30,7 +31,7 @@ for (const locale of ["ko", "en"]) {
       await page.getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인", exact: true }).click();
       await page.waitForTimeout(300);
       await expect(page.locator(".home-result-preview h2")).toHaveCSS("font-size", "20px");
-      await expect(sample.locator("strong")).toHaveCSS("font-size", "14px");
+      expect((await sample.boundingBox()).height).toBeGreaterThanOrEqual(44);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     }
     await sample.click();
@@ -67,11 +68,11 @@ for (const locale of ["ko", "en"]) {
       expect(Math.abs(copy.width - preview.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(copy.x - preview.x)).toBeLessThanOrEqual(1);
       expect(preview.y).toBeGreaterThanOrEqual(copy.y + copy.height);
-      for (const action of await page.locator(".dc-hero__actions a").all()) {
+      // 상황 칸은 누르기 쉬운 높이이되 설명 카드가 되지 않는다.
+      for (const action of await page.locator(".home-entry__situations li a").all()) {
         const box = await action.boundingBox();
         expect(box.height).toBeGreaterThanOrEqual(44);
         expect(box.height).toBeLessThanOrEqual(72);
-        expect(await action.locator(".dc-action-route__hint").evaluate(node => node.classList.contains("sr-only"))).toBe(true);
       }
       await expect(page.locator(".operations-sample-preview__body > section")).toHaveCount(3);
       await expect(page.getByRole("tabpanel")).toHaveCount(1);

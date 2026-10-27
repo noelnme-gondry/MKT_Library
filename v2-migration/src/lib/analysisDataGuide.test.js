@@ -50,11 +50,17 @@ describe("analysis data preparation contracts", () => {
     expect(dataGuideTemplateCsv(detail)).toContain(id === "suppression" ? "holdout_group" : "conversions");
     expect(dataGuideTemplateCsv(detail).trim().split(/\r?\n/)).toHaveLength(1);
   });
-  it("registers bilingual guide routing and categorizes its entry journey", () => {
-    expect(idToSlug["data-guide"]).toBe("/data-guide");
-    expect(hasEnVersion("data-guide")).toBe(true);
-    expect(journeySurface("/data-guide")).toBe("guide");
-    expect(journeySurface("/en/data-guide")).toBe("guide");
+  // 분석별 데이터 안내는 분석 찾기 카드의 "준비 방법" 창으로 합쳤다(product-ssot §1.1c 결정 1).
+  // 옛 주소는 라우트가 아니라 영구 이동으로만 남는다(KO·EN 모두).
+  it("retires the standalone guide route in favour of the finder and keeps its address alive", async () => {
+    expect(idToSlug["data-guide"]).toBeUndefined();
+    expect(hasEnVersion("data-guide")).toBe(false);
+    expect(journeySurface("/start")).toBe("start");
+    const { default: config } = await import("../../next.config.mjs");
+    const redirects = await config.redirects();
+    for (const prefix of ["", "/en"]) {
+      expect(redirects).toContainEqual({ source: `${prefix}/data-guide`, destination: `${prefix}/start`, permanent: true });
+    }
     expect(analysisDataDetail("unknown")).toBeNull();
   });
 });

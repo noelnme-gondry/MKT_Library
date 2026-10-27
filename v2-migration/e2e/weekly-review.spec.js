@@ -162,9 +162,10 @@ async function dochiToWeekly(page, locale) {
   }
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
 
-  const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
+  // 홈의 주 행동은 상황 고르기다 — 상황 → 분석 찾기 카드 → 내 파일로 하기(product-ssot §5.1.1).
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
-  await hero.locator(".dc-action-route--primary").click();
+  await page.locator(".home-entry__situations li:not(.home-entry__all-tile) a").first().click();
+  await page.locator('.finder-card[data-tool-id="5-31"] .finder-card__tool').click();
   await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/tools/operations-planner$`));
   await expect(page.locator('.operations-planner .csv-uploader[data-hydrated="true"]')).toBeVisible();
   // 홈 대표 행동은 운영 플래너다. 기존 통합 분석→결정 저장 흐름은
@@ -174,7 +175,7 @@ async function dochiToWeekly(page, locale) {
   if (await menu.getAttribute("aria-haspopup") === "dialog") await menu.click();
   await page.locator(`.library-nav-item[href="${en ? "/en" : ""}/start"]`).click();
   await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/start$`));
-  await expect(page.getByRole("heading", { name: en ? "Start with my data" : "내 데이터로 시작", level: 1, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: en ? "Find an analysis" : "분석 찾기", level: 1, exact: true })).toBeVisible();
   const intake = page.locator('.csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });

@@ -41,6 +41,8 @@ const nextConfig = {
       ...[
         ["/tools/experiment", "/tools/experiment-analysis"],
         ["/tools/vif-diagnosis", "/tools/vif-multicollinearity"],
+        // 분석별 데이터 안내는 분석 찾기 카드의 "준비 방법"으로 합쳤다(product-ssot §1.1c 결정 1).
+        ["/data-guide", "/start"],
       ].flatMap(([source, destination]) => [
         { source, destination, permanent: true },
         { source: `/en${source}`, destination: `/en${destination}`, permanent: true },

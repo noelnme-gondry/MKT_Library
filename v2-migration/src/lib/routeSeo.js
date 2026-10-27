@@ -1,10 +1,6 @@
 import { advancedMap } from "@/lib/advanced-marketing/registry";
 export const ROUTE_SEO = {
   ...advancedMap((tool) => ({ ko: { title: tool.name.ko, description: tool.answer.ko }, en: { title: tool.name.en, description: tool.answer.en } })),
-  "data-guide": {
-    ko: { title: "분석별 필요한 데이터·CSV 양식 안내", description: "보고 싶은 내용에 맞는 마케팅 분석을 찾고, 데이터 출처·행 단위·필수 항목과 작성 예시를 확인하세요. 분석별 CSV 양식도 받을 수 있습니다." },
-    en: { title: "Data Requirements and CSV Templates by Analysis", description: "Find marketing analyses by question. Check data sources, row structure, required information and sample tables, then download a CSV template." },
-  },
   "dochi-result": {
     ko: { title: "분석 결과", description: "업로드한 데이터의 분석 결과와 다음 확인 항목을 살펴보세요." },
     en: { title: "Analysis Results", description: "Review analysis results and next checks for your uploaded data." },
@@ -29,12 +25,12 @@ export const ROUTE_SEO = {
   },
   "start-gate": {
     ko: {
-      title: "무료 마케팅 CSV 분석 | 가능한 분석 자동 추천",
-      description: "캠페인 CSV나 Google Sheets를 가져오면 브라우저에서 구조를 진단하고 가능한 분석을 추천합니다.",
+      title: "분석 찾기 | 상황·파일로 고르는 무료 마케팅 분석",
+      description: "상황을 고르거나 캠페인 CSV를 놓으면 분석마다 받게 될 결론 예시와 준비할 파일을 보여 줍니다. 파일은 브라우저에서만 처리합니다.",
     },
     en: {
-      title: "Free Marketing CSV Analyzer",
-      description: "Import a campaign CSV or Google Sheet to profile its structure in your browser and find the dashboard, PVM, budget, MMM, or experiment analysis it supports.",
+      title: "Find an Analysis | Free Marketing CSV Analyzer",
+      description: "Pick a situation or drop a campaign CSV to see each analysis's example conclusion and the file to prepare. Files are processed only in your browser.",
     },
   },
   "5-31": {

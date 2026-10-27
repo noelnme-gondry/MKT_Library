@@ -9,7 +9,8 @@ import { useAppStore } from "@/store/useDataStore";
 import CsvUploader from "@/components/CsvUploader";
 import { trackProductEvent, trackProductEventOnce, productEventKey } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
-import ToolIndex from "@/components/ds/ToolIndex";
+import AnalysisFinder from "@/components/finder/AnalysisFinder";
+import { parseFinderSituation } from "@/lib/finder/analysisFinder";
 import { blockerFieldLabels, blockersText } from "@/lib/assistant/blockerText";
 import JourneyProgress from "@/components/ds/JourneyProgress";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
@@ -21,15 +22,17 @@ import { START_PAGE_COPY as COPY } from "@/lib/startPageCopy";
 import StartGateIntroduction from "./StartGateIntroduction";
 import { isExampleUrl } from "@/lib/exampleLink";
 
-// "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
+// 분석 찾기(/start) — 상황으로 고르거나 파일을 놓아 분석을 찾는 한 화면(product-ssot §1.1c 결정 1).
+// 예전의 "내 데이터로 시작"과 "분석 방법 둘러보기"(?view=methods)·/data-guide를 합쳤다.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
-// 화면. "예시부터 둘러보기"를 고르면 demoDisabled=false로 되돌리고 대시보드 데모로.
+// 화면. ?view=methods(옛 둘러보기 주소)는 같은 화면이되 이미 열린 예시를 지우지 않는다.
 
 function StartGateContent({ locale = "ko" }) {
   const C = COPY[locale] || COPY.ko;
   const router = useRouter();
   const searchParams = useSearchParams();
   const browseMethods = searchParams.get("view") === "methods";
+  const [initialSituation] = useState(() => parseFinderSituation(searchParams.get("situation"), locale));
   // 자식 CsvGuide가 먼저 예시를 열고 URL 파라미터를 지워도 최초 진입 의도는 유지한다.
   // 지연 로드된 부모 effect가 그 직후 startMyData로 샘플을 지우면 결과 화면이 비게 된다.
   const [isExampleEntry] = useState(() => isExampleUrl(searchParams.toString()));
@@ -106,74 +109,40 @@ function StartGateContent({ locale = "ko" }) {
   };
   const continueWithNewAnalysis = () => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  // 파일로 찾기 — 이 화면의 주 행동. 매핑 확인 → 분석하기를 누르면 아래 작업대로 넘어간다.
+  const uploader = (
+    <section className="start-upload-panel" aria-labelledby="start-file-title">
+      <h2 id="start-file-title">{C.fileTitle}</h2>
+      <p>{C.fileDeck}</p>
+      <CsvUploader toolId="start-gate" locale={locale} showMappingReview collapseMappingReview onAnalyzed={analyze} />
+    </section>
+  );
+
   return (
     <>
-      <StartGateIntroduction locale={locale} browseMethods={browseMethods} />
-      {!browseMethods && !hasSubmitted && <p className="start-operations-entry">{locale === "en" ? "Want a combined campaign, creative and budget plan?" : "캠페인·소재·예산을 한 번에 점검하려면"} <Link href={locale === "en" ? "/en/tools/operations-planner" : "/tools/operations-planner"}>{locale === "en" ? "Open operations planner →" : "운영 플래너로 시작 →"}</Link></p>}
-      {!browseMethods && <JourneyProgress stage={hasSubmitted && eligibleIds?.length ? "analyze" : "prepare"} completed={hasSubmitted && eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
-
-      {!browseMethods && <>
-        {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · file loaded" : "행 · 파일 읽기 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}
-        <section className="block start-upload-panel" hidden={hasSubmitted}>
-          <CsvUploader toolId="start-gate" locale={locale} showMappingReview collapseMappingReview onAnalyzed={analyze} />
-        </section>
-        {hasSubmitted && <div ref={workspaceRef}>
-          {isEligibilityCurrent && eligibleIds.length === 0 && <section role="status" className="callout warn">
-            <div><h2>{locale === "en" ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다"}</h2>
-            <p>{locale === "en" ? "The file was read, but the required columns are not connected. Review the mapping or choose a template for your analysis below." : "파일은 읽었지만 분석에 필요한 컬럼이 연결되지 않았습니다. 매핑을 수정하거나 분석 목적에 맞는 템플릿을 선택하세요."}</p>
-            <button className="btn primary" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Fix column mapping" : "컬럼 매핑 수정"}</button>
-            <Link className="btn" href={locale === "en" ? "/en/templates" : "/templates"}>{locale === "en" ? "Choose a data template" : "데이터 템플릿 선택"}</Link></div>
-          </section>}
-          <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
-          <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart />
-          {eligibleIds?.includes("5-2") && <Link className="btn" href={locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</Link>}
-        </div>}
-      </>}
-
-      {/* 업로드 전에만 보이던 세 카드는, 정작 "올렸는데 되는 분석이 없는" 사람에게서
-          사라지고 있었다. 업로드 뒤에도 남기되 도구 인덱스 아래로 순서만 내린다. */}
-      {browseMethods && <section className="start-direct-actions" aria-labelledby="start-direct-title">
-        <header>
-          <span>{C.directEyebrow}</span>
-          <h2 id="start-direct-title">{C.directTitle}</h2>
-        </header>
-        <div className="start-direct-actions__grid">
-          <Link
-            href={locale === "en" ? "/en/calculator" : "/calculator"}
-            onClick={() => trackProductEvent("calculator_entry_clicked", { source: "start", placement: "after_upload_entry", locale })}
-          >
-            <span>{C.calculatorTag}</span><strong>{C.calculatorTitle}</strong><p>{C.calculatorDesc}</p><b>{C.calculatorCta} →</b>
-          </Link>
-          <Link
-            href={locale === "en" ? "/en/diagnose" : "/diagnose"}
-            onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "after_upload_entry", locale })}
-          >
-            <span>{C.diagnoseTag}</span><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p><b>{C.diagnoseCta} →</b>
-          </Link>
-          <Link href={locale === "en" ? "/en/tools/brand-campaign-incrementality" : "/tools/brand-campaign-incrementality"}>
-            <span>{C.brandTag}</span><strong>{C.brandTitle}</strong><p>{C.brandDesc}</p><b>{C.brandCta} →</b>
-          </Link>
-        </div>
-      </section>}
-
-      {/* 도구 인덱스 — 예전에는 <details>로 접혀 있어서 "무엇을 할 수 있는지"가
-          화면에 없었다. 항상 펴 두고 질문 단계로 묶는다. 지금 올린 CSV로 안 되는
-          도구도 숨기지 않고 흐리게만 둔다(숨기면 존재 자체를 못 본다). */}
-      {browseMethods && <section className="block start-tool-index" aria-labelledby="start-tool-index-title">
-        <h2 className="section-title" id="start-tool-index-title" style={{ margin: "0 0 4px", border: "none", padding: 0 }}>
-          {C.indexTitle}
-        </h2>
-        <p className="muted" style={{ margin: "0 0 16px" }}>{C.indexDeck}</p>
-        <ToolIndex
-          locale={locale}
-          density="grid"
-          eligibleIds={null}
-          blockedInfo={null}
-          onSelect={goTool}
-        />
-      </section>}
-
-
+      <StartGateIntroduction locale={locale} />
+      {hasSubmitted && <JourneyProgress stage={eligibleIds?.length ? "analyze" : "prepare"} completed={eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
+      {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · file loaded" : "행 · 파일 읽기 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}
+      {/* 파일을 제출하기 전에는 분석 찾기 전체(상황·파일·카드). 업로더 상태를 잃지 않도록 감추기만 한다. */}
+      <div className="start-finder" hidden={hasSubmitted}>
+        <AnalysisFinder locale={locale} initialSituation={initialSituation} aside={uploader} />
+        <p className="start-no-file">
+          <span>{C.noFileLead}</span>
+          <Link href={locale === "en" ? "/en/calculator" : "/calculator"} onClick={() => trackProductEvent("calculator_entry_clicked", { source: "start", placement: "no_file", locale })}>{C.calculatorCta} →</Link>
+          <Link href={locale === "en" ? "/en/diagnose" : "/diagnose"} onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "no_file", locale })}>{C.diagnoseCta} →</Link>
+        </p>
+      </div>
+      {hasSubmitted && <div ref={workspaceRef}>
+        {isEligibilityCurrent && eligibleIds.length === 0 && <section role="status" className="callout warn">
+          <div><h2>{locale === "en" ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다"}</h2>
+          <p>{locale === "en" ? "The file was read, but the required columns are not connected. Review the mapping or choose a template for your analysis below." : "파일은 읽었지만 분석에 필요한 컬럼이 연결되지 않았습니다. 매핑을 수정하거나 분석 목적에 맞는 템플릿을 선택하세요."}</p>
+          <button className="btn primary" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Fix column mapping" : "컬럼 매핑 수정"}</button>
+          <Link className="btn" href={locale === "en" ? "/en/templates" : "/templates"}>{locale === "en" ? "Choose a data template" : "데이터 템플릿 선택"}</Link></div>
+        </section>}
+        <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
+        <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart />
+        {eligibleIds?.includes("5-2") && <Link className="btn" href={locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</Link>}
+      </div>}
     </>
   );
 }

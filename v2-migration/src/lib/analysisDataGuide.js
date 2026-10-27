@@ -6,7 +6,6 @@ import { dataSourceForTool } from "@/lib/dataSources";
 import { getToolGuide } from "@/utils/toolGuide";
 import { getTemplatePage, TEMPLATE_PAGES } from "@/lib/templateCatalog";
 
-export const DATA_GUIDE_PATH = "/data-guide";
 export const INCREMENTALITY_METHODS = [
   { id: "suppression", ko: "광고 노출군과 차단군 비교", en: "Exposed vs holdout groups" },
   { id: "on", ko: "광고를 켠 전후 비교", en: "Before and after ads started" },

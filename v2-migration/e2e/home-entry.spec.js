@@ -12,23 +12,33 @@ async function checkHome(page, locale) {
   }, locale);
   await page.goto(en ? "/en" : "/");
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
+  // 홈: 상황 7개 + 파일 놓기. 상황을 키보드로 골라 분석 찾기로 간다(product-ssot §1.1c).
   const stages = toolIndexByStage(locale);
-  await expect(page.locator(".home-tool-directory > section")).toHaveCount(stages.length);
-  await expect(page.locator(".home-tool-directory li a")).toHaveCount(stages.flatMap(stage => stage.tools).length);
-  await expect(page.locator(".home-tool-directory li a").first()).toBeVisible();
-  const links = page.locator(".home-tool-finder__results a");
-  const search = page.getByRole("searchbox", { name: en ? "Find an analysis" : "필요한 분석 찾기" });
+  const situations = page.locator(".home-entry__situations li:not(.home-entry__all-tile) a");
+  await expect(situations).toHaveCount(stages.length);
+  await expect(situations.first()).toBeVisible();
+  await expect(page.locator(".home-entry__file .csv-uploader")).toHaveCount(1);
+  await expectNoSeriousAccessibilityViolations(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await situations.nth(1).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/start\\?situation=${stages[1].id}`));
+  await expect(page.locator(".finder-card")).toHaveCount(stages[1].tools.length);
+  // 분석 찾기: 검색 → 저장 → 다시 와도 저장한 분석이 남는다.
+  await page.getByRole("button", { name: en ? /^Show all/ : /^전체 보기/ }).click();
+  const search = page.getByRole("searchbox", { name: en ? "Search analyses" : "분석 검색" });
   await search.fill("ROAS");
-  await expect(links.first()).toBeVisible();
-  const saved = page.locator(".home-tool-finder__results").getByRole("button", { name: en ? /^Save:/ : /^저장:/ }).first();
+  await expect(page.locator(".finder-card").first()).toBeVisible();
+  const saved = page.locator(".finder-card").first().getByRole("button", { name: en ? /^Save:/ : /^저장:/ });
   await saved.click();
   await expect(saved).toHaveAttribute("aria-pressed", "true");
   await page.reload();
-  await page.getByRole("button", { name: en ? "Saved tools (1)" : "저장한 도구 (1)", exact: true }).click();
-  await expect(links).toHaveCount(1);
+  await page.getByRole("button", { name: en ? /^Saved analyses/ : /^저장한 분석/ }).click();
+  await expect(page.locator(".finder-card")).toHaveCount(1);
   await expectNoSeriousAccessibilityViolations(page);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.locator(".dc-action-route--primary").focus();
+  // 키보드로 카드의 "내 파일로 하기"를 열면 그 도구의 업로더가 준비돼 있다.
+  await page.getByRole("button", { name: en ? /^Show all/ : /^전체 보기/ }).click();
+  await page.locator('.finder-card[data-tool-id="5-31"] .finder-card__tool').focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/tools\/operations-planner$/);
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
@@ -38,5 +48,5 @@ async function checkHome(page, locale) {
   expect(hydrationErrors).toEqual([]);
 }
 
-test("home directory, saved search and keyboard intake", async ({ page }) => checkHome(page, "ko"));
-test("@light-en home directory, saved search and keyboard intake", async ({ page }) => checkHome(page, "en"));
+test("home situations, finder search, saved analyses and keyboard intake", async ({ page }) => checkHome(page, "ko"));
+test("@light-en home situations, finder search, saved analyses and keyboard intake", async ({ page }) => checkHome(page, "en"));
