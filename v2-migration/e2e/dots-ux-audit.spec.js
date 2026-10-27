@@ -92,7 +92,9 @@ for (const locale of ["ko", "en"]) {
     await uploader.locator(".csv-analysis-action").click();
     await expect(page.getByRole("heading", { name: en ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다", exact: true })).toBeVisible();
     await expect(page.locator(".journey-progress .is-done")).toHaveCount(0);
-    await expect(page.locator(".workspace-input-summary")).toContainText(en ? "file loaded" : "파일 읽기 완료");
+    // 올린 파일 한 줄: 파일 이름 · 행 수(날짜 열이 없으니 기간은 말하지 않는다).
+    await expect(page.locator(".workspace-input-summary")).toContainText(`unmatched.csv${en ? "2 rows" : "2행"}`);
+    await expect(page.locator(".workspace-input-summary")).not.toContainText("–");
     await page.getByRole("button", { name: en ? "Fix column mapping" : "컬럼 매핑 수정", exact: true }).click();
     await expect(uploader).toBeVisible();
     await expect(uploader.getByRole("combobox").first()).toBeVisible();
