@@ -462,12 +462,15 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
         창 안에서 설정을 바꾸면 결과가 잠시 숨지만 창은 닫히지 않는다 — 같은 창에서 다시 분석한다. */}
     {hasRows && gateOpen && (reportFolded
       ? <ReportContext locale={locale} onOpenChange={setSettingsOpen} dialogTitle={tx(locale, "분석 설정", "Analysis settings")} parts={[
-        { text: tx(locale, "분석 설정", "Settings"), emphasis: true },
+        { text: isDemoData(csvData) ? tx(locale, "예시 데이터", "Example data") : (csvData?.fileName || tx(locale, "올린 데이터", "Uploaded data")), emphasis: true },
+        { text: tx(locale, `${sourceRows.length.toLocaleString()}행`, `${sourceRows.length.toLocaleString()} rows`) },
         { text: tx(locale, `${unitWord(draft.timeUnit)} 단위 · ${draftHorizon}${draft.timeUnit === "month" ? "개월" : unitWord(draft.timeUnit)}까지`, `by ${draft.timeUnit} · up to ${draftHorizon} ${draft.timeUnit}${draftHorizon === 1 ? "" : "s"}`) },
         ...(draft.eventDefinition ? [{ text: tx(locale, `이탈: ${draft.eventDefinition}`, `exit: ${draft.eventDefinition}`) }] : []),
         { text: draft.segmentKey ? tx(locale, `세그먼트 ${draft.segmentKey}`, `segment ${draft.segmentKey}`) : tx(locale, "전체만", "overall only") },
       ]}>{settingsForm}</ReportContext>
       : <section className="block" aria-label={tx(locale, "분석 설정", "Analysis settings")}>
+        {/* 실행 전에도 입력은 도구가 직접 말한다(맨 위 현재 입력 줄은 쓰지 않는다 — reportContextTools). */}
+        <CsvUploader toolId={TOOL_ID} locale={locale} />
         {settingsForm}
       </section>)}
     {result && !isStale && <>

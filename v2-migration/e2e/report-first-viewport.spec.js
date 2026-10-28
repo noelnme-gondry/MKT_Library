@@ -26,8 +26,9 @@ for (const locale of ["ko", "en"]) {
         test.skip(Boolean(gap), gap);
         await page.setViewportSize(viewport);
         await page.goto(`${locale === "en" ? "/en" : ""}${tool.path}?example=1`);
-        const headline = page.locator(".result-action-card__headline").first();
-        await expect(headline).toBeVisible();
+        // 무거운 엔진(MMM 등)은 CI에서 예시 결과까지 10초를 넘긴다. 숨은 결론 칸은 세지 않는다.
+        const headline = page.locator(".result-action-card__headline").filter({ visible: true }).first();
+        await expect(headline).toBeVisible({ timeout: 30000 });
         await expect(headline).not.toBeEmpty();
         const bottom = await headline.evaluate((node) => node.getBoundingClientRect().bottom + window.scrollY);
         expect(bottom, `${tool.id} conclusion ends at ${Math.round(bottom)}px`).toBeLessThanOrEqual(viewport.height);
