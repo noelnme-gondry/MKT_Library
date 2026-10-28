@@ -2,6 +2,31 @@ import { expect, test } from "@playwright/test";
 import { legacyBlogTagRedirects } from "../src/lib/blogTags.mjs";
 import { idToSlug, OG_CARD_URL } from "../src/lib/routeMap";
 
+test("the GA4 malformed Meta guide URL reaches the canonical guide in both locales", async ({ request }) => {
+  // 2026-10-28 GA4: /en/guide/meta-advantage-plus) produced all three 404 views.
+  for (const prefix of ["", "/en"]) {
+    const destination = `${prefix}${idToSlug["2-2"]}`;
+    for (const suffix of [")", "%29"]) {
+      const source = `${destination}${suffix}?utm_source=regression&utm_medium=test`;
+      const response = await request.get(source, { maxRedirects: 0 });
+      expect(response.status(), source).toBe(308);
+      const location = new URL(response.headers().location, response.url());
+      expect(location.pathname, source).toBe(destination);
+      expect(location.searchParams.get("utm_source")).toBe("regression");
+      expect(location.searchParams.get("utm_medium")).toBe("test");
+      const terminal = await request.get(location.href, { maxRedirects: 0 });
+      expect(terminal.status(), source).toBe(200);
+      // App Router serializes the unused 404 boundary even in successful responses.
+      // Check the rendered title, rather than searching the entire RSC payload.
+      expect(await terminal.text(), source).toMatch(/<title>Meta Advantage\+[^<]+<\/title>/);
+    }
+    for (const path of [`${prefix}/guide/not-a-real-guide)`, `${destination})/extra`]) {
+      const unknown = await request.get(path, { maxRedirects: 0 });
+      expect(unknown.status(), path).toBe(404);
+    }
+  }
+});
+
 test("retired search URLs redirect once to an existing topic, tool or image", async ({ request }) => {
   const tags = legacyBlogTagRedirects();
   const cases = [

@@ -38,6 +38,13 @@ const nextConfig = {
     ]);
     return [
       ...legacyBlogTagRedirects(),
+      // GA4 2026-10-28의 404 3건: EN 가이드 주소 끝에 ')'가 붙은 유입.
+      // 확인된 주소만 복구한다. 실제로 없는 경로는 계속 404이며 쿼리는 보존된다.
+      ...["\\)", "%29"].flatMap(suffix => ["", "/en"].map(prefix => ({
+        source: `${prefix}/guide/meta-advantage-plus${suffix}`,
+        destination: `${prefix}/guide/meta-advantage-plus`,
+        permanent: true,
+      }))),
       ...[
         ["/tools/experiment", "/tools/experiment-analysis"],
         ["/tools/vif-diagnosis", "/tools/vif-multicollinearity"],
