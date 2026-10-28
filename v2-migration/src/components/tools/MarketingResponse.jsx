@@ -47,11 +47,11 @@ import { mmmControlFitRows } from "@/utils/mmmControlContract";
 import MmmControlFitTable from "@/components/tools/MmmControlFitTable";
 import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
-import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
+import ReportContext from "@/components/ds/ReportContext";
 import PillGroup from "@/components/ds/PillGroup";
 import ForecastBudgetControls from "./ForecastBudgetControls";
 import FixedRateNote from "@/components/ds/FixedRateNote";
-import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact, fmtCurrency } from "@/utils/format";
+import { CURRENCY_SYMBOLS, USD_KRW_RATE, convertCurrency, fmtCompact, fmtCurrency, isCurrencyConverted, sourceCurrencyOf } from "@/utils/format";
 import { allocateFixedMmmGroupTotals, buildMmmAggregateMediaPanel, buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
 import { resolveResponseStage } from "@/lib/responseStage";
@@ -3863,9 +3863,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   };
   const controlBar = () => (
     <div className={`analysis-local-controls__inner ${stage === "mmm" ? "mmm-controls" : ""}`}>
-      <span className="analysis-local-controls__label">
+      {/* 단독 도구 화면에서는 제목이 이미 분석 이름을 말한다 — 같은 이름을 결론 위에 한 번 더 두지 않는다. */}
+      {!isolated && <span className="analysis-local-controls__label">
         {tx("마케팅 반응 분석", "Marketing Response Analysis")} <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
-      </span>
+      </span>}
       <div className={stage === "mmm" ? "mmm-controls__scope" : undefined} style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         {availTargets.length === 1 && (
           <div className="response-target-context">
@@ -4119,9 +4120,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       {(!panelEmpty || availTargets.length > 0) && (
         <div className={`page-sticky-bar ${stage === "mmm" ? "mmm-controls-panel" : ""}`}>
           <div className="page-sticky-row1">{controlBar()}</div>
-          {(isDemo || selectedSourceCurrency) && <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} currencyMode="convert" showBasis={stage !== "mmm"} /></AnalysisControlBar>}
         </div>
       )}
+      {/* 결과가 나오면 데이터·표시 기준은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계).
+          환산이 일어나면 고정 환율 고지는 창 안이 아니라 이 줄에 남긴다(AGENTS §7 고정 상수 환산). */}
+      <ReportContext locale={locale} dialogTitle={tx("데이터와 표시 기준", "Data and display settings")} parts={[
+        { text: isDemo ? tx("예시 데이터", "Sample data") : (csvData?.fileName || tx("업로드한 데이터", "Uploaded data")), emphasis: true },
+        { text: tx(`${(csvData?.raw?.length || 0).toLocaleString()}행`, `${(csvData?.raw?.length || 0).toLocaleString()} rows`) },
+        ...((isDemo || selectedSourceCurrency) ? [{ text: tx(`표시 통화 ${displayCurrency}`, `Display currency ${displayCurrency}`) }] : []),
+        ...(isCurrencyConverted(sourceCurrencyOf(csvData), displayCurrency) ? [{ text: tx(`고정 환율 ₩${USD_KRW_RATE.toLocaleString("en-US")}/$1로 환산`, `converted at a fixed ₩${USD_KRW_RATE.toLocaleString("en-US")}/$1`) }] : []),
+      ]}>
+        {(isDemo || selectedSourceCurrency) && <BasisCurrencyToggleBar locale={locale} currencyMode="convert" showBasis={stage !== "mmm"} />}
+      </ReportContext>
       {renderTabs()}
       {isObservationalComparison && <ComparisonConditions conditions={comparisonConditions} locale={locale} />}
       {(() => {

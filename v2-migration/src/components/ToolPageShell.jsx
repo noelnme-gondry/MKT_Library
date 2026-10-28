@@ -3,6 +3,7 @@ import React, { useId } from "react";
 import ToolBrief from "@/components/ds/ToolBrief";
 import JourneyProgress from "@/components/ds/JourneyProgress";
 import { toolDisplayTitle } from "@/lib/toolIndex";
+import { useAppStore } from "@/store/useDataStore";
 
 /**
  * ToolPageShell — 5-x 분석 도구 공용 레이아웃 래퍼.
@@ -27,6 +28,8 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   // 컴포넌트가 넘긴 이름이 다르면 제목 밑 한 줄로 남긴다(toolDisplayTitle).
   // titleToolId는 이름만 레지스트리에서 받는다(진행 표시·ToolBrief는 붙이지 않음).
   const nameToolId = toolId || titleToolId;
+  // 결과가 나오면 결론 카드가 요약을 대신한다 — 제목 설명과 같은 말을 결론 위에 다시 두지 않는다(product-ssot §1.1c 4단계).
+  const analyzed = useAppStore((state) => Boolean(toolId) && state.isGroupAnalyzed(toolId));
   const { name: registeredName, alias } = nameToolId && typeof title !== "object" ? toolDisplayTitle(nameToolId, locale, title || "") : { name: "", alias: null };
   const resolvedTitle = registeredName || title;
   const tocItems = toc || [];
@@ -59,7 +62,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
         {toolId && titleLevel !== 0 && <ToolBrief toolId={toolId} locale={locale} />}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
-        {summary && (
+        {summary && !analyzed && (
           <div className="summary">
             <div className="summary-label">{T.summaryLabel}</div>
             {summary}

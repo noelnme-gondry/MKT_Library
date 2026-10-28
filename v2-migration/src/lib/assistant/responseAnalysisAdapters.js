@@ -118,7 +118,7 @@ function boundaryCaveats(prepared, locale) {
 export function trendHeadline(locale, verdict, cadence) {
   const { analysisCadence } = trendPeriodTerms(cadence, locale);
   if (String(verdict).startsWith("NO robust trend")) {
-    return tr(locale, "관측 기간에서 견고한 자연 추세 신호를 확인하지 못했습니다.", "No robust natural-trend signal was confirmed in the observed period.");
+    return tr(locale, "관측 기간에서 견고한 자연 추세 신호를 확인하지 못했습니다.", "No robust natural trend was found in the observed period.");
   }
   if (String(verdict).startsWith("Trend EXISTS") || String(verdict).startsWith("trend EXISTS")) {
     return tr(

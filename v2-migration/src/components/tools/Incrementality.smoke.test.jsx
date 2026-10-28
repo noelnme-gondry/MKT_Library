@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { confirmReviewSave } from "@/test/reviewSaveBoundary";
-import { withDeclared } from "@/test/declaredConditions";
+import { withDeclared, withSettings } from "@/test/declaredConditions";
 //
 // Render-smoke for Incrementality (5-23). Asserts the component MOUNTS without
 // throwing in the no-data state and with each method's demo data loaded
@@ -128,7 +128,7 @@ describe("Incrementality render smoke", () => {
     withDeclared(() => fireEvent.change(screen.getByLabelText(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?"), { target: { value: "changed" } }));
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     declareDesign(locale);
-    fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-04" } });
+    withSettings(() => fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-04" } }));
     withDeclared(() => expect(screen.getByLabelText(en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?").value).toBe(""));
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
   });
@@ -147,7 +147,10 @@ describe("Incrementality render smoke", () => {
     const effect = container.querySelector(".tool-core-figure .result-effect");
     expect(effect).toBeTruthy();
     expect(effect.textContent).toMatch(/%p · 95% 구간 [+−][\d.]+%p ~ [+−][\d.]+%p/);
-    expect(container.querySelector("#s-incr-method")).toBeTruthy();
+    // 데이터가 들어오면 방법 소개는 접는다 — 결론이 첫 화면을 차지한다(§1.1c 4단계).
+    expect(container.querySelector("#s-incr-method")).toBeNull();
+    // 결과가 나오면 데이터 줄·기간은 맥락 한 줄로 접힌다.
+    expect(container.querySelector(".report-context").textContent).toMatch(/suppression-result\.csv · .*행 · 홀드아웃 2024-05-12 ~ 2024-06-05/);
     expect(container.querySelector("#s-incr-result")).toBeTruthy();
     declareDesign();
     fireEvent.click(document.querySelector(".decision-review-launch"));
@@ -172,9 +175,11 @@ describe("Incrementality render smoke", () => {
     const view = render(<Incrementality />);
     // 예시는 계획된 차단 기간을 함께 싣는다 — 기간을 고르기 전에 이미 결론이다.
     expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
-    const selects = view.container.querySelectorAll("select.map-select");
-    fireEvent.change(selects[0], { target: { value: "2024-05-12" } });
-    fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
+    withSettings(() => {
+      const selects = document.querySelectorAll("select.map-select");
+      fireEvent.change(selects[0], { target: { value: "2024-05-12" } });
+      fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
+    });
 
     expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(view.container.querySelector(".decision-review")).toBeNull();
@@ -215,7 +220,7 @@ describe("Incrementality render smoke", () => {
     seed(buildIncrPrepostDemo("off"));
     const off = render(<Incrementality />);
     fireEvent.click(off.getByText(/종료 \(전후\)/));
-    fireEvent.change(off.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
+    withSettings(() => fireEvent.change(document.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } }));
     expect(off.getByText(/결론 — 종료/)).toBeTruthy();
   });
 
@@ -338,8 +343,13 @@ describe("Incrementality render smoke", () => {
   it("does not infer a review action when pre-holdout balance is unavailable", () => {
     seed(buildIncrSuppressionDemo());
     const view = render(<Incrementality />);
-    fireEvent.change(view.container.querySelectorAll("select.map-select")[0], { target: { value: "2024-05-01" } });
-    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-02" } });
+    withSettings(() => {
+      // 시작일만 바꾸면 결과가 잠시 비지만 창은 닫히지 않는다 — 같은 창에서 종료일까지 고친다.
+      fireEvent.change(document.querySelectorAll("select.map-select")[0], { target: { value: "2024-05-01" } });
+      expect(document.querySelector(".report-context-dialog")).toBeTruthy();
+      fireEvent.change(document.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-02" } });
+    });
+    expect(view.container.querySelector(".report-context").textContent).toContain("홀드아웃 2024-05-01 ~ 2024-05-02");
     expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(screen.queryByText("다음 마케팅 프로젝트로 만들기")).toBeNull();
   });

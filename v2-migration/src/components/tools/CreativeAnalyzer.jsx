@@ -37,7 +37,6 @@ const CREATIVE_COPY_EN = {
     uploaderToolId: "5-6",
     entity: "creative",
     noDataDesc: "Upload creative performance data to analyze fatigue and concepts.",
-    heroTitle: "Which creatives are winning, and when should you swap them?",
     heroSub:
       "For each creative (video, image, etc.), see what's working, why it's working, and when it's time to replace it — all in one place.",
     heroJourney: [
@@ -103,7 +102,6 @@ const CREATIVE_COPY_EN = {
     uploaderToolId: "9-6",
     entity: "content",
     noDataDesc: "Upload content performance data to analyze freshness decline and response decay.",
-    heroTitle: "Which content is resonating, and when should you publish new content?",
     heroSub:
       "For each piece of content (article, video, post, etc.), see what's working, why it's working, and when it's time to publish something new — all in one place.",
     heroJourney: [
@@ -949,39 +947,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
   return (
     <div className="tab-pane active" id="tab-creative">
-      {/* 도구 소개는 한 줄만 유지한다. 실제 판단은 바로 아래 결론·컨트롤룸이 담당한다. */}
-      <section
-        className="block"
-        id="s-creative-hero"
-        style={{
-          background: "transparent",
-          border: "1px solid rgba(122,162,247,0.25)",
-          borderRadius: "14px",
-          padding: "18px 20px",
-          marginBottom: "16px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
-          <div>
-            <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{C.heroTitle}</h2>
-            <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: "660px" }}>
-              {tr("교체할 소재, 다음 제작 후보, 성과 변화 신호를 한 번에 정리합니다.", "See what to replace, what to produce next, and what changed performance.")}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
-            <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
-          </div>
-        </div>
-
-        <section data-information-section="" style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
-          <header data-information-heading="">{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</header>
-          <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
-            {C.heroCausationBody}
-          </div>
-        </section>
-      </section>
-
+      {/* 결론이 맨 위다. 도구 소개는 제목 줄이 하고, 해석 한계는 결과 끝에 둔다(product-ssot §1.1c 4단계). */}
       <ResultActionCard
         coreFigure={domain !== "content" && <ToolCoreFigure embedded
           figure={creativeStatusFigure({
@@ -1896,6 +1862,15 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         ) : (
           <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 충분히 관측되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations have enough observations or there isn't enough data).")}</p>
         )}
+      </section>
+
+      <section className="block" id="s-creative-hero" aria-labelledby="s-creative-limits-title">
+        <h2 id="s-creative-limits-title" className="section-title">{tr("해석 한계 (상관 ≠ 인과)", "Interpretation limits (correlation ≠ causation)")}</h2>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "0 0 8px" }}>
+          <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
+          <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
+        </div>
+        <p style={{ margin: 0, fontSize: "var(--fs-sm)", lineHeight: 1.6, color: "var(--text-secondary)" }}>{C.heroCausationBody}</p>
       </section>
     </div>
   );

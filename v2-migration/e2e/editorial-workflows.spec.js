@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { REPORT_CONTEXT_TOOL_IDS } from "../src/lib/report/reportContextTools";
+import { setupBarShowsInput } from "../src/lib/report/reportContextTools";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
@@ -56,9 +56,9 @@ for (const locale of ["ko", "en"]) {
       // 운영 대시보드(5-2)는 입력을 제목 줄("예시 데이터 · 28행")이 말하고 위의 설정 줄을 두지 않는다.
       if (BLOG_INSIGHT_PLACEMENTS[slug].toolId === "5-2") {
         await expect(page.locator(".dashboard-sticky-context__meta")).toContainText(locale === "en" ? "28 rows" : "28행");
-      } else if (REPORT_CONTEXT_TOOL_IDS.includes(BLOG_INSIGHT_PLACEMENTS[slug].toolId)) {
-        // 결과가 나온 도구는 결과 위 맥락 줄이 입력을 말한다(product-ssot §1.1c) — 같은 말을 맨 위에 다시 쓰지 않는다.
-        await expect(page.locator(".report-context__line")).toContainText(`${followup ? 42 : 28}${locale === "en" ? " rows" : "행"}`);
+      } else if (!setupBarShowsInput(BLOG_INSIGHT_PLACEMENTS[slug].toolId, true)) {
+        // 결과가 나온 도구는 결과 위 맥락 줄이나 접힌 업로더 줄이 입력을 말한다(product-ssot §1.1c) — 맨 위에 다시 쓰지 않는다.
+        await expect(page.locator(".report-context__line, .csv-collapsed-summary").first()).toContainText(`${followup ? 42 : 28}${locale === "en" ? " rows" : "행"}`);
         await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toHaveCount(0);
       } else {
         await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toContainText(`${followup ? 42 : 28} ${locale === "en" ? "source rows" : "원본 행"}`);

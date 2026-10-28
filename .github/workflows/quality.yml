@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+# 저장소 읽기만 한다 — 토큰 권한을 최소로 둔다(CodeQL actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest

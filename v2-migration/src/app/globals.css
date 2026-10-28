@@ -12310,7 +12310,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .tool-reference-panel__head button { min-height: 44px; min-width: 44px; }
 /* 결과 뒤의 분석 조건: 맥락 한 줄 + 조건 바꾸기 창(product-ssot §1.1c). 5-3 alloc-condition과 같은 줄 구조. */
 .report-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; }
-.report-context__line { flex: 1 1 18rem; min-width: 0; margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
+.report-context__line { flex: 1 1 12rem; min-width: 0; margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
 .report-context__line strong { color: var(--text-primary); font-weight: 600; }
 .report-context__edit { min-height: 44px; }
 .report-context__warning { margin: -8px 0 16px; color: var(--warning); font-size: var(--fs-sm); }
@@ -12318,12 +12318,21 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .report-context-dialog__body { display: grid; gap: 16px; padding-top: 16px; min-width: 0; }
 /* 선언 조건(ds/DeclaredConditions) — 결과 위에는 한 줄만. 질문은 창 안에서 답한다(§1.1c 4단계). 상자 없이 맥락 줄과 같은 재질. */
 .declared-conditions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; min-width: 0; }
-.declared-conditions__line { display: flex; flex: 1 1 18rem; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: var(--text-secondary); }
+.declared-conditions__line { display: flex; flex: 1 1 12rem; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: var(--text-secondary); }
 .declared-conditions__line strong { color: var(--text-primary); font-weight: 600; }
 .declared-conditions__count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* 보류 상태는 글자가 말한다 — --warning 글자색은 라이트 13px에서 4.26:1이라 대비 미달이다. */
 .declared-conditions[data-ready="false"] .declared-conditions__status { color: var(--text-primary); font-weight: 600; }
 .declared-conditions__open { min-height: 44px; }
+/* 5-23 증분: 데이터·기간 설정(펼친 모양과 조건 바꾸기 창 안 모양이 같은 노드) */
+.incr-setup-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 12px; }
+.incr-setup-note { max-width: 440px; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.5; }
+.incr-data-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.incr-data-controls > span { color: var(--text-muted); font-size: var(--fs-xs); }
+.incr-data-controls .ab-button { margin-left: 8px; }
+.report-context-dialog__body .incr-setup-fields { margin-bottom: 0; }
+/* 분석 뒤 데이터 한 줄(ds/MappingEditorDialog AnalyzedDataLine) — 상자 없이 접힌 업로더 줄과 같은 모양 */
+.analyzed-data-line { margin: 0 0 16px; }
 .declared-conditions-dialog__intro { margin: 12px 0 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
 .declared-conditions-dialog__fields { display: grid; gap: 4px; padding-top: 8px; min-width: 0; }
 .declared-conditions-dialog__fields label { flex-direction: column; align-items: stretch; gap: 6px; }

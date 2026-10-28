@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { withSettings } from "@/test/declaredConditions";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { readFileSync } from "node:fs";
@@ -53,7 +54,9 @@ describe("blog CSV to full analysis", () => {
     const { container } = render(<Incrementality locale={locale} />);
     expect(container.querySelector(".result-action-card")).toBeTruthy();
     expect(document.querySelector(".result-action-card__headline").textContent).toMatch(locale === "en" ? /exploratory until the test design is confirmed/ : /실험 설계를 확인하기 전에는 탐색용 수치입니다/);
-    expect(screen.getByLabelText(locale === "en" ? "Holdout start date" : "홀드아웃 시작일").value).toBe(demo.designWindow.start);
+    // 결과가 나오면 기간은 맥락 한 줄에 접힌다 — 글이 실은 기간이 그대로 쓰였는지 그 줄과 창에서 본다.
+    expect(container.querySelector(".report-context").textContent).toContain(demo.designWindow.start);
+    withSettings(() => expect(screen.getByLabelText(locale === "en" ? "Holdout start date" : "홀드아웃 시작일").value).toBe(demo.designWindow.start));
   });
   it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).filter(slug => !inlineCalculatorForBlog(slug)).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("opens the header sample without a second analyze click: %s/%s", async (slug, locale) => {
     const config = BLOG_INSIGHT_PLACEMENTS[slug];

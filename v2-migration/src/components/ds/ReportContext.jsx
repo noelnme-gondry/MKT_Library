@@ -18,9 +18,11 @@ const COPY = {
   en: { change: "Change settings", close: "Close", dialog: "Analysis settings", hint: "Changes apply to the results right away." },
 };
 
-export default function ReportContext({ parts = [], locale = "ko", dialogTitle, children, className = "" }) {
+export default function ReportContext({ parts = [], locale = "ko", dialogTitle, children, className = "", onOpenChange }) {
   const T = COPY[locale === "en" ? "en" : "ko"];
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  // 창 안에서 바꾼 값이 결과를 잠시 지워도(예: 시작일만 바꿈) 부르는 쪽이 창을 유지할 수 있게 알린다.
+  const setOpen = (next) => { setOpenState(next); onOpenChange?.(next); };
   const trigger = useRef(null);
   const visible = parts.filter((part) => part && String(part.text || "").trim());
   const title = dialogTitle || T.dialog;

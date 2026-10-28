@@ -266,6 +266,7 @@ test("incrementality waits for stored-project startup before accepting a real fi
   await expect(page.getByRole("button", { name: "증분 분석 CSV 파일 선택" })).toHaveAttribute("aria-disabled", "true");
   await page.evaluate(() => window.releaseWorkspaceOpen());
   await MANUAL_RESULTS["/tools/incrementality"](page);
-  await expect(page.locator('#tab-incr .file-state').getByText("holdout-design.csv", { exact: true })).toBeVisible();
+  // 결과가 나오면 파일 이름은 결과 위 맥락 한 줄이 말한다(§1.1c 4단계).
   await expect(page.locator(".result-action-card").first()).toBeVisible();
+  await expect(page.locator("#tab-incr .report-context").getByText("holdout-design.csv", { exact: true })).toBeVisible();
 });

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { publishedToolIds, idToSlug } from "../src/lib/routeMap";
+import { ALWAYS_OWN_INPUT_LINE_TOOL_IDS, SETUP_BAR_INPUT_TOOL_IDS } from "../src/lib/report/reportContextTools";
 
 // 결과 보고서 틀(product-ssot §1.1c): 예시 결과를 열면 결론 문장이 첫 화면 안에 있어야 한다.
 // 가드는 "지금 값"이 아니라 근거를 고정한다 — 결론 칸의 아래 끝이 뷰포트 높이 안인가.
@@ -15,21 +16,14 @@ const VIEWPORTS = [
 // 도구 단위로 적는다(폭마다 따로 적지 않는다). 지운 도구는 세 폭 모두 통과해야 한다.
 const REPORT_FRAME_PENDING = "보고서 틀(맥락 한 줄·결론 먼저) 미적용 — product-ssot §1.1c 4단계";
 const KNOWN_GAPS = {
-  "5-23": REPORT_FRAME_PENDING,
-  "5-24": REPORT_FRAME_PENDING,
   "5-18-paid-organic": REPORT_FRAME_PENDING,
   "5-18-trend": REPORT_FRAME_PENDING,
   "5-18-cannibal": REPORT_FRAME_PENDING,
   "5-18-mmm": REPORT_FRAME_PENDING,
-  "5-18-forecast": REPORT_FRAME_PENDING,
   "5-20": REPORT_FRAME_PENDING,
-  "5-25": REPORT_FRAME_PENDING,
-  "5-26": REPORT_FRAME_PENDING,
-  "5-27": REPORT_FRAME_PENDING,
   "5-28": REPORT_FRAME_PENDING,
   "5-29": REPORT_FRAME_PENDING,
   "9-1": REPORT_FRAME_PENDING,
-  "9-6": REPORT_FRAME_PENDING,
 };
 
 for (const locale of ["ko", "en"]) {
@@ -55,4 +49,25 @@ for (const locale of ["ko", "en"]) {
 test("known gaps name published tools only", () => {
   // 낡은 예외는 예외가 아니다 — 없어진 도구를 가리키는 항목이 남으면 실패한다.
   expect(Object.keys(KNOWN_GAPS).filter((id) => !TOOLS.some((tool) => tool.id === id))).toEqual([]);
+});
+
+// 입력(파일·행 수)은 결과 화면에 한 번만 말한다 — 맨 위 "현재 입력" 줄과 도구 자신의 입력 줄
+// (접힌 업로더·맥락 줄·데이터 줄·제목 줄) 중 정확히 한쪽만 보인다. lib/report/reportContextTools의
+// 두 목록이 실제 화면과 맞는지 여기서 잰다(목록만 믿으면 입력 줄이 사라진 도구가 안 보인다).
+const OWN_INPUT_LINES = ".csv-uploader--collapsed, .report-context, .file-state, .dashboard-sticky-context__meta, .operations-planner__context, .csv-loaded-bar";
+for (const tool of TOOLS) {
+  test(`input is stated once after the result: ${tool.id}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-1440", "one width is enough for presence");
+    await page.goto(`${tool.path}?example=1`);
+    // 무거운 엔진(MMM 등)은 예시 결과까지 10초를 넘길 수 있다.
+    await expect(page.locator(".result-action-card__headline").filter({ visible: true }).first()).toBeVisible({ timeout: 30000 });
+    const visible = async (selector) => page.locator(selector).evaluateAll((nodes) => nodes.some((node) => node.checkVisibility()));
+    await expect.poll(async () => ({ bar: await visible(".analysis-setup__context"), own: await visible(OWN_INPUT_LINES) }))
+      .toEqual(SETUP_BAR_INPUT_TOOL_IDS.includes(tool.id) ? { bar: true, own: false } : { bar: false, own: true });
+  });
+}
+
+test("input-line lists name published tools only", () => {
+  const unknown = [...ALWAYS_OWN_INPUT_LINE_TOOL_IDS, ...SETUP_BAR_INPUT_TOOL_IDS].filter((id) => !TOOLS.some((tool) => tool.id === id));
+  expect(unknown).toEqual([]);
 });

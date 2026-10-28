@@ -15,6 +15,7 @@ import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 import { CHART_THEME, CHART_FONT_STACK, chartCommonOpts } from "@/utils/chartUtils";
 import CsvGuide from "@/components/ds/CsvGuide";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import ReportContext from "@/components/ds/ReportContext";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { effectIntervalFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
@@ -225,6 +226,51 @@ export default function Incrementality({ locale = "ko", initialMethod = null } =
   const resetCsv = () => clearCsvGroup();
   const isDemo = isDemoData(csvData);
 
+  // 결과가 나오면 데이터 줄·샘플 안내·기간 설정은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(§1.1c 4단계).
+  // 접을지는 결과를 가진 하위 화면이 정한다 — 여기서는 펼친 모양과 접힌 모양을 함께 넘긴다.
+  const rowCount = (csvData?.raw?.length || 0).toLocaleString();
+  const dataFrame = hasData ? {
+    parts: [
+      { text: isDemo ? tr("예시 데이터", "Sample data") : csvData.fileName, emphasis: true },
+      { text: tr(`${rowCount}행`, `${rowCount} rows`) },
+    ],
+    controls: (
+      <div className="incr-data-controls" data-currency-scope="declare">
+        <span>{tr("데이터 통화", "Data currency")}</span>
+        <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
+        <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
+        <button className="ab-button" onClick={resetCsv}>{isDemo ? tr("내 CSV 업로드하기", "Upload my CSV") : tr("⟳ CSV 변경", "⟳ Change CSV")}</button>
+      </div>
+    ),
+    expanded: (
+      <>
+          {isDemo && (
+            <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+              <div>
+                <strong>{tr("지금 보고 있는 화면은 샘플(예시) 데이터입니다", "You're currently viewing sample (example) data")}</strong>
+                <p style={{ margin: "0.25rem 0 0" }}>{tr("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data, and nothing is sent to any server. Upload your own CSV to replace it instantly.")}</p>
+              </div>
+              <button className="ab-button" onClick={resetCsv}>{tr("내 CSV 업로드하기", "Upload my CSV")}</button>
+            </div>
+          )}
+          <div className="file-state" style={{ marginBottom: "12px" }}>
+            <div className="meta-text">
+              <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+              {isDemo ? <strong>{tr("샘플 데이터로 미리보기 중", "Previewing with sample data")}</strong> : <strong>{csvData.fileName}</strong>}
+              <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}{tr("행", " rows")}{isDemo ? tr(" · 실제 데이터 아님", " · not real data") : ""}</span>
+            </div>
+            {/* 단위 선언 토글(환산 없음) — ds/FixedRateNote 대상이 아님을 DOM에 남긴다. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }} data-currency-scope="declare">
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{tr("데이터 통화", "Data currency")}</span>
+              <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
+              <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
+              {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{tr("⟳ CSV 변경", "⟳ Change CSV")}</button>}
+            </div>
+          </div>
+      </>
+    ),
+  } : null;
+
   // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
   // 올리는 곳"이라는 사실이 가려지고, 화면의 숫자가 내 것인지 예시인지도 헷갈린다.
   // 예시는 업로드 안내(CsvGuide)의 "예시로 보기"로 명시적으로 부른다.
@@ -232,7 +278,7 @@ export default function Incrementality({ locale = "ko", initialMethod = null } =
   return (
     <div className="tab-pane active" id="tab-incr" data-hydrated={isHydrated ? "true" : "false"}>
       {/* 방법 선택을 첫 행동으로 올리고, 비교 설명은 필요할 때만 펼친다. */}
-      <section className="block" id="s-incr-method" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
+      {!hasData && <section className="block" id="s-incr-method" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
         <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{tr("광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?", "How much did turning ads on (or off) actually create?")}</h2>
         <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
           {tr(<>비교군이나 사전 추세를 기준으로 <strong>추정 차이</strong>를 계산합니다. 광고의 인과효과로 해석할 수 있는지는 설계 조건에 달려 있습니다.</>,
@@ -244,7 +290,7 @@ export default function Incrementality({ locale = "ko", initialMethod = null } =
             {tr("통제군은 같은 기간의 노출·미노출을 비교해 가장 강합니다. 신규 켜기와 종료는 전후를 비교하며, 대조군이 있으면 계절·추세를 더 잘 분리합니다.", "Control groups compare exposed and unexposed users concurrently and provide the strongest design. Launch and shutdown compare before/after; a control group helps separate seasonality and trend.")}
           </p>
         </section>
-      </section>
+      </section>}
 
       {/* 방법 탭 */}
       <div className="ab-tabs" role="tablist" aria-label={tr("증분 분석 방법", "Incrementality methods")} style={{ marginBottom: "8px" }}>
@@ -272,42 +318,20 @@ export default function Incrementality({ locale = "ko", initialMethod = null } =
         aria-labelledby={`incrementality-tab-${method}`}
         tabIndex={0}
       >
-      <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
+      {/* 데이터가 들어오면 방법 설명은 결과(그림·주의)가 대신한다 — 탭 이름만 남긴다. */}
+      {!hasData && <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
         {method === "suppression" && tr("같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다.", "Compares a holdout group (ads randomly blocked) vs an exposed group over the same period. Random assignment gives the highest causal confidence.")}
         {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군으로 공통 변화를 보정하되, 개입 전 평행추세를 통과해야 DiD 결과를 냅니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. A control adjusts for common change, but DiD is reported only after the pre-intervention parallel-trends check passes.")}
         {method === "off" && tr("켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교합니다. 대조군 DiD도 개입 전 평행추세를 통과해야 결과를 냅니다.", "Compares before/after the moment (cutoff) you turned off a running ad/campaign. Control-group DiD is reported only after the pre-intervention parallel-trends check passes.")}
-      </p>
+      </p>}
 
       {!hasData ? (
         <UploadPanel isHydrated={canUpload} method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} locale={locale} />
       ) : (
         <div>
-          {isDemo && (
-            <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-              <div>
-                <strong>{tr("지금 보고 있는 화면은 샘플(예시) 데이터입니다", "You're currently viewing sample (example) data")}</strong>
-                <p style={{ margin: "0.25rem 0 0" }}>{tr("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data, and nothing is sent to any server. Upload your own CSV to replace it instantly.")}</p>
-              </div>
-              <button className="ab-button" onClick={resetCsv}>{tr("내 CSV 업로드하기", "Upload my CSV")}</button>
-            </div>
-          )}
-          <div className="file-state" style={{ marginBottom: "12px" }}>
-            <div className="meta-text">
-              <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
-              {isDemo ? <strong>{tr("샘플 데이터로 미리보기 중", "Previewing with sample data")}</strong> : <strong>{csvData.fileName}</strong>}
-              <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}{tr("행", " rows")}{isDemo ? tr(" · 실제 데이터 아님", " · not real data") : ""}</span>
-            </div>
-            {/* 단위 선언 토글(환산 없음) — ds/FixedRateNote 대상이 아님을 DOM에 남긴다. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }} data-currency-scope="declare">
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{tr("데이터 통화", "Data currency")}</span>
-              <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
-              <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
-              {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{tr("⟳ CSV 변경", "⟳ Change CSV")}</button>}
-            </div>
-          </div>
           {method === "suppression"
-            ? <SuppressionView csvData={csvData} currency={currency} locale={locale} />
-            : <PrePostView key={method} csvData={csvData} direction={method} currency={currency} locale={locale} />}
+            ? <SuppressionView csvData={csvData} currency={currency} locale={locale} frame={dataFrame} />
+            : <PrePostView key={method} csvData={csvData} direction={method} currency={currency} locale={locale} frame={dataFrame} />}
         </div>
       )}
     </div>
@@ -336,8 +360,24 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, isHydrated, locale
   );
 }
 
+/* 결과가 생겨도 사용자가 기간 칸을 만지는 중이면 접지 않는다 — 포커스가 떠난 뒤에 접는다(§7). */
+function useSetupFocus() {
+  const [focused, setFocused] = useState(false);
+  // 조건 바꾸기 창이 열려 있는 동안은 결과가 잠시 비어도 접힌 채로 둔다 — 창이 사라지면 입력이 끊긴다.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  return {
+    focused,
+    settingsOpen,
+    setSettingsOpen,
+    focusProps: {
+      onFocus: () => setFocused(true),
+      onBlur: (event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); },
+    },
+  };
+}
+
 /* ── ① 통제군 (suppression) ── */
-function SuppressionView({ csvData, currency, locale = "ko" }) {
+function SuppressionView({ csvData, currency, locale = "ko", frame }) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const invalidRows = useMemo(() => getMappedRows(csvData).filter((r) => {
     const group = parseHoldoutGroup(r.holdout_group);
@@ -450,8 +490,9 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
   }, [series, start, end, isWindowOrderValid, tr]);
 
-  if (invalidRows) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("증분을 계산할 수 없는 행이 있습니다", "Some rows cannot be used for incrementality")}</strong><p>{tr(`${invalidRows.toLocaleString()}행의 날짜·그룹·전환수·분모를 확인하세요. 날짜는 실제 달력 날짜여야 하며, 전환수는 0 이상 분모 이하여야 하고 분모는 0보다 커야 합니다.`, `Check date, group, conversions, and denominator in ${invalidRows.toLocaleString()} row(s). Dates must be valid calendar dates; conversions must be between 0 and the denominator, and the denominator must be greater than 0.`)}</p></div></div>;
-  if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div>;
+  const setupFocus = useSetupFocus();
+  if (invalidRows) return <>{frame.expanded}<div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("증분을 계산할 수 없는 행이 있습니다", "Some rows cannot be used for incrementality")}</strong><p>{tr(`${invalidRows.toLocaleString()}행의 날짜·그룹·전환수·분모를 확인하세요. 날짜는 실제 달력 날짜여야 하며, 전환수는 0 이상 분모 이하여야 하고 분모는 0보다 커야 합니다.`, `Check date, group, conversions, and denominator in ${invalidRows.toLocaleString()} row(s). Dates must be valid calendar dates; conversions must be between 0 and the denominator, and the denominator must be greater than 0.`)}</p></div></div></>;
+  if (totals.cDen <= 0 || totals.tDen <= 0) return <>{frame.expanded}<div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div></>;
 
   const r = win?.incr;
   const inc = r ? Math.round(r.incrementalConv) : 0;
@@ -463,7 +504,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     // 현재 표본에서의 판단 보류다(§8.6, 감사 P1-1).
     const headline = !design.ready
       // 판단 보류여도 계산한 값은 문장 안에 둔다 — 숫자 없는 보류는 읽는 사람이 다음에 할 일을 모른다(§1.1c 보고서 틀).
-      ? tr(`홀드아웃 대비 추정 증분 전환은 ${fmtNum(inc)}건이지만, 실험 설계를 확인하기 전에는 탐색용 수치입니다.`, `The holdout suggests ${fmtNum(inc)} incremental conversions, but treat it as exploratory until the test design is confirmed.`)
+      ? tr(`홀드아웃 대비 추정 증분 전환은 ${fmtNum(inc)}건이지만, 실험 설계를 확인하기 전에는 탐색용 수치입니다.`, `${fmtNum(inc)} incremental conversions vs the holdout, exploratory until the test design is confirmed.`)
       : !r.conclusive
       ? tr(
           `증분 추정치는 ${fmtNum(inc)}건이지만 95% 신뢰구간이 0을 지나 판단을 보류합니다 — 표본이 더 필요합니다.`,
@@ -580,7 +621,30 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
         ? "insufficient_data"
         : null;
 
+  const windowControls = series && (
+    <div className="incr-setup-fields">
+      <Field label={tr("홀드아웃 시작일", "Holdout start date")}>
+        <select className="map-select" value={start} onChange={(e) => { const next = e.target.value; setWinStart(next); if (winEnd && winEnd < next) setWinEnd(""); }}>
+          <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
+          {series.labels.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+      </Field>
+      <Field label={tr("홀드아웃 종료일", "Holdout end date")}>
+        <select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)} disabled={!start}>
+          <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
+          {series.labels.filter((d) => !start || d >= start).map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+      </Field>
+      <span className="incr-setup-note">{tr("실험 계획이나 광고 운영 기록에 적힌 실제 차단 기간을 직접 지정해야 계산합니다.", "The calculation only runs after you enter the actual blocked period from the experiment plan or ad-operations record.")}</span>
+    </div>
+  );
+  const folded = (Boolean(card) || setupFocus.settingsOpen) && !setupFocus.focused;
+
   return (
+    <>
+    {folded
+      ? <ReportContext locale={locale} onOpenChange={setupFocus.setSettingsOpen} dialogTitle={tr("데이터와 홀드아웃 기간", "Data and holdout period")} parts={[...frame.parts, { text: start && end ? tr(`홀드아웃 ${start} ~ ${end}`, `Holdout ${start} to ${end}`) : tr("홀드아웃 기간 미지정", "Holdout period not set") }]}>{frame.controls}{windowControls}</ReportContext>
+      : frame.expanded}
     <section className="block" id="s-incr-result">
       <CausalDesignCheck design={design} locale={locale} />
       {blockedState && (
@@ -595,25 +659,10 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           locale={locale}
         />
       )}
-      <h2 className="section-title">{tr("홀드아웃 기간 설정 및 결과", "Holdout period setup and result")}</h2>
-
-      {series && (
-        <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
-          <Field label={tr("홀드아웃 시작일", "Holdout start date")}>
-            <select className="map-select" value={start} onChange={(e) => { const next = e.target.value; setWinStart(next); if (winEnd && winEnd < next) setWinEnd(""); }}>
-              <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
-              {series.labels.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </Field>
-          <Field label={tr("홀드아웃 종료일", "Holdout end date")}>
-            <select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)} disabled={!start}>
-              <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
-              {series.labels.filter((d) => !start || d >= start).map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </Field>
-          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", maxWidth: "440px", lineHeight: 1.5 }}>{tr("실험 계획이나 광고 운영 기록에 적힌 실제 차단 기간을 직접 지정해야 계산합니다.", "The calculation only runs after you enter the actual blocked period from the experiment plan or ad-operations record.")}</span>
-        </div>
-      )}
+      {!folded && <>
+        <h2 className="section-title">{tr("홀드아웃 기간 설정", "Holdout period setup")}</h2>
+        <div {...setupFocus.focusProps}>{windowControls}</div>
+      </>}
 
       {!hasExplicitWindow && (
         <div className="callout warn" style={{ marginBottom: "12px" }}><div className="ico">!</div><div className="body"><strong>{tr("홀드아웃 기간을 먼저 지정하세요", "Specify the holdout period first")}</strong><p>{tr("결과 그래프에서 차이가 큰 구간을 보고 기간을 고르면 효과가 과대평가될 수 있습니다. 결과를 보기 전 정한 시작일·종료일만 사용합니다.", "Choosing the period after inspecting where the outcome lines diverge can overstate the effect. Use only start and end dates defined before viewing the result.")}</p></div></div>
@@ -761,11 +810,12 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
         <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(<>인과 해석에는 <strong>무작위 배정</strong>뿐 아니라 관측 단위, 기간 전체의 중복 집계, 광고 노출 오염, 동시 변경과 추적 조건을 확인해야 합니다. 사전 차이가 작거나 설계 조건을 입력했다는 사실만으로 인과효과가 검증되지는 않습니다.</>, <>A causal interpretation requires checking <strong>random assignment</strong>, observation units, duplicate counts across the full period, exposure contamination, concurrent changes and tracking. A small pre-period difference or a design declaration alone does not verify causality.</>)}
       </p></div></div>
     </section>
+    </>
   );
 }
 
 /* ── ②③ 전후 비교 (pre/post) ── */
-function PrePostView({ csvData, direction, currency, locale = "ko" }) {
+function PrePostView({ csvData, direction, currency, locale = "ko", frame }) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const headers = useMemo(() => csvData.headers || [], [csvData.headers]);
   // 컬럼 자동 감지
@@ -889,7 +939,8 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
   }, [csvData.raw, metricCol, groupCol, selectedTreatment, effCutoff, dateCol, r, direction, tr]);
 
-  if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div>;
+  const setupFocus = useSetupFocus();
+  if (!numericCols.length) return <>{frame.expanded}<div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div></>;
 
   const delta = r?.delta;
   const isDiD = r?.did?.ok === true;
@@ -1027,22 +1078,8 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           ? "insufficient_periods"
           : null;
 
-  return (
-    <>
-      <CausalDesignCheck design={design} locale={locale} />
-      {blockedState && (
-        <AnalysisBlockedTelemetry
-          toolId="5-23"
-          source={isDemoData(csvData) ? "demo" : csvData?.importSource || "csv"}
-          state={blockedState}
-          signature={`prepost|${direction}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${useDiD ? 1 : 0}|${csvData?.raw?.length || 0}`}
-          rowCount={csvData?.raw?.length || 0}
-          analysisType="incrementality"
-          locale={locale}
-        />
-      )}
-      <section className="block" style={{ marginBottom: "12px" }}>
-        <h2 className="section-title">{tr("비교 설정", "Comparison settings")}</h2>
+  const comparisonControls = (
+    <div className="incr-prepost-setup">
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
           <Field label={tr("성과 지표", "Performance metric")}><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
           <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}>
@@ -1061,7 +1098,37 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           )}
         </div>
         <p style={{ margin: "9px 0 0", fontSize: "var(--fs-xs)", lineHeight: 1.5, color: "var(--text-muted)" }}>{tr(`전환 시점은 결과 차트를 보기 전에 캠페인 운영 기록에 적힌 실제 시작일 또는 종료일로 지정하세요. 같은 날짜에 여러 행이 있으면 일별 합계로 먼저 집계합니다. DiD는 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다.`, `Set the cutoff from the actual launch or shutdown date in the campaign operations record before viewing the outcome chart. Multiple rows on the same date are aggregated to a daily total first. DiD requires at least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates.`)}</p>
-      </section>
+    </div>
+  );
+  const folded = (Boolean(card) || setupFocus.settingsOpen) && !setupFocus.focused;
+  const directionWord = direction === "off" ? tr("끈 날", "turned off") : tr("켠 날", "turned on");
+
+  return (
+    <>
+      {folded
+        ? <ReportContext locale={locale} onOpenChange={setupFocus.setSettingsOpen} dialogTitle={tr("데이터와 비교 설정", "Data and comparison settings")} parts={[
+          ...frame.parts,
+          { text: metricCol },
+          { text: effCutoff ? `${directionWord} ${effCutoff}` : tr("전환 시점 미지정", "Cutoff not set") },
+          { text: isDiD ? tr(`대조군 ${selectedControl} 대비(DiD)`, `vs control ${selectedControl} (DiD)`) : tr("대조군 없음", "No control group") },
+        ]}>{frame.controls}{comparisonControls}</ReportContext>
+        : frame.expanded}
+      <CausalDesignCheck design={design} locale={locale} />
+      {blockedState && (
+        <AnalysisBlockedTelemetry
+          toolId="5-23"
+          source={isDemoData(csvData) ? "demo" : csvData?.importSource || "csv"}
+          state={blockedState}
+          signature={`prepost|${direction}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${useDiD ? 1 : 0}|${csvData?.raw?.length || 0}`}
+          rowCount={csvData?.raw?.length || 0}
+          analysisType="incrementality"
+          locale={locale}
+        />
+      )}
+      {!folded && <section className="block" style={{ marginBottom: "12px" }} {...setupFocus.focusProps}>
+        <h2 className="section-title">{tr("비교 설정", "Comparison settings")}</h2>
+        {comparisonControls}
+      </section>}
 
       {!effCutoff && (
         <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("전환 시점을 먼저 지정하세요", "Specify the cutoff date first")}</strong><p>{tr("데이터 중간 날짜를 자동으로 고르거나 결과가 크게 달라지는 날짜를 사후 선택하지 않습니다. 운영 기록에 남은 실제 날짜를 선택해야 분석합니다.", "The tool does not auto-select the middle date or retrospectively choose a date with the largest outcome change. Select the actual date recorded in operations before analysis runs.")}</p></div></div>
