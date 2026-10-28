@@ -41,6 +41,26 @@ describe("데이터 준비 세 칸", () => {
     expect(readiness.near["9-6"]).toBeUndefined();
   });
 
+  test("스토어 콘솔 파일: 광고 분석은 열 개수가 비슷해도 '조금만 더'가 아니라 다른 파일이다", () => {
+    // App Store Connect 내보내기 형식(lib/platformExports). 광고비 열은 스토어 파일에 생기지 않는다.
+    const sources = ["App Store Search", "App Store Browse", "App Referrer"];
+    const raw = Array.from({ length: 28 }, (_, day) => sources.map((source, index) => ({
+      Date: `2026-08-${String(day + 1).padStart(2, "0")}`,
+      "Source Type": source,
+      Impressions: String(40000 - index * 9000 + day * 37),
+      "Product Page Views": String(3600 - index * 800 + day * 5),
+      "Total Downloads": String(900 - index * 200 + day * 3),
+    }))).flat();
+    const headers = Object.keys(raw[0]);
+    const mapping = buildMappingContract({ toolId: "start-gate", headers, rows: raw, source: "asc.csv" }).mapping;
+    const readiness = classifyDataReadiness({ eligibility: computeCsvEligibility({ raw, headers, mapping, locale: "ko" }), locale: "ko" });
+    expect(readiness.ready).toContain("5-27");
+    for (const toolId of ["5-2", "5-21", "5-22", "5-3"]) {
+      expect(readiness.near[toolId], toolId).toBeUndefined();
+      expect(readiness.other).toContain(toolId);
+    }
+  });
+
   test("열은 맞고 행이 모자라면 무엇이 몇 개 모자란지 말한다", () => {
     const { readiness } = readinessFor("public/examples/asa-mature-candidate.csv");
     expect(readiness.near["5-22"]).toEqual({ kind: "data", text: "최소 20행 필요 (현재 4행)." });

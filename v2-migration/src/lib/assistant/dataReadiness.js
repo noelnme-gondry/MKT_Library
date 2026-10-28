@@ -65,6 +65,18 @@ export function classifyDataReadiness({ eligibility = [], notComputable = {}, lo
   const ready = [];
   const near = {};
   const other = [];
+  // 이 파일이 어떤 출처의 파일인지는 이미 돌아간 분석이 말해 준다. 출처가 다른 분석은 열 개수가 맞아도
+  // "열 한두 개"로 열리지 않는다 — 스토어 콘솔 파일에 광고비 열은 생기지 않는다(2026-10-28 실제 형식
+  // 파일 점검: App Store Connect 파일에 광고 분석 9개가 "조금만 더"로 떴다). 돌아간 분석이 없으면
+  // 출처를 모르므로 열 개수만 본다.
+  const fileFamilies = new Set(eligibility
+    .filter((result) => !notComputable[result.toolId] && result.status !== "blocked")
+    .map((result) => dataSourceForTool(result.toolId)?.familyId)
+    .filter(Boolean));
+  const fromOtherSource = (toolId) => {
+    const family = dataSourceForTool(toolId)?.familyId;
+    return Boolean(fileFamilies.size && family && !fileFamilies.has(family));
+  };
   for (const result of eligibility) {
     const toolId = result.toolId;
     if (notComputable[toolId]) {
@@ -73,7 +85,7 @@ export function classifyDataReadiness({ eligibility = [], notComputable = {}, lo
     } else if (result.status !== "blocked") {
       ready.push(toolId);
     } else {
-      const reason = nearReason(result, locale);
+      const reason = fromOtherSource(toolId) ? null : nearReason(result, locale);
       if (reason) near[toolId] = reason;
       else other.push(toolId);
     }

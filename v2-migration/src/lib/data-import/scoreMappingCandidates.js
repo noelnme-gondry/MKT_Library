@@ -70,11 +70,18 @@ export function scoreMappingCandidates({ headers = [], rows = [], allowedKeys, f
     return [header, [...set]];
   })) : {};
   const byHeader = {};
+  // 넓은 별칭을 가진 필드가 더 정확한 필드와 같은 스코프에 있으면 좁은 별칭만 쓴다(`scopedAliases`).
+  // 예: campaign_id는 소재 도구(캠페인명 필드가 없는 스코프)를 위해 캠페인 이름·광고 세트까지 받는데,
+  // campaign_name과 함께 있으면 "캠페인 이름"이 두 필드에 동점이 되고 "Ad set name"이 캠페인으로 확정됐다.
+  const aliasesFor = (key) => {
+    const field = fields[key];
+    return field.scopedAliases && keys.includes(field.scopedAliases.when) ? field.scopedAliases.aliases : field.aliases;
+  };
 
   headers.forEach((header) => {
     const candidates = keys.map((key) => {
       const field = fields[key];
-      const fromHeader = headerScore(header, key, field.aliases);
+      const fromHeader = headerScore(header, key, aliasesFor(key));
       const fromType = typeScore(profileByHeader[header], field.type);
       // 값 어휘(valueVocabulary) 필드는 헤더명이 아니라 "값"으로만 자동 판별한다.
       // 예: 필드 키가 "source"라 헤더명이 "source"면 키명 일치(0.82)로 잡히지만,

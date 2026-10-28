@@ -19,6 +19,8 @@ import {
 } from "@/utils/satMath";
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
+import { efficiencyUnitField, efficiencyUnitLabel } from "@/lib/efficiencyUnits";
+import { subjectParticle } from "@/lib/vocabulary/hangulMatch";
 import { allocationAt, plannerEvidence, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 
 const EFFICIENCY_TOOL_IDS = Object.freeze(["5-2", "5-21", "5-22", "5-3"]);
@@ -141,8 +143,10 @@ function pvmAdapter(input) {
   const resultField = effectiveDenomBasis(csvData, options.denomBasis || "installs") === "actions" && fields.has("actions")
     ? "actions"
     : "installs";
-  const required = ["date", "channel", resultField];
-  if (!required.every((field) => fields.has(field)) || !(fields.has("spend") || fields.has("cost"))) {
+  // 채널 열이 없는 단일 매체 파일은 캠페인끼리 비교한다(도구 계약과 같은 규칙, lib/efficiencyUnits).
+  const unitField = efficiencyUnitField(fields);
+  const required = ["date", resultField];
+  if (!unitField || !required.every((field) => fields.has(field)) || !(fields.has("spend") || fields.has("cost"))) {
     return noResult({
       toolId: "5-21", inputSignature, mappingSignature, locale,
       headline: tr(locale, "성과 변동 분해에 필요한 날짜·채널·비용·성과 매핑이 부족합니다.", "Performance decomposition needs date, channel, cost, and outcome mappings."),
@@ -168,7 +172,7 @@ function pvmAdapter(input) {
       manifest: { engine: "PVM_MATH", resultField, status: "NOT_IDENTIFIED", reasonCode: contract.code, invalidCellCount: contract.invalidCells?.length || 0 },
     });
   }
-  const breakdown = pvmChannelBreakdown({ prior: periods.prior, recent: periods.recent, keys, unspecifiedLabel: tr(locale, "미지정", "Unspecified") });
+  const breakdown = pvmChannelBreakdown({ prior: periods.prior, recent: periods.recent, keys, unspecifiedLabel: tr(locale, "미지정", "Unspecified"), rollupBy: unitField === "channel" ? "channel" : "campaign" });
   if (!breakdown) {
     return noResult({
       toolId: "5-21", inputSignature, mappingSignature, locale,
@@ -206,12 +210,12 @@ function pvmAdapter(input) {
         ? Math.abs(driver.mix || 0) > Math.abs(driver.rate || 0)
           ? tr(locale, `${driver.entity}의 예산 비중 변경 이력을 확인하세요.`, `Review budget-share changes for ${driver.entity}.`)
           : tr(locale, `${driver.entity}의 소재·타겟·입찰 변경 이력을 점검하세요.`, `Review creative, audience, and bid changes for ${driver.entity}.`)
-        : tr(locale, "대상별 단가 변화를 확인한 뒤 점검할 채널을 선택하세요.", "Review unit-cost changes by entity before selecting a channel to investigate."),
+        : tr(locale, `대상별 단가 변화를 확인한 뒤 점검할 ${efficiencyUnitLabel(unitField, "ko")}을 선택하세요.`, `Review unit-cost changes by entity before selecting a ${efficiencyUnitLabel(unitField, "en")} to investigate.`),
       caveats: [tr(locale, "분해는 관측된 단가 변화를 설명하며 인과 효과를 식별하지 않습니다.", "The decomposition describes observed unit-cost change; it does not identify causal effects.")],
     },
     // 성과 변동의 핵심 그림은 "직전 → 비중(mix) → 효율(rate) → 최근" 다리와 채널별 두 성분이다.
     visualizations: [mixRateFigure({ rows: byChannel, start: decomposition.CPA1, end: decomposition.CPA2, metric, locale })],
-    manifest: { engine: "PVM_MATH", status: "COMPLETE", resultField, periodDays: 7, entityCount: byChannel.length, evidenceState: "descriptive",
+    manifest: { engine: "PVM_MATH", status: "COMPLETE", resultField, unit: unitField, periodDays: 7, entityCount: byChannel.length, evidenceState: "descriptive",
       comparison: { metric: metric.toLowerCase(), periodA: periods.periodA, periodB: periods.periodB, filterState: options.filterState || {} },
     },
   });
@@ -223,7 +227,8 @@ function saturationAdapter(input) {
   const fields = mappedKeys(csvData);
   const basis = effectiveDenomBasis(csvData, options.denomBasis || "installs");
   const metricField = fields.has(basis) ? basis : fields.has("installs") ? "installs" : fields.has("actions") ? "actions" : null;
-  if (!metricField || !fields.has("cost") || !fields.has("channel")) {
+  const unitField = efficiencyUnitField(fields);
+  if (!metricField || !fields.has("cost") || !unitField) {
     return noResult({
       toolId: "5-22", inputSignature, mappingSignature, locale,
       headline: tr(locale, "포화도 진단에 필요한 채널·비용·성과 매핑이 부족합니다.", "Saturation diagnosis needs channel, cost, and outcome mappings."),
@@ -231,7 +236,7 @@ function saturationAdapter(input) {
     });
   }
   const { revField } = satAvailableFields(csvData);
-  const grain = options.grain === "campaign" && fields.has("campaign_name") ? "campaign" : "channel";
+  const grain = (options.grain === "campaign" || unitField !== "channel") && fields.has("campaign_name") ? "campaign" : "channel";
   const metric = options.metric === "roas" && revField ? "roas" : "cpa";
   const entities = [...satBuildPoints(getMappedRows(csvData), grain, metricField, revField)]
     .map(([name, points]) => ({ name, raw: points.length, ...SAT_MATH.analyzeEntity(points, SAT_CONFIG) }));
@@ -241,7 +246,7 @@ function saturationAdapter(input) {
   if (!usable.length) {
     return noResult({
       toolId: "5-22", inputSignature, mappingSignature, locale,
-      headline: tr(locale, "관측 수나 지출 변동이 충분한 채널이 없어 포화도를 판정하지 않았습니다.", "No channel has enough observations or spend variation to classify saturation."),
+      headline: tr(locale, `관측 수나 지출 변동이 충분한 ${efficiencyUnitLabel(grain, "ko")}이 없어 포화도를 판정하지 않았습니다.`, `No ${efficiencyUnitLabel(grain, "en")} has enough observations or spend variation to classify saturation.`),
       manifest: { engine: "SAT_MATH", status: "ABSTAIN", grain, metric, candidateCount: entities.length },
     });
   }
@@ -286,7 +291,7 @@ function saturationAdapter(input) {
     },
     // 포화의 핵심 그림은 평균 단가와 한계 단가(조금 더 쓸 때의 단가)의 거리다.
     visualizations: [{
-      ...unitCostGapFigure({ rows: table, metric: metricField === "actions" ? "CPA" : "CPI", locale }),
+      ...unitCostGapFigure({ rows: table, metric: metricField === "actions" ? "CPA" : "CPI", locale, unitField: grain }),
       table: { columns: Object.keys(table[0] || {}), rows: table },
     }],
     manifest: { engine: "SAT_MATH", status: "COMPLETE", grain, metric, resultField: metricField, candidateCount: entities.length, analyzableCount: usable.length, evidenceState: "descriptive" },
@@ -321,14 +326,15 @@ function allocationAdapter(input) {
   const fields = mappedKeys(csvData);
   const basis = effectiveDenomBasis(csvData, options.denomBasis || "installs");
   const metric = fields.has(basis) ? basis : fields.has("installs") ? "installs" : fields.has("actions") ? "actions" : null;
-  if (!metric || !fields.has("cost") || !fields.has("channel")) {
+  const baseUnit = efficiencyUnitField(fields);
+  if (!metric || !fields.has("cost") || !baseUnit) {
     return noResult({
       toolId: "5-3", inputSignature, mappingSignature, locale,
       headline: tr(locale, "예산 기준 시나리오에 필요한 채널·비용·성과 매핑이 부족합니다.", "The budget baseline scenario needs channel, cost, and outcome mappings."),
       manifest: { engine: "ALLOC_MATH", status: "ABSTAIN" },
     });
   }
-  const unit = options.unit === "campaign_name" && fields.has("campaign_name") ? "campaign_name" : "channel";
+  const unit = options.unit === "campaign_name" && fields.has("campaign_name") ? "campaign_name" : baseUnit;
   const rows = getMappedRows(csvData);
   const pointMap = buildAllocationPoints(rows, unit, metric);
   const historyByCh = Object.fromEntries([...pointMap.keys()].map((name) => [name, calcChannelHistorySummary(rows, unit, name, metric)]));
@@ -344,7 +350,7 @@ function allocationAdapter(input) {
   if (!planner.ok || !(totalBudget > 0) || !(limits.maxBudget > 0)) {
     return noResult({
       toolId: "5-3", inputSignature, mappingSignature, locale,
-      headline: tr(locale, "안전한 예산 기준 시나리오를 만들 만큼 적합 가능한 채널이 부족합니다.", "There are too few fit-ready channels to create a safe budget baseline scenario."),
+      headline: tr(locale, `안전한 예산 기준 시나리오를 만들 만큼 적합 가능한 ${efficiencyUnitLabel(unit, "ko")}${subjectParticle(efficiencyUnitLabel(unit, "ko"))} 부족합니다.`, `There are too few fit-ready ${efficiencyUnitLabel(unit, "en")}s to create a safe budget baseline scenario.`),
       manifest: { engine: "BUDGET_PLANNER", status: "ABSTAIN", unit, candidateCount: pointMap.size, reason: planner.ok ? "no_budget" : planner.code },
     });
   }
@@ -424,6 +430,7 @@ function allocationAdapter(input) {
     },
     visualizations: [budgetShiftFigure({
       metric,
+      unitField: unit,
       baseline: "modeled",
       rows: allocation.items.map((item) => ({ entity: item.channel, current: safeNumber(currentByEntity[item.channel]?.cost), budget: safeNumber(item.cost), currentOutcomes: safeNumber(currentByEntity[item.channel]?.results), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
       locale,

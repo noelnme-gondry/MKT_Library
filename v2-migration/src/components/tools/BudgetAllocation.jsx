@@ -1,4 +1,6 @@
 "use client";
+import { efficiencyUnitLabel } from "@/lib/efficiencyUnits";
+import { objectParticle } from "@/lib/vocabulary/hangulMatch";
 import AllocationPreviewNotice from "@/components/ds/AllocationPreviewNotice";
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import { allocationAccountSteps } from "@/lib/recipe/allocationRecipe";
@@ -227,7 +229,9 @@ export function selectLowConfidenceHolds(modelsMap, historyByCh = {}) {
   for (const [ch, meta] of modelsMap) {
     if (allocConfidence(meta)?.level !== "low") continue;
     // 현재 지출을 모르면 고정할 값이 없다. 0으로 고정하면 채널을 끄는 것이 되므로 제외한다.
-    const current = Number(historyByCh?.[ch]?.latestCost);
+    // "현재"는 플래너·배분표가 쓰는 기준(최근 기간 일평균, totalCost)이다. 마지막 하루 지출(latestCost)로
+    // 고정하면 "유지"라고 적힌 대상이 표에서는 +44% 증액으로 보였다(2026-10-28 실제 형식 파일 점검).
+    const current = Number(historyByCh?.[ch]?.totalCost);
     if (!(current > 0)) continue;
     out[ch] = current;
   }
@@ -695,13 +699,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     [isDemoInput, allRows, decisionRecords],
   );
   const reviewHeldUnits = useMemo(
-    () => (holdLowConfidence ? reviewDowngradeUnits.filter((unit) => Number(historyByCh?.[unit]?.latestCost) > 0) : []),
+    () => (holdLowConfidence ? reviewDowngradeUnits.filter((unit) => Number(historyByCh?.[unit]?.totalCost) > 0) : []),
     [holdLowConfidence, reviewDowngradeUnits, historyByCh],
   );
   const lowConfidenceHolds = useMemo(() => {
     if (!holdLowConfidence) return {};
     const holds = selectLowConfidenceHolds(modelsMap, historyByCh);
-    for (const unit of reviewHeldUnits) holds[unit] = Number(historyByCh[unit].latestCost);
+    for (const unit of reviewHeldUnits) holds[unit] = Number(historyByCh[unit].totalCost);
     return holds;
   }, [holdLowConfidence, modelsMap, historyByCh, reviewHeldUnits]);
 
@@ -2067,6 +2071,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         {canStorePlan ? <ToolCoreFigure embedded
             figure={budgetShiftFigure({
               metric: effectiveMetric,
+              unitField,
               rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost, currentOutcomes: historyByCh[item.channel]?.totalResults ?? null, expectedOutcomes: item.results })),
               locale,
             })}
@@ -2127,7 +2132,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         return (
         <section className="block" id="s-table">
           <div className="section-head">
-            <h2 className="section-title">{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
+            <h2 className="section-title">{tr(`어떤 ${efficiencyUnitLabel(unitField, "ko")}${objectParticle(efficiencyUnitLabel(unitField, "ko"))} 조정할까?`, `Which ${efficiencyUnitLabel(unitField, "en")}s should change?`)}</h2>
             {rollupLevels.length > 1 && (
               <PillGroup
                 style={{ margin: 0 }}
@@ -2995,6 +3000,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           headlineContent={<AllocationHeadline lines={verdict.lines} />}
           points={actionPoints}
           pointsContent={<AllocationActionSummary
+            unitField={unitField}
             moves={actionMoves}
             issues={actionIssues}
             locale={locale}
