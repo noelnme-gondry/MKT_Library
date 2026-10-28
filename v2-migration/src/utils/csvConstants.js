@@ -655,6 +655,10 @@ export const STANDARD_FIELDS = {
                   "ad_group",
                   "ad_group_name",
                 ],
+                // 위 별칭은 캠페인명 필드가 없는 소재 도구(5-6·9-6·9-3)용이다. campaign_name과 같은 스코프
+                // (5-21·5-31·진입 화면)에서는 ID 헤더만 받는다 — Meta 내보내기의 "캠페인 이름"이 두 필드에
+                // 동점이 되고 "Ad set name"이 캠페인으로 확정되던 문제(2026-10-28, platformExports.test).
+                scopedAliases: { when: "campaign_name", aliases: ["campaign id", "campaign_id", "캠페인id", "캠페인 id"] },
                 type: "string",
                 required: false,
                 group: "Creative",
@@ -665,6 +669,9 @@ export const STANDARD_FIELDS = {
                 // Meta 등 소재 성과 export의 실제 표시 헤더. `cost`에도 같은 별칭이
                 // 있지만 도구 스코프가 9-6의 spend를 선택해 기존 엔진 키를 보존한다.
                 aliases: ["광고비", "spend", "creative spend", "amount spent", "지출 금액", "cost", "비용"],
+                // cost와 같은 스코프(5-21)에서는 "지출 금액"이 두 필드에 동점이 되어 필수 열이 "확인 필요"로
+                // 남는다. 둘은 같은 열이고 getMappedRows가 양쪽을 채우므로 그때는 이름이 spend인 헤더만 받는다.
+                scopedAliases: { when: "cost", aliases: ["spend", "creative spend"] },
                 type: "number",
                 required: false,
                 group: "Creative",

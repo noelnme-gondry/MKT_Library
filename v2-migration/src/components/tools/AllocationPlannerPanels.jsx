@@ -1,6 +1,7 @@
 "use client";
 // 5-3 결과에 붙는 플래너 근거: 성과 예측 · 대상별 상태와 원인 · 단가 변화 분해 · 소재 상태.
 // 계산은 lib/budgetPlanner가 하고, 여기서는 읽는 순서대로 보여 주기만 한다.
+import { efficiencyUnitLabel } from "@/lib/efficiencyUnits";
 import { Fragment, useState } from "react";
 import DataTable from "@/components/ds/DataTable";
 import {
@@ -464,8 +465,10 @@ function ChangeBar({ delta, max }) {
  * 결론 카드 본문(임원용): 채널별 조정안 표와 확인할 점 표. 금액은 축약 표기, 근거는 짧은 명사구.
  * fmtMoney: 축약 금액 · fmtMetric: 내부 CPR → 표시 지표(ROAS면 역수).
  */
-export function AllocationActionSummary({ moves = [], issues = [], locale = "ko", metricLabel, resultLabel, fmtMoney, fmtResult, fmtMetric = (value) => String(value), onShowAll, limit = 6, issueLimit = 4 }) {
+export function AllocationActionSummary({ moves = [], issues = [], locale = "ko", unitField = "channel", metricLabel, resultLabel, fmtMoney, fmtResult, fmtMetric = (value) => String(value), onShowAll, limit = 6, issueLimit = 4 }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
+  // 표 이름은 실제 배분 단위로 — 채널 열이 없는 파일은 캠페인끼리 나눈다(lib/efficiencyUnits). EN은 이미 "target"이다.
+  const tableTitle = tr(`${efficiencyUnitLabel(unitField, "ko")}별 조정안`, "Changes by target");
   const changed = moves.filter((move) => move.direction !== "keep");
   const shown = changed.slice(0, limit);
   const max = Math.max(0, ...shown.map((move) => Math.abs(move.delta)));
@@ -480,11 +483,11 @@ export function AllocationActionSummary({ moves = [], issues = [], locale = "ko"
       {shown.length > 0 && (
         <section className="alloc-plan" aria-labelledby="alloc-actions-title">
           <div className="alloc-plan__head">
-            <h3 id="alloc-actions-title">{tr("채널별 조정안", "Changes by target")}</h3>
+            <h3 id="alloc-actions-title">{tableTitle}</h3>
             <span>{tr(`하루 기준 · 변화 큰 순 ${shown.length}/${changed.length}`, `Per day · largest ${shown.length} of ${changed.length}`)}</span>
           </div>
           <DataTable
-            ariaLabel={tr("채널별 조정안", "Changes by target")}
+            ariaLabel={tableTitle}
             className="alloc-plan__table"
             rows={shown}
             rowKey={(move) => move.unit}

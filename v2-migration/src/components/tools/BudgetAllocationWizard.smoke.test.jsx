@@ -31,6 +31,15 @@ function chooseBasis(name, locale = "ko", { keepOpen = false } = {}) {
 }
 // 지표 선택은 접힘 여부에 따라 창 안이나 바깥에 있다 — 어느 쪽이든 하나만 렌더된다.
 const objectiveRadio = (name) => screen.getByRole("radio", { name, hidden: true });
+// 실행안이 있으면 지표 선택은 접힌 창 안에만 있다 — 창을 열어 읽고 닫는다(바깥을 계속 누를 수 있게).
+function objectiveChecked(name, locale = "ko") {
+  const inline = screen.queryByRole("radio", { name, hidden: true });
+  if (inline) return inline.getAttribute("aria-checked");
+  const dialog = openConditions(locale);
+  const checked = within(dialog).getByRole("radio", { name }).getAttribute("aria-checked");
+  closeConditions(dialog, locale);
+  return checked;
+}
 
 
 function seedWithData() {
@@ -47,13 +56,16 @@ function seedWithData() {
   };
   const raw = [];
   const channels = ["Google", "Meta", "TikTok"];
+  // 지출이 날마다 오르내리고 설치가 수확체감하는 곡선 — CPI가 지출과 무관하게 일정하면 곡선을 적합할 수
+  // 없어 모든 채널이 "신뢰도 낮음 · 유지"가 되고 배분안이 생기지 않는다(그때 보이던 증감은 유지 금액을
+  // 마지막 하루 지출로 잡던 버그였다, 2026-10-28).
   for (let d = 1; d <= 20; d++) {
     const date = `2026-01-${String(d).padStart(2, "0")}`;
-    for (const ch of channels) {
+    for (const [index, ch] of channels.entries()) {
       const base = ch === "Google" ? 100000 : ch === "Meta" ? 80000 : 40000;
-      const cost = base + d * 3000;
-      const divisor = ch === "Google" ? 5000 : ch === "Meta" ? 4200 : 6000;
-      const installs = Math.round(cost / divisor);
+      const cost = Math.round(base * (1 + 0.45 * Math.sin(d * 0.9 + index * 2.1)));
+      const scale = ch === "Google" ? 4.2 : ch === "Meta" ? 5.4 : 3.1;
+      const installs = Math.round(scale * Math.sqrt(cost));
       raw.push({
         Date: date,
         Country: "KR",
@@ -320,13 +332,13 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     const finish = screen.getAllByRole("button", { name: /검증 완료 및 예산 배분/ })[0];
     fireEvent.click(finish);
     chooseBasis(/총 예산/);
-    expect(objectiveRadio(/ROAS/).getAttribute("aria-checked")).toBe("true");
+    expect(objectiveChecked(/ROAS/)).toBe("true");
   });
 
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
     render(<BudgetAllocation />);
     chooseBasis(/효율 목표/);
-    expect(objectiveRadio(/CPI/).getAttribute("aria-checked")).toBe("true");
+    expect(objectiveChecked(/CPI/)).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();

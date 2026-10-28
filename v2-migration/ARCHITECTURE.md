@@ -189,6 +189,7 @@ v2-migration/
 
 ## 7. 내비게이션 팁
 - **사이드바 접기 → `src/lib/sidebarCollapse.js`**. **기본값은 항상 펼침**이고 접는 시점은 사용자가 정한다(헤더 ◧ 토글, 선택은 localStorage에 저장). 상태는 `body.is-sidebar-collapsed` 한 곳에 두어 셸을 렌더하는 10여 개 레이아웃을 각각 고치지 않는다. 접은 사용자에게만 `RootDocument`의 부팅 인라인 스크립트가 첫 페인트 전에 적용한다. **접힌 상태에서는 `.app`을 1열로 선언해야 한다** — 사이드바가 흐름에서 빠지면 남은 자식이 첫 트랙에 배치돼 본문 폭이 0이 된다.
+- **효율 비교 단위 → `src/lib/efficiencyUnits.js`** (채널 → 캠페인 → 국가 중 파일에 있는 것. 결과 작업대 어댑터 5-21·5-22·5-3과 5-3 화면(`useAllocationRecipe`)이 같은 순서로 고른다 — 채널 열 없는 단일 매체 내보내기는 캠페인끼리 비교).
 - **결론 금액 환산 → `src/utils/efficiencyImpactMath.js`** (효율 변화 × 관측 전환량 → 창/일/N일 환산. 예측이 아니라 산술 환산이며 호출부가 그 사실을 문구로 말한다. 소비처: `utils/dashboardVerdict.js` 5-2 결론).
 - **주간 리뷰 엔진 → `src/lib/weekly-review/`** (순수 함수, 골든): `period.js` 기간 판정(요일 맞춤) ·
   `significance.js` 유의미성(크기+변동성+표본) · `snapshot.js` 주×캠페인 집계 · `router.js` 분석 라우터 ·

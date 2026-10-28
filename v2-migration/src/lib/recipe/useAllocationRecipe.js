@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { addStep, foldSteps, partitionForSync } from "./recipe";
 import { ALLOCATION_OPTIONS, ALLOCATION_SPEC, allocationOptionStep, allocationOptionValue, legacyAllocationSteps } from "./allocationRecipe";
 import { recipeVocabularyFor } from "./toolVocabulary";
+import { resolveAllocationUnit } from "@/lib/efficiencyUnits";
 const vocabulary = recipeVocabularyFor("5-3");
 const EMPTY = [];
 function initialSteps() {
@@ -18,6 +19,9 @@ export function useAllocationRecipe(csvData) {
   const spec = useMemo(() => ({ ...ALLOCATION_SPEC, metrics: [["install", "installs"], ["action", "actions"], ["roas", "revenue_d7"]].filter(([, field]) => context.mappedFields.has(field)).map(([key]) => key) }), [context]);
   const fold = useMemo(() => foldSteps(steps, vocabulary, spec, context), [steps, spec, context]);
   const values = Object.fromEntries(Object.keys(ALLOCATION_OPTIONS).map(key => [key, allocationOptionValue(fold.state, key)]));
+  // 파일에 없는 단위로는 나눌 수 없다 — 채널 열이 없는 단일 매체 파일은 캠페인으로 나눈다(lib/efficiencyUnits).
+  // 저장한 선택은 그대로 두고 화면에서만 내린다: 채널 열이 있는 파일을 다시 올리면 채널로 돌아간다.
+  values.unitField = resolveAllocationUnit(values.unitField, context.mappedFields);
   // Preserve each structured input independently. Budget/view changes must not
   // invalidate observed rows or refit unchanged per-channel models.
   const controls = {

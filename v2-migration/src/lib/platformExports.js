@@ -15,7 +15,7 @@ export const PLATFORM_EXPORTS = [
     id: "meta-ads-ko",
     platform: { ko: "Meta 광고 관리자 (한글 화면)", en: "Meta Ads Manager (Korean UI)" },
     report: { ko: "일 단위로 나눈 캠페인 보고서", en: "Campaign report broken down by day" },
-    tools: ["5-2", "5-3", "5-22"],
+    tools: ["5-2", "5-21", "5-3", "5-22"],
     columns: { "일": "date", "캠페인 이름": "campaign_name", "지출 금액 (KRW)": "cost", "노출": "impressions", "링크 클릭": "clicks", "앱 설치": "installs" },
     ignored: {
       "광고 세트 이름": { ko: "이 도구들은 캠페인 단위로 봅니다.", en: "These tools work at campaign level." },
@@ -26,7 +26,7 @@ export const PLATFORM_EXPORTS = [
     id: "meta-ads-en",
     platform: { ko: "Meta 광고 관리자 (영문 화면)", en: "Meta Ads Manager (English UI)" },
     report: { ko: "일 단위로 나눈 캠페인 보고서", en: "Campaign report broken down by day" },
-    tools: ["5-2", "5-3", "5-22"],
+    tools: ["5-2", "5-21", "5-3", "5-22"],
     columns: { "Day": "date", "Campaign name": "campaign_name", "Amount spent (USD)": "cost", "Impressions": "impressions", "Link clicks": "clicks", "App installs": "installs" },
     ignored: {
       "Ad set name": { ko: "이 도구들은 캠페인 단위로 봅니다.", en: "These tools work at campaign level." },
