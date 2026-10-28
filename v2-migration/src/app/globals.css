@@ -12316,6 +12316,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .report-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; }
 .report-context__line { flex: 1 1 12rem; min-width: 0; margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
 .report-context__line strong { color: var(--text-primary); font-weight: 600; }
+/* 조각(파일·기간·지표) 하나는 한 덩어리로 줄바꿈한다 — 날짜가 "2025-" / "05-12"로 끊기지 않게. 줄보다 긴 조각은 안에서 접힌다. */
+.report-context__line > span:not(.report-context__sep), .report-context__line > strong { display: inline-block; max-width: 100%; }
 .report-context__edit { min-height: 44px; }
 .report-context__warning { margin: -8px 0 16px; color: var(--warning); font-size: var(--fs-sm); }
 .report-context-dialog__hint { margin: 12px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
@@ -12820,8 +12822,12 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 @layer app {
   /* MMM controls are fields, not nested pills: one border per interactive input. */
   .mmm-controls__scope, .mmm-controls__model { gap: 16px !important; align-items: center !important; }
-  .mmm-controls-panel .ab-pillgroup { gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; flex-wrap: wrap; }
-  .mmm-controls-panel .ab-pillgroup-label { padding: 0; border: 0; background: none; margin: 0; }
+  .mmm-controls-panel .ab-pillgroup,
+  .report-context-dialog__body .mmm-controls__model .ab-pillgroup { gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; flex-wrap: wrap; }
+  .mmm-controls-panel .ab-pillgroup-label,
+  .report-context-dialog__body .mmm-controls__model .ab-pillgroup-label { padding: 0; border: 0; background: none; margin: 0; }
+  /* 단독 MMM 화면은 같은 모델 선택을 조건 바꾸기 창 안에 그린다 — 막대와 같은 열린 모양으로. */
+  .report-context-dialog__body .mmm-controls__model { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
   .mmm-controls-panel .ab-pill { min-height: 40px; padding: 8px 10px; border-radius: var(--radius-sm); }
   .mmm-controls-panel .ab-pill:not(button) { min-height: auto; padding: 6px 8px; }
   .mmm-controls-panel .response-target-context { padding: 8px 12px; gap: 10px; flex-wrap: wrap; overflow: visible; }

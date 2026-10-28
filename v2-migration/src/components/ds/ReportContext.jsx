@@ -12,13 +12,14 @@ import ModalDialog from "@/components/ds/ModalDialog";
  *
  * parts: [{ text, emphasis? }] — 지금 결과가 무엇으로 계산됐는지(데이터·기간·지표·대상).
  * 빈 문자열은 버린다. 순서가 곧 읽는 순서다.
+ * actions: 줄 옆에 그대로 두는 버튼(예: 분석 패키지 받기) — 조건이 아니라 산출물이라 창에 넣지 않는다.
  */
 const COPY = {
   ko: { change: "조건 바꾸기", close: "닫기", dialog: "분석 조건", hint: "바꾸면 결과에 바로 반영됩니다." },
   en: { change: "Change settings", close: "Close", dialog: "Analysis settings", hint: "Changes apply to the results right away." },
 };
 
-export default function ReportContext({ parts = [], locale = "ko", dialogTitle, children, className = "", onOpenChange }) {
+export default function ReportContext({ parts = [], locale = "ko", dialogTitle, children, className = "", onOpenChange, actions = null }) {
   const T = COPY[locale === "en" ? "en" : "ko"];
   const [open, setOpenState] = useState(false);
   // 창 안에서 바꾼 값이 결과를 잠시 지워도(예: 시작일만 바꿈) 부르는 쪽이 창을 유지할 수 있게 알린다.
@@ -36,6 +37,7 @@ export default function ReportContext({ parts = [], locale = "ko", dialogTitle, 
           </React.Fragment>
         ))}
       </p>
+      {actions}
       {children && <button type="button" className="btn secondary report-context__edit" ref={trigger} onClick={() => setOpen(true)}>{T.change}</button>}
       {children && (
         <ModalDialog open={open} onClose={() => setOpen(false)} returnFocusRef={trigger} ariaLabel={title} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel report-context-dialog">

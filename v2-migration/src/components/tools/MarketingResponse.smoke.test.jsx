@@ -81,7 +81,7 @@ import MarketingResponse, {
 import { buildPaidOrganicPlatformModel, buildFixedBudgetAuditPredictions, mmmSumOsBacktests, forecastDisplayDate } from "@/components/tools/marketingResponseModel";
 import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
 import { MMM_METH_CONFIG, mmmResolveAbsorb } from "@/utils/mmmMath";
-import { withDeclared } from "@/test/declaredConditions";
+import { withDeclared, withSettings } from "@/test/declaredConditions";
 
 vi.mock("@/lib/analysis/webr/mmmElasticNet", async (importOriginal) => {
   const actual = await importOriginal();
@@ -1788,6 +1788,27 @@ describe("MarketingResponse render smoke", () => {
     withDeclared(() => { fireEvent.change(screen.getByLabelText(locale === "en" ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?"), { target: { value: "changed" } }); });
     expect(container.querySelector(".decision-review")).toBeNull();
     expect(container.textContent).toContain(locale === "en" ? "Treat patterns as descriptive" : "패턴은 현상 설명으로만");
+  });
+
+  // 단독 기여(MMM) 화면: 표시 기간·모델 선택은 결과 위 맥락 줄의 "조건 바꾸기" 창 안에 있다(§1.1c 4단계).
+  it.each(["ko", "en"])("keeps the standalone MMM conditions in the report context dialog (%s)", async (locale) => {
+    seedWithData();
+    const en = locale === "en";
+    const { container } = render(<MarketingResponse initialStage="mmm" isolated locale={locale} />);
+    clickByText(container, en ? "Analyze" : "분석하기");
+    await flushRaf();
+    const line = container.querySelector(".report-context__line");
+    expect(line.textContent).toContain(en ? "informative prior on" : "정보 prior 켜짐");
+    // 맨 위 막대에는 고를 것이 없으니 따로 두지 않는다 — 조건은 창 안에서만 보인다.
+    expect(container.querySelector(".mmm-controls")).toBeNull();
+    expect(document.body.textContent).not.toContain(en ? "Off (flat OLS)" : "끄기 (평면 OLS)");
+    withSettings((dialog) => {
+      const priorOff = Array.from(dialog.querySelectorAll("button")).find((button) => button.textContent.includes(en ? "Off (flat OLS)" : "끄기 (평면 OLS)"));
+      expect(priorOff).toBeTruthy();
+      fireEvent.click(priorOff);
+    });
+    await flushRaf();
+    expect(container.querySelector(".report-context__line").textContent).toContain(en ? "informative prior off" : "정보 prior 꺼짐");
   });
 
   it.each(["ko", "en"])("does not call unidentifiable channels an absence of cannibalization (%s)", async (locale) => {

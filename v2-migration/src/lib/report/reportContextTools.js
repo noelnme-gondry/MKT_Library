@@ -6,12 +6,12 @@
 // 분석 여부와 무관하게 도구가 늘 자기 입력 줄을 그린다(제목 줄·데이터 줄·분석 게이트 없는 결과).
 export const ALWAYS_OWN_INPUT_LINE_TOOL_IDS = Object.freeze([
   "5-2", "5-22", "5-3", "5-31", "5-23", "5-24", "5-20", "9-1",
-  "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast",
+  "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast", "5-18-paid-organic",
 ]);
 
 // 분석 뒤에도 자기 입력 줄이 아직 없는 도구 — 맨 위 줄이 계속 말한다. 보고서 틀을 붙이면 여기서 뺀다.
 export const SETUP_BAR_INPUT_TOOL_IDS = Object.freeze([
-  "5-18-paid-organic", "5-28", "5-29", "5-30",
+  "5-28", "5-30",
 ]);
 
 export function setupBarShowsInput(toolId, analyzed) {

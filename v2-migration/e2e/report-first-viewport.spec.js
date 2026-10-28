@@ -12,18 +12,9 @@ const VIEWPORTS = [
   { width: 980, height: 900 },
   { width: 390, height: 844 },
 ];
-// 아직 결론이 첫 화면 아래인 도구 — 4단계에서 하나씩 지운다(2026-10-27 실측: 폰 958~2,579px).
-// 도구 단위로 적는다(폭마다 따로 적지 않는다). 지운 도구는 세 폭 모두 통과해야 한다.
-const REPORT_FRAME_PENDING = "보고서 틀(맥락 한 줄·결론 먼저) 미적용 — product-ssot §1.1c 4단계";
-const KNOWN_GAPS = {
-  "5-18-paid-organic": REPORT_FRAME_PENDING,
-  "5-18-cannibal": REPORT_FRAME_PENDING,
-  "5-18-mmm": REPORT_FRAME_PENDING,
-  "5-20": REPORT_FRAME_PENDING,
-  "5-28": REPORT_FRAME_PENDING,
-  "5-29": REPORT_FRAME_PENDING,
-  "9-1": REPORT_FRAME_PENDING,
-};
+// 결론이 첫 화면 아래인 도구를 사유와 함께 적는 자리(빠진 것과 뺀 것을 구분, AGENTS §7).
+// 4단계에서 발행 도구 전부를 첫 화면 안으로 옮겨 지금은 비어 있다(2026-10-28). 새로 적으려면 사유를 값으로 쓴다.
+const KNOWN_GAPS = {};
 
 for (const locale of ["ko", "en"]) {
   for (const viewport of VIEWPORTS) {

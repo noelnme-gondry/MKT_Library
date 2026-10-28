@@ -23,6 +23,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import ReportContext from "@/components/ds/ReportContext";
 import DownloadHub from "@/components/ds/DownloadHub";
 import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -287,6 +288,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [outcome, setOutcome] = useSavedToolInput("9-1", "outcome", null);
   const [features, setFeatures] = useSavedToolInput("9-1", "features", []);
   const [analyzedSig, setAnalyzedSig] = useState(null);
+  // 조건 바꾸기 창이 열린 동안은 열을 바꿔 결과가 잠시 비어도 접힌 채로 둔다(창이 사라지면 편집이 끊긴다).
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [seededKey, setSeededKey] = useState(null);
   const [webRRun, setWebRRun] = useState({ status: "idle", signature: null, result: null });
   // 혼합모형은 lme4(Matrix·Rcpp 동반)를 받아야 해서 이 레지스트리에서 가장 무겁다.
@@ -748,88 +751,108 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
         ),
       }
     : null;
-  return (
-    <div className="tab-pane active">
-      {isDemo && (
-        <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <div>
-            <strong>{T.demoBannerTitle}</strong>
-            <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
+  const mappingBody = (
+    <>
+      <div className="csv-loaded-bar">
+        <div className="csv-loaded-info">
+          <span className="dot" style={{ background: isDemo ? "var(--warning)" : "var(--success)" }}></span>
+          {isDemo ? <strong>{T.previewingDemo}</strong> : <strong>{fileName}</strong>}
+          <span className="csv-loaded-stats tnum">{T.rowsStats(csvData.raw.length, numericCols.length)}</span>
+        </div>
+        {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{T.changeCsvBtn}</button>}
+      </div>
+
+      <div style={{ marginTop: "12px", display: "grid", gap: "12px" }}>
+        <div>
+          <label htmlFor="content-outcome" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{T.outcomeLabel}</label>
+          <div style={{ fontSize: "var(--fs-xs)", color: MUTED, margin: "2px 0 6px" }}>{T.outcomeHint}</div>
+          <select id="content-outcome" className="map-select" value={outcome || ""} onChange={(e) => { setOutcome(e.target.value); setFeatures((prev) => prev.filter((f) => f !== e.target.value)); }}>
+            {numericCols.map((h) => <option key={h} value={h}>{h}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{T.featureLabel}</label>
+          <div style={{ fontSize: "var(--fs-xs)", color: MUTED, margin: "2px 0 6px" }}>{T.featureHint}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {numericCols.filter((h) => h !== outcome).map((h) => {
+              const on = features.includes(h);
+              return (
+                <button key={h} className={`ab-pill ${on ? "active" : ""}`}
+                  onClick={() => setFeatures((prev) => (on ? prev.filter((x) => x !== h) : [...prev, h]))}>
+                  {on ? "✓ " : ""}{h}
+                </button>
+              );
+            })}
           </div>
-          <button className="ab-button" onClick={resetCsv}>{T.demoBannerBtn}</button>
+          <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "7px", lineHeight: 1.45 }}>{T.featureDataHint}</div>
+        </div>
+      </div>
+
+      {!canAnalyze ? (
+        <div className="required-banner" style={{ marginTop: "12px" }}>
+          <AnalysisBlockedTelemetry
+            toolId="9-1"
+            source={isDemo ? "demo" : csvData?.importSource || "csv"}
+            state="missing_required"
+            signature={`${fileName}|${outcome || ""}|${features.length}`}
+            rowCount={csvData?.raw?.length || 0}
+            missingCount={(outcome ? 0 : 1) + (features.length ? 0 : 1)}
+            analysisType="content_elements"
+            locale={locale}
+          />
+          <strong>{T.needBoth}</strong>
+        </div>
+      ) : analyzed ? (
+        <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <span style={{ color: "var(--success)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{T.analyzedBadge}</span>
+          <span style={{ color: MUTED, fontSize: "var(--fs-xs)" }}>{T.analyzedHint}</span>
+          <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runElementAnalysis}>{T.reanalyzeBtn}</button>
+        </div>
+      ) : (
+        <div style={{ marginTop: "12px", background: "transparent", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{T.readyMsg} <strong>{T.readyStrong}</strong></div>
+          <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
         </div>
       )}
-
-      {/* ── §0 매핑 ── */}
-      <section data-information-section="" className="block analysis-data-mapping" id="s-content-mapping"  >
-        <header data-information-heading="">
-          <span>{T.mappingTitle}</span>
-          {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
-        </header>
-        <div className="analysis-data-mapping__body">
-        <div className="csv-loaded-bar">
-          <div className="csv-loaded-info">
-            <span className="dot" style={{ background: isDemo ? "var(--warning)" : "var(--success)" }}></span>
-            {isDemo ? <strong>{T.previewingDemo}</strong> : <strong>{fileName}</strong>}
-            <span className="csv-loaded-stats tnum">{T.rowsStats(csvData.raw.length, numericCols.length)}</span>
-          </div>
-          {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{T.changeCsvBtn}</button>}
-        </div>
-
-        <div style={{ marginTop: "12px", display: "grid", gap: "12px" }}>
-          <div>
-            <label htmlFor="content-outcome" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{T.outcomeLabel}</label>
-            <div style={{ fontSize: "var(--fs-xs)", color: MUTED, margin: "2px 0 6px" }}>{T.outcomeHint}</div>
-            <select id="content-outcome" className="map-select" value={outcome || ""} onChange={(e) => { setOutcome(e.target.value); setFeatures((prev) => prev.filter((f) => f !== e.target.value)); }}>
-              {numericCols.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{T.featureLabel}</label>
-            <div style={{ fontSize: "var(--fs-xs)", color: MUTED, margin: "2px 0 6px" }}>{T.featureHint}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {numericCols.filter((h) => h !== outcome).map((h) => {
-                const on = features.includes(h);
-                return (
-                  <button key={h} className={`ab-pill ${on ? "active" : ""}`}
-                    onClick={() => setFeatures((prev) => (on ? prev.filter((x) => x !== h) : [...prev, h]))}>
-                    {on ? "✓ " : ""}{h}
-                  </button>
-                );
-              })}
+    </>
+  );
+  const reportFolded = Boolean(analyzed && fit && !fit.error) || settingsOpen;
+  return (
+    <div className="tab-pane active">
+      {/* 결과가 나오면 샘플 안내·열 지정은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계).
+          열을 바꾸면 결과가 잠시 사라지지만 창은 닫히지 않는다 — 같은 창에서 다시 분석한다. */}
+      {reportFolded ? (
+        <ReportContext locale={locale} onOpenChange={setSettingsOpen} dialogTitle={T.mappingTitle} parts={[
+          { text: isDemo ? tr("예시 데이터", "Sample data") : fileName, emphasis: true },
+          { text: tr(`${csvData.raw.length.toLocaleString()}행`, `${csvData.raw.length.toLocaleString()} rows`) },
+          ...(outcome ? [{ text: tr(`성과 ${outcome}`, `outcome ${outcome}`) }] : []),
+          { text: tr(`요소 ${features.length}개`, `${features.length} element(s)`) },
+        ]}>
+          {isDemo && <button className="ab-button" onClick={resetCsv}>{T.demoBannerBtn}</button>}
+          {mappingBody}
+        </ReportContext>
+      ) : <>
+        {isDemo && (
+          <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <div>
+              <strong>{T.demoBannerTitle}</strong>
+              <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
             </div>
-            <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "7px", lineHeight: 1.45 }}>{T.featureDataHint}</div>
-          </div>
-        </div>
-
-        {!canAnalyze ? (
-          <div className="required-banner" style={{ marginTop: "12px" }}>
-            <AnalysisBlockedTelemetry
-              toolId="9-1"
-              source={isDemo ? "demo" : csvData?.importSource || "csv"}
-              state="missing_required"
-              signature={`${fileName}|${outcome || ""}|${features.length}`}
-              rowCount={csvData?.raw?.length || 0}
-              missingCount={(outcome ? 0 : 1) + (features.length ? 0 : 1)}
-              analysisType="content_elements"
-              locale={locale}
-            />
-            <strong>{T.needBoth}</strong>
-          </div>
-        ) : analyzed ? (
-          <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "var(--success)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{T.analyzedBadge}</span>
-            <span style={{ color: MUTED, fontSize: "var(--fs-xs)" }}>{T.analyzedHint}</span>
-            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runElementAnalysis}>{T.reanalyzeBtn}</button>
-          </div>
-        ) : (
-          <div style={{ marginTop: "12px", background: "transparent", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{T.readyMsg} <strong>{T.readyStrong}</strong></div>
-            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
+            <button className="ab-button" onClick={resetCsv}>{T.demoBannerBtn}</button>
           </div>
         )}
-        </div>
-      </section>
+
+        {/* ── §0 매핑 ── */}
+        <section data-information-section="" className="block analysis-data-mapping" id="s-content-mapping"  >
+          <header data-information-heading="">
+            <span>{T.mappingTitle}</span>
+            {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
+          </header>
+          <div className="analysis-data-mapping__body">
+          {mappingBody}
+          </div>
+        </section>
+      </>}
 
       {analyzed && fit && fit.error && (
         <section className="block">
