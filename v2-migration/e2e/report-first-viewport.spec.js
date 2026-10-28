@@ -17,7 +17,6 @@ const VIEWPORTS = [
 const REPORT_FRAME_PENDING = "보고서 틀(맥락 한 줄·결론 먼저) 미적용 — product-ssot §1.1c 4단계";
 const KNOWN_GAPS = {
   "5-18-paid-organic": REPORT_FRAME_PENDING,
-  "5-18-trend": REPORT_FRAME_PENDING,
   "5-18-cannibal": REPORT_FRAME_PENDING,
   "5-18-mmm": REPORT_FRAME_PENDING,
   "5-20": REPORT_FRAME_PENDING,

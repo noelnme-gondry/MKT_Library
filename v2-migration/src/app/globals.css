@@ -9807,6 +9807,10 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
   background: var(--surface-container-low);
 }
 .result-action-card__headline { font-size: clamp(var(--fs-lg), 1.7vw, var(--fs-xl)); line-height: 1.28; }
+/* 폰에서는 결론 한 문장이 20px로 5줄이 돼 첫 화면 밖으로 밀렸다 — 5-3 플래너와 같은 16px(굵기로 위계를 유지). */
+@media (max-width: 480px) {
+  .result-action-card__headline { font-size: var(--fs-md); line-height: 1.35; }
+}
 .result-action-card__stats { margin-top: 16px; }
 .result-action-card__stats > div { padding-block: 12px; }
 .result-action-card__controls > .btn.ghost { min-height: 32px; padding-inline: 7px; }
