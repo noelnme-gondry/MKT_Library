@@ -25,7 +25,11 @@ describe("ToolConnections", () => {
     expect(container.querySelectorAll(".tool-connection-card")).toHaveLength(2);
     expect(container.querySelectorAll(".is-same-data")).toHaveLength(2);
     expect(container.textContent).toContain("같은 CSV로 이어보기");
-    expect(container.textContent).toContain("전체 여정");
+    expect(container.textContent).toContain("더 볼 수 있는 분석");
+    // 상황은 순서가 아니다(product-ssot §1.1c) — 앞뒤 단계 대신 같은 상황·같은 파일로 잇는다.
+    const groups = [...container.querySelectorAll(".tool-connections__map-group > span")].map((node) => node.textContent);
+    expect(groups).toEqual(["같은 상황의 다른 분석", "같은 파일로 되는 분석"]);
+    expect(container.textContent).not.toMatch(/앞 단계로|다음 단계로|다음 운영 주기/);
   });
 
   it("renders equivalent EN copy and routes", () => {

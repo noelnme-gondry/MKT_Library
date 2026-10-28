@@ -1,7 +1,8 @@
 const FUNNEL_STAGES = [
   {
     id: "intent",
-    events: ["landing_data_start_clicked", "blog_tool_cta_clicked", "landing_tool_pick", "diagnose_tool_opened"],
+    // 홈 주 행동은 2026-10-27부터 상황 고르기(landing_situation_clicked)·전체 보기(landing_finder_opened)다.
+    events: ["landing_data_start_clicked", "landing_situation_clicked", "landing_finder_opened", "blog_tool_cta_clicked", "landing_tool_pick", "diagnose_tool_opened"],
   },
   { id: "imported", events: ["data_import_success"] },
   { id: "completed", events: ["analysis_completed"] },

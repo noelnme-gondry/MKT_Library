@@ -7,8 +7,8 @@ import { ROUTES, hasEnVersion } from "../src/lib/routeMap";
 // 정적 화면과, 예시 데이터로 실제 결과를 그린 도구 화면을 같이 본다 — 결과 화면에서만
 // 생기는 겹침·상자 안 상자는 빈 업로드 화면으로는 절대 안 잡힌다.
 const STATIC_PAGES = [
-  "/data-guide", "/en/data-guide",
-  "/", "/start", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
+  // /start = 분석 찾기(상황·파일·분석 카드). 옛 /data-guide는 여기로 영구 이동했다.
+  "/", "/start", "/start?situation=budget", "/en/start?situation=proof", "/start?file=commerce", "/en/start?file=store", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
   "/guide/kpi-analysis", "/glossary", "/templates", "/compare",
   "/en", "/en/blog/ad-performance-diagnosis", "/en/start",
   // 2026-09-24 점검에서 눈금 막대·상자 안 상자·작은 라벨이 남아 있던 화면.
@@ -266,6 +266,7 @@ test("incrementality waits for stored-project startup before accepting a real fi
   await expect(page.getByRole("button", { name: "증분 분석 CSV 파일 선택" })).toHaveAttribute("aria-disabled", "true");
   await page.evaluate(() => window.releaseWorkspaceOpen());
   await MANUAL_RESULTS["/tools/incrementality"](page);
-  await expect(page.locator('#tab-incr .file-state').getByText("holdout-design.csv", { exact: true })).toBeVisible();
+  // 결과가 나오면 파일 이름은 결과 위 맥락 한 줄이 말한다(§1.1c 4단계).
   await expect(page.locator(".result-action-card").first()).toBeVisible();
+  await expect(page.locator("#tab-incr .report-context").getByText("holdout-design.csv", { exact: true })).toBeVisible();
 });

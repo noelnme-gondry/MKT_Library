@@ -9,7 +9,6 @@ export function journeySurface(pathname = "") {
   if (path === "/weekly-review") return "review";
   if (path === "/dochi-result") return "dochi";
   if (path === "/start") return "start";
-  if (path === "/data-guide") return "guide";
   // 계산기는 검색 진입면이다(EN break-even-roas 계산기만 GSC 노출 220). other에 섞으면
   // "계산기로 들어와 CSV 분석까지 갔나"를 가를 수 없다.
   if (path === "/calculator" || path.startsWith("/calculator/")) return "calculator";

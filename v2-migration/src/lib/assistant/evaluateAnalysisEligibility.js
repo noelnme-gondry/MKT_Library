@@ -17,6 +17,10 @@ function hasCompatibleField(fields, field) {
   if (fields.has(field)) return true;
   if (field === "week") return fields.has("date") || fields.has("iso_week_start");
   if (field === "date") return fields.has("week") || fields.has("iso_week_start");
+  // 광고비는 grain에 따라 키가 둘(효율 cost · 소재 spend)이고 getMappedRows가 양쪽을 채운다.
+  // 공용 매핑이 cost로 잡은 열을 소재 도구가 spend로 못 읽어 9-6이 늘 막혀 있었다(2026-10-27).
+  if (field === "spend") return fields.has("cost");
+  if (field === "cost") return fields.has("spend");
   return false;
 }
 

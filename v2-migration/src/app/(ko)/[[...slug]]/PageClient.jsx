@@ -13,7 +13,6 @@ import GlobalModals from "@/components/GlobalModals";
 import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
 import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
-import AnalysisDataGuide from "@/components/AnalysisDataGuide";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
@@ -111,7 +110,6 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "home" && <><LandingPage reading={reading} /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
-            {routeId === "data-guide" && <AnalysisDataGuide locale="ko" />}
             {routeId === "projects" && <ProjectsPage locale="ko" />}
             {routeId === "subscription" && <SubscriptionPage locale="ko" />}
             {routeId === "storage" && <WorkspaceStoragePage />}
@@ -153,7 +151,6 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId !== "home" &&
              routeId !== "guide-index" &&
              routeId !== "start-gate" &&
-             routeId !== "data-guide" &&
              !["storage", "projects", "subscription", "account"].includes(routeId) &&
              routeId !== "dochi-result" &&
              !routeId.startsWith("5-") &&

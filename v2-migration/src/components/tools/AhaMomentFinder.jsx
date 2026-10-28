@@ -17,6 +17,7 @@ import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import InfoPopover from "@/components/ds/InfoPopover";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import DeclaredConditions from "@/components/ds/DeclaredConditions";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { csvBody } from "@/utils/download";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -1194,22 +1195,25 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       </RecipeBlock>
       </></MappingEditorDialog>
 
-      <section className="block analysis-design-check">
+      {/* 평가 시작일은 사용자가 선언하는 조건이다 — 결과 위에 펼치지 않고 한 줄 + 확인 창(product-ssot §1.1c 4단계). */}
+      <DeclaredConditions locale={locale} className="declared-conditions--outcome"
+        title={tr("결과 평가 시점", "Outcome window")}
+        answered={temporalScope.confirmed ? 1 : 0} total={1} ready={temporalScope.confirmed}
+        status={temporalScope.confirmed
+          ? tr(`가입 후 ${activeOutcomeStartDay}일부터 평가 · 제외 ${temporalScope.excluded.length}개`, `Evaluated from day ${activeOutcomeStartDay} · ${temporalScope.excluded.length} excluded`)
+          : tr("미선언 — 탐색 연관만, 행동 결정 보류", "Undeclared — exploratory only, decisions held")}
+        intro={tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}
+        note={temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}>
         <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
           <input type="number" min="1" step="1" value={outcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
         </label>
         {outcomeStartDay && outcomeWindowSource !== csvData.raw && <button type="button" className="btn" onClick={() => { setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }}>{tr("저장한 평가 시작일을 이 데이터에 적용", "Apply the saved outcome start day to this data")}</button>}
-        <p>{tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}</p>
-        <p role="status">{temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}</p>
-      </section>
+      </DeclaredConditions>
       {showResults && (
         <>
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "-4px", marginBottom: "14px" }}>
-              {C.heroSub}
-            </p>
             <ResultActionCard
               toolId={domain === "content" ? "9-2" : "5-20"}
               locale={locale}
@@ -1292,6 +1296,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </InfoPopover>
             </div>
             </ResultActionCard>
+            {/* 무엇을 찾았는지 설명은 결론 뒤에 — 결론 문장이 첫 화면을 차지한다(§1.1c 4단계). */}
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "14px 0 0" }}>{C.heroSub}</p>
           </section>
 
           {/* ── §1 칸반 그룹핑 — 신호 세기별 3버킷(배지 반복 대신 칼럼 헤더가 곧 상태) ── */}

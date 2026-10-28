@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Suspense, useEffect } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAppStore } from "@/store/useDataStore";
 import { localizedHref } from "@/lib/localizedHref";
 import { WORKSPACE_NAV_GROUPS, workspaceNavItems } from "@/lib/workspaceNav";
@@ -63,7 +63,7 @@ const SIDEBAR_COPY = {
   },
 };
 
-function SidebarContents({ locale = "ko", onNavigate, isMethods = false }) {
+function SidebarContents({ locale = "ko", onNavigate }) {
   const T = SIDEBAR_COPY[locale] || SIDEBAR_COPY.ko;
   const pathname = usePathname();
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
@@ -97,7 +97,7 @@ function SidebarContents({ locale = "ko", onNavigate, isMethods = false }) {
           <div className="library-nav-group__label">{group[locale === "en" ? "en" : "ko"]}</div>
           {workspaceNavItems(locale).filter((item) => item.group === group.id && !item.secondary).map((item) => {
             const isReview = item.id === "review";
-            const isActive = (item.id === "methods" ? cleanPath === "/start" && isMethods : item.id === "start" ? cleanPath === "/start" && !isMethods : cleanPath === item.href) || (["blog", "guide"].includes(item.id) && cleanPath.startsWith(`${item.href}/`));
+            const isActive = cleanPath === item.href || (["blog", "guide"].includes(item.id) && cleanPath.startsWith(`${item.href}/`));
             return <Link key={item.id}
               href={localizedHref(item.href, locale)}
               className={`sidebar-primary-nav__item library-nav-item${isActive ? " active" : ""}`}
@@ -159,14 +159,6 @@ function SidebarContents({ locale = "ko", onNavigate, isMethods = false }) {
 }
 
 
-function QuerySidebar(props) {
-  const isMethods = useSearchParams().get("view") === "methods";
-  return <SidebarContents {...props} isMethods={isMethods} />;
-}
-function RoutedSidebar(props) {
-  return <Suspense fallback={<SidebarContents {...props} />}><QuerySidebar {...props} /></Suspense>;
-}
-
 export default function Sidebar({ locale = "ko" }) {
   const pathname = usePathname();
   const { isMobile, isOpen } = useMobileNavigation();
@@ -175,10 +167,10 @@ export default function Sidebar({ locale = "ko" }) {
     setMobileNavigationOpen(false);
     return () => setMobileNavigationOpen(false);
   }, [pathname, isMobile]);
-  if (!isMobile) return <RoutedSidebar locale={locale} />;
+  if (!isMobile) return <SidebarContents locale={locale} />;
   return <ModalDialog open={isOpen} onClose={() => setMobileNavigationOpen(false)}
     ariaLabel={locale === "en" ? "Site navigation" : "사이트 메뉴"}
     overlayClassName="library-nav-overlay" panelClassName="library-nav-dialog">
-    <RoutedSidebar locale={locale} onNavigate={() => setMobileNavigationOpen(false)} />
+    <SidebarContents locale={locale} onNavigate={() => setMobileNavigationOpen(false)} />
   </ModalDialog>;
 }

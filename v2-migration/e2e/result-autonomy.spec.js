@@ -71,6 +71,9 @@ test.describe("direct periods in light mode", () => {
         await page.goto(`${en ? "/en" : ""}/tools/${tool}?example=1`);
         await expect(page.locator("body")).toHaveClass(/light-mode/);
         await expect(page.locator(".result-action-card").first()).toBeVisible();
+        // 결과가 나오면 기간은 맥락 한 줄 + 조건 바꾸기 창 안에 있다(product-ssot §1.1c 결정 4).
+        await expect(page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ })).toHaveCount(0);
+        await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
         const trigger = page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
         const start = await trigger.locator("time").first().getAttribute("datetime");
         const nextDay = new Date(Date.parse(`${start}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
@@ -98,6 +101,7 @@ for (const locale of ["ko", "en"]) {
     const en = locale === "en";
     await page.goto(`${en ? "/en" : ""}/tools/campaign-variance?example=1`);
     await expect(page.locator("#s-pvm-result .result-action-card")).toBeVisible();
+    await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
     const analysis = page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
     const comparison = page.getByRole("button", { name: en ? /^Comparison period/ : /^비교 기간/ });
     const prior = await comparison.innerText();
@@ -254,7 +258,10 @@ for (const locale of ["ko", "en"]) {
     await expect(stages.locator("li")).toHaveCount(3);
     await expect(stages).toContainText(en ? "Clicks → Installs" : "클릭 → 설치");
     await expect(stages).not.toContainText(en ? "Installs → Sign-ups" : "설치 → 가입");
+    // 지표는 결과 뒤에는 조건 바꾸기 창 안에 있다(product-ssot §1.1c).
+    await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
     await page.getByRole("radio", { name: "CPA", exact: true }).click();
+    await page.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
     await expect(stages.locator("li")).toHaveCount(4);
     await expect(stages).toContainText(en ? "Installs → Sign-ups" : "설치 → 가입");
     await expect(stages.locator(".pvm-stage-analysis__total")).not.toContainText("NaN");
@@ -304,14 +311,21 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
     await expect(page.locator("#s-sat-summary .result-action-card")).toBeVisible();
     await expect(page.locator(".analysis-setup__context")).toHaveCount(0);
-    await expect(page.locator(".saturation-data .csv-uploader--collapsed")).toHaveCount(1);
+    // 결과가 나오면 파일·매핑 요약은 맥락 줄이 말하고, 바꾸는 곳은 조건 바꾸기 창이다(product-ssot §1.1c).
+    await expect(page.locator(".saturation-workspace .saturation-data")).toHaveCount(0);
+    await expect(page.locator(".report-context__line")).toContainText(en ? "2,250 rows" : "2,250행");
     expect(await page.locator(".tool-instrument-header").evaluate(el => getComputedStyle(el).position)).toBe("static");
-    const mappingTrigger = page.locator(".saturation-data").getByRole("button", { name: en ? "Change data or mapping" : "데이터·매핑 바꾸기", exact: true });
+    await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
+    const conditions = page.getByRole("dialog", { name: en ? "Analysis settings" : "분석 조건", exact: true });
+    await expect(conditions.locator(".saturation-data .csv-uploader--collapsed")).toHaveCount(1);
+    const mappingTrigger = conditions.locator(".saturation-data").getByRole("button", { name: en ? "Change data or mapping" : "데이터·매핑 바꾸기", exact: true });
     await mappingTrigger.click();
     const mappingDialog = page.getByRole("dialog", { name: en ? "Edit data and mappings" : "데이터·매핑 편집", exact: true });
     await expect(mappingDialog).toBeVisible();
     await mappingDialog.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).press("Escape");
     await expect(mappingTrigger).toBeFocused();
+    await conditions.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).first().click();
+    await expect(conditions).toHaveCount(0);
     const ids = await page.locator(".saturation-workspace section[id^='s-']").evaluateAll(els => els.map(el => el.id));
     const order = ["s-sat-summary", "s-marginal-gap", "s-sat", "s-sat-curve", "s-scale-map", "s-sat-period"];
     expect(ids.filter(id => order.includes(id))).toEqual(order);
@@ -343,7 +357,8 @@ test.describe("analysis surfaces in light mode", () => {
         const style = getComputedStyle(node);
         return { background: style.backgroundColor, padding: parseFloat(style.paddingLeft) };
       }));
-      expect(paint).toHaveLength(8);
+      // 데이터 상자는 결과 뒤에는 조건 바꾸기 창 안으로 간다(§1.1c) — 페이지 위 흰 면은 일곱이다.
+      expect(paint).toHaveLength(7);
       paint.forEach(surface => {
         expect(surface.background).toBe("rgb(255, 255, 255)");
         expect(surface.padding).toBeGreaterThanOrEqual(16);
@@ -361,7 +376,11 @@ for (const locale of ["ko", "en"]) {
     const rows = page.locator(".marginal-gap__row");
     await expect(rows).toHaveCount(4);
     for (const metric of ["cpi", "roas"]) {
-      if (metric === "roas") await page.getByRole("button", { name: /ROAS \(/ }).click();
+      if (metric === "roas") {
+        await page.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기", exact: true }).click();
+        await page.getByRole("button", { name: /ROAS \(/ }).click();
+        await page.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).first().click();
+      }
       await expect(rows.first().locator(".marginal-gap__label.is-average")).toBeVisible();
       const legendColor = await page.locator(".marginal-gap__legend .is-marginal").evaluate(el => getComputedStyle(el).borderColor);
       for (const row of await rows.all()) {

@@ -41,9 +41,14 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
     expect(JSON.stringify(posted)).not.toMatch(/analysisSignature|confirmedDesign|demo_.*csv|privateChannel/);
     const command = root.getByRole('combobox', { name: t('분석·보기 설정', 'Analysis and view settings') });
     if (toolId === '5-28') {
-      const unit = root.locator('select').filter({ has: page.locator('option[value="month"]') });
+      // 결과가 나오면 5-28 설정은 맥락 한 줄의 조건 바꾸기 창 안에 있다(product-ssot §1.1c 4단계).
+      await root.locator('.report-context__edit').click();
+      const settings = page.getByRole('dialog', { name: t('분석 설정', 'Analysis settings') });
+      const unit = settings.locator('select').filter({ has: page.locator('option[value="month"]') });
       await unit.selectOption('week');
       await expect(unit).toHaveValue('week');
+      await settings.getByRole('button', { name: t('닫기', 'Close'), exact: true }).click();
+      await expect(settings).toHaveCount(0);
     }
     if (toolId === '5-4') await root.locator('select').filter({ has: page.locator('option[value="0.01"]') }).first().selectOption('0.01');
     if (toolId === '5-18-forecast') await root.locator('input[type="number"][max="52"]').fill('26');
@@ -53,7 +58,8 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
     await expect(root.getByRole('option', { name: /Daily setup/ })).toBeVisible();
     await command.press('Enter');
     await expect(root.locator('.tool-recipe-controls [role="alert"]')).toHaveCount(0);
-    if (toolId === '5-28') await expect(root.locator('select').filter({ has: page.locator('option[value="month"]') })).toHaveValue('month');
+    // 저장한 설정으로 돌아오면 결과가 다시 나오고 맥락 줄이 원래 단위를 말한다.
+    if (toolId === '5-28') await expect(root.locator('.report-context__line')).toContainText(t('월 단위', 'by month'));
     if (toolId === '5-4') await expect(root.locator('select').filter({ has: page.locator('option[value="0.01"]') }).first()).toHaveValue('0.05');
     if (toolId === '5-18-forecast') {
       await expect(root.locator('input[type="number"][max="52"]')).toHaveValue('13');

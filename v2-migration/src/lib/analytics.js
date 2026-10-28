@@ -155,6 +155,10 @@ export function sanitizeProductEventParams(params = {}, name) {
   return safe;
 }
 
+// 운영 호스트가 아니어도 홈의 주 행동은 여정 시작으로 센다(테스트·미리보기에서 여정 계측을 확인하는 경로).
+// 홈 주 행동이 상황 고르기·전체 보기로 바뀌었으므로 그 이벤트도 함께 연다(product-ssot §5.1.1).
+const HOME_ENTRY_EVENTS = new Set(["landing_data_start_clicked", "landing_situation_clicked", "landing_finder_opened"]);
+
 export function trackProductEvent(name, params = {}) {
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && name === "analysis_result_viewed") window.dispatchEvent(new Event("gop:analysis-result-ready"));
   if (typeof window === "undefined") return false;
@@ -169,7 +173,7 @@ export function trackProductEvent(name, params = {}) {
   if (typeof window.gtag !== "function") return false;
   try {
     if (window.sessionStorage) {
-      if (isAnalyticsHost(window.location?.hostname) || name === "landing_data_start_clicked") withSiteJourney("journey_page_viewed", { scope: journeySurface(window.location?.pathname) }, window.sessionStorage);
+      if (isAnalyticsHost(window.location?.hostname) || HOME_ENTRY_EVENTS.has(name)) withSiteJourney("journey_page_viewed", { scope: journeySurface(window.location?.pathname) }, window.sessionStorage);
       params = withSiteJourney(name, params, window.sessionStorage);
     }
   } catch { /* 저장소 차단 시 기본 계측만 */ }

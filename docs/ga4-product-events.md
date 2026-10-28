@@ -25,7 +25,10 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `blog_arrival_action` | 블로그 예시에서 도구로 넘어온 첫 줄(도착 줄)에서 선택 | `tool_id`, `content_slug`, `content_type`, `placement=blog_arrival`, `state=use_my_csv\|back_to_article`, `locale` |
 | `blog_bridge_dismissed` | 블로그 읽기 바를 닫음(그 방문 동안 다시 뜨지 않음) | `content_slug`, `content_type`, `interaction_source`, `placement=reading_bar`, `state=session`, `locale` |
 | `tool_view` | 분석 도구 URL 진입. 같은 도구·언어의 콘텐츠 CTA 클릭 후 30분 안이면 글과 클릭 위치를 연결 | `tool_id`, `interaction_source=route`, `locale`, 조건부 `content_slug`, `content_type`, `placement`(클릭한 CTA 위치) |
-| `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
+| `landing_data_start_clicked` | (2026-10-27 이전) 랜딩 주 버튼 선택 — 지금은 발생하지 않는다. 옛 기간 비교용으로 남긴다 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
+| `landing_situation_clicked` | 홈 첫 화면에서 상황 하나를 골라 분석 찾기로 이동 | `interaction_source=landing`, `placement=hero`, `section_id=<상황 id>`, `locale` |
+| `landing_finder_opened` | 홈 첫 화면에서 "분석 N개 모두 보기" 선택 | `interaction_source=landing`, `placement=hero_all`, `locale` |
+| `finder_situation_selected` · `finder_file_selected` · `finder_example_clicked` · `finder_tool_clicked` · `finder_prep_opened` | 분석 찾기(`/start`)에서 상황 선택 · 파일 종류 선택 · 예시 보고서 · 내 파일로 하기 · 준비 방법 창 | `interaction_source=analysis_finder`, `section_id`, `tool_id`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
 | `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
 | `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |
@@ -133,7 +136,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
   - 노출 위치는 `placement`로 구분한다. 읽기 바의 샘플 실행은 `blog_example_started` → `blog_tool_cta_clicked`, 본문 점검으로의 스크롤은 `blog_section_opened`다. 두 동작을 클릭 전환으로 합산하지 않는다. 2026-09-27 이전 `reading_bar` 클릭은 본문 이동이므로 전후 비교 시 제외한다.
   - 샘플 체험: `blog_cta_viewed` → `blog_example_started` → `blog_tool_cta_clicked(interaction_source=demo)` → `blog_sample_result_viewed`. 마지막 이벤트는 같은 도구·언어·30분 귀속 범위의 실제 결과 표시에서만 파생하고, 글·도구·언어·결과 상태별로 중복 제거한다. 같은 샘플을 다른 글에서 다시 연 경우에도 해당 글의 조회는 남기되 일반 `analysis_result_viewed` 집계는 늘리지 않는다. `result_state=ready`와 보류 상태를 구분하고 실제 CSV 활성화와 합산하지 않는다.
   - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
-- 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
+- 랜딩→실데이터: `landing_situation_clicked`(또는 히어로 파일 놓기) → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 콘텐츠→계산기: `blog_tool_cta_clicked(tool_id=calculator)` → `journey_page_viewed(scope=calculator)` → `calculator_used` → `blog_tool_cta_clicked(content_type=calculator)` → `tool_view`. 콘텐츠 클릭의 `content_slug`는 글·용어, 사용 이벤트의 `content_slug`는 계산기다. 사용자·세션 순서를 기준으로 연결하고 이름이 같은 문자열끼리 합산하지 않는다. 입력 변경은 예시 조작일 수도 있으므로 실제 데이터 분석 활성화로 세지 않는다. 배포 후 실제 수신을 별도로 확인한다.
 - 핵심 검색 진입(`/compare`): 실제 보이는 질문별 CTA는 `blog_cta_viewed`, 도구 선택은 `blog_tool_cta_clicked`에 `content_type=compare`, `content_slug=marketing-analysis`, `placement=analysis_question`을 보낸다. 직접 선택한 도구·언어에만 기존 30분 귀속을 적용한다. 계산기·`/start` 경로를 도구의 직접 전환으로 세지 않는다.

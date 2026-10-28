@@ -2,6 +2,7 @@ import { enablePaidReports } from "./support/paidReports";
 import { expect, test } from "@playwright/test";
 import Papa from "papaparse";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
+import { withDeclaredConditions } from "./support/declaredConditions.js";
 
 async function bytesOf(download) {
   const stream = await download.createReadStream();
@@ -54,14 +55,17 @@ for (const locale of ["ko", "en"]) {
         await expect(result).toContainText("16.00%");
         await expect(result).toContainText(en ? "Traffic mix drove it" : "트래픽 구성 변화가 주도");
       } else if (example.kind === "asa") {
-        const maturity = page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?");
-        await expect(maturity).toHaveValue("unknown");
         await expect(page.getByText(en ? "Conversion maturity unknown" : "전환 성숙도 미확인", { exact: true }).first()).toBeVisible();
-        await maturity.selectOption("mature");
+        await withDeclaredConditions(page, en ? "Conversion completeness" : "전환 집계 확인", en, async (dialog) => {
+          const maturity = dialog.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?");
+          await expect(maturity).toHaveValue("unknown");
+          await maturity.selectOption("mature");
+        });
         await expect(page.locator("#asa-actions")).toContainText("budget app");
       } else {
-        await expect(result).toContainText(en ? "Abstain — no analyzable items" : "판단 보류 — 분석 가능한 항목 없음");
-        await expect(result).toContainText("0/24");
+        // 결론 문장은 lib/report/saturationHeadline이 판정에서 파생한다(§12.26b).
+        await expect(result.locator(".result-action-card__headline")).toContainText(en ? "On hold: no channel has enough daily data to judge." : "판단 보류: 판단할 만큼 일별 데이터가 쌓인 채널이 없습니다.");
+        await expect(result.locator(".result-action-card__stats")).toContainText("0/24");
         await expect(page.locator('[data-decision-review-tool="5-22"]')).toHaveCount(0);
       }
       if (example.kind === "saturation") {

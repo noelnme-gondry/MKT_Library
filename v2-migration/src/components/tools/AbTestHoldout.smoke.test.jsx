@@ -12,7 +12,7 @@ import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 // through getMappedRows — so the seeded slice carries those raw headers. A
 // pass-through mapping keeps the store slice shape identical to real uploads.
 import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import AbTestHoldout from "@/components/tools/AbTestHoldout";
 
@@ -28,9 +28,14 @@ function seedNoData() {
   });
 }
 
+// 결과가 나오면 설계 확인은 맥락 한 줄의 "조건 바꾸기" 창 안에 있다(§1.1c 결정 4).
 function confirmDesign(locale = "ko", share = "50") {
-  fireEvent.change(screen.getByLabelText(locale === "en" ? "Planned Control share (%)" : "계획 Control 배정 비율 (%)"), { target: { value: share } });
-  fireEvent.click(screen.getByRole("checkbox", { name: locale === "en" ? /distinct assigned units/ : /중복 없는 배정 단위/ }));
+  const en = locale === "en";
+  fireEvent.click(screen.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기" }));
+  const dialog = screen.getByRole("dialog", { name: en ? "Data and test design" : "데이터와 실험 설계" });
+  fireEvent.change(within(dialog).getByLabelText(en ? "Planned Control share (%)" : "계획 Control 배정 비율 (%)"), { target: { value: share } });
+  fireEvent.click(within(dialog).getByRole("checkbox", { name: en ? /distinct assigned units/ : /중복 없는 배정 단위/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: en ? "Close" : "닫기" }));
 }
 
 // A minimal but VALID experiment CSV: readout (is_control/numerator/denominator
@@ -202,7 +207,8 @@ describe("AbTestHoldout render smoke", () => {
     fireEvent.click(screen.getByRole("tab", { name: locale === "en" ? /A\/B readout/ : /A\/B 판독/ }));
     expect(screen.queryByText(locale === "en" ? /Make it my next marketing project/ : /다음 마케팅 프로젝트로 만들기/)).toBeNull();
     confirmDesign(locale, "80");
-    expect(screen.getAllByText(locale === "en" ? /Allocation mismatch/ : /배정 비율 이상/).length).toBeGreaterThan(0);
+    // 결론 문장이 효과 대신 판단 보류를 말한다(lib/report/abHeadline).
+    expect(document.querySelector(".result-action-card__headline").textContent).toMatch(locale === "en" ? /not split as planned/ : /배정 비율이 계획과 달라/);
     expect(screen.queryByText(locale === "en" ? /Make it my next marketing project/ : /다음 마케팅 프로젝트로 만들기/)).toBeNull();
   });
 });

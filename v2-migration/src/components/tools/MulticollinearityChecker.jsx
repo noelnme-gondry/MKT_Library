@@ -90,8 +90,10 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
     ]);
     downloadCsv(csvBody(header, rows), "channel-correlation-holm");
   };
+  const rulesSection = <section className="block diagnostic-tool__rules" id="vif-setup"><h2 className="section-title">{tr("VIF 해석", "Reading VIF")}</h2><p>{tr(`VIF ${DIAG_THRESHOLDS.vifWarn} 미만은 관찰상 양호, ${DIAG_THRESHOLDS.vifWarn} 이상은 주의, ${DIAG_THRESHOLDS.vifSevere} 이상 또는 완전 공선(∞)은 심각입니다. 표본·변동 부족으로 계산할 수 없는 상태는 별도의 판단 보류입니다. 비용·채널·날짜가 필요합니다.`, `Below ${DIAG_THRESHOLDS.vifWarn} is observationally OK; ${DIAG_THRESHOLDS.vifWarn}+ is a warning; ${DIAG_THRESHOLDS.vifSevere}+ or perfect collinearity (∞) is severe. Insufficient observations or variation leave the diagnosis uncomputed and held separately. Date, channel, and spend are required.`)}</p></section>;
   return <ToolPageShell toolId="5-25" locale={locale} titleLevel={0} title={tr("VIF 다중공선성 점검", "VIF Multicollinearity Check")} summary={<p>{tr("MMM을 돌리기 전에 채널별 지출이 서로 너무 같이 움직였는지 확인합니다. 숫자는 진단 신호이며, 공선성을 해결한 인과 추정은 아닙니다.", "Check whether channel spend moved too tightly together before running MMM. This is a diagnostic signal, not a causal fix.")}</p>}>
-    <section className="block diagnostic-tool__rules" id="vif-setup"><h2 className="section-title">{tr("VIF 해석", "Reading VIF")}</h2><p>{tr(`VIF ${DIAG_THRESHOLDS.vifWarn} 미만은 관찰상 양호, ${DIAG_THRESHOLDS.vifWarn} 이상은 주의, ${DIAG_THRESHOLDS.vifSevere} 이상 또는 완전 공선(∞)은 심각입니다. 표본·변동 부족으로 계산할 수 없는 상태는 별도의 판단 보류입니다. 비용·채널·날짜가 필요합니다.`, `Below ${DIAG_THRESHOLDS.vifWarn} is observationally OK; ${DIAG_THRESHOLDS.vifWarn}+ is a warning; ${DIAG_THRESHOLDS.vifSevere}+ or perfect collinearity (∞) is severe. Insufficient observations or variation leave the diagnosis uncomputed and held separately. Date, channel, and spend are required.`)}</p></section>
+    {/* 읽는 법은 분석 전에는 위에서 준비를 돕고, 결과가 나오면 결론 뒤로 내려간다(§1.1c 4단계). */}
+    {!analyzed && rulesSection}
     <CsvUploader toolId="5-25" locale={locale} />
     {analyzed && <>
       <div id="vif-result"><ResultActionCard
@@ -186,6 +188,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
           </section>
         )}
       </section>
+      {rulesSection}
     </>}
   </ToolPageShell>;
 }

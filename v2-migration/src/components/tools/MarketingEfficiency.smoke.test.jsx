@@ -82,7 +82,9 @@ describe("MarketingEfficiency render smoke", () => {
     useAppStore.getState().setGroupAnalyzed("5-22");
     expect(useAppStore.getState().isGroupAnalyzed("5-22")).toBe(true);
     render(<MarketingEfficiency locale={locale} />);
-    expect(screen.getAllByText(locale === "en" ? "Abstain — no analyzable items" : "판단 보류 — 분석 가능한 항목 없음").length).toBeGreaterThan(0);
+    // 판단할 대상이 없으면 보류를 문장으로 말하고, 조건은 접지 않는다(바로 고쳐야 하는 상태).
+    expect(screen.getAllByText(locale === "en" ? "On hold: no channel has enough daily data to judge." : "판단 보류: 판단할 만큼 일별 데이터가 쌓인 채널이 없습니다.").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" })).toBeNull();
     expect(screen.queryByText(/Mostly in the steady zone|대부분 적정 구간/)).toBeNull();
   });
 
@@ -147,7 +149,10 @@ describe("MarketingEfficiency render smoke", () => {
       expect(fit).not.toHaveBeenCalled();
       act(() => useAppStore.getState().setGroupAnalyzed("5-22"));
       expect(fit).toHaveBeenCalledTimes(2);
+      // 결과가 나오면 표시 기준은 조건 바꾸기 창 안에 있다(product-ssot §1.1c).
+      fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
       fireEvent.click(screen.getByRole("button", { name: "ROAS (높을수록 좋음)" }));
+      fireEvent.click(screen.getByRole("button", { name: "닫기" }));
       fireEvent.click(screen.getByRole("button", { name: "Meta 응답곡선 보기" }));
       expect(fit).toHaveBeenCalledTimes(2);
     } finally { fit.mockRestore(); }
@@ -158,8 +163,13 @@ describe("MarketingEfficiency render smoke", () => {
     useAppStore.getState().setGroupAnalyzed("5-22");
     render(<MarketingEfficiency />);
 
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     fireEvent.click(screen.getByRole("button", { name: "캠페인" }));
     fireEvent.click(screen.getByRole("button", { name: "ROAS (높을수록 좋음)" }));
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    // 맥락 줄이 바뀐 조건을 그대로 말한다.
+    expect(document.querySelector(".report-context__line").textContent).toContain("캠페인별");
+    expect(document.querySelector(".report-context__line").textContent).toContain("ROAS 기준");
     expect(screen.getByText("캠페인별 증액·감액 우선순위")).toBeTruthy();
     expect(screen.getByRole("img", { name: /캠페인 Cost와 ROAS 의사결정 지도/ })).toBeTruthy();
     expect(screen.getByRole("list", { name: "캠페인별 평균·한계효율 차이" })).toBeTruthy();
@@ -263,7 +273,9 @@ describe("Saturation result autonomy", () => {
     expect(container.querySelectorAll("#s-sat tbody tr")).toHaveLength(1);
     expect(container.querySelector("#s-sat tbody").textContent).toContain("Google");
     expect(screen.getByText(locale === "en" ? /1 ranking row.*hidden/ : /순위표 1개 행을 가렸습니다/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" }));
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "ROAS (higher is better)" : "ROAS (높을수록 좋음)" }));
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Close" : "닫기" }));
     expect(fit).toHaveBeenCalledTimes(2);
     choose("OS", locale === "en" ? "By OS" : "OS별", locale);
     expect(fit).toHaveBeenCalledTimes(3);

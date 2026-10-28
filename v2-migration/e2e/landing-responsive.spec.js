@@ -14,8 +14,8 @@ async function heroLayout(page) {
       art: box(".brand-hero__art"),
       title: box(".brand-hero h1"),
       description: box(".dc-hero__deck, .analysis-hub-intro .compare-page__lead"),
-      entry: box(".dc-hero__entry, .analysis-hub-entry"),
-      actions: [...document.querySelectorAll(".dc-hero__actions a, .analysis-hub-entry a")].map(node => {
+      entry: box(".home-entry, .analysis-hub-entry"),
+      actions: [...document.querySelectorAll(".home-entry__situations a, .home-entry__no-file a, .analysis-hub-entry a")].map(node => {
         const rect = node.getBoundingClientRect();
         return { left: rect.left, right: rect.right, height: rect.height };
       }),

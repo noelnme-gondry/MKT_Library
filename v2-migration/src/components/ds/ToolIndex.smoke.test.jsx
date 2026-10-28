@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 import ToolIndex from "@/components/ds/ToolIndex";
+import { groupToolsByFile } from "@/lib/dataSources";
 import { allToolIndexEntries, PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 
@@ -185,5 +186,29 @@ describe("ToolIndex", () => {
     const { container } = render(<ToolIndex />);
     expect(container.querySelector("[data-information-section]")).toBeNull();
     expect(container.querySelectorAll(".tool-index__stage")).toHaveLength(TOOL_JOURNEY.length);
+  });
+
+  it.each(["ko", "en"])("데이터 준비 세 칸: 바로 가능 · 조금만 더 · 파일별로 묶은 다른 파일 필요 (%s)", (locale) => {
+    const en = locale === "en";
+    const near = { "9-6": { kind: "columns", labels: ["Creative ID"], file: en ? "Daily ad performance by creative" : "광고 일별 성과 (소재 단위)", text: en ? "Add Creative ID to open this." : "소재ID 열을 더하면 열립니다." } };
+    const { container } = render(<ToolIndex locale={locale} density="grid" eligibleIds={["5-2", "5-21"]} nearInfo={near} />);
+    const stages = [...container.querySelectorAll(".tool-index__stage")].map((node) => node.className.match(/--(\w+)/)[1]);
+    expect(stages).toEqual(["ready", "near", "other"]);
+    const nearChip = container.querySelector(".tool-index__stage--near .tool-index__chip");
+    expect(nearChip.textContent).toContain(near["9-6"].text);
+    expect(nearChip.textContent).toContain(near["9-6"].file);
+    // 다른 파일 필요는 접혀 있고(지금 파일로 할 일을 밀어내지 않는다) 파일 이름이 소제목이다.
+    const other = container.querySelector(".tool-index__stage--other details");
+    expect(other.open).toBe(false);
+    const otherIds = PUBLISHED_TOOL_IDS.filter((id) => !["5-2", "5-21", "9-6"].includes(id));
+    expect(other.querySelectorAll(".tool-index__chip")).toHaveLength(otherIds.length);
+    const files = groupToolsByFile(otherIds, locale);
+    expect([...other.querySelectorAll(".tool-index__file-name")].map((node) => node.textContent)).toEqual(files.filter((file) => file.source).map((file) => file.source.file));
+    if (en) expect(/[가-힣]/.test(container.textContent)).toBe(false);
+  });
+
+  it("볼 것이 다른 파일뿐이면 그 묶음을 펴 둔다", () => {
+    const { container } = render(<ToolIndex density="grid" eligibleIds={[]} nearInfo={{}} />);
+    expect(container.querySelector(".tool-index__stage--other details").open).toBe(true);
   });
 });

@@ -68,6 +68,31 @@
 - 분석 입구는 질문 → 필요한 데이터 → 확인할 결과 → 해당 분석 순서로 보여 준다. 예시는 실제 계산값과 합성 데이터 표시를 함께 두고, 예시 보기와 내 CSV 분석을 구분한다. / Entry points connect a question, required data, expected output and the matching analysis; calculated synthetic examples remain distinct from analysis of the user's CSV.
 - ROAS 글에서는 광고비와 귀속 매출로 ROAS를 직접 계산한 뒤 채널별 예산 분석으로 연결한다. ROAS는 매출÷광고비이며 이익률·증분 효과가 아니다. 광고비 0이나 누락·음수·비정상 입력은 계산 불가다. / The ROAS article calculates attributed revenue divided by ad spend before linking to channel budget analysis; this is neither profit nor causal lift. Zero spend and missing, negative or invalid inputs are uncomputable.
 
+### 1.1c 찾기·준비·보고서 리빌딩 (2026-10-26 승인)
+
+사용자 결정: 아래 네 가지를 모두 추천안대로 확정했다. 근거는 2026-10-26 실측(같은 질문에 답하는 입구 7곳, 공개 분석 34개가 요구하는 데이터 그룹 25종, 예시 결과의 결론 카드가 데스크톱 585~947px·폰 694~1,100px에서 시작)이다. 단계는 0 계약 → 1 결과 보고서(상위 5개 도구) → 2 분석 찾기 → 3 데이터 준비 → 4 전 도구 확장 순이다. / Approved on 2026-10-26: all four recommended options. Phases: contract → report layout (top five tools) → single analysis finder → data preparation → remaining tools.
+
+| 결정 | 확정 | 적용 단계 |
+|---|---|---|
+| 입구 통합 범위 | 앱 안 입구(홈 목록·`/start`·분석 방법 둘러보기·`/data-guide`)를 **분석 찾기** 하나로 모은다. `/compare`·`/guide` 분석 지도·`/diagnose`는 검색 유입 페이지로 두고 분석 찾기로 연결만 한다. 기존 주소는 유지하거나 301로 보존한다. | 2 |
+| 홈 첫 화면 주 행동 | **상황 고르기 + 파일 놓기**. 운영 플래너 미리보기는 그 아래로 내린다(2026-10-27 적용, §5.1.1). | 2 |
+| 고급 분석 12개(5-32~5-43) | 숨기지 않고 상황 안에 함께 두되, 같은 상황에서 광고 운영 분석 뒤에 놓는다. | 0 |
+| 결과 화면의 설정 블록 | 결과가 있으면 기간·지표·대상을 **맥락 한 줄 + `조건 바꾸기` 창**으로 접는다(`MappingEditorDialog`와 같은 방식). | 1 |
+
+**상황 분류(0단계 적용).** 공개 분석은 `TOOL_JOURNEY`의 7개 상황에 정확히 한 번씩 속한다: 성과가 흔들렸다, 왜? · 예산을 어디에 얼마나 · 광고가 진짜 효과가 있었나 · 광고와 오가닉이 겹치나 · 소재·스토어를 고치고 싶다 · 들어온 유저가 남고 돈이 되나 · 상품·가격·영업. 상황은 순서가 아니므로 화면에 “이전/다음 단계”로 표시하지 않는다. 이름표는 번호(01~07)만 쓰고 영어 대문자 이름표를 쓰지 않는다. / Every published analysis belongs to exactly one of seven situations; situations are not a sequence.
+
+**필요한 파일 표기(0단계 적용).** 필요한 데이터는 컬럼보다 먼저 **어디서 받는 파일인지**로 말한다. 데이터 그룹(`TOOL_GROUP`)마다 사용자용 파일 이름과 출처 묶음 6종(광고 매체·MMP 리포트, 직접 정리하는 집계표, 스토어 콘솔, 제품 이벤트·사용자 기록, 주문·고객·영업 기록, 실험·설문 결과)을 `src/lib/dataSources.js` 한 곳이 소유한다. 출처 묶음의 매체 이름은 실제로 그런 파일을 내보내는 곳의 예시이며, 그 매체의 내보내기 헤더를 자동 인식한다는 약속이 아니다(인식 범위는 `lib/platformExports.js`). / Name the source file before columns; platform names are examples, not a promise of automatic header recognition.
+
+**분석 카드 계약(2단계 화면).** 카드 한 장 = 쓰는 상황(사용자 말) · 받게 될 보고서의 결론 예시(예시 데이터의 실제 엔진 결과에서 파생, 지어낸 수치 금지) · 필요한 파일(이름 → 출처 → 필수 열 → 있으면 더 좋은 열) · `예시 보고서 보기`(주 행동)와 `내 파일로 하기` · 같은 파일로 되는 다른 분석. 방법 이름(CUPED·RFM·VIF 등)은 부제와 검색어로 남긴다.
+
+**보고서 틀(1단계 화면).** 결과 첫 화면은 맥락 한 줄 → 결론(무엇이 얼마나 변했고 어디 때문인지 또는 무엇을 얼마나 할지, 수치와 대상 포함) → 결론을 받치는 숫자 3개 → 핵심 그림 1개 → 이번 주 할 일 2~3개(주 행동 1개) → 결론을 바꿀 수 있는 한계 1줄 → `자세히`(표·단계 분해·방법론·FAQ) 순이다. §5.5의 층위·확인 N·XLSX 계약을 그대로 따른다. 5-3의 `allocationHeadline`이 결론 문장의 기준 사례다. / Report-first layout; keeps the §5.5 contract.
+
+**1단계 적용(2026-10-27).** 맥락 줄과 창은 `ds/ReportContext` 하나다. 결과가 있을 때만 접고, 판단할 대상이 하나도 없으면 접지 않는다(바로 고쳐야 하는 상태). 분석 설정 입력창과 `분석 대상` 버튼은 머리에 남긴다 — 결과를 보며 바로 고쳐 보는 경로라 창에 넣으면 흐름이 끊긴다(§5.5a). 창에는 기간·지표·표시 기준과 (5-22) 파일·매핑이 들어간다. 해석을 바꾸는 기간 경고는 결과 위에 남긴다. 결론 문장은 한 문장이고 화면의 판정에서 파생한다: 5-21 `lib/report/pvmHeadline`(전체 변화와 **같은 방향** 중 최대 기여만 원인으로 지목), 5-22 `lib/report/saturationHeadline`. 5-31은 이미 이 틀(분석 조건 한 줄 + 변경)이다. 5-3은 실행안이 있을 때 예산·지표·실행 방식·비교 기준·금액 단위·데이터를 맥락 한 줄과 `조건 바꾸기` 창 하나로 접고(창 위에 지금 결론을 함께 보여 준다), 분석 기간·배분 대상은 머리에 남긴다. 실행안이 없으면 예산 칸과 사유를 본문에 펼치고, 그 칸을 고치는 동안에는 접지 않는다. 5-2는 폰(≤720px, 또는 터치 입력 ≤1000px)에서 하위 보기 9개를 `보기: 이름 ▾` 한 줄로 바꾸고, 누르면 묶음·한 줄 설명과 함께 모든 보기가 나온다(가로로 밀어 숨기지 않는다). 예시 데이터 안내는 머리 줄이 먼저 말하므로 결론 뒤로 옮겼다. 결론 문장이 첫 화면 안에 있는지는 `e2e/report-first-viewport.spec.js`가 5개 도구 × 3폭 × KO/EN으로 잰다(2026-10-27 사용자 결정: 추천안대로). / ReportContext folds periods, metrics and view options after a result; the command input and scope stay visible. Headlines derive from the on-screen verdicts. 5-3 folds all plan settings once a plan exists; the 5-2 phone view uses a one-line view picker.
+
+**3단계 적용(2026-10-27).** 데이터 준비는 두 입구와 한 판정이다. ① 업로드 전 분석 찾기에 `어떤 파일을 갖고 계세요?`(출처 묶음 6종, 주소 `?file=`)를 둔다 — 고르면 그 출처의 분석을 **파일별로** 묶어 보여 준다. 상황과 파일 종류는 서로 다른 입구라 하나를 고르면 다른 하나는 풀린다. ② 파일을 놓으면 맨 위 한 줄이 파일 · 행 수 · 실제 기간 · 확인된 내보내기 형식(`lib/platformExports`의 열 이름이 **전부** 있을 때만)을 말한다. ③ 분석은 세 칸이다: **바로 가능**(돌려서 판정을 냈다) · **조금만 더 채우면 되는 분석**(요구 열이 대부분 있고 한두 개만 빠졌으면 그 열과 그 열이 보통 있는 파일을, 열은 맞는데 행·기간·비교 대상이 모자라면 그 사유를) · **다른 파일이 필요한 분석**(접어 두고 파일별로 묶음, 위 두 칸이 비면 펴 둔다). 판정은 새로 하지 않는다 — 자격 판정과 실제 실행의 판정 불가 사유를 `lib/assistant/dataReadiness`가 나눌 뿐이다. 광고비는 grain에 따라 키가 둘(cost·spend)이라 자격 판정이 같은 열로 본다(그 전에는 소재 단위 광고 파일에서도 소재 피로도가 늘 막혀 있었다). 매체별 내보내기 메뉴 경로는 검증할 수 없어 적지 않는다(§8). / Data preparation: a file-type entry before upload; after upload a one-line file summary and three groups — ready, almost ready (which column or how much more data, and which file usually has it) and needs a different file (collapsed, grouped by file).
+
+**4단계 적용(2026-10-27 진행 중).** 보고서 틀을 나머지 도구로 넓힌다. ① 결론 예시가 없는 분석 카드는 "받게 될 결과"를 쉬운 말로 쓴다(`lib/finder/finderPlainCopy` — 원문은 검색어로 남고, 방법 약어가 카드에 남으면 테스트가 막는다). ② 5-4 실험 분석은 판독이 나오면 데이터·설계를 맥락 한 줄로 접고, 결론은 한 문장이다(`lib/report/abHeadline` — 유의하면 차이와 "우연으로 보기 어렵다", 아니면 "지금 표본으로는 우연과 구분되지 않는다", 배정 비율이 어긋나면 판단 보류). ③ 사용자가 선언하는 실험 설계·비교 조건(5-23·5-24·5-18 계열)은 결과 위에 선택칸을 펼치지 않고 **한 줄 요약(몇 개 답했는지·지금 상태) + `확인하기` 창**으로 둔다(`ds/DeclaredConditions`). 판단 규칙은 그대로다 — 조건이 갖춰지기 전에는 결론 문장이 숫자와 함께 "탐색용 수치"라고 말한다. ④ 분석 설정 입력창은 포커스가 없을 때 안내 문장을 숨긴다. ⑤ 입력(파일·행 수)은 한 번만 말한다 — 분석이 끝나면 맨 위 `현재 입력` 줄을 두지 않고 접힌 업로더 줄이나 맥락 줄이 말한다. ⑥ 결과가 나오면 결론 위의 요약·방법 소개(핵심 요약, 무엇을 가르나, VIF 해석, 소재 해석 한계)는 결론 뒤로 옮긴다. ⑦ 5-23은 결과가 나오면 샘플 안내·데이터 줄·차단 기간(또는 비교 설정)을 맥락 한 줄 + `조건 바꾸기` 창으로 접는다. 칸을 고르는 중에는 접지 않고, 창 안에서 바꾸다 결과가 잠시 비어도 창은 닫히지 않는다. ⑧ 5-26은 판정 기준(일 예산·목표 CPA·목표 CPT)을 맥락 한 줄로 접고, 전환 집계 질문은 선언 조건 한 줄이다. ⑨ 5-18 계열(추세·잠식·기여·예측)은 데이터·표시 통화를 맥락 한 줄로 접는다 — 환산이 일어나면 고정 환율 고지는 창 안이 아니라 그 줄에 남는다. 단독 도구 화면에서는 `마케팅 반응 분석 · 단계` 이름표를 다시 쓰지 않는다. 타깃이 하나뿐이면 상단 막대 없이 맥락 줄이 타깃을 말하고 분석 패키지는 그 줄 옆에 둔다. 단독 기여(MMM) 화면의 표시 기간·모델 선택(정보 prior)은 조건 바꾸기 창 안에 있고, 줄이 지금 값을 말한다. ⑩ 5-20 결과 평가 시점은 선언 조건 한 줄이다. ⑪ 5-29는 읽은 방식(날짜·인원·축)과 비교 기간·범위를 맥락 한 줄로 접고 `다르게 읽혔다면 고치기`는 그 줄 옆에 둔다. ⑫ 9-1은 결과가 나오면 샘플 안내·열 지정을 맥락 한 줄(성과 지표·요소 수)로 접는다. ⑬ 폰(≤480px)에서는 결론 문장을 16px로 쓴다 — 20px 한 문장이 5줄이 돼 첫 화면 밖으로 밀렸다. ⑭ 5-28은 결과가 나오면 관측 기준·이탈 정의·가치 계산을 맥락 한 줄로 접는다. ⑮ 5-18 유입 변화맵은 열 확인을 맥락 한 줄로 접고 결론 → 그림 → 정밀 진단 링크 순서로 둔다(카드가 같은 수치 셋을 말하므로 위 요약 칸은 없앴다). `e2e/report-first-viewport.spec.js`가 발행 도구 전부를 320·980·1440, KO·EN에서 잰다 — 2026-10-28에 남은 도구(`KNOWN_GAPS`)가 0이 됐다. 새 도구도 같은 검사를 받는다. / Phase 4: plain-language card outputs; 5-4 folds data and design into the context line with a one-sentence verdict; declared design and comparison conditions become a one-line summary plus an answer dialog; remaining tools are tracked by a derived known-gaps list.
+
 ### 1.2 승인 소개문 (그대로 복사해 사용)
 
 판매자 표시 정보(2026-09-09 사용자 제공, 2026-09-14 제공 이미지의 주소 원문 반영): 상호 공드리공작소 · 대표자 신기훈 · 사업자등록번호 856-07-03210 · 주소 서울특별시 동대문구 천호대로41길 26, 402호(용두동, 천우네오젠) · 고객센터 010-8829-9034 · 이메일 gondry.montauk@gmail.com. 주소는 사용자가 제공한 이미지의 원문을 전사했다. 통신판매업 신고번호는 미제공이며 임의 생성하지 않는다. KO/EN 모두 법적 이름과 주소 원문을 보존한다. 코드 사본은 `src/lib/sellerFacts.js`가 소유한다.
@@ -338,9 +363,13 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 홈·분석 화면의 우하단은 **튜토리얼 / Tutorial** 물음표 버튼으로 안내한다. 업로드 전에도 **업로드 방법 보기 / How to upload** 진입점을 제공한다. 설문·동의·모달이 열린 동안 플로팅 버튼은 숨기며, 일반 버튼에 포커스가 있다는 이유만으로 숨기지 않는다. 실제 입력 조작과 겹치면 물러나고 업로드 영역의 안내는 유지한다.
 
-홈 제목은 §1.1a를 유지하며 소개는 긴 캠페인 이력의 운영 점검을 설명한다. 주 행동은 **내 데이터로 운영하기 / Plan operations with my data**, 보조 행동은 **데모 보기 / View demo**다. 두 행동은 독립 운영 플래너로 연결한다. **필요한 데이터 양식 확인 / Check data requirements**은 `/data-guide`와 `/en/data-guide`로 연결한다. 보고 싶은 질문에서 공개 분석을 선택하고 출처·행 단위·필수/추가 항목의 쓰임·가상 작성 예시·준비 주의사항·실제 빈 CSV 양식을 확인한다. 질문·도구 목록은 홈 레지스트리, 요구사항과 예시는 업로더, 다운로드는 기존 템플릿 계약에서 가져온다. 내부 도구 번호를 화면에 표시하지 않는다. / The data guide maps questions to analyses and explains sources, row structure, field purpose, fictional sample rows, preparation checks and compatible CSV templates using the existing registries. `/start`의 범용 파일 진입은 분석 목록·내비게이션에서 유지한다. 업로드 후 매핑을 확인하고 명시적으로 분석을 시작하며 결과 이후 입력은 편집 가능한 한 줄 요약으로 접힌다. / Link both homepage actions to the standalone operations planner, preserving the general Start entry in navigation and tool discovery. Confirm mappings and explicitly analyze uploaded data; summarize input after results. 저장된 결정의 상단 재진입은 유지한다.
+홈 제목은 §1.1a를 유지한다. 제목 아래 주 행동은 **상황 고르기 + 파일 놓기**다(§1.1c 결정 2, 2026-10-27 적용). 왼쪽 **어떤 상황인가요? / What is going on?**은 7개 상황(`TOOL_JOURNEY`)을 번호·이름·분석 수와 함께 보여 주고, 누르면 분석 찾기(`/start?situation=<id>#finder`)가 그 상황의 카드로 열린다. **분석 N개 모두 보기**는 전체 목록으로 간다. 오른쪽 **파일로 시작 / Start with a file**은 공용 업로더 하나이며, 놓은 파일로 되는 분석을 결과 작업대(`/dochi-result`)에서 계산한다. 예시는 **데모 보기 / View demo**(운영 플래너 예시) 텍스트 링크, 파일이 없을 때는 계산기·질문에서 시작 링크를 한 줄로 둔다. 운영 플래너 미리보기는 그 아래에 둔다. 히어로에 파란 주 버튼을 여럿 두지 않는다. 홈 아래쪽의 전체 분석 목록(구 `HomeToolFinder`)은 분석 찾기로 합쳤다. 내부 도구 번호를 화면에 표시하지 않는다. / Home's primary actions are a seven-situation picker and one file drop; situations open the finder filtered to that situation, the file opens the result workspace. The old home directory moved into the finder.
 
-**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 분류와 공개 도구를 처음부터 모두 보여준다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
+**분석 찾기(`/start`, 2026-10-27 적용).** 앱 안 입구 넷(홈 목록·내 데이터로 시작·분석 방법 둘러보기·`/data-guide`)을 한 화면으로 합쳤다. 위는 상황으로 찾기(7개 + 전체 + 저장한 분석) | 파일로 찾기(업로드 → 매핑 확인 → 명시적 분석하기, 결과 이후 입력은 편집 가능한 한 줄 요약), 아래는 검색과 상황별 분석 카드다. 카드는 §1.1c 분석 카드 계약을 따른다: 이름 · 질문 · 결론 예시(`lib/finder/finderExamples.json` — 도구 예시 데이터로 실제 엔진이 계산한 문장만, 없으면 "받게 될 결과" 한 줄) · 필요한 파일(이름 → 출처 묶음 → 필수 → 있으면 더 좋음) · `예시 보고서 보기`/`내 파일로 하기`/`준비 방법` · 같은 파일로 되는 다른 분석. `준비 방법` 창은 옛 `/data-guide` 상세(행 단위·출처·필요한 값과 쓰임·가상 예시·준비 주의·빈 CSV 양식·5-23 비교 방식)를 그대로 담고, 고른 비교 방식을 예시·도구 주소로 넘긴다. 카드마다 파란 주 버튼을 두지 않는다(이 화면의 주 행동은 파일 놓기). `/data-guide`·`/en/data-guide`는 `/start`로 영구 이동하고, `?view=methods`는 같은 화면이다. 사이드바 항목은 **분석 찾기 / Find an analysis** 하나다. / The finder merges four entries: situations | file drop on top, searchable situation-grouped cards below; the old data guide lives in each card's preparation dialog; old addresses redirect.
+
+
+
+**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 상황 분류(§1.1c)와 공개 도구를 처음부터 모두 보여주고, 도구마다 필요한 파일 이름을 함께 표시한다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
 히어로에는 도구와 같은 가상 운영 이력의 기간별 CPI 비교와 변화율, 가상 데이터·기간·범위를 표시한다. 도구 다음에는 기록·재검토, 실제 발행 글·가이드, 이용 조건 순으로 배치한다. 기록 저장은 Pro 체험 포함, 보고서 다운로드는 구매 이용권 전용임을 구분한다. / Follow tool discovery with review, published reading and service terms; trial storage and purchased-pass downloads remain distinct.
 
@@ -445,6 +474,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 예시 데이터 결과에서는 핵심 그림과 다음 행동 뒤에 **다음 기간 결과와 비교하기 / Review this decision next period**(`ds/DecisionReviewPreview`)를 둔다. 문구: **예시 결과는 저장되지 않습니다. 내 데이터로 분석하면 결론·핵심 수치·검토일을 저장할 수 있습니다. / Sample results are not saved. Analyze your own data to save the conclusion, key figures and review date.** 조건: **저장은 로그인과 Pro(7일 체험 포함)가 필요합니다. 분석은 무료입니다. / Saving requires sign-in and Pro, including the 7-day trial. Analysis is free.** `내 데이터로 분석하기`·`Pro 안내`를 제공하며 입력 폼은 두지 않는다(가짜 결정 금지).
 - 분석이 끝난 도구의 업로드·매핑은 **한 줄 요약 + `데이터·매핑 편집` 대화상자**(`ds/MappingEditorDialog`)로 고친다. 접기·펼치기가 아니라 이름 있는 편집 화면이다(§4). 결론 카드 위에 매핑 선택상자가 보이면 안 된다.
 - 결과 아래 '이어서 볼 수 있는 분석'은 지금 되는 것 3개 + `전체 분석 보기` 링크.
+- 첫 화면의 읽기 순서와 설정 블록 접기는 §1.1c **보고서 틀**을 따른다(2026-10-26 승인, 1단계에서 상위 5개 도구부터 적용).
 
 #### 5.5.1 상세 XLSX 계약
 
@@ -996,7 +1026,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 
 ## 데이터 작업대 개편 (2026-09-22)
 
-- 데이터로 적용하기: 내 데이터로 시작 / 분석 방법 둘러보기. 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
+- 데이터로 적용하기: 분석 찾기(2026-10-27, 옛 내 데이터로 시작·분석 방법 둘러보기를 합침). 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
 - 파일·시트 업로드 → 매핑 확인 → 명시적 분석하기. 실행 후 입력은 요약 카드로 줄이고 수정 시 이전 결과를 무효화한다.
 - 분석 목록은 한 번만 표시한다. 선택한 카드에 근거·그래프·한계·다음 행동을 제공한다. 내부 번호·대기열·결정 테이프는 공개하지 않는다.
 - 추천 행동과 근거를 프로젝트로 추적한다. 근거 없는 증액률·목표를 생성하지 않는다.

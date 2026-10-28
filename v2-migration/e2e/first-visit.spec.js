@@ -10,12 +10,14 @@ for (const locale of ["ko", "en"]) {
     await enablePaidReports(page);
     await page.goto(prefix || "/");
     await expect(page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true })).toBeHidden();
-    // Published tools are visible immediately in the approved home directory.
-    const tool = page.locator(`.dc-questions a[href="${prefix}/dashboard"]`);
-    await expect(tool).toBeVisible();
-    await tool.click();
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
-    await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+    // 홈의 주 행동은 상황 고르기다 — 상황을 고르면 분석 찾기가 그 상황의 카드로 열린다(product-ssot §1.1c).
+    const situation = page.locator('.home-entry__situations li:not(.home-entry__all-tile) a').first();
+    await expect(situation).toBeVisible();
+    await situation.click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/start\\?situation=performance`));
+    const card = page.locator('.finder-card[data-tool-id="5-2"]');
+    await expect(card.locator(".finder-card__data")).toBeVisible();
+    await card.getByRole("link", { name: en ? "View example report" : "예시 보고서 보기" }).click();
     // A demo intentionally opens analyzed results immediately; do not invent an extra Analyze step.
     const result = page.locator(".dashboard-briefing .result-action-card");
     await expect(result).toBeVisible();

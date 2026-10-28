@@ -19,7 +19,7 @@ for (const locale of ["ko", "en"]) {
     for (const theme of ["light", "dark"]) {
       await page.addInitScript(value => localStorage.setItem("mkt-library-theme", value), theme);
       await page.goto(prefix || "/");
-      await expect(page.locator(".dc-questions")).toBeVisible();
+      await expect(page.locator(".home-entry__situations")).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(768);
     }
   });
@@ -31,7 +31,8 @@ for (const locale of ["ko", "en"]) {
     const confirmations = page.getByRole("button", { name: locale === "en" ? "Got it" : "확인", exact: true });
     while (await confirmations.count()) await confirmations.first().click();
     await page.locator(".csv-analysis-action").click();
-    await expect(page.getByText(locale === "en" ? "Abstain — no analyzable items" : "판단 보류 — 분석 가능한 항목 없음", { exact: true }).first()).toBeVisible();
+    // 결론 문장은 lib/report/saturationHeadline이 만든다 — 판단할 대상이 없으면 "판단 보류"로 시작한다.
+    await expect(page.locator(".result-action-card__headline").first()).toContainText(locale === "en" ? "On hold" : "판단 보류");
     await expect(page.getByText(/Mostly in the steady zone|대부분 적정 구간/)).toHaveCount(0);
   });
 }

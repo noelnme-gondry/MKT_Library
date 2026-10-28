@@ -24,7 +24,7 @@ export default function MappingEditorDialog({ asDialog, open, onClose, locale = 
 export function AnalyzedDataLine({ name, detail, onEdit, locale = "ko", id }) {
   const en = locale === "en";
   return (
-    <section className="block csv-uploader csv-uploader--collapsed" id={id}>
+    <section className="csv-uploader csv-uploader--collapsed analyzed-data-line" id={id}>
       <p className="csv-collapsed-summary"><strong>{name}</strong><span className="tnum">{detail}</span></p>
       <button type="button" className="btn ghost csv-collapsed-edit" onClick={onEdit}>{en ? "Change data or mapping" : "데이터·매핑 바꾸기"}</button>
     </section>

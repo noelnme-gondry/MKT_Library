@@ -34,8 +34,8 @@ for (const locale of ["ko", "en"]) {
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript(theme => localStorage.setItem("mkt-library-theme", theme), en ? "light" : "dark");
     await page.goto(en ? "/en" : "/");
-    const actions = page.locator(".dc-action-route");
-    await expect(actions.first()).toHaveAttribute("href", `${en ? "/en" : ""}/tools/operations-planner`);
+    // 홈의 운영 플래너 진입은 미리보기와 "데모 보기" 링크다(주 행동은 상황 고르기·파일 놓기, product-ssot §5.1.1).
+    await expect(page.locator(".home-entry__more a")).toHaveAttribute("href", `${en ? "/en" : ""}/tools/operations-planner?example=1`);
     const previewCpi = (await page.locator(".operations-sample-preview__metric strong").textContent()).split("→").at(-1).trim();
     await page.screenshot({ path: testInfo.outputPath("operations-home.png") });
     await page.getByRole("link", { name: en ? /View demo/ : /데모 보기/ }).click();

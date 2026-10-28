@@ -5,6 +5,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useDashboardRecipe } from "@/lib/recipe/useDashboardRecipe";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
 import DashboardComparisonPeriod from "@/components/dashboard/DashboardComparisonPeriod";
+import ReportContext from "@/components/ds/ReportContext";
+import { comparisonWarnings } from "@/lib/analysisPeriod";
 import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import { getMonFilteredRows, getMappedRows } from "@/utils/dashboardAggregator";
 import { dateBounds } from "@/lib/analysisPeriod";
@@ -27,7 +29,6 @@ import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
 import SeasonalityTab from "@/components/dashboard/SeasonalityTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
-import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { buildDashboardRecommendations } from "@/utils/dashboardRecommendations";
@@ -315,7 +316,20 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
-            {!["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
+            {/* 결론이 있으면 비교 기간은 맥락 한 줄 + 조건 바꾸기 창이다(product-ssot §1.1c 결정 4).
+                해석을 바꾸는 기간 경고는 결과 위에 그대로 남긴다. 스코어카드 탭은 기간이 곧 조작 대상이라 펼친다. */}
+            {activeTab === "viz" && verdict && !verdict.insufficient ? (
+              <>
+                <ReportContext locale={locale} dialogTitle={tr("결론 비교 기간", "Conclusion comparison periods")} parts={[
+                  { text: tr(`분석 ${periods.current.start} – ${periods.current.end}`, `Analysis ${periods.current.start} – ${periods.current.end}`), emphasis: true },
+                  { text: tr(`비교 ${periods.previous.start} – ${periods.previous.end}`, `Compared with ${periods.previous.start} – ${periods.previous.end}`) },
+                  { text: periods.custom ? tr("직접 지정한 기간", "Custom periods") : tr(`최근 ${dashWindowDays}일`, `Last ${dashWindowDays} days`) },
+                ]}>
+                  <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />
+                </ReportContext>
+                {comparisonWarnings(periods.current, periods.previous, locale).map((warning) => <p className="report-context__warning" role="status" key={warning}>{warning}</p>)}
+              </>
+            ) : !["viz", "scorecard"].includes(activeTab) ? null : <DashboardComparisonPeriod {...observationBounds} periods={periods} windowDays={dashWindowDays} onWindowChange={changeWindow} onPeriodChange={changePeriods} locale={locale} />}
             {workerPending && (
               <div className="callout" role="status" aria-live="polite" style={{ marginBottom: "1rem" }}>
                 <div className="ico">◌</div>
@@ -327,15 +341,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 현재 선택한 분석의 그래프·조작 기능이 첫 화면을 차지한다. */}
             {activeTab === "viz" && verdict && !verdict.insufficient && (
               <section className="dashboard-briefing" aria-label={tr("현재 결론과 다음 단계", "Current conclusion and next steps")}>
-                {isDemo && (
-                  <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
-                    <div>
-                      <strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
-                      <p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
-                    </div>
-                    <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
-                  </section>
-                )}
                 <ResultActionCard
                 toolId={toolId}
                 analysisKey={workerKey}
@@ -373,23 +378,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     `After the next ${verdict.windowDays} days, did the same metric improve from this baseline?`,
                   ),
                 }}
-                analysisMeta={
-                  <AnalysisDetails
-                    compact
-                    locale={locale}
-                    statusLabel={verdict.tone === "good" ? tr("개선", "Improving") : verdict.tone === "bad" ? tr("주의", "Watch") : tr("안정", "Stable")}
-                    statusTone={verdict.tone}
-                    metric={tr("최근 성과 변화", "Recent performance change")}
-                    unit={tr("비교 기간 대비 변화율·매핑된 KPI 단위", "Change rate vs. prior window; mapped KPI units")}
-                    meaning={tr("관측상 요약 — 광고의 인과효과나 증분효과가 아님", "Observed summary — not causal or incremental attribution")}
-                    sampleSize={{ label: tr("사용 행", "Rows used"), value: periods.recentRows.length + periods.previousRows.length, detail: tr("현재 필터와 업로드 범위", "Current filter and upload scope") }}
-                    scope={comparisonLabel}
-                    method={tr("WoW 운영 요약", "WoW operational summary")}
-                    version="dashboard-verdict"
-                    cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
-                    warnings={[tr("이 카드는 관측 요약입니다. 인과효과로 해석하려면 증분분석 또는 실험이 필요합니다.", "This is an observed summary. Use incrementality or an experiment for causal claims.")]}
-                  />
-                }
+                // 확인할 점은 빨간 표시 하나로 모은다(분석 범위·데이터 기준). "관측 요약이며 인과가 아니다"는
+                // 일반 방법 안내라 표시를 띄우지 않고 내려받는 파일의 manifest가 말한다(AGENTS §7, 2026-09-24).
+                issues={[]}
                 download={
                   <DownloadHub
                     toolId={toolId}
@@ -414,6 +405,17 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
                 />
+                {/* 예시라는 사실은 머리 줄("예시 데이터 · N행")이 먼저 말한다. 결론을 밀어내지 않도록
+                    교체 안내는 결론 뒤에 둔다(product-ssot §1.1c — 결론이 첫 화면). */}
+                {isDemo && (
+                  <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
+                    <div>
+                      <strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
+                      <p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
+                    </div>
+                    <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
+                  </section>
+                )}
 
               </section>
             )}

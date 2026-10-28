@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { measureDesignRules } from "./support/designRules";
+import { chooseDashboardView } from "./support/dashboardView.js";
 
 for (const locale of ["ko", "en"]) {
   test(`shared title, named progress and uncrowded PNG controls (${locale})`, async ({ page }, testInfo) => {
@@ -38,6 +39,13 @@ for (const locale of ["ko", "en"]) {
       await page.goto(`${locale === "en" ? "/en" : ""}${path}`);
       if (path === "/weekly-review") await page.getByRole("button", { name: locale === "en" ? "Compare weekly performance" : "주간 성과 비교", exact: true }).click();
       const progress = page.locator(".journey-progress");
+      if (path === "/start") {
+        // 분석 찾기는 파일을 넣기 전엔 진행 단계 대신 상황·검색 목록을 먼저 보여 준다(product-ssot §5.1.1).
+        await expect(page.locator("#finder")).toBeVisible();
+        await expect(progress).toHaveCount(0);
+        expect((await measureDesignRules(page)).horizontalOverflow).toBeLessThanOrEqual(1);
+        continue;
+      }
       await expect(progress.locator("li")).toHaveCount(4);
       for (const step of await progress.locator("li").all()) {
         const name = await step.locator(".journey-progress__label, a").boundingBox();
@@ -55,8 +63,7 @@ for (const locale of ["ko", "en"]) {
     let exports = 0;
     for (const tab of tabs) {
       const id = await tab.getAttribute("id");
-      await tab.click();
-      await expect(page.locator("#dashboard-tabpanel")).toHaveAttribute("aria-labelledby", id);
+      await chooseDashboardView(page, id);
       const presentation = await measureDesignRules(page);
       exports += presentation.figureExports;
       expect(presentation.figureCrowding, `${id}: PNG must not displace chart titles`).toEqual([]);

@@ -337,6 +337,8 @@
   .home-tool-finder__tool dt { font-size: 12px; font-weight: 700; margin: 0 0 5px; color: var(--library-muted); }
   .home-tool-finder__tool dd { margin: 0; color: var(--library-text); }
   .home-tool-finder__data { padding-top: 14px; border-top: 1px solid var(--library-border); }
+  .home-tool-finder__file { margin: 0 0 8px; color: var(--library-text); }
+  .home-tool-finder__file small { display: block; font-size: var(--fs-xs); color: var(--library-muted); }
   .home-tool-finder__data ul { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
   .home-tool-finder__data li { padding: 3px 8px; border-radius: 4px; background: var(--library-background); font-size: 12px; color: var(--library-muted); }
   .home-tool-finder__actions { display: grid; gap: 8px; }
@@ -966,14 +968,29 @@
 /* "다른 데이터가 필요한 분석"은 열린 격자 — 바깥 상자 없이 칸마다 윗선 하나. 칸마다 이름 · 필요한 값 한 문장 ·
    (샘플이면) 예시로 열기. 한 줄씩 세로로 쌓던 목록은 16개가 약 1,850px를 차지해 그 아래 다음 단계가
    화면 밖으로 밀렸다(2026-09-29). 상세는 누른 칸 다음 줄 전체(.tool-index__panel-row, §12.31). */
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__cell { border-top: 1px solid var(--library-border, var(--border)); }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip { grid-template-columns: minmax(0, 1fr); gap: 4px; min-height: 0; padding: 14px 0; border: 0; border-radius: 0; background: transparent; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip > * { grid-column: 1; grid-row: auto; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip .tool-index__cta { justify-self: start; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip .tool-index__stage-tag { display: none; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip:hover .tool-index__q { color: var(--primary); }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__panel { border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; background: transparent; padding: 16px 0; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__cell { border-top: 1px solid var(--library-border, var(--border)); }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip { grid-template-columns: minmax(0, 1fr); gap: 4px; min-height: 0; padding: 14px 0; border: 0; border-radius: 0; background: transparent; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip > * { grid-column: 1; grid-row: auto; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip .tool-index__cta { justify-self: start; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip .tool-index__stage-tag { display: none; }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__chip:hover .tool-index__q { color: var(--primary); }
+.app .content .dochi-workspace :is(.tool-index__stage--blocked, .tool-index__stage--near, .tool-index__stage--other) .tool-index__panel { border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; background: transparent; padding: 16px 0; }
+/* 데이터 준비 세 칸(product-ssot §1.1c 3단계). "다른 파일 필요"는 접힌 묶음이고 안에서 파일별로 나눈다 —
+   파일 이름이 소제목, 출처가 한 줄, 그 아래 같은 열린 격자. 접힌 요약은 제목 크기를 그대로 쓴다. */
+.app .content .dochi-workspace .tool-index__other > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; cursor: pointer; list-style: none; }
+.app .content .dochi-workspace .tool-index__other > summary .tool-index__stage-title { display: inline; margin: 0; }
+.app .content .dochi-workspace .tool-index__other > summary::-webkit-details-marker { display: none; }
+.app .content .dochi-workspace .tool-index__other-toggle { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; min-height: 44px; color: var(--primary); font-size: var(--fs-sm); font-weight: 600; }
+.app .content .dochi-workspace .tool-index__other-toggle svg { transition: transform .15s ease; }
+.app .content .dochi-workspace .tool-index__other[open] .tool-index__other-toggle svg { transform: rotate(180deg); }
+.app .content .dochi-workspace .tool-index__other > summary:hover .tool-index__other-toggle-text { text-decoration: underline; }
+.app .content .dochi-workspace .tool-index__other-count { font-size: var(--fs-sm); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.app .content .dochi-workspace .tool-index__other > .tool-index__stage-desc { margin: 6px 0 4px; }
+.app .content .dochi-workspace .tool-index__file-group { margin-top: 18px; }
+.app .content .dochi-workspace .tool-index__file-name { margin: 0; font-size: var(--fs-base); font-weight: 600; }
+.app .content .dochi-workspace .tool-index__file-where { margin: 2px 0 6px; font-size: var(--fs-sm); color: var(--text-muted); }
+.tool-index__near-file { font-size: var(--fs-xs); color: var(--text-muted); }
 .tool-index__need { font-size: var(--fs-sm); color: var(--text-secondary); }
 .tool-index__need > span { color: var(--text-muted); }
 .app .content .tool-index__chip .tool-index__cta { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--primary); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
@@ -1212,6 +1229,8 @@
 .home-tool-directory li a strong { font-size: var(--fs-base); font-weight: 600; line-height: 1.5; }
 .home-tool-directory li a strong::after { content: " →"; color: var(--library-muted); font-weight: 400; }
 .home-tool-directory li a span { overflow: hidden; font-size: var(--fs-sm); line-height: 1.55; color: var(--library-muted); text-overflow: ellipsis; white-space: nowrap; }
+/* 파일 이름은 잘리면 무엇을 준비할지가 사라진다 — 질문 줄과 달리 줄을 바꿔 다 보인다(product-ssot §1.1c). */
+.home-tool-directory li a .home-tool-directory__file { overflow: visible; white-space: normal; text-overflow: clip; }
 .home-tool-directory li a:hover strong { color: var(--library-accent); text-decoration: underline; text-underline-offset: 3px; }
 .home-tool-directory li a:focus-visible { outline: 2px solid var(--library-accent); outline-offset: 2px; border-radius: var(--radius-sm); }
 .home-approved .home-tool-directory li button { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--library-muted); cursor: pointer; }
@@ -1418,6 +1437,35 @@ body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--
 .analysis-hub-entry .btn { background: var(--library-surface); color: var(--library-text); border-color: var(--library-border); text-decoration: none; }
 .analysis-hub-entry .btn.primary { background: var(--library-action); border-color: var(--library-action); color: var(--library-on-action); }
 #analysis-examples { scroll-margin-top: 88px; }
+/* 홈 첫 화면의 주 행동 = 상황 고르기 + 파일 놓기(product-ssot §1.1c 결정 2). 제목 아래 두 칸, 좁으면 위아래. */
+.home-approved .brand-hero .brand-hero__stage { flex-direction: column; align-items: stretch; }
+.home-entry { position: relative; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: stretch; gap: 16px; margin-top: 8px; }
+/* 두 칸은 상자가 아니라 열린 열이다 — 상황 칸·점선 끌어놓기 칸이 이미 조작 단위라 바깥 상자를 두르면 상자 안 상자가 된다. */
+.home-entry__situations,
+.home-entry__file { min-width: 0; }
+.home-entry h2 { margin: 0 0 12px; color: var(--library-text); font-size: var(--fs-lg); font-weight: 700; line-height: 1.4; }
+.home-entry__situations ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.home-entry__situations li a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: center; min-height: 52px; padding: 10px 12px; border: 1px solid var(--library-border); border-radius: var(--radius-sm); background: var(--library-surface); color: var(--library-text); text-decoration: none; }
+.home-entry__situations li a:hover { border-color: var(--library-accent); }
+.home-entry__situations li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.home-entry__situations .home-entry__all-tile a { color: var(--library-accent); }
+.home-entry__no { color: var(--library-muted); font-size: var(--fs-xs); font-weight: 600; }
+.home-entry__situations strong { font-size: var(--fs-sm); font-weight: 600; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere; }
+.home-entry__situations small { color: var(--library-muted); font-size: var(--fs-xs); white-space: nowrap; }
+.home-entry__all,
+.home-entry__more a,
+.home-entry__no-file a { display: inline-flex; align-items: center; min-height: 44px; color: var(--library-accent); font-size: var(--fs-sm); font-weight: 600; }
+
+.home-entry__file > p:not([class]) { margin: -4px 0 16px; color: var(--library-muted); font-size: var(--fs-sm); line-height: 1.6; }
+.home-entry__more { margin: 8px 0 0; }
+.home-entry__no-file { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; margin: 12px 0 0; color: var(--library-muted); font-size: var(--fs-sm); }
+.home-entry__no-file a { font-weight: 400; }
+@container marketing-landing (max-width: 1000px) {
+  .home-entry { grid-template-columns: minmax(0, 1fr); }
+}
+@container marketing-landing (max-width: 480px) {
+  .home-entry__situations ul { grid-template-columns: minmax(0, 1fr); }
+}
 @container marketing-landing (max-width: 720px) {
   .brand-hero .brand-hero__stage { padding-bottom: 28px; }
   /* Anchor decoration to the title, not the height of the stacked actions. */
@@ -1489,3 +1537,4 @@ body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--
     .app > .main:has(> .partner-ad-rail:not([hidden])) { display: block; }
   }
 }
+.app .content .start-next-project { margin-top: 28px; }

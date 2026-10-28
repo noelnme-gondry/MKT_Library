@@ -32,6 +32,8 @@ import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import { buildComparisonRange } from "@/components/ds/DateRangePicker";
 import ToolPageShell from "@/components/ToolPageShell";
+import ReportContext from "@/components/ds/ReportContext";
+import { pvmDriverLine, pvmHeadline } from "@/lib/report/pvmHeadline";
 import { sourceCurrencyOf } from "@/utils/format";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
 import { sharedRecipeFilters } from "@/lib/recipe/sharedFilters";
@@ -99,7 +101,7 @@ const PVM_COPY_EN = {
       "This shows association, not causation. Channel, campaign, and creative are all decomposed once at the finest unit (channel × campaign × creative) and summed, so the three views always nest exactly.",
     explainerMix: "The change from result share shifting toward channels that are cheaper/more expensive than average.",
     explainerRate: (ml) => `The change from the channel's own ${ml} changing.`,
-    shareHeader: "Result Share (P1→P2)",
+    shareHeader: "Result share (prior→recent)",
     shareHeaderTitle: "The share of total results (conversions) this item accounts for — not a cost share.",
     lockCampaign: "Map the campaign_id column to see the campaign level",
     lockCreative: "Map the creative_id column to see the creative level",
@@ -134,7 +136,7 @@ const PVM_COPY_EN = {
       "This shows association, not causation. Traffic source, category, and content are all decomposed once at the finest unit (traffic source × category × content) and summed, so the three views always nest exactly.",
     explainerMix: "The change from result share shifting toward traffic sources that are cheaper/more expensive than average.",
     explainerRate: (ml) => `The change from the traffic source's own ${ml} changing.`,
-    shareHeader: "Traffic Share (P1→P2)",
+    shareHeader: "Traffic share (prior→recent)",
     shareHeaderTitle: "The share of total traffic (visits/PV) this item accounts for — not a cost share.",
     lockCampaign: "Map the campaign_id column to see the category level",
     lockCreative: "Map the creative_id column to see the content level",
@@ -906,11 +908,15 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const viewOptions = { view: recipe.view, filters: recipe.data.filters, keys: levelKeys, caseSensitive: recipe.data.caseSensitive };
   const channelView = applyPvmView(channelRowsAll, { ...viewOptions, levelIndex: 0 });
   const channelRows = channelView.rows;
-  // 결론의 상위 원인은 표 정렬 UI와 무관하게 절대 기여도가 큰 순서로 고정한다.
-  const pvmTopCauses = ready
-    ? [...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)).slice(0, 3)
-    : [];
-  const decisionCause = pvmTopCauses[0] || null;
+  // 결론 문장(§1.1c 보고서 틀). 원인은 전체 변화와 **같은 방향** 중 가장 큰 기여다 —
+  // 절대값 최대를 고르면 "올랐는데 가장 크게 내린 채널"을 원인으로 지목할 수 있다(pvmHeadline).
+  const fmtResultMoney = (value) => pvmFmtMoney(value, cur, cur === "usd" ? 1 : undefined);
+  const pvmConclusion = ready
+    ? pvmHeadline({ metric: ml, start: cache.CPA1, end: cache.CPA2, rows: cache.layer1, formatMoney: fmtResultMoney, locale })
+    : null;
+  const pvmMixTotal = ready ? cache.layer1.reduce((sum, row) => sum + (Number(row.mix) || 0), 0) : null;
+  const pvmRateTotal = ready ? cache.layer1.reduce((sum, row) => sum + (Number(row.rate) || 0), 0) : null;
+  const decisionCause = pvmConclusion?.lead ? cache.layer1[pvmConclusion.lead.index] : null;
   const decisionCauseKind = decisionCause && Math.abs(decisionCause.mix || 0) >= Math.abs(decisionCause.rate || 0)
     ? tr("믹스 이동", "mix shift")
     : tr("단가 변화", "rate change");
@@ -1138,15 +1144,15 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <tr>
         {withNewCol && <th className="tnum" title={C.newBadgeTitle}>New</th>}
         {th(name, "name")}
-        {th("COST (P1→P2)", "cost")}
-        {th(`${ml} (P1→P2)`, "cpa")}
+        {th(tr("광고비 (직전→최근)", "Spend (prior→recent)"), "cost")}
+        {th(tr(`${ml} (직전→최근)`, `${ml} (prior→recent)`), "cpa")}
         {th(C.shareHeader, "share", C.shareHeaderTitle)}
-        {th(tr("MIX (비중 이동)", "MIX (share shift)"), "mix", tr("결과 비중 이동(믹스) 효과 — 이 단계 값은 하위 셀 믹스의 합과 동일(롤업)", "Result-share (mix) shift effect — at this level it equals the sum of sub-cell mix effects (rollup)"))}
-        {th(tr("RATE (순수 단가)", "RATE (pure unit price)"), "rate", tr("순수 단가 변동 (Rate)", "Pure unit-price change (Rate)"))}
-        {th(tr("MIX (하위합)", "MIX (sub-total)"), "subMix", tr("하위 세그먼트 합산 믹스 효과", "Sum of mix effects across sub-segments"))}
-        {th(tr("RATE (하위합)", "RATE (sub-total)"), "subRate", tr("하위 세그먼트 합산 레이트 효과", "Sum of rate effects across sub-segments"))}
+        {th(tr("비중 변화 영향 (Mix)", "Share-shift effect (Mix)"), "mix", tr("결과 비중 이동(믹스) 효과 — 이 단계 값은 하위 셀 믹스의 합과 동일(롤업)", "Result-share (mix) shift effect — at this level it equals the sum of sub-cell mix effects (rollup)"))}
+        {th(tr("단가 변화 영향 (Rate)", "Unit-cost effect (Rate)"), "rate", tr("순수 단가 변동 (Rate)", "Pure unit-price change (Rate)"))}
+        {th(tr("하위 합: 비중 (Mix)", "Sub-total: share (Mix)"), "subMix", tr("하위 세그먼트 합산 믹스 효과", "Sum of mix effects across sub-segments"))}
+        {th(tr("하위 합: 단가 (Rate)", "Sub-total: unit cost (Rate)"), "subRate", tr("하위 세그먼트 합산 레이트 효과", "Sum of rate effects across sub-segments"))}
         <th>{tr("진단", "Diagnosis")}</th>
-        {th(tr(`${ml} 영향`, `${ml} impact`), "impact")}
+        {th(tr(`${ml}에 준 영향`, `${ml} impact`), "impact")}
       </tr>
     );
   };
@@ -1207,15 +1213,12 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     return { d, pct, arr, sign, cls };
   };
 
-  return (
-    <div className="tab-pane active" id="tab-pvm">
-      <ToolPageShell
-        locale={locale}
-        titleToolId={C.uploaderToolId}
-        title={C.title}
-        chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
-        toc={buildPvmToc(C, locale, sectionVisible)}
-        stickyFilter={<DashboardFilterBar locale={locale} compact={recipeEnabled} hideDate={recipeEnabled} commandSlot={recipeEnabled && commandContext ? (
+  // 결과가 나오면 기간·지표는 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 결정 4).
+  // 분석 설정 입력창과 "분석 대상"은 머리에 그대로 둔다 — 결과를 보며 바로 고쳐 보는
+  // 경로라 창 안에 숨기면 그 흐름이 끊긴다(§12.32, 같은 조건의 주인은 한 곳).
+  // 분석 전에는 지금처럼 펼친다 — 조건을 정하는 단계이기 때문이다.
+  const reportMode = ready && recipeEnabled;
+  const pvmFilterBar = <DashboardFilterBar locale={locale} compact={recipeEnabled} hideDate={recipeEnabled} commandSlot={recipeEnabled && commandContext ? (
           <RecipeCommandInput
             vocabulary={PVM_VOCABULARY}
             context={commandContext}
@@ -1229,7 +1232,25 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             notices={recipeNotices}
             locale={locale}
           />
-        ) : null} />}
+        ) : null} />;
+  const pvmPeriodControls = recipeEnabled && <div className="pvm-result-controls">
+    <div className="analysis-period-controls">
+      <ResultPeriodPicker {...observationBounds} locale={locale} label={tr("분석 기간", "Analysis period")} range={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodB", range)} />
+      <ResultPeriodPicker {...observationBounds} locale={locale} label={tr("비교 기간", "Comparison period")} range={displayedPeriods.periodA} previousOf={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodA", range)} />
+      {bothMetricsMapped !== false && <PillGroup label={tr("지표", "Metric")} value={metric} onChange={setMetric} options={[{ value: "cpa", label: "CPA" }, { value: "cpi", label: "CPI" }]} />}
+    </div>
+    {periodNotes.length > 0 && <ul className="analysis-period-notes">{periodNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
+  </div>;
+
+  return (
+    <div className="tab-pane active" id="tab-pvm">
+      <ToolPageShell
+        locale={locale}
+        titleToolId={C.uploaderToolId}
+        title={C.title}
+        chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
+        toc={buildPvmToc(C, locale, sectionVisible)}
+        stickyFilter={pvmFilterBar}
       >
       {!["dochi", "blog"].includes(analysisHandoff?.source) && analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
         <div className="callout info" style={{ marginBottom: "12px" }}>
@@ -1269,14 +1290,17 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <h2 className="section-title">{tr("한눈에 보기", "Overview")}</h2>
         </div>}
 
-        {recipeEnabled && <div className="pvm-result-controls">
-          <div className="analysis-period-controls">
-            <ResultPeriodPicker {...observationBounds} locale={locale} label={tr("분석 기간", "Analysis period")} range={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodB", range)} />
-            <ResultPeriodPicker {...observationBounds} locale={locale} label={tr("비교 기간", "Comparison period")} range={displayedPeriods.periodA} previousOf={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodA", range)} />
-            {bothMetricsMapped !== false && <PillGroup label={tr("지표", "Metric")} value={metric} onChange={setMetric} options={[{ value: "cpa", label: "CPA" }, { value: "cpi", label: "CPI" }]} />}
-          </div>
-          {periodNotes.length > 0 && <ul className="analysis-period-notes">{periodNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
-        </div>}
+        {reportMode ? (
+          <ReportContext locale={locale} dialogTitle={tr("분석 조건", "Analysis settings")} parts={[
+            { text: `${isDemoData(csvData) ? tr("예시 데이터", "Sample data") : (csvData?.fileName || "")} · ${tr(`${(csvData?.raw?.length || 0).toLocaleString()}행`, `${(csvData?.raw?.length || 0).toLocaleString()} rows`)}` },
+            { text: tr(`분석 ${displayedPeriods.periodB.start} – ${displayedPeriods.periodB.end}`, `Analysis ${displayedPeriods.periodB.start} – ${displayedPeriods.periodB.end}`), emphasis: true },
+            { text: tr(`비교 ${displayedPeriods.periodA.start} – ${displayedPeriods.periodA.end}`, `Compared with ${displayedPeriods.periodA.start} – ${displayedPeriods.periodA.end}`) },
+            { text: tr(`${ml} 기준`, `${ml}`), emphasis: true },
+            { text: tr(`분석 ${C.levelChannel} ${channelRowsAll.length}개`, `${C.levelChannel} count: ${channelRowsAll.length}`) },
+          ]}>
+            {pvmPeriodControls}
+          </ReportContext>
+        ) : pvmPeriodControls}
 
         {!recipeEnabled && <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
         <div className="analysis-local-controls__inner">
@@ -1353,15 +1377,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             locale={locale}
             tone={cache.deltaCpa > 0 ? "bad" : cache.deltaCpa < 0 ? "good" : "neutral"}
             title={tr("변동 원인 결론", "Variance conclusion")}
-            headline={tr(
-              `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}`,
-              `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}`,
-            )}
+            headline={pvmConclusion.text}
             decisionPrefill={{
-              conclusion: tr(
-                `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}${decisionCause ? ` · 최대 관측 기여 ${decisionCause.key || unspec}` : ""}`,
-                `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}${decisionCause ? ` · largest observed contribution: ${decisionCause.key || unspec}` : ""}`,
-              ),
+              conclusion: pvmConclusion.text,
               action: decisionAction,
               metric: ml,
               baseline: pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined),
@@ -1383,8 +1401,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             }}
             stats={[
               { label: tr("전체 변화", "Overall change"), value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
-              { label: tr("가장 큰 기여", "Largest contribution"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },
-              { label: labelsFollowLevels ? tr(`분석 ${C.levelChannel}`, `${C.levelChannel} count`) : tr("분석 채널", "Channels"), value: channelRowsAll.length },
+              // 결론 문장이 지목한 곳과 같은 대상이다(같은 방향 중 최대 기여). 몫은 0~100%일 때만.
+              { label: pvmConclusion.direction === "down" ? tr("가장 크게 낮춘 곳", "Lowered it most") : pvmConclusion.direction === "up" ? tr("가장 크게 올린 곳", "Raised it most") : tr("가장 크게 움직인 곳", "Moved it most"), value: pvmConclusion.lead ? (pvmConclusion.lead.key || unspec) : "—", detail: pvmConclusion.lead ? `${pvmConclusion.lead.contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmConclusion.lead.contribution, cur)}${pvmConclusion.share != null ? tr(` · 변화의 ${pvmConclusion.share}%`, ` · ${pvmConclusion.share}% of the change`) : ""}` : "—" },
+              { label: tr(`${C.levelChannel} 안의 단가 변화`, `Unit cost within each ${String(C.levelChannel).toLowerCase()}`), value: `${pvmRateTotal >= 0 ? "+" : ""}${pvmFmtMoney(pvmRateTotal, cur)}`, detail: tr(`${C.levelChannel} 비중 변화 ${pvmMixTotal >= 0 ? "+" : ""}${pvmFmtMoney(pvmMixTotal, cur)}`, `${C.levelChannel} share shift ${pvmMixTotal >= 0 ? "+" : ""}${pvmFmtMoney(pvmMixTotal, cur)}`) },
             ]}
             workbookExport={() => ({
               calculationMode: "exact_after_preprocessing",
@@ -1410,7 +1429,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 limitations: exportLimitations([tr("관측 연관 분해이며 인과 효과가 아닙니다.", "Observed association decomposition; not a causal effect.")], recipe.export.includeCaveats, locale),
               },
             })}
-            points={[{ label: tr("다음 행동", "Next action"), text: decisionAction }]}
+            points={[
+              { label: tr("왜", "Why"), text: pvmDriverLine({ mix: pvmMixTotal, rate: pvmRateTotal, unit: C.levelChannel, formatMoney: fmtResultMoney, locale }) },
+              { label: tr("다음 행동", "Next action"), text: decisionAction },
+            ].filter((point) => point.text)}
             download={(
               <DownloadHub
                 toolId={pvmManifest.toolId}

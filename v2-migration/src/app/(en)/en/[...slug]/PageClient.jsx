@@ -11,7 +11,6 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
-import AnalysisDataGuide from "@/components/AnalysisDataGuide";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
@@ -100,7 +99,6 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
-            {routeId === "data-guide" && <AnalysisDataGuide locale="en" />}
             {routeId === "projects" && <ProjectsPage locale="en" />}
             {routeId === "subscription" && <SubscriptionPage locale="en" />}
             {routeId === "storage" && <WorkspaceStoragePage locale="en" />}

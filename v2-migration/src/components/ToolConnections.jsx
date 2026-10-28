@@ -17,16 +17,14 @@ const COPY = {
     sameData: "같은 CSV로 이어보기",
     uploadData: "CSV 준비 후 분석하기",
     newData: "새 데이터 준비",
-    back: "앞 단계로",
-    here: "같은 단계에서",
-    forward: "다음 단계로",
-    cycle: "다음 운영 주기",
-    mapDeck: "전체 분석 여정",
+    here: "같은 상황의 다른 분석",
+    sameFile: "같은 파일로 되는 분석",
+    mapDeck: "이어 볼 수 있는 분석",
     templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
     prepareNow: "새 CSV 준비부터",
     prepareTitle: (title) => `${title}용 매핑 템플릿`,
     prepareDeck: "지금 데이터로 이어지지 않는 분석입니다. 먼저 필요한 컬럼을 내려받아 원본을 준비하세요.",
-    expand: "전체 여정",
+    expand: "더 볼 수 있는 분석",
     heading: "다음 단계",
   },
   en: {
@@ -36,16 +34,14 @@ const COPY = {
     sameData: "Continue with the same CSV",
     uploadData: "Prepare CSV to analyze",
     newData: "Prepare a new dataset",
-    back: "Previous stage",
-    here: "Same-stage options",
-    forward: "Next stage",
-    cycle: "Next operating cycle",
-    mapDeck: "Full analysis journey",
+    here: "Other analyses for this situation",
+    sameFile: "Analyses from the same file",
+    mapDeck: "Analyses you can continue with",
     templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
     prepareNow: "Prepare new data first",
     prepareTitle: (title) => `Mapping template for ${title}`,
     prepareDeck: "This analysis needs a different dataset. Download the required columns before preparing the source file.",
-    expand: "Full journey",
+    expand: "More analyses",
     heading: "Next step",
   },
 };
@@ -124,19 +120,16 @@ export default function ToolConnections({ toolId, locale = "ko", compact = false
       </div>
       {!compact && <section data-information-section="" className="tool-connections__more">
         <header data-information-heading="">{T.expand}</header>
-        {journey && (
+        {/* 상황은 순서가 아니다(§1.1c) — 앞뒤 단계 대신 같은 상황과 같은 파일로 잇는다. */}
+        {journey && (journey.alternatives.length > 0 || journey.sameFile.length > 0) && (
           <div className="tool-connections__map" aria-label={T.mapDeck}>
             <div>
-              <JourneyLinks label={T.back} tools={journey.previous} sourceToolId={toolId} locale={lang} />
               {journey.alternatives.length > 0 && (
                 <JourneyLinks label={T.here} tools={journey.alternatives} sourceToolId={toolId} locale={lang} />
               )}
-              <JourneyLinks
-                label={journey.isCycleRestart ? T.cycle : T.forward}
-                tools={journey.next}
-                sourceToolId={toolId}
-                locale={lang}
-              />
+              {journey.sameFile.length > 0 && (
+                <JourneyLinks label={T.sameFile} tools={journey.sameFile} sourceToolId={toolId} locale={lang} />
+              )}
             </div>
           </div>
         )}

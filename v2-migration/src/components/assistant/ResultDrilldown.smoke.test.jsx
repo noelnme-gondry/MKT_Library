@@ -46,10 +46,16 @@ it.each(["ko", "en"])("keeps actual periods, metric and values through summary �
   const detail = render(<CampaignPvm locale={locale} />);
   const detailNumbers = [...detail.container.querySelectorAll(".result-mix-rate .result-bridge b")].map(node => node.textContent);
   expect(detailNumbers).toEqual(summaryNumbers);
-  expect([...detail.container.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual([period.currentStart, period.currentEnd, period.previousStart, period.previousEnd]);
+  // 결과 위 맥락 줄이 요약에서 넘어온 두 기간을 날짜 그대로 말한다(product-ssot §1.1c).
+  const line = detail.container.querySelector(".report-context__line").textContent;
+  expect(line).toContain(`${period.currentStart} – ${period.currentEnd}`);
+  expect(line).toContain(`${period.previousStart} – ${period.previousEnd}`);
+  // 기간 선택기는 조건 바꾸기 창 안에 있고, 같은 날짜를 들고 있다.
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" }));
+  expect([...document.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual([period.currentStart, period.currentEnd, period.previousStart, period.previousEnd]);
   // 요약에서 넘어온 기간도 날짜 자체에서 수정한다. 비교 기간은 보존된다.
   fireEvent.click(screen.getByRole("button", { name: locale === "en" ? /^Analysis period/ : /^분석 기간/ }));
-  const dialog = screen.getByRole("dialog");
+  const dialog = screen.getAllByRole("dialog").at(-1);
   fireEvent.change(within(dialog).getByLabelText(locale === "en" ? "Start date" : "시작일"), { target: { value: period.currentEnd } });
   fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Apply" : "적용" }));
   expect(useAppStore.getState().dashboardFilter).toMatchObject({ dateStart: period.currentEnd, comparisonStart: period.previousStart, comparisonEnd: period.previousEnd });

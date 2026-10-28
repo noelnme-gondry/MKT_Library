@@ -1,4 +1,4 @@
-import { ADVANCED_TOOLS, advancedMap } from "./registry";
+import { advancedMap } from "./registry";
 import { ADVANCED_FIELDS } from "./fields";
 import { advancedDemoRows } from "./demo";
 import { csvBody } from "@/utils/download";
@@ -22,15 +22,3 @@ export function advancedGuide(tool, locale = "ko") {
     prep: [tool.limit[locale], locale === "en" ? "Confirm the settings and data definitions before analyzing. Processing stays in your browser." : "분석 전에 설정과 데이터 정의를 확인하세요. 계산은 브라우저 안에서 처리합니다."],
     example: csvBody(tool.required, advancedDemoRows(tool.id).slice(0, 3).map(row => tool.required.map(key => row[key] ?? ""))) };
 }
-const journeyNames = {
-  customer: { ko: "고객 행동·가치", en: "Customer behavior and value" },
-  advanced_proof: { ko: "실험 정밀도·증분 이익", en: "Experiment precision and incremental value" },
-  commerce: { ko: "영업·상품·가격", en: "Pipeline, products and pricing" },
-  quality: { ko: "도달·유입 품질", en: "Reach and traffic quality" },
-};
-export const ADVANCED_JOURNEYS = Object.entries(journeyNames).map(([id, title], i) => ({
-  id, title, label: { ko: `${i + 8} · ANALYSIS`, en: `${i + 8} · ANALYSIS` },
-  homePurpose: "planning", homeQuestion: { ko: `${title.ko}에서 무엇을 확인할까요?`, en: `What should I check in ${title.en.toLowerCase()}?` },
-  description: { ko: "질문에 맞는 데이터와 관측 조건을 확인합니다.", en: "Review the data and observation requirements for your question." },
-  tools: ADVANCED_TOOLS.filter((tool) => tool.journey === id).map((tool) => tool.id),
-}));

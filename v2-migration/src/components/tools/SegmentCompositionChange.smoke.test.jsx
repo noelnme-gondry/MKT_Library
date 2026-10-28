@@ -6,6 +6,7 @@ import { buildSegmentPanel } from "@/lib/segment-composition/segmentPanel";
 import SegmentCompositionChange from "@/components/tools/SegmentCompositionChange";
 import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
+import { withSettings } from "@/test/declaredConditions";
 
 vi.mock("@/lib/segment-composition/segmentPanel", async (importOriginal) => {
   const actual = await importOriginal();
@@ -58,9 +59,10 @@ describe("SegmentCompositionChange render smoke", () => {
 
   it("무엇을 무엇으로 읽었는지 한 줄로 말한다", () => {
     const { container } = mount();
-    const summary = container.querySelector("[aria-labelledby='segment-composition-mapping']");
-    expect(summary.textContent).toContain("날짜는 date 열");
-    expect(summary.textContent).toContain("인원은 signups 열");
+    // 결과가 나오면 읽은 방식은 결과 위 맥락 한 줄이 말한다(§1.1c 4단계).
+    const summary = container.querySelector(".report-context__line");
+    expect(summary.textContent).toContain("날짜 date");
+    expect(summary.textContent).toContain("인원 signups");
     expect(summary.textContent).toContain("gender");
     expect(summary.textContent).toContain("age_band");
   });
@@ -74,17 +76,22 @@ describe("SegmentCompositionChange render smoke", () => {
   });
 
   it("기본 비교는 최근 기간과 직전 기간이다", () => {
-    mount();
-    expect(screen.getByLabelText("이전 기간").value).toBe(PERIODS[PERIODS.length - 2]);
-    expect(screen.getByLabelText("이후 기간").value).toBe(PERIODS[PERIODS.length - 1]);
+    const { container } = mount();
+    expect(container.querySelector(".report-context__line").textContent).toContain(`${PERIODS[PERIODS.length - 2]} → ${PERIODS[PERIODS.length - 1]}`);
+    withSettings(() => {
+      expect(screen.getByLabelText("이전 기간").value).toBe(PERIODS[PERIODS.length - 2]);
+      expect(screen.getByLabelText("이후 기간").value).toBe(PERIODS[PERIODS.length - 1]);
+    });
   });
 
   it("비제로패딩 날짜도 정규화 패널의 기간과 연결한다", () => {
     const rows = DEMO.raw.map((row) => ({ ...row, date: row.date.replace(/-0(\d)/g, "-$1") }));
     const { container } = render(<SegmentCompositionChange rows={rows} headers={HEADERS} analyzed />);
 
-    expect(screen.getByLabelText("이전 기간").value).toBe(PERIODS[PERIODS.length - 2]);
-    expect(screen.getByLabelText("이후 기간").value).toBe(PERIODS[PERIODS.length - 1]);
+    withSettings(() => {
+      expect(screen.getByLabelText("이전 기간").value).toBe(PERIODS[PERIODS.length - 2]);
+      expect(screen.getByLabelText("이후 기간").value).toBe(PERIODS[PERIODS.length - 1]);
+    });
     expect(container.querySelector("#segment-composition-result")).toBeTruthy();
     expect(container.querySelector("#segment-composition-result").textContent).not.toContain("비교할 세그먼트 축이 없습니다");
   });
@@ -92,7 +99,7 @@ describe("SegmentCompositionChange render smoke", () => {
   it("기간을 바꾸면 결과가 따라 바뀐다", () => {
     const { container } = mount();
     const before = container.querySelector("#segment-composition-result").textContent;
-    fireEvent.change(screen.getByLabelText("이전 기간"), { target: { value: PERIODS[0] } });
+    withSettings(() => fireEvent.change(screen.getByLabelText("이전 기간"), { target: { value: PERIODS[0] } }));
     expect(container.querySelector("#segment-composition-result").textContent).not.toBe(before);
   });
 
@@ -101,20 +108,23 @@ describe("SegmentCompositionChange render smoke", () => {
     mount();
     expect(buildSegmentPanel).toHaveBeenCalledTimes(1);
 
-    fireEvent.change(screen.getByLabelText("이전 기간"), { target: { value: PERIODS[0] } });
-    fireEvent.change(screen.getByLabelText("경쟁 범위"), { target: { value: "Android" } });
+    withSettings(() => {
+      fireEvent.change(screen.getByLabelText("이전 기간"), { target: { value: PERIODS[0] } });
+      fireEvent.change(screen.getByLabelText("경쟁 범위"), { target: { value: "Android" } });
+    });
     expect(buildSegmentPanel).toHaveBeenCalledTimes(1);
   });
 
   it("비교·인과 필터가 공용 로컬 컨트롤 모양을 쓴다", () => {
     const { container } = mount();
-    const comparison = container.querySelector("[aria-labelledby='segment-composition-compare']");
     const causal = container.querySelector("#segment-composition-causal");
-
-    expect(comparison.querySelector(".analysis-local-controls__inner")).toBeTruthy();
     expect(causal.querySelector(".analysis-local-controls__inner")).toBeTruthy();
     expect(container.querySelector(".form-row")).toBeNull();
-    expect(container.querySelectorAll(".mon-filter-select").length).toBeGreaterThanOrEqual(6);
+    // 비교 조건은 결과가 나오면 조건 바꾸기 창 안에 같은 공용 컨트롤로 있다.
+    withSettings((dialog) => {
+      expect(dialog.querySelector(".analysis-local-controls__inner")).toBeTruthy();
+      expect(document.querySelectorAll(".mon-filter-select").length).toBeGreaterThanOrEqual(6);
+    });
   });
 
   it("매핑을 고치는 경로는 접어 두되 사라지지 않는다", () => {
@@ -133,8 +143,8 @@ describe("SegmentCompositionChange render smoke", () => {
     const { container } = mount();
     fireEvent.click(screen.getByRole("button", { name: "다르게 읽혔다면 고치기" }));
     fireEvent.change(within(document.querySelector(".segment-mapping-edit")).getByLabelText("전체 인원은 어느 열인가요? (없으면 각 행의 인원을 더합니다)"), { target: { value: "signups" } });
-    expect(container.querySelector("[aria-labelledby='segment-composition-mapping']").textContent)
-      .toContain("직접 지정한 매핑을 씁니다");
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    expect(container.querySelector(".report-context__line").textContent).toContain("직접 지정한 매핑");
   });
 
   it("운영 지문을 원인이 아니라 가설 좁히기로 표시한다", () => {
@@ -173,7 +183,7 @@ describe("SegmentCompositionChange render smoke", () => {
   it("EN 로케일에서도 같은 흐름이 동작한다", () => {
     const { container } = mount({ locale: "en" });
     expect(container.querySelector("#segment-composition-result")).toBeTruthy();
-    expect(container.textContent).toContain("How this file was read");
+    expect(container.querySelector(".report-context__line").textContent).toContain("split by");
     expect(container.textContent).toContain("What this cannot say");
   });
 
