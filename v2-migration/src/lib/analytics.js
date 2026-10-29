@@ -4,6 +4,7 @@ import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { PAYMENT_PRODUCT } from "./subscription/paymentProduct";
 import { journeySurface, withSiteJourney } from "./siteJourney";
 import { GA_MEASUREMENT_ID, isAnalyticsHost } from "./analyticsHost";
+import { currentPartnerAdMode, partnerAdEventParams } from "./partnerAds";
 
 const ALLOWED_PARAMS = new Set([
   "tool_id", "source", "column_count", "row_count", "mapped_count", "confidence_bucket",
@@ -129,6 +130,7 @@ export function productAnalysisType(toolId) {
 }
 
 export function sanitizeProductEventParams(params = {}, name) {
+  if (name === "ad_slot_view") return partnerAdEventParams(params) || {};
   const safe = Object.fromEntries(Object.entries(params)
     .filter(([key, value]) => ALLOWED_PARAMS.has(key) && value != null)
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
@@ -162,6 +164,13 @@ const HOME_ENTRY_EVENTS = new Set(["landing_data_start_clicked", "landing_situat
 export function trackProductEvent(name, params = {}) {
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && name === "analysis_result_viewed") window.dispatchEvent(new Event("gop:analysis-result-ready"));
   if (typeof window === "undefined") return false;
+  const isAdSlotView = name === "ad_slot_view";
+  if (isAdSlotView) {
+    if (currentPartnerAdMode() !== "live") return false;
+    // 호출자의 임의 URL 대신 현재 페이지의 pathname만 사용한다.
+    params = partnerAdEventParams({ ...params, page_path: window.location.pathname });
+    if (!params) return false;
+  }
   // 운영 호스트에서 GA 스크립트보다 먼저 마운트된 화면의 이벤트도 표준 큐에 넣는다.
   // 로컬·미리보기는 여전히 no-op. 광고 차단기를 우회하는 별도 전송은 하지 않는다.
   if (typeof window.gtag !== "function" && isAnalyticsHost(window.location?.hostname)) {
@@ -203,7 +212,13 @@ export function trackProductEvent(name, params = {}) {
     delete safeParams.source;
   }
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
-  window.gtag("event", name, safeParams);
+  if (isAdSlotView) {
+    // gtag가 자동으로 붙이는 현재 URL·referrer에도 쿼리/fragment를 남기지 않는다.
+    Object.assign(safeParams, { page_location: `${window.location.origin}${safeParams.page_path}`, page_referrer: "", page_title: "" });
+    try { window.gtag("event", name, safeParams); } catch { return false; }
+  } else {
+    window.gtag("event", name, safeParams);
+  }
   if (name === "analysis_result_viewed") {
     trackBlogSampleResult(params);
     trackRealResult(params);
