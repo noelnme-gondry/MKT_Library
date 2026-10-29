@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, partnerAdFormat } from "@/lib/partnerAds";
 import { partnerAdSource, PARTNER_FRAME_SANDBOX } from "@/lib/partnerAdFrame";
 import usePartnerAdMode from "./usePartnerAdMode";
+import usePartnerAdView from "./usePartnerAdView";
 
 // 숨긴 슬롯도 부모를 관찰한다. 창 확대·메뉴 접기·배율 변경 후 다시 표시할 수 있다.
 function useParentWidth(ref, fullBleed = false) {
@@ -24,11 +25,13 @@ function useParentWidth(ref, fullBleed = false) {
 }
 
 function AdCreative({ placement, format, locale, mode }) {
+  const frameRef = useRef(null);
+  usePartnerAdView(frameRef, { placement, format, locale, mode });
   const en = locale === "en";
   const size = PARTNER_AD_FORMATS[format];
   return <div className="partner-ad-preview" style={{ "--partner-ad-width": `${size.width}px`, "--partner-ad-height": `${size.height}px` }}>
     <p className="partner-ad-preview__label">{mode === "preview" ? (en ? "Ad space · preview" : "광고 영역 · 미리보기") : (en ? "Advertisement" : "광고")}</p>
-    {mode === "live" ? <iframe className="partner-ad-frame" data-ad-format={format} title={`${PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]} · Coupang Partners`} src={partnerAdSource(format)} width={size.width} height={size.height} loading="lazy" sandbox={PARTNER_FRAME_SANDBOX} referrerPolicy="origin" scrolling="no" /> : <div className="partner-ad-preview__frame" data-ad-format={format}>
+    {mode === "live" ? <iframe ref={frameRef} className="partner-ad-frame" data-ad-format={format} title={`${PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]} · Coupang Partners`} src={partnerAdSource(format)} width={size.width} height={size.height} loading="lazy" sandbox={PARTNER_FRAME_SANDBOX} referrerPolicy="origin" scrolling="no" /> : <div className="partner-ad-preview__frame" data-ad-format={format}>
       <strong>{size.width} × {size.height}</strong>
       <span>{PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]}</span>
     </div>}

@@ -212,6 +212,7 @@ v2-migration/
 - **CSV 매핑/필드 스키마 → `src/utils/csvConstants.js` + `src/lib/data-import/*` + `src/components/CsvUploader.jsx`**.
 - **CSV 그룹/슬라이스 → `src/lib/toolGroups.js` + store `csvGroups`**.
 - **퍼널 이벤트 → `src/lib/analytics.js`**: 허용된 구조 메타데이터만 GA4로. 파일명·원본 행·실제 지표값 금지.
+- **광고 영역 도달 → `components/ads/usePartnerAdView.js` + `lib/partnerAdMeasurement.js`**: `partnerAds.js` 배치·규격·동의 정본에서 파생, 실제 프레임 50%/visible 조건, pathname 진입×슬롯 중복 제거. 기존 `analytics.js`로 계약 필드와 쿼리 없는 URL만 보낸다. 송출·클릭·GA 수신 여부는 추정하지 않는다(`docs/ga4-product-events.md`).
 - **분석 품질 게이트**: `lib/analysis-router/executionPreflight.js`는 추천 핸드오프·도치 실행 직전의 기존 자격 검증을 공유한다. `utils/experimentQuality.js`(SRM·선택 동등성), `utils/asaRecommendationQuality.js`(성숙도·표본), `utils/ahaObservationWindow.js`(행동/결과 시간창), `lib/analysis-results/mmmDecisionQuality.js`(기존 건강도 통합)는 원래 수학 엔진 출력과 분리된 판단 보류 계층이다.
 - **5-22 결과 화면**: `MarketingEfficiency`는 비고정 `ToolPageShell(stickyHeader=false)` 안에서 한 곳의 `CsvUploader`를 유지한다(매핑 편집 중 분석 게이트가 닫혀도 대화상자 마운트 유지). 결론 → `MarginalEfficiencyGapChart` → 상세 순위/곡선 → 관측 `ScaleDecisionMap` → `PeriodSensitivityPanel(variant="saturation")` 순서다. 곡선의 예산/관측 범위/R²는 선택된 기존 엔진 행에서 읽고 수학은 바꾸지 않는다. 5-21·5-22 하단은 `ToolNextStepPanel`로 다음 분석 두 개와 선택적 참고 자료 창을 제공한다. 나머지 도구의 기본 셸/하단/기간 검증 표현은 유지한다.
 - **기간 민감도**: `lib/analysis-results/periodSensitivity.js`와 `ds/PeriodSensitivityPanel`은 명시 실행으로 날짜 전·후반을 나누고 기존 포화도/예산 계산을 재사용한다. 같은 예산·설정으로 비교하며 불충분한 관측·범위·제약은 보류한다. 별도 CSV는 화면 결과에서 직접 생성한다.
