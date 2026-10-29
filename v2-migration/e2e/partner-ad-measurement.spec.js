@@ -8,22 +8,41 @@ import { PARTNER_AD_PLACEMENTS, pageAdPlacement } from "../src/lib/partnerAds.js
 // 운영 호스트 분기는 그대로 실행하되 모든 요청은 로컬 빌드 또는 차단으로 끝낸다.
 // 실제 쿠팡/GA 요청·광고 클릭 없음. 앱이 만드는 표준 gtag/dataLayer 큐를 관측한다.
 const virtualOrigin = "http://growthoptplaybook.com";
+const finishRequests = new WeakMap();
 const adEvents = page => page.evaluate(() => (window.dataLayer || [])
   .filter(entry => entry[0] === "event" && entry[1] === "ad_slot_view").map(entry => entry[2]));
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.route("**/*", async route => {
-    const url = new URL(route.request().url());
-    if (url.origin !== virtualOrigin) return route.abort();
-    const response = await route.fetch({ url: `${baseURL}${url.pathname}${url.search}`, maxRedirects: 0 });
-    await route.fulfill({ response });
+  const pending = new Set();
+  let closing = false;
+  finishRequests.set(page, async () => {
+    closing = true;
+    while (pending.size) await Promise.all([...pending]);
+  });
+  await page.route("**/*", route => {
+    const handle = async () => {
+      const url = new URL(route.request().url());
+      if (closing || url.origin !== virtualOrigin) return route.abort();
+      const response = await route.fetch({ url: `${baseURL}${url.pathname}${url.search}`, maxRedirects: 0 });
+      await route.fulfill({ response });
+    };
+    const request = handle();
+    pending.add(request);
+    return request.finally(() => pending.delete(request));
   });
   await page.addInitScript(([consentKey, surveyKey]) => {
     if (window.top !== window) return;
     localStorage.setItem(consentKey, "granted");
     localStorage.setItem(surveyKey, "1");
   }, [CONSENT_STORAGE_KEY, SOURCE_SURVEY_ANSWERED_KEY]);
+});
+
+test.afterEach(async ({ page }) => {
+  // 새 요청은 차단하고 이미 시작한 로컬 prefetch만 마저 처리한다.
+  // 실패를 숨기지 않으며 외부 차단 route는 context가 닫힐 때까지 유지한다.
+  await finishRequests.get(page)();
+  finishRequests.delete(page);
 });
 
 async function reachSlot(page, slot, pathname, locale) {
