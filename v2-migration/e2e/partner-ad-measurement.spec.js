@@ -3,10 +3,11 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { CONSENT_STORAGE_KEY } from "../src/lib/consent.js";
-import { PARTNER_AD_PLACEMENTS, pageAdPlacement } from "../src/lib/partnerAds.js";
+import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, pageAdPlacement } from "../src/lib/partnerAds.js";
+import { adsterraDocument, partnerAdSource } from "../src/lib/partnerAdFrame.js";
 
 // 운영 호스트 분기는 그대로 실행하되 모든 요청은 로컬 빌드 또는 차단으로 끝낸다.
-// 실제 쿠팡/GA 요청·광고 클릭 없음. 앱이 만드는 표준 gtag/dataLayer 큐를 관측한다.
+// 실제 광고/GA 요청·광고 클릭 없음. 앱이 만드는 표준 gtag/dataLayer 큐를 관측한다.
 const virtualOrigin = "http://growthoptplaybook.com";
 const finishRequests = new WeakMap();
 const adEvents = page => page.evaluate(() => (window.dataLayer || [])
@@ -33,7 +34,7 @@ test.beforeEach(async ({ page, baseURL }) => {
   });
   await page.addInitScript(([consentKey, surveyKey]) => {
     if (window.top !== window) return;
-    localStorage.setItem(consentKey, "granted");
+    if (!localStorage.getItem(consentKey)) localStorage.setItem(consentKey, "granted");
     localStorage.setItem(surveyKey, "1");
   }, [CONSENT_STORAGE_KEY, SOURCE_SURVEY_ANSWERED_KEY]);
 });
@@ -47,12 +48,20 @@ test.afterEach(async ({ page }) => {
 
 async function reachSlot(page, slot, pathname, locale) {
   const frame = page.locator(`[data-ad-slot="${slot}"] iframe`);
+  await expect(frame).toHaveCount(1);
   await expect(frame).toBeVisible();
   const format = await frame.getAttribute("data-ad-format");
+  const adsterra = PARTNER_AD_PLACEMENTS[slot].provider === "adsterra";
+  await expect(frame).toHaveAttribute("data-ad-provider", adsterra ? "adsterra" : "coupang");
+  await expect(frame).toHaveAttribute(adsterra ? "srcdoc" : "src", adsterra ? adsterraDocument(format) : partnerAdSource(format));
+  expect(await frame.getAttribute(adsterra ? "src" : "srcdoc")).toBeNull();
+  const size = (adsterra ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS)[format];
+  expect(await frame.boundingBox()).toMatchObject({ width: size.width, height: size.height });
+  await expect(page.locator(`[data-ad-slot="${slot}"] .partner-ad-preview__note`)).toHaveText((adsterra ? ADSTERRA_DISCLOSURE : PARTNER_AD_DISCLOSURE)[locale]);
   await frame.scrollIntoViewIfNeeded();
   await expect.poll(async () => (await adEvents(page)).filter(event => event.ad_slot === slot && event.page_path === pathname).length).toBe(1);
   const event = (await adEvents(page)).find(event => event.ad_slot === slot && event.page_path === pathname);
-  expect(event).toEqual({ ad_provider: "coupang", ad_slot: slot, ad_format: format, locale,
+  expect(event).toEqual({ ad_provider: PARTNER_AD_PLACEMENTS[slot].provider, ad_slot: slot, ad_format: format, locale,
     page_path: pathname, ad_measurement_version: 1, send_to: "G-DK12TNR0GW",
     page_location: `${virtualOrigin}${pathname}`, page_referrer: "", page_title: "" });
   expect(PARTNER_AD_PLACEMENTS[slot].formats).toContain(format);
@@ -89,6 +98,20 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(`${virtualOrigin}${home}`);
     await page.locator('[data-ad-slot="site-rail"] iframe').scrollIntoViewIfNeeded();
     await expect.poll(async () => (await adEvents(page)).filter(event => event.ad_slot === "site-rail" && event.page_path === home).length).toBe(2);
+  });
+
+  test(`privacy disclosure and live opt-out remove both providers (${locale})`, async ({ page }) => {
+    const pathname = `${prefix}/privacy`;
+    await page.goto(`${virtualOrigin}${pathname}`);
+    await expect(page.locator("main")).toContainText("Adsterra");
+    await expect(page.locator("main")).toContainText(locale === "en" ? "Coupang Partners" : "쿠팡 파트너스");
+    await reachSlot(page, "page-bottom", pathname, locale);
+    await page.getByRole("button", { name: locale === "en" ? "Turn measurement off" : "측정 끄기", exact: true }).click();
+    await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
+    await page.goto(`${virtualOrigin}${prefix}/tools/budget-allocation`);
+    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+    await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
+    expect(await adEvents(page)).toEqual([]);
   });
 
   for (const failedTransport of [false, true]) test(`CSV → analysis → result → PNG, ads blocked, transport ${failedTransport ? "throws" : "queues"} (${locale})`, async ({ page }) => {
@@ -141,7 +164,7 @@ for (const locale of ["ko", "en"]) {
   });
 }
 
-test("actual responsive geometry hides narrow slots and dedupes format switches", async ({ page }) => {
+test("actual responsive geometry hides narrow slots and dedupes format switches", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 319, height: 800 });
   await page.goto(virtualOrigin);
   await expect(page.locator("footer")).toBeAttached();
@@ -154,4 +177,54 @@ test("actual responsive geometry hides narrow slots and dedupes format switches"
   await expect(page.locator('[data-ad-slot="home-intro"] iframe')).toHaveAttribute("data-ad-format", "wide");
   await page.locator('[data-ad-slot="home-intro"] iframe').scrollIntoViewIfNeeded();
   expect((await adEvents(page)).filter(event => event.ad_slot === "home-intro")).toHaveLength(1);
+  for (const width of [320, 390, 980, 1440, 1600]) {
+    await page.setViewportSize({ width, height: 1000 });
+    // The contract uses available main width; a collapsed sidebar changes it.
+    await expect.poll(() => page.locator('[data-ad-slot="site-rail"]').evaluate((slot, minWidth) => {
+      const parent = slot.parentElement;
+      const style = getComputedStyle(parent);
+      const available = parent.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+      return Boolean(slot.querySelector("iframe")) === (available >= minWidth);
+    }, PARTNER_AD_RAIL_MIN_WIDTH)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if ([390, 1440].includes(width)) {
+      await page.locator('[data-ad-slot="home-intro"] iframe').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`) });
+    }
+  }
+});
+
+test("language and theme switches preserve provider disclosures", async ({ page }, testInfo) => {
+  await page.goto(virtualOrigin);
+  await reachSlot(page, "home-intro", "/", "ko");
+  await page.locator(".header-utility-menu__trigger").click();
+  await page.locator(".header-locale").click();
+  await expect(page).toHaveURL(`${virtualOrigin}/en`);
+  await reachSlot(page, "home-intro", "/en", "en");
+  await expect(page.locator(".partner-ad-disclosure")).toHaveText(ADSTERRA_DISCLOSURE.en);
+  await page.locator(".header-utility-menu__trigger").click();
+  await page.locator(".header-theme").click();
+  await expect(page.locator("body")).toHaveClass(/light-mode/);
+  await page.locator('[data-ad-slot="home-intro"] iframe').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("home-en-light.png") });
+});
+
+test.describe("consent-required visitors", () => {
+  test.use({ timezoneId: "Europe/Berlin", locale: "de-DE" });
+  for (const locale of ["ko", "en"]) test(`no ad request before consent or after rejection (${locale})`, async ({ page }) => {
+    const adRequests = [];
+    page.on("request", request => {
+      if (/bauval\.org|ads-partners\.coupang\.com/.test(request.url())) adRequests.push(request.url());
+    });
+    await page.addInitScript(key => localStorage.removeItem(key), CONSENT_STORAGE_KEY);
+    await page.goto(`${virtualOrigin}${locale === "en" ? "/en" : "/"}`);
+    const dialog = page.getByRole("dialog", { name: locale === "en" ? "Cookie consent" : "쿠키 동의" });
+    await expect(dialog).toBeVisible();
+    await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
+    await dialog.getByRole("button", { name: locale === "en" ? "Reject" : "거부", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
+    expect(adRequests).toEqual([]);
+    expect(await adEvents(page)).toEqual([]);
+  });
 });
