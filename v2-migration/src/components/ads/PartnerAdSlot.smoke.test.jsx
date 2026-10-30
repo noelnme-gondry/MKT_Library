@@ -4,7 +4,7 @@ import PartnerAdSlot, { PartnerAdRail } from "./PartnerAdSlot";
 import { PARTNER_AD_PLACEMENTS } from "@/lib/partnerAds";
 import { CONSENT_STORAGE_KEY, writeStoredConsent } from "@/lib/consent";
 import * as adMode from "./usePartnerAdMode";
-import { adsterraDocument, ADSTERRA_FRAME_SANDBOX, partnerAdSource } from "@/lib/partnerAdFrame";
+import { adsterraSource, ADSTERRA_FRAME_SANDBOX, partnerAdSource } from "@/lib/partnerAdFrame";
 
 let pathname = "/";
 vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
@@ -104,11 +104,11 @@ it("replaces general slots with one isolated Adsterra frame and hides undersized
     expect(parent.querySelectorAll("iframe")).toHaveLength(1);
     const frame = parent.querySelector("iframe");
     expect(frame.getAttribute("data-ad-provider")).toBe("adsterra");
-    expect(frame.hasAttribute("src")).toBe(false);
-    expect(frame.getAttribute("srcdoc")).toBe(adsterraDocument(format));
+    expect(frame.hasAttribute("srcdoc")).toBe(false);
+    expect(frame.getAttribute("src")).toBe(adsterraSource(format));
     expect(frame.getAttribute("height")).toBe(height);
     expect(frame.getAttribute("sandbox")).toBe(ADSTERRA_FRAME_SANDBOX);
-    expect(frame.getAttribute("sandbox")).not.toContain("allow-same-origin");
+    expect(new URL(frame.src).origin).not.toBe(window.location.origin);
     expect(parent.querySelector("script")).toBeNull();
   }
   act(() => { Object.defineProperty(parent, "clientWidth", { configurable: true, value: 319 }); notify(); });

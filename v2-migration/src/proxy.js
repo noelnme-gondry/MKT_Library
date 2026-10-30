@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ADSTERRA_FRAME_PREFIX, isAdsterraFrameHost } from "./lib/adsterraHost.mjs";
 
 const PRODUCTION_HOST = "growthoptplaybook.com";
 
@@ -13,6 +14,11 @@ export function proxy(request) {
   const host = hostName(request);
   const isRailwayHost = host.endsWith(".up.railway.app");
   const isWwwHost = host === `www.${PRODUCTION_HOST}`;
+
+  // Only the isolated ad document stays on Railway; app pages still redirect.
+  if (isAdsterraFrameHost(request.headers.get("host")) && request.nextUrl.pathname.startsWith(ADSTERRA_FRAME_PREFIX)) {
+    return NextResponse.next();
+  }
 
   if (isRailwayHost || isWwwHost) {
     const destination = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${PRODUCTION_HOST}`);

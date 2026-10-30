@@ -4,7 +4,8 @@ import { devices, expect, test } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { CONSENT_STORAGE_KEY } from "../src/lib/consent.js";
 import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, pageAdPlacement } from "../src/lib/partnerAds.js";
-import { adsterraDocument, partnerAdSource } from "../src/lib/partnerAdFrame.js";
+import { adsterraDocument, adsterraSource, partnerAdSource } from "../src/lib/partnerAdFrame.js";
+import { ADSTERRA_FRAME_ORIGIN } from "../src/lib/adsterraHost.mjs";
 
 // 운영 호스트 분기는 그대로 실행하되 모든 요청은 로컬 빌드 또는 차단으로 끝낸다.
 // 실제 광고/GA 요청·광고 클릭 없음. 앱이 만드는 표준 gtag/dataLayer 큐를 관측한다.
@@ -59,8 +60,8 @@ async function reachSlot(page, slot, pathname, locale, firstFormat) {
   const format = await frame.getAttribute("data-ad-format");
   const adsterra = PARTNER_AD_PLACEMENTS[slot].provider === "adsterra";
   await expect(frame).toHaveAttribute("data-ad-provider", adsterra ? "adsterra" : "coupang");
-  await expect(frame).toHaveAttribute(adsterra ? "srcdoc" : "src", adsterra ? adsterraDocument(format) : partnerAdSource(format));
-  expect(await frame.getAttribute(adsterra ? "src" : "srcdoc")).toBeNull();
+  await expect(frame).toHaveAttribute("src", adsterra ? adsterraSource(format) : partnerAdSource(format));
+  expect(await frame.getAttribute("srcdoc")).toBeNull();
   const size = (adsterra ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS)[format];
   expect(await frame.boundingBox()).toMatchObject({ width: size.width, height: size.height });
   await expect(page.locator(`[data-ad-slot="${slot}"] .partner-ad-preview__note`)).toHaveText((adsterra ? ADSTERRA_DISCLOSURE : PARTNER_AD_DISCLOSURE)[locale]);
@@ -261,6 +262,7 @@ test("mobile analysis has one compact site-rail alongside retained Coupang @mobi
 
 async function mockCreatives(page) {
   const requests = [];
+  await page.route(`${ADSTERRA_FRAME_ORIGIN}/**`, route => route.fulfill({ contentType: 'text/html', body: adsterraDocument(new URL(route.request().url()).pathname.split('/').pop()) }));
   await page.route('https://bauval.org/**', route => {
     requests.push(route.request().url());
     return route.fulfill({ contentType: 'application/javascript', body: `"use strict";const options=window.atOptions;delete window.atOptions;const creative=document.createElement('div');creative.setAttribute('data-mock-creative','adsterra');creative.textContent='Adsterra test creative';creative.style.cssText='width:'+options.width+'px;height:'+options.height+'px;background:#eee;color:#222';document.body.append(creative);` });

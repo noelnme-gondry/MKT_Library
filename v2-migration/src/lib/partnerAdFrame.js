@@ -1,5 +1,7 @@
 import { ADSTERRA_FORMATS, PARTNER_AD_FORMATS, PARTNER_TRACKING_CODE } from "./partnerAds";
 import { SITE_URL } from "./routeMap";
+import { ADSTERRA_FRAME_ORIGIN, ADSTERRA_FRAME_PREFIX } from "./adsterraHost.mjs";
+export { ADSTERRA_FRAME_SANDBOX } from "./adsterraHost.mjs";
 
 // 공식 위젯은 쿠팡 출처에서만 실행되어 앱 DOM·저장소를 읽을 수 없다.
 // srcdoc/앱 URL에 이 권한을 부여하면 앱에 접근할 수 있으므로 사용하지 않는다.
@@ -14,13 +16,17 @@ export function partnerAdSource(format) {
   return `https://ads-partners.coupang.com/widgets.html?${query}`;
 }
 
-// srcdoc는 불투명 출처로 격리한다. allow-same-origin을 추가하면 앱 데이터에 접근할 수 있다.
-export const ADSTERRA_FRAME_SANDBOX = "allow-scripts allow-popups allow-popups-to-escape-sandbox";
+// Never use srcdoc with allow-same-origin. Only this separate origin may run the SDK.
+export function adsterraSource(format) {
+  if (!Object.hasOwn(ADSTERRA_FORMATS, format)) return null;
+  return `${ADSTERRA_FRAME_ORIGIN}${ADSTERRA_FRAME_PREFIX}${format}`;
+}
+
 export function adsterraDocument(format) {
   if (!Object.hasOwn(ADSTERRA_FORMATS, format)) return null;
   const { key, width, height } = ADSTERRA_FORMATS[format];
   const options = JSON.stringify({ key, format: "iframe", height, width, params: {} });
-  // srcdoc의 기본 주소도 고정해 부모 경로·쿼리가 document.baseURI에 노출되지 않게 한다.
+  // 공개 기본 주소만 제공하고 부모의 경로·쿼리·입력은 전달하지 않는다.
   // SDK가 소비 후 삭제하므로 전역 var의 삭제 불가능한 속성 대신 일반 속성으로 설정한다.
   return `<!doctype html><html><head><base href="${SITE_URL}/"><meta name="referrer" content="origin"><style>html,body{margin:0;padding:0;overflow:hidden}</style></head><body><script>window.atOptions=${options};</script><script src="https://bauval.org/22/${key}" referrerpolicy="origin"></script></body></html>`;
 }
