@@ -8,6 +8,15 @@ export const PARTNER_AD_FORMATS = Object.freeze({
   wide: { id: 1039166, width: 728, height: 90 },
   compact: { id: 1039167, width: 320, height: 100 },
 });
+export const ADSTERRA_FORMATS = Object.freeze({
+  rail: { key: "be1403e83b4724f7782e663391479825", width: 160, height: 600 },
+  wide: { key: "2ee24764f53f4978668687a6999f6b41", width: 728, height: 90 },
+  compact: { key: "0a43e29a28a4a3f50d3c2d1e535b5e44", width: 320, height: 50 },
+});
+export const ADSTERRA_DISCLOSURE = {
+  ko: "Adsterra에서 제공하는 디스플레이 광고입니다.",
+  en: "Display advertising provided by Adsterra.",
+};
 export const PARTNER_TRACKING_CODE = "AF3219545";
 export const PARTNER_AD_DISCLOSURE = {
   ko: "이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
@@ -29,11 +38,11 @@ export function currentPartnerAdMode() {
 }
 export const PARTNER_AD_RAIL_MIN_WIDTH = 1180;
 export const PARTNER_AD_PLACEMENTS = Object.freeze({
-  "site-rail": { ko: "오른쪽 세로 광고", en: "Right sidebar ad", formats: ["rail"] },
-  "home-intro": { ko: "홈 소개 아래 광고", en: "Ad below the home introduction", formats: ["wide", "compact"] },
-  "blog-byline": { ko: "블로그 작성자 아래 광고", en: "Ad below the article byline", formats: ["wide", "compact"] },
-  "analysis-bottom": { ko: "분석 결과 아래 광고", en: "Ad below the analysis results", formats: ["wide", "compact"] },
-  "page-bottom": { ko: "페이지 하단 광고", en: "Bottom of page ad", formats: ["wide", "compact"] },
+  "site-rail": { provider: "adsterra", ko: "오른쪽 세로 광고", en: "Right sidebar ad", formats: ["rail"] },
+  "home-intro": { provider: "adsterra", ko: "홈 소개 아래 광고", en: "Ad below the home introduction", formats: ["wide", "compact"] },
+  "blog-byline": { provider: "adsterra", ko: "블로그 작성자 아래 광고", en: "Ad below the article byline", formats: ["wide", "compact"] },
+  "analysis-bottom": { provider: "coupang", ko: "분석 결과 아래 광고", en: "Ad below the analysis results", formats: ["wide", "compact"] },
+  "page-bottom": { provider: "adsterra", ko: "페이지 하단 광고", en: "Bottom of page ad", formats: ["wide", "compact"] },
 });
 
 // 광고 송출/클릭이 아니라 영역 도달이다. 원본 입력이나 전역 측정 버전은 받지 않는다.
@@ -42,7 +51,7 @@ export function partnerAdEventParams(params = {}) {
   const path = typeof params.page_path === "string" ? params.page_path.split(/[?#]/)[0] : "";
   if (!Object.hasOwn(PARTNER_AD_PLACEMENTS, slot) || !PARTNER_AD_PLACEMENTS[slot].formats.includes(format)
     || !["ko", "en"].includes(locale) || !path.startsWith("/") || path.startsWith("//")) return null;
-  return { ad_provider: "coupang", ad_slot: slot, ad_format: format, locale, page_path: path, ad_measurement_version: 1 };
+  return { ad_provider: PARTNER_AD_PLACEMENTS[slot].provider, ad_slot: slot, ad_format: format, locale, page_path: path, ad_measurement_version: 1 };
 }
 
 export function partnerAdFormat(placement, availableWidth) {

@@ -57,7 +57,7 @@ export default function EnglishPrivacyPage() {
           content: (
             <>
               <p>Google Analytics, Google Tag Manager, and Google AdSense may process cookies, device identifiers, and visit information. This processing is subject to Google&apos;s policies and your browser and consent settings.</p>
-              <p>This site displays Coupang Partners affiliate ads and may receive a commission from qualifying purchases. Coupang may process visit and device information, including IP addresses, and advertising identifiers when ads are displayed or clicked. Partner ads run in a separate frame that cannot access the analysis page. We do not pass CSV files, analysis results or filenames to it. Turning ad measurement off below also prevents Coupang ads from loading.</p>
+              <p>General placements display Adsterra ads; the placement below analysis results uses Coupang Partners. We may earn revenue from ad delivery and performance or qualifying Coupang purchases. Both providers may process visit and device information, including IP addresses, and advertising identifiers when ads are displayed or clicked. Ads run in a separate frame that cannot access the analysis page. We do not pass CSV files, analysis results or filenames to it. Turning ad measurement off below also prevents both providers from loading.</p>
               <p>Regardless of your region, you can turn visit analytics and ad measurement off below. The choice is stored in this browser and does not affect how the analysis tools work.</p>
               <AnalyticsOptOut locale="en" />
             </>

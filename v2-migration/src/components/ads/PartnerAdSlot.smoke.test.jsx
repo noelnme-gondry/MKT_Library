@@ -4,7 +4,7 @@ import PartnerAdSlot, { PartnerAdRail } from "./PartnerAdSlot";
 import { PARTNER_AD_PLACEMENTS } from "@/lib/partnerAds";
 import { CONSENT_STORAGE_KEY, writeStoredConsent } from "@/lib/consent";
 import * as adMode from "./usePartnerAdMode";
-import { partnerAdSource } from "@/lib/partnerAdFrame";
+import { adsterraDocument, ADSTERRA_FRAME_SANDBOX, partnerAdSource } from "@/lib/partnerAdFrame";
 
 afterEach(() => { cleanup(); window.localStorage.removeItem(CONSENT_STORAGE_KEY); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
@@ -43,7 +43,7 @@ it("mounts only the fitting live iframe on the partner origin", () => {
   vi.spyOn(adMode, "default").mockReturnValue("live");
   let notify;
   vi.stubGlobal("ResizeObserver", class { constructor(callback) { notify = callback; } observe() {} disconnect() {} });
-  const { container } = render(<div><PartnerAdSlot placement="blog-byline" /></div>);
+  const { container } = render(<div><PartnerAdSlot placement="analysis-bottom" /></div>);
   const parent = container.firstChild;
   const resize = width => act(() => { Object.defineProperty(parent, "clientWidth", { configurable: true, value: width }); notify(); });
   resize(800);
@@ -59,5 +59,27 @@ it("mounts only the fitting live iframe on the partner origin", () => {
   expect(parent.querySelectorAll("iframe")).toHaveLength(1);
   expect(parent.querySelector("iframe").getAttribute("src")).toBe(partnerAdSource("compact"));
   resize(319);
+  expect(parent.querySelector("iframe")).toBeNull();
+});
+
+it("replaces general slots with one isolated Adsterra frame and hides undersized slots", () => {
+  vi.spyOn(adMode, "default").mockReturnValue("live");
+  let notify;
+  vi.stubGlobal("ResizeObserver", class { constructor(callback) { notify = callback; } observe() {} disconnect() {} });
+  const { container } = render(<div><PartnerAdSlot placement="home-intro" /></div>);
+  const parent = container.firstChild;
+  for (const [width, format, height] of [[800, "wide", "90"], [360, "compact", "50"]]) {
+    act(() => { Object.defineProperty(parent, "clientWidth", { configurable: true, value: width }); notify(); });
+    expect(parent.querySelectorAll("iframe")).toHaveLength(1);
+    const frame = parent.querySelector("iframe");
+    expect(frame.getAttribute("data-ad-provider")).toBe("adsterra");
+    expect(frame.hasAttribute("src")).toBe(false);
+    expect(frame.getAttribute("srcdoc")).toBe(adsterraDocument(format));
+    expect(frame.getAttribute("height")).toBe(height);
+    expect(frame.getAttribute("sandbox")).toBe(ADSTERRA_FRAME_SANDBOX);
+    expect(frame.getAttribute("sandbox")).not.toContain("allow-same-origin");
+    expect(parent.querySelector("script")).toBeNull();
+  }
+  act(() => { Object.defineProperty(parent, "clientWidth", { configurable: true, value: 319 }); notify(); });
   expect(parent.querySelector("iframe")).toBeNull();
 });

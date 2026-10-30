@@ -1,7 +1,8 @@
 "use client";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, partnerAdFormat } from "@/lib/partnerAds";
-import { partnerAdSource, PARTNER_FRAME_SANDBOX } from "@/lib/partnerAdFrame";
+import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, pageAdPlacement, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, partnerAdFormat } from "@/lib/partnerAds";
+import { adsterraDocument, ADSTERRA_FRAME_SANDBOX, partnerAdSource, PARTNER_FRAME_SANDBOX } from "@/lib/partnerAdFrame";
 import usePartnerAdMode from "./usePartnerAdMode";
 import usePartnerAdView from "./usePartnerAdView";
 
@@ -28,14 +29,16 @@ function AdCreative({ placement, format, locale, mode }) {
   const frameRef = useRef(null);
   usePartnerAdView(frameRef, { placement, format, locale, mode });
   const en = locale === "en";
-  const size = PARTNER_AD_FORMATS[format];
+  const provider = PARTNER_AD_PLACEMENTS[placement].provider;
+  const adsterra = provider === "adsterra";
+  const size = (adsterra ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS)[format];
   return <div className="partner-ad-preview" style={{ "--partner-ad-width": `${size.width}px`, "--partner-ad-height": `${size.height}px` }}>
     <p className="partner-ad-preview__label">{mode === "preview" ? (en ? "Ad space · preview" : "광고 영역 · 미리보기") : (en ? "Advertisement" : "광고")}</p>
-    {mode === "live" ? <iframe ref={frameRef} className="partner-ad-frame" data-ad-format={format} title={`${PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]} · Coupang Partners`} src={partnerAdSource(format)} width={size.width} height={size.height} loading="lazy" sandbox={PARTNER_FRAME_SANDBOX} referrerPolicy="origin" scrolling="no" /> : <div className="partner-ad-preview__frame" data-ad-format={format}>
+    {mode === "live" ? <iframe ref={frameRef} className="partner-ad-frame" data-ad-format={format} data-ad-provider={provider} title={`${PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]} · ${adsterra ? "Adsterra" : "Coupang Partners"}`} src={adsterra ? undefined : partnerAdSource(format)} srcDoc={adsterra ? adsterraDocument(format) : undefined} width={size.width} height={size.height} loading="lazy" sandbox={adsterra ? ADSTERRA_FRAME_SANDBOX : PARTNER_FRAME_SANDBOX} referrerPolicy="origin" scrolling="no" /> : <div className="partner-ad-preview__frame" data-ad-format={format}>
       <strong>{size.width} × {size.height}</strong>
       <span>{PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]}</span>
     </div>}
-    <p className="partner-ad-preview__note">{PARTNER_AD_DISCLOSURE[en ? "en" : "ko"]}</p>
+    <p className="partner-ad-preview__note">{(adsterra ? ADSTERRA_DISCLOSURE : PARTNER_AD_DISCLOSURE)[en ? "en" : "ko"]}</p>
   </div>;
 }
 
@@ -69,7 +72,9 @@ export function PartnerAdRail({ locale = "ko" }) {
 }
 
 export function PartnerAdDisclosure({ locale = "ko" }) {
+  const pathname = usePathname();
+  const disclosure = PARTNER_AD_PLACEMENTS[pageAdPlacement(pathname)].provider === "coupang" ? PARTNER_AD_DISCLOSURE : ADSTERRA_DISCLOSURE;
   const mode = usePartnerAdMode();
   if (mode === "off") return null;
-  return <p className="partner-ad-disclosure">{PARTNER_AD_DISCLOSURE[locale === "en" ? "en" : "ko"]}</p>;
+  return <p className="partner-ad-disclosure">{disclosure[locale === "en" ? "en" : "ko"]}</p>;
 }

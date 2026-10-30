@@ -73,7 +73,7 @@ it.each(["ko", "en"])("connects the real slot render and product transport for e
     for (const [, , params] of calls) {
       observed.add(params.ad_slot);
       expect(PARTNER_AD_PLACEMENTS[params.ad_slot].formats).toContain(params.ad_format);
-      expect(params).toEqual({ ad_provider: "coupang", ad_slot: params.ad_slot, ad_format: params.ad_format,
+      expect(params).toEqual({ ad_provider: PARTNER_AD_PLACEMENTS[params.ad_slot].provider, ad_slot: params.ad_slot, ad_format: params.ad_format,
         locale, page_path: pathname, ad_measurement_version: 1, send_to: "G-DK12TNR0GW",
         page_location: `https://growthoptplaybook.com${pathname}`, page_referrer: "", page_title: "" });
       expect(JSON.stringify(params)).not.toMatch(/private|secret|\?|#/);

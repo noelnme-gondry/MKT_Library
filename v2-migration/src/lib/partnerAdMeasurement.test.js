@@ -10,7 +10,7 @@ describe("partner ad measurement contract", () => {
     for (const [slot, placement] of Object.entries(PARTNER_AD_PLACEMENTS)) {
       for (const format of placement.formats) {
         expect(partnerAdEventParams({ ad_slot: slot, ad_format: format, locale: "en", page_path: "/en/blog/ab-testing?file=secret.csv#private", file_name: "secret.csv", measurement_version: 999 })).toEqual({
-          ad_provider: "coupang", ad_slot: slot, ad_format: format,
+          ad_provider: placement.provider, ad_slot: slot, ad_format: format,
           locale: "en", page_path: "/en/blog/ab-testing", ad_measurement_version: 1,
         });
       }
@@ -51,7 +51,7 @@ describe("ad event transport boundaries", () => {
     const params = browser("growthoptplaybook.com");
     expect(trackProductEvent("ad_slot_view", { ...params, page_path: "/private-input", fileName: "private.csv", cost: 50, ad_measurement_version: 999, measurement_version: 999 })).toBe(true);
     expect(window.gtag).toHaveBeenCalledExactlyOnceWith("event", "ad_slot_view", {
-      ...params, ad_provider: "coupang", ad_measurement_version: 1, page_path: "/en/blog/ab-testing",
+      ...params, ad_provider: "adsterra", ad_measurement_version: 1, page_path: "/en/blog/ab-testing",
       page_location: "https://growthoptplaybook.com/en/blog/ab-testing", page_referrer: "", page_title: "", send_to: "G-DK12TNR0GW",
     });
   });
