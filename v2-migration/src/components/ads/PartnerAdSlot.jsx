@@ -1,28 +1,49 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, pageAdPlacement, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, partnerAdFormat } from "@/lib/partnerAds";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, pageAdPlacement, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, partnerAdFormat, partnerAdInlineLayout, partnerAdRailFormat } from "@/lib/partnerAds";
 import { adsterraDocument, ADSTERRA_FRAME_SANDBOX, partnerAdSource, PARTNER_FRAME_SANDBOX } from "@/lib/partnerAdFrame";
 import usePartnerAdMode from "./usePartnerAdMode";
 import usePartnerAdView from "./usePartnerAdView";
 
 // 숨긴 슬롯도 부모를 관찰한다. 창 확대·메뉴 접기·배율 변경 후 다시 표시할 수 있다.
-function useParentWidth(ref, fullBleed = false) {
-  const [width, setWidth] = useState(0);
+function useParentWidth(ref, inline = false, fullBleed = false) {
+  const [layout, setLayout] = useState({ width: 0, marginLeft: 0 });
   useEffect(() => {
     const parent = ref.current?.parentElement;
     if (!parent) return;
-    const observer = new ResizeObserver(() => {
+    const boundary = parent.closest(".main") || parent;
+    const measure = () => {
       const style = getComputedStyle(parent);
-      const inset = fullBleed ? 0 : (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+      const paddingLeft = parseFloat(style.paddingLeft) || 0;
+      const paddingRight = parseFloat(style.paddingRight) || 0;
       const slotStyle = getComputedStyle(ref.current);
-      const slotInset = (parseFloat(slotStyle.paddingLeft) || 0) + (parseFloat(slotStyle.paddingRight) || 0);
-      setWidth(Math.max(0, parent.clientWidth - inset - slotInset));
-    });
+      const safeLeft = parseFloat(slotStyle.getPropertyValue("--ad-safe-left")) || 0;
+      const safeRight = parseFloat(slotStyle.getPropertyValue("--ad-safe-right")) || 0;
+      const contentWidth = parent.clientWidth - paddingLeft - paddingRight;
+      let next = { width: Math.max(0, contentWidth - safeLeft - safeRight), marginLeft: 0 };
+      if (inline) {
+        const contentLeft = parent.getBoundingClientRect().left + parent.clientLeft + paddingLeft;
+        const bounds = boundary.getBoundingClientRect();
+        next = partnerAdInlineLayout({
+          contentLeft, contentWidth,
+          preferredWidth: fullBleed ? parent.clientWidth : contentWidth,
+          maxWidth: parseFloat(slotStyle.maxWidth) || Infinity,
+          safeLeft: Math.max(safeLeft, bounds.left + boundary.clientLeft),
+          safeRight: Math.min(document.documentElement.clientWidth - safeRight, bounds.left + boundary.clientLeft + boundary.clientWidth),
+        });
+      }
+      setLayout(previous => previous.width === next.width && previous.marginLeft === next.marginLeft ? previous : next);
+    };
+    const observer = new ResizeObserver(measure);
     observer.observe(parent);
-    return () => observer.disconnect();
-  }, [ref, fullBleed]);
-  return width;
+    if (boundary !== parent) observer.observe(boundary);
+    observer.observe(document.documentElement);
+    window.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, [ref, inline, fullBleed]);
+  return layout;
 }
 
 function AdCreative({ placement, format, locale, mode }) {
@@ -44,9 +65,10 @@ function AdCreative({ placement, format, locale, mode }) {
 
 function HorizontalSlot({ placement, locale, mode }) {
   const ref = useRef(null);
-  const width = useParentWidth(ref, placement === "blog-byline");
+  const layout = useParentWidth(ref, true, placement === "blog-byline");
+  const { width } = layout;
   const format = partnerAdFormat(placement, width);
-  return <aside ref={ref} className={`partner-ad-slot partner-ad-slot--${placement}`} data-ad-slot={placement} hidden={!format} aria-label={PARTNER_AD_PLACEMENTS[placement][locale === "en" ? "en" : "ko"]}>
+  return <aside ref={ref} style={layout} className={`partner-ad-slot partner-ad-slot--${placement}`} data-ad-slot={placement} hidden={!format} aria-label={PARTNER_AD_PLACEMENTS[placement][locale === "en" ? "en" : "ko"]}>
     {format && <AdCreative placement={placement} format={format} locale={locale} mode={mode} />}
   </aside>;
 }
@@ -59,10 +81,17 @@ export default function PartnerAdSlot({ placement, locale = "ko" }) {
 
 function RailSlot({ locale, mode }) {
   const ref = useRef(null);
-  const width = useParentWidth(ref);
-  return <aside ref={ref} className="partner-ad-rail" data-ad-slot="site-rail" hidden={width < PARTNER_AD_RAIL_MIN_WIDTH} style={{ width: PARTNER_AD_FORMATS.rail.width }} aria-label={PARTNER_AD_PLACEMENTS["site-rail"][locale === "en" ? "en" : "ko"]}>
-    {width >= PARTNER_AD_RAIL_MIN_WIDTH && <AdCreative placement="site-rail" format="rail" locale={locale} mode={mode} />}
-  </aside>;
+  const [host, setHost] = useState(null);
+  const attach = useCallback(node => { ref.current = node; setHost(node?.parentElement || null); }, []);
+  const { width } = useParentWidth(ref);
+  const pathname = usePathname();
+  const format = partnerAdRailFormat(pathname, width);
+  // Header가 한 프레임만 소유한다. portal은 본문 뒤에 붙어 모바일 읽기·탭 순서도 지킨다.
+  return <><span ref={attach} className="partner-ad-anchor" hidden />{host && createPortal(
+    <aside className={format === "compact" ? "partner-ad-slot partner-ad-slot--rail-inline" : "partner-ad-rail"} data-ad-slot="site-rail" hidden={!format} style={format === "rail" ? { width: ADSTERRA_FORMATS.rail.width } : undefined} aria-label={PARTNER_AD_PLACEMENTS["site-rail"][locale === "en" ? "en" : "ko"]}>
+      {format && <AdCreative placement="site-rail" format={format} locale={locale} mode={mode} />}
+    </aside>, host
+  )}</>;
 }
 
 export function PartnerAdRail({ locale = "ko" }) {

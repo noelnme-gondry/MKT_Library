@@ -12,7 +12,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 
 | 이벤트 | 시점 | 핵심 파라미터 |
 |---|---|---|
-| `ad_slot_view` | visible 문서에서 실제 광고 프레임의 50% 이상이 viewport에 들어온 첫 순간. 체류시간 조건 없음 | `ad_provider=coupang`, `ad_slot`, `ad_format`, `locale`, `page_path`, `ad_measurement_version=1` |
+| `ad_slot_view` | visible 문서에서 실제 광고 프레임의 50% 이상이 viewport에 들어온 첫 순간. 체류시간 조건 없음 | 실제 `ad_provider`, `ad_slot`, `ad_format`, `locale`, `page_path`, `ad_measurement_version=1` |
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
 | `blog_cta_viewed` | 글·용어·계산기의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|self_check\|situation_check\|calculator_result`, `locale` |
@@ -92,9 +92,9 @@ CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 
 콘텐츠 CTA 노출과 클릭은 동일 `content_slug`·`placement`·`locale`를 맞춘다. 이번 보완은 `tool_view`에 그 글과 클릭 위치를 이어 주며, 결과 카드의 기존 `placement=result_action_card`는 덮어쓰지 않는다. 이는 최근 CTA 클릭 연결이지 GA 유입 출처나 최초 랜딩을 바꾸는 기능이 아니다. 30분 만료·다른 도구·다른 언어·CTA 없는 직접 진입에는 연결하지 않는다. 기존 이벤트의 과거 값은 소급 생성하지 않는다.
 
-## 쿠팡 광고 영역 도달 (2026-10-29 구현)
+## 제휴 광고 영역 도달 (2026-10-29 구현, 2026-10-30 배치 보완)
 
-`ad_slot_view`는 광고 **영역 도달**이며 쿠팡의 노출·클릭·구매나 상품 송출 성공이 아니다. iframe load/error, 부모 focus/blur로 송출·클릭을 추정하지 않는다. 배치 키·허용 규격은 `src/lib/partnerAds.js` 정본을 사용하며, 처음 유효하게 도달했을 때 실제 iframe 규격을 기록한다. 광고 위치·개수·배너 ID·sandbox는 바꾸지 않는다.
+`ad_slot_view`는 광고 **영역 도달**이며 광고 네트워크의 유효 노출·클릭·구매나 소재 송출 성공이 아니다. iframe load/error, 부모 focus/blur로 송출·클릭을 추정하지 않는다. 제공자·배치 키·허용 규격은 `src/lib/partnerAds.js` 정본을 사용하며, 처음 유효하게 도달했을 때 실제 iframe 규격을 기록한다. 홈 `home-intro`는 푸터에서 주요 진입 구획 뒤로 이동한다. 분석 화면의 `site-rail`은 좁은 메인 영역에서 같은 슬롯의 compact로 대체되며 `analysis-bottom` 쿠팡은 유지한다. 새 슬롯 ID나 측정 버전은 만들지 않는다.
 
 중복 단위는 현재 **페이지 진입 × 슬롯**이다. `GaPageviews`의 pathname 전환에 맞춰 메모리 Set을 새로 만들고, A→B→A는 새 진입으로 센다. 같은 진입의 스크롤 재진입·리렌더·규격 변경·중복 마운트는 추가하지 않는다. query/fragment만 바뀐 것은 새 진입이 아니다. 사용자 식별자나 영속 저장 키를 만들지 않는다.
 

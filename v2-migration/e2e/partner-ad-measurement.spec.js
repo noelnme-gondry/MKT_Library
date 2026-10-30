@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { devices, expect, test } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { CONSENT_STORAGE_KEY } from "../src/lib/consent.js";
 import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, pageAdPlacement } from "../src/lib/partnerAds.js";
@@ -15,6 +15,8 @@ const adEvents = page => page.evaluate(() => (window.dataLayer || [])
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
+  // dev HMR도 운영 도메인으로 나가지 않도록 차단한다. live 분기 검사는 빌드본에서 실행한다.
+  await page.routeWebSocket("**/*", socket => socket.close());
   const pending = new Set();
   let closing = false;
   finishRequests.set(page, async () => {
@@ -39,14 +41,18 @@ test.beforeEach(async ({ page, baseURL }) => {
   }, [CONSENT_STORAGE_KEY, SOURCE_SURVEY_ANSWERED_KEY]);
 });
 
-test.afterEach(async ({ page }) => {
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus) await testInfo.attach("ad-geometry", { contentType: "application/json", body: JSON.stringify(await page.evaluate(() => ({
+    viewport: innerWidth, clientWidth: document.documentElement.clientWidth,
+    nodes: [...document.querySelectorAll('.main, [data-ad-slot], .partner-ad-anchor')].map(n => ({ tag: n.tagName, class: n.className, hidden: n.hidden, style: n.getAttribute('style'), box: n.getBoundingClientRect().toJSON(), parentWidth: n.parentElement.clientWidth, text: n.dataset.adSlot })),
+  })), null, 2) });
   // 새 요청은 차단하고 이미 시작한 로컬 prefetch만 마저 처리한다.
   // 실패를 숨기지 않으며 외부 차단 route는 context가 닫힐 때까지 유지한다.
   await finishRequests.get(page)();
   finishRequests.delete(page);
 });
 
-async function reachSlot(page, slot, pathname, locale) {
+async function reachSlot(page, slot, pathname, locale, firstFormat) {
   const frame = page.locator(`[data-ad-slot="${slot}"] iframe`);
   await expect(frame).toHaveCount(1);
   await expect(frame).toBeVisible();
@@ -61,7 +67,7 @@ async function reachSlot(page, slot, pathname, locale) {
   await frame.scrollIntoViewIfNeeded();
   await expect.poll(async () => (await adEvents(page)).filter(event => event.ad_slot === slot && event.page_path === pathname).length).toBe(1);
   const event = (await adEvents(page)).find(event => event.ad_slot === slot && event.page_path === pathname);
-  expect(event).toEqual({ ad_provider: PARTNER_AD_PLACEMENTS[slot].provider, ad_slot: slot, ad_format: format, locale,
+  expect(event).toEqual({ ad_provider: PARTNER_AD_PLACEMENTS[slot].provider, ad_slot: slot, ad_format: firstFormat || format, locale,
     page_path: pathname, ad_measurement_version: 1, send_to: "G-DK12TNR0GW",
     page_location: `${virtualOrigin}${pathname}`, page_referrer: "", page_title: "" });
   expect(PARTNER_AD_PLACEMENTS[slot].formats).toContain(format);
@@ -114,8 +120,10 @@ for (const locale of ["ko", "en"]) {
     expect(await adEvents(page)).toEqual([]);
   });
 
-  for (const failedTransport of [false, true]) test(`CSV → analysis → result → PNG, ads blocked, transport ${failedTransport ? "throws" : "queues"} (${locale})`, async ({ page }) => {
+  for (const failedTransport of [false, true]) test(`CSV → analysis → result → PNG, ads blocked, transport ${failedTransport ? "throws" : "queues"} (${locale})`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
+    const viewportWidth = testInfo.project.name === "mobile-320" ? 390 : 1600;
+    await page.setViewportSize({ width: viewportWidth, height: 1000 });
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     const entitlement = { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 };
@@ -145,12 +153,15 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("radio", { name: locale === "en" ? "Changes" : "변경 요약", exact: true }).click();
     const figure = page.locator(".tool-core-figure").first();
     await expect(figure).toBeVisible();
+    expect(await page.evaluate(() => innerWidth)).toBe(viewportWidth);
     if (failedTransport) {
       await page.locator('[data-ad-slot="analysis-bottom"] iframe').scrollIntoViewIfNeeded();
       await expect.poll(() => page.evaluate(() => window.__failedAdAttempts)).toBeGreaterThan(0);
       expect((await adEvents(page)).filter(event => event.ad_slot === "analysis-bottom")).toEqual([]);
     } else {
       await reachSlot(page, "analysis-bottom", pathname, locale);
+      await reachSlot(page, "site-rail", pathname, locale);
+      await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveAttribute("data-ad-format", viewportWidth < 1180 ? "compact" : "rail");
     }
     const downloadPromise = page.waitForEvent("download");
     await figure.getByRole("button", { name: locale === "en" ? "Download PNG" : "PNG 받기" }).click();
@@ -226,5 +237,207 @@ test.describe("consent-required visitors", () => {
     await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
     expect(adRequests).toEqual([]);
     expect(await adEvents(page)).toEqual([]);
+  });
+});
+
+test("mobile home uses safe width after the entry area @mobile-only", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto(virtualOrigin);
+  await page.addStyleTag({ content: "html { scrollbar-gutter: stable; } ::-webkit-scrollbar { width: 10px; }" });
+  expect(await page.evaluate(() => innerWidth)).toBe(360);
+  const slot = page.locator('[data-ad-slot="home-intro"]');
+  await expect(slot.locator('iframe')).toBeVisible();
+  await expect(page.locator('.dc-hero__copy + [data-ad-slot="home-intro"]')).toHaveCount(1);
+  await expect(page.locator('footer [data-ad-slot="home-intro"]')).toHaveCount(0);
+});
+
+test("mobile analysis has one compact site-rail alongside retained Coupang @mobile-only", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto(`${virtualOrigin}/tools/budget-allocation`);
+  expect(await page.evaluate(() => innerWidth)).toBe(360);
+  await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveAttribute('data-ad-format', 'compact');
+  await expect(page.locator('[data-ad-slot="analysis-bottom"] iframe')).toHaveAttribute('data-ad-provider', 'coupang');
+});
+
+async function mockCreatives(page) {
+  const requests = [];
+  await page.route('https://bauval.org/**', route => {
+    requests.push(route.request().url());
+    return route.fulfill({ contentType: 'application/javascript', body: `"use strict";const options=window.atOptions;delete window.atOptions;const creative=document.createElement('div');creative.setAttribute('data-mock-creative','adsterra');creative.textContent='Adsterra test creative';creative.style.cssText='width:'+options.width+'px;height:'+options.height+'px;background:#eee;color:#222';document.body.append(creative);` });
+  });
+  await page.route('https://ads-partners.coupang.com/**', route => {
+    requests.push(route.request().url());
+    return route.fulfill({ contentType: 'text/html', body: '<body style="margin:0"><div data-mock-creative="coupang">Coupang test creative</div></body>' });
+  });
+  return requests;
+}
+
+async function slotGeometry(page) {
+  return page.evaluate(() => ({
+    viewport: innerWidth, clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    mainWidth: document.querySelector('.main').clientWidth,
+    slots: [...document.querySelectorAll('[data-ad-slot]')].map(slot => ({
+      slot: slot.dataset.adSlot, hidden: slot.hidden, width: slot.getBoundingClientRect().width,
+      top: slot.getBoundingClientRect().top + scrollY,
+      frames: [...slot.querySelectorAll('iframe')].map(f => ({ provider: f.dataset.adProvider, format: f.dataset.adFormat, ...f.getBoundingClientRect().toJSON() })),
+    })),
+  }));
+}
+
+async function recordGeometry(testInfo, name, data) {
+  const file = testInfo.outputPath(`${name}.json`);
+  writeFileSync(file, JSON.stringify(data, null, 2));
+  await testInfo.attach(name, { contentType: 'application/json', path: file });
+}
+
+for (const locale of ['ko', 'en']) test(`mobile CSS geometry and orientation, four surfaces (${locale}) @mobile-only`, async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  const requests = await mockCreatives(page);
+  const evidence = [];
+  const prefix = locale === 'en' ? '/en' : '';
+  for (const path of ['', '/blog/correlation-vs-causation', '/guide', '/tools/budget-allocation?example=1']) {
+    const pathname = `${prefix}${path.split('?')[0]}` || '/';
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(`${virtualOrigin}${prefix}${path}`);
+    if (path.includes('budget-allocation')) await expect(page.locator('.result-action-card').first()).toBeVisible();
+    for (const width of [320, 360, 375, 390, 412, 768, 980, 1440, 1600, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      const placement = pageAdPlacement(pathname);
+      const horizontal = page.locator(`[data-ad-slot="${placement}"] iframe`);
+      await expect(horizontal).toHaveCount(1);
+      await expect(horizontal).toBeVisible();
+      await reachSlot(page, placement, pathname, locale, 'compact');
+      await expect(page.frameLocator(`[data-ad-slot="${placement}"] iframe`).locator('[data-mock-creative]')).toBeVisible();
+      const safe = await page.locator('.main').evaluate(el => el.clientWidth);
+      const expectedRail = safe >= PARTNER_AD_RAIL_MIN_WIDTH ? 'rail' : placement === 'analysis-bottom' ? 'compact' : null;
+      const rail = page.locator('[data-ad-slot="site-rail"] iframe');
+      await expect(rail).toHaveCount(expectedRail ? 1 : 0);
+      if (expectedRail) {
+        await expect(rail).toHaveAttribute('data-ad-format', expectedRail);
+        await reachSlot(page, 'site-rail', pathname, locale, placement === 'analysis-bottom' ? 'compact' : 'rail');
+      }
+      const geometry = await slotGeometry(page);
+      expect(geometry.viewport).toBe(width);
+      expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+      for (const slot of geometry.slots) {
+        expect(slot.frames.length).toBeLessThanOrEqual(1);
+        for (const frame of slot.frames) {
+          expect(frame.left).toBeGreaterThanOrEqual(-0.5);
+          expect(frame.right).toBeLessThanOrEqual(geometry.clientWidth + 0.5);
+          const size = (frame.provider === 'adsterra' ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS)[frame.format];
+          expect(frame.width).toBe(size.width);
+          expect(frame.height).toBe(size.height);
+        }
+      }
+      if (expectedRail === 'compact') {
+        expect(await page.locator('[data-ad-slot="site-rail"]').evaluate(el => Boolean(el.previousElementSibling?.matches('main')))).toBe(true);
+        const railBox = await rail.boundingBox();
+        const coupangBox = await horizontal.boundingBox();
+        expect(railBox.y).toBeGreaterThan(coupangBox.y + coupangBox.height);
+      }
+      evidence.push({ pathname, ...geometry });
+      if (width === 390 && evidence.filter(row => row.pathname === pathname && row.viewport === width).length === 1 && !path.includes('blog')) {
+        await horizontal.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath(`${locale}-${placement}.png`) });
+      }
+    }
+    // 한 페이지 진입 중 같은 슬롯의 회전/복구는 도달 이벤트를 늘리지 않는다.
+    const events = await adEvents(page);
+    expect(new Set(events.map(event => event.ad_slot)).size).toBe(events.length);
+  }
+  expect(requests.length).toBeGreaterThan(0);
+  await recordGeometry(testInfo, 'mobile-layout', evidence);
+});
+
+test('rail boundary, same-format requests and mobile SPA revisit @mobile-only', async ({ page }, testInfo) => {
+  const requests = await mockCreatives(page);
+  const pathname = '/tools/budget-allocation';
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(`${virtualOrigin}${pathname}`);
+  await reachSlot(page, 'site-rail', pathname, 'ko');
+  const compactRequests = () => requests.filter(url => url.includes(ADSTERRA_FORMATS.compact.key)).length;
+  expect(compactRequests()).toBe(1);
+  for (const width of [412, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await reachSlot(page, 'site-rail', pathname, 'ko');
+    expect(compactRequests()).toBe(1);
+  }
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveAttribute('data-ad-format', 'rail');
+  const sidebarWidth = await page.locator('.main').evaluate(el => innerWidth - el.clientWidth);
+  const boundaries = [];
+  for (const mainWidth of [1179, 1180, 1181, 1179]) {
+    await page.setViewportSize({ width: mainWidth + sidebarWidth, height: 1000 });
+    await expect.poll(() => page.locator('.main').evaluate(el => el.clientWidth)).toBe(mainWidth);
+    await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveAttribute('data-ad-format', mainWidth < 1180 ? 'compact' : 'rail');
+    await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveCount(1);
+    boundaries.push(await slotGeometry(page));
+  }
+  await page.setViewportSize({ width: 390, height: 800 });
+  await reachSlot(page, 'site-rail', pathname, 'ko', 'compact');
+  expect((await adEvents(page)).filter(e => e.ad_slot === 'site-rail')).toHaveLength(1);
+  await page.locator('.site-footer--slim a[href="/privacy"]').click();
+  await expect(page).toHaveURL(`${virtualOrigin}/privacy`);
+  await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveCount(0);
+  await reachSlot(page, 'page-bottom', '/privacy', 'ko');
+  await page.goBack();
+  await expect(page).toHaveURL(`${virtualOrigin}${pathname}`);
+  await page.locator('[data-ad-slot="site-rail"] iframe').scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await adEvents(page)).filter(e => e.ad_slot === 'site-rail' && e.page_path === pathname).length).toBe(2);
+  await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveCount(1);
+  await recordGeometry(testInfo, 'rail-boundaries', boundaries);
+});
+
+test('safe-area and constrained main width never shrink or clip a banner @mobile-only', async ({ page }, testInfo) => {
+  const evidence = [];
+  for (const path of ['/', '/blog/correlation-vs-causation', '/guide', '/tools/budget-allocation']) {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(`${virtualOrigin}${path}`);
+    const placement = pageAdPlacement(path);
+    const frame = page.locator(`[data-ad-slot="${placement}"] iframe`);
+    await expect(frame).toBeVisible();
+    const inset = await page.addStyleTag({ content: '.partner-ad-slot,.partner-ad-anchor{--ad-safe-left:20px!important;--ad-safe-right:20px!important}' });
+    await page.setViewportSize({ width: 350, height: 800 });
+    await expect(frame).toHaveCount(0);
+    await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveCount(0);
+    evidence.push({ path, inset: 20, ...await slotGeometry(page) });
+    await page.setViewportSize({ width: 360, height: 800 });
+    await expect(frame).toHaveCount(1);
+    expect(await frame.boundingBox()).toMatchObject({ x: 20, width: 320 });
+    await inset.evaluate(el => el.remove());
+    // 실제 스크롤바 폭을 단정하지 않고 메인 폭 310/350px을 만들어 여백 부족을 검사한다.
+    await page.addStyleTag({ content: '.app,.site-footer{max-width:calc(100% - 10px)!important}' });
+    await page.setViewportSize({ width: 320, height: 800 });
+    await expect(frame).toHaveCount(0);
+    evidence.push({ path, reservedWidth: 10, ...await slotGeometry(page) });
+    await page.setViewportSize({ width: 360, height: 800 });
+    await expect(frame).toHaveCount(1);
+    const rect = await frame.boundingBox();
+    expect(rect.width).toBe(320);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(350);
+    evidence.push({ path, reservedWidth: 10, ...await slotGeometry(page) });
+  }
+  await recordGeometry(testInfo, 'safe-width-layout', evidence);
+});
+
+test.describe('mobile user agent', () => {
+  test.use({ isMobile: true, hasTouch: true, userAgent: devices['Pixel 7'].userAgent });
+  test('mobile UA preserves viewport and real result slots @mobile-only', async ({ page }, testInfo) => {
+    await mockCreatives(page);
+    const evidence = [];
+    for (const prefix of ['', '/en']) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`${virtualOrigin}${prefix}/tools/budget-allocation?example=1`);
+      await expect(page.locator('.result-action-card').first()).toBeVisible();
+      for (const slot of ['site-rail', 'analysis-bottom']) {
+        await expect(page.locator(`[data-ad-slot="${slot}"] iframe`)).toHaveAttribute('data-ad-format', 'compact');
+      }
+      const geometry = await slotGeometry(page);
+      expect(geometry.viewport).toBe(390);
+      expect(geometry.scrollWidth).toBe(390);
+      evidence.push({ locale: prefix ? 'en' : 'ko', ...geometry });
+    }
+    await recordGeometry(testInfo, 'mobile-ua-layout', evidence);
   });
 });
