@@ -91,6 +91,7 @@ tools:
 - **자동으로 스토어에 쓰는 코드는 부팅이 끝난 뒤에 돌릴 것**: 자식 effect는 부모의 `setCurrentRouteId`보다 먼저 돌고, 기기 저장 부팅(`initializeProjects`)은 비동기로 늦게 끝난다. 버튼은 사람이 누르는 사이 둘 다 끝나서(e2e도 클릭을 재시도해서) 안 보이지만, 링크 자동 실행은 21개 중 5~7개가 매번 다른 도구로 빈 화면이었다(§7).
 - **계측·광고는 운영 호스트 정확일치로 제한**(`lib/analyticsHost.js`+`useAnalyticsEnabled`). 정적 HTML을 공유하므로 빌드타임 env·접미사 비교는 불충분하다.
 - **불투명 srcdoc도 부모 URL을 기본 주소로 상속한다**: referrer·DOM·저장소뿐 아니라 `document.baseURI`도 실제 브라우저로 검사한다. 광고 문서의 기본 주소는 공개 origin으로 고정한다(§7).
+- **SDK 설정의 소비·삭제도 검증한다**: `var atOptions`는 삭제 불가능하므로 `window.atOptions`로 할당한다. 테스트 SDK도 strict mode에서 설정을 읽고 삭제한 뒤 소재를 그려야 실제 호환성 오류를 잡는다(§7).
 
 # 마지막 체크 (모든 커밋 직전)
 

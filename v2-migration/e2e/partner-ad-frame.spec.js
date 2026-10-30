@@ -55,7 +55,9 @@ test("Adsterra scripts cannot read the parent document or its storage", async ({
     if (url.origin === origin) return route.fulfill({ contentType: "text/html", body: "<!doctype html><body>Private analysis</body>" });
     if (url.origin === "https://bauval.org") {
       requests.push({ url: url.href, referrer: route.request().headers().referer });
-      return route.fulfill({ contentType: "application/javascript", body: "document.body.textContent='Mock creative';" });
+      // The issued SDK consumes and deletes its global configuration in strict mode.
+      // A top-level var makes that property non-configurable and stops rendering.
+      return route.fulfill({ contentType: "application/javascript", body: '"use strict"; window.consumedAdOptions=window.atOptions; delete window.atOptions; document.body.textContent="Mock creative";' });
     }
     return route.abort();
   });
@@ -73,9 +75,9 @@ test("Adsterra scripts cannot read the parent document or its storage", async ({
       let documentBlocked = false, storageBlocked = false;
       try { void parent.document.body; } catch { documentBlocked = true; }
       try { void parent.localStorage.length; } catch { storageBlocked = true; }
-      return { documentBlocked, storageBlocked, options: window.atOptions, referrer: document.referrer, baseUri: document.baseURI };
+      return { documentBlocked, storageBlocked, options: window.consumedAdOptions, optionsDeleted: !Object.hasOwn(window, "atOptions"), referrer: document.referrer, baseUri: document.baseURI };
     });
-    expect(boundary).toMatchObject({ documentBlocked: true, storageBlocked: true, options: { key: size.key, format: "iframe", width: size.width, height: size.height, params: {} } });
+    expect(boundary).toMatchObject({ documentBlocked: true, storageBlocked: true, optionsDeleted: true, options: { key: size.key, format: "iframe", width: size.width, height: size.height, params: {} } });
     expect(["", `${origin}/`]).toContain(boundary.referrer);
     // srcdoc inherits the parent URL even with an opaque sandbox unless its base is fixed.
     expect(boundary.baseUri).not.toMatch(/__ad-isolation|private|secret/);

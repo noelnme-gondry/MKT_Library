@@ -21,5 +21,6 @@ export function adsterraDocument(format) {
   const { key, width, height } = ADSTERRA_FORMATS[format];
   const options = JSON.stringify({ key, format: "iframe", height, width, params: {} });
   // srcdoc의 기본 주소도 고정해 부모 경로·쿼리가 document.baseURI에 노출되지 않게 한다.
-  return `<!doctype html><html><head><base href="${SITE_URL}/"><meta name="referrer" content="origin"><style>html,body{margin:0;padding:0;overflow:hidden}</style></head><body><script>var atOptions=${options};</script><script src="https://bauval.org/22/${key}" referrerpolicy="origin"></script></body></html>`;
+  // SDK가 소비 후 삭제하므로 전역 var의 삭제 불가능한 속성 대신 일반 속성으로 설정한다.
+  return `<!doctype html><html><head><base href="${SITE_URL}/"><meta name="referrer" content="origin"><style>html,body{margin:0;padding:0;overflow:hidden}</style></head><body><script>window.atOptions=${options};</script><script src="https://bauval.org/22/${key}" referrerpolicy="origin"></script></body></html>`;
 }
