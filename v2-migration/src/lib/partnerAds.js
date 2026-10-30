@@ -38,7 +38,7 @@ export function currentPartnerAdMode() {
 }
 export const PARTNER_AD_RAIL_MIN_WIDTH = 1180;
 export const PARTNER_AD_PLACEMENTS = Object.freeze({
-  "site-rail": { provider: "adsterra", ko: "오른쪽 세로 광고", en: "Right sidebar ad", formats: ["rail"] },
+  "site-rail": { provider: "adsterra", ko: "오른쪽 또는 분석 본문 뒤 광고", en: "Ad beside or after the analysis content", formats: ["rail", "compact"] },
   "home-intro": { provider: "adsterra", ko: "홈 소개 아래 광고", en: "Ad below the home introduction", formats: ["wide", "compact"] },
   "blog-byline": { provider: "adsterra", ko: "블로그 작성자 아래 광고", en: "Ad below the article byline", formats: ["wide", "compact"] },
   "analysis-bottom": { provider: "coupang", ko: "분석 결과 아래 광고", en: "Ad below the analysis results", formats: ["wide", "compact"] },
@@ -56,7 +56,22 @@ export function partnerAdEventParams(params = {}) {
 
 export function partnerAdFormat(placement, availableWidth) {
   if (!Number.isFinite(availableWidth)) return null;
-  return PARTNER_AD_PLACEMENTS[placement]?.formats.find(key => PARTNER_AD_FORMATS[key].width <= availableWidth) || null;
+  const formats = PARTNER_AD_PLACEMENTS[placement]?.provider === "adsterra" ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS;
+  return PARTNER_AD_PLACEMENTS[placement]?.formats.find(key => formats[key].width <= availableWidth) || null;
+}
+
+// 본문 폭이 모자랄 때만 compact에 필요한 여백을 빌린다. 소재를 축소하지 않는다.
+export function partnerAdInlineLayout({ contentLeft, contentWidth, safeLeft, safeRight, preferredWidth = contentWidth, maxWidth = Infinity }) {
+  const safeWidth = Math.max(0, safeRight - safeLeft);
+  const width = Math.max(0, Math.min(safeWidth, maxWidth, Math.max(preferredWidth, ADSTERRA_FORMATS.compact.width)));
+  const left = Math.max(safeLeft, Math.min(contentLeft + (contentWidth - width) / 2, safeRight - width));
+  return { width, marginLeft: left - contentLeft };
+}
+
+export function partnerAdRailFormat(pathname, availableWidth) {
+  if (!Number.isFinite(availableWidth)) return null;
+  if (availableWidth >= PARTNER_AD_RAIL_MIN_WIDTH) return "rail";
+  return pageAdPlacement(pathname) === "analysis-bottom" && availableWidth >= ADSTERRA_FORMATS.compact.width ? "compact" : null;
 }
 
 export function isAnalysisAdRoute(routeId) {

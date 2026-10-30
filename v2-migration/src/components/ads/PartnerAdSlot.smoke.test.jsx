@@ -1,10 +1,17 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import PartnerAdSlot, { PartnerAdRail } from "./PartnerAdSlot";
 import { PARTNER_AD_PLACEMENTS } from "@/lib/partnerAds";
 import { CONSENT_STORAGE_KEY, writeStoredConsent } from "@/lib/consent";
 import * as adMode from "./usePartnerAdMode";
 import { adsterraDocument, ADSTERRA_FRAME_SANDBOX, partnerAdSource } from "@/lib/partnerAdFrame";
+
+let pathname = "/";
+vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
+beforeEach(() => {
+  pathname = "/";
+  vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(1600);
+});
 
 afterEach(() => { cleanup(); window.localStorage.removeItem(CONSENT_STORAGE_KEY); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
@@ -23,8 +30,12 @@ it("a hidden preview returns after resizing and mounts only the fitting creative
   const parent = container.firstChild;
   const slot = parent.querySelector("[data-ad-slot]");
   const resize = width => act(() => { Object.defineProperty(parent, "clientWidth", { configurable: true, value: width }); notify(); });
-  resize(320);
+  resize(319);
   expect(slot.hidden).toBe(true);
+  resize(320);
+  expect(slot.hidden).toBe(false);
+  expect(slot.style.width).toBe("320px");
+  expect(slot.style.marginLeft).toBe("-16px");
   resize(360);
   expect(slot.hidden).toBe(false);
   expect(slot.querySelectorAll("[data-ad-format]")).toHaveLength(1);
@@ -37,6 +48,26 @@ it("a hidden preview returns after resizing and mounts only the fitting creative
   expect(parent.querySelector("[data-ad-slot]")).toBeNull();
   unmount();
   expect(disconnect).toHaveBeenCalledOnce();
+});
+
+it("one Header-owned frame switches formats and leaves non-analysis mobile pages empty", () => {
+  vi.spyOn(adMode, "default").mockReturnValue("live");
+  let notify;
+  vi.stubGlobal("ResizeObserver", class { constructor(callback) { notify = callback; } observe() {} disconnect() {} });
+  pathname = "/tools/budget-allocation";
+  const tree = () => <div><PartnerAdRail /><main>Analysis content</main></div>;
+  const { container, rerender } = render(tree());
+  const host = container.firstChild;
+  const resize = width => act(() => { Object.defineProperty(host, "clientWidth", { configurable: true, value: width }); notify(); });
+  for (const [width, format] of [[360, "compact"], [1180, "rail"], [768, "compact"], [319, null], [390, "compact"]]) {
+    resize(width);
+    expect(host.querySelectorAll("iframe")).toHaveLength(format ? 1 : 0);
+    if (format) expect(host.querySelector("iframe").dataset.adFormat).toBe(format);
+    expect(host.lastElementChild.dataset.adSlot).toBe("site-rail");
+  }
+  pathname = "/guide";
+  rerender(tree());
+  expect(host.querySelectorAll("iframe")).toHaveLength(0);
 });
 
 it("mounts only the fitting live iframe on the partner origin", () => {
