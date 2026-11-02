@@ -34,8 +34,8 @@ import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/local
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
-import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
-import { csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
+import { XLSX_IMPORT_LIMITS, xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
+import { CSV_IMPORT_LIMITS, csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -82,7 +82,8 @@ const CSV_COPY = {
     emptyCsv: "파일이 비어 있거나 올바르지 않습니다.",
     parseError: "파일을 읽는 중 오류 발생: ",
     dropTitle: "CSV 또는 XLSX 파일 드래그 & 드롭",
-    dropSub: "또는 클릭하여 파일 선택 · XLSX는 25MB 이하",
+    dropSub: `또는 클릭하여 파일 선택 · CSV ${CSV_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB · XLSX ${XLSX_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB 이하`,
+    dropSizeHint: "파일이 크면 필요한 기간·채널만 내보내거나 쓰지 않는 컬럼을 제외해 주세요.",
     importing: "파일 구조를 읽는 중…",
     importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     entryDemoBtn: "예시 데이터로 먼저 보기",
@@ -170,7 +171,8 @@ const CSV_COPY = {
     emptyCsv: "This file is empty or invalid.",
     parseError: "Error reading file: ",
     dropTitle: "Drag & drop a CSV or XLSX file",
-    dropSub: "or click to choose a file · XLSX up to 25MB",
+    dropSub: `or click to choose a file · CSV up to ${CSV_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB · XLSX up to ${XLSX_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB`,
+    dropSizeHint: "For large files, export only the periods or channels you need, or remove unused columns.",
     importing: "Reading file structure…",
     importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     entryDemoBtn: "Preview with example data",
@@ -889,6 +891,7 @@ export default function CsvUploader({
           </div>
           <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
+          <div className="csv-drop-sub">{T.dropSizeHint}</div>
         </button>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} disabled={!isHydrated || isImporting} />
         {toolId === "start-gate" && hasToolTemplate(toolId) && (
