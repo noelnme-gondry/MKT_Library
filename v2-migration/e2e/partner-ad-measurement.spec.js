@@ -3,9 +3,8 @@ import path from "node:path";
 import { devices, expect, test } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { CONSENT_STORAGE_KEY } from "../src/lib/consent.js";
-import { ADSTERRA_DISCLOSURE, ADSTERRA_FORMATS, PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, pageAdPlacement } from "../src/lib/partnerAds.js";
-import { adsterraDocument, adsterraSource, partnerAdSource } from "../src/lib/partnerAdFrame.js";
-import { ADSTERRA_FRAME_ORIGIN } from "../src/lib/adsterraHost.mjs";
+import { PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, pageAdPlacement } from "../src/lib/partnerAds.js";
+import { partnerAdSource } from "../src/lib/partnerAdFrame.js";
 
 // 운영 호스트 분기는 그대로 실행하되 모든 요청은 로컬 빌드 또는 차단으로 끝낸다.
 // 실제 광고/GA 요청·광고 클릭 없음. 앱이 만드는 표준 gtag/dataLayer 큐를 관측한다.
@@ -58,13 +57,12 @@ async function reachSlot(page, slot, pathname, locale, firstFormat) {
   await expect(frame).toHaveCount(1);
   await expect(frame).toBeVisible();
   const format = await frame.getAttribute("data-ad-format");
-  const adsterra = PARTNER_AD_PLACEMENTS[slot].provider === "adsterra";
-  await expect(frame).toHaveAttribute("data-ad-provider", adsterra ? "adsterra" : "coupang");
-  await expect(frame).toHaveAttribute("src", adsterra ? adsterraSource(format) : partnerAdSource(format));
+  await expect(frame).toHaveAttribute("data-ad-provider", "coupang");
+  await expect(frame).toHaveAttribute("src", partnerAdSource(format));
   expect(await frame.getAttribute("srcdoc")).toBeNull();
-  const size = (adsterra ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS)[format];
+  const size = PARTNER_AD_FORMATS[format];
   expect(await frame.boundingBox()).toMatchObject({ width: size.width, height: size.height });
-  await expect(page.locator(`[data-ad-slot="${slot}"] .partner-ad-preview__note`)).toHaveText((adsterra ? ADSTERRA_DISCLOSURE : PARTNER_AD_DISCLOSURE)[locale]);
+  await expect(page.locator(`[data-ad-slot="${slot}"] .partner-ad-preview__note`)).toHaveText(PARTNER_AD_DISCLOSURE[locale]);
   await frame.scrollIntoViewIfNeeded();
   await expect.poll(async () => (await adEvents(page)).filter(event => event.ad_slot === slot && event.page_path === pathname).length).toBe(1);
   const event = (await adEvents(page)).find(event => event.ad_slot === slot && event.page_path === pathname);
@@ -107,10 +105,10 @@ for (const locale of ["ko", "en"]) {
     await expect.poll(async () => (await adEvents(page)).filter(event => event.ad_slot === "site-rail" && event.page_path === home).length).toBe(2);
   });
 
-  test(`privacy disclosure and live opt-out remove both providers (${locale})`, async ({ page }) => {
+  test(`privacy disclosure and live opt-out remove Coupang ads (${locale})`, async ({ page }) => {
     const pathname = `${prefix}/privacy`;
     await page.goto(`${virtualOrigin}${pathname}`);
-    await expect(page.locator("main")).toContainText("Adsterra");
+    await expect(page.locator("main")).not.toContainText("Adsterra");
     await expect(page.locator("main")).toContainText(locale === "en" ? "Coupang Partners" : "쿠팡 파트너스");
     await reachSlot(page, "page-bottom", pathname, locale);
     await page.getByRole("button", { name: locale === "en" ? "Turn measurement off" : "측정 끄기", exact: true }).click();
@@ -213,7 +211,7 @@ test("language and theme switches preserve provider disclosures", async ({ page 
   await page.locator(".header-locale").click();
   await expect(page).toHaveURL(`${virtualOrigin}/en`);
   await reachSlot(page, "home-intro", "/en", "en");
-  await expect(page.locator(".partner-ad-disclosure")).toHaveText(ADSTERRA_DISCLOSURE.en);
+  await expect(page.locator(".partner-ad-disclosure")).toHaveText(PARTNER_AD_DISCLOSURE.en);
   await page.locator(".header-utility-menu__trigger").click();
   await page.locator(".header-theme").click();
   await expect(page.locator("body")).toHaveClass(/light-mode/);
@@ -252,7 +250,7 @@ test("mobile home uses safe width after the entry area @mobile-only", async ({ p
   await expect(page.locator('footer [data-ad-slot="home-intro"]')).toHaveCount(0);
 });
 
-test("mobile analysis has one compact site-rail alongside retained Coupang @mobile-only", async ({ page }) => {
+test("mobile analysis has one compact Coupang site-rail alongside analysis-bottom @mobile-only", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto(`${virtualOrigin}/tools/budget-allocation`);
   expect(await page.evaluate(() => innerWidth)).toBe(360);
@@ -262,13 +260,8 @@ test("mobile analysis has one compact site-rail alongside retained Coupang @mobi
 
 async function mockCreatives(page) {
   const requests = [];
-  await page.route(`${ADSTERRA_FRAME_ORIGIN}/**`, route => route.fulfill({ contentType: 'text/html', body: adsterraDocument(new URL(route.request().url()).pathname.split('/').pop()) }));
-  await page.route('https://bauval.org/**', route => {
-    requests.push(route.request().url());
-    return route.fulfill({ contentType: 'application/javascript', body: `"use strict";const options=window.atOptions;delete window.atOptions;const creative=document.createElement('div');creative.setAttribute('data-mock-creative','adsterra');creative.textContent='Adsterra test creative';creative.style.cssText='width:'+options.width+'px;height:'+options.height+'px;background:#eee;color:#222';document.body.append(creative);` });
-  });
-  await page.route('https://ads-partners.coupang.com/**', route => {
-    requests.push(route.request().url());
+  await page.route('https://ads-partners.coupang.com/**', async route => {
+    requests.push({ url: route.request().url(), slot: await route.request().frame().frameElement().then(element => element.evaluate(frame => frame.closest('[data-ad-slot]')?.dataset.adSlot)) });
     return route.fulfill({ contentType: 'text/html', body: '<body style="margin:0"><div data-mock-creative="coupang">Coupang test creative</div></body>' });
   });
   return requests;
@@ -327,7 +320,7 @@ for (const locale of ['ko', 'en']) test(`mobile CSS geometry and orientation, fo
         for (const frame of slot.frames) {
           expect(frame.left).toBeGreaterThanOrEqual(-0.5);
           expect(frame.right).toBeLessThanOrEqual(geometry.clientWidth + 0.5);
-          const size = (frame.provider === 'adsterra' ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS)[frame.format];
+          const size = PARTNER_AD_FORMATS[frame.format];
           expect(frame.width).toBe(size.width);
           expect(frame.height).toBe(size.height);
         }
@@ -358,7 +351,7 @@ test('rail boundary, same-format requests and mobile SPA revisit @mobile-only', 
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto(`${virtualOrigin}${pathname}`);
   await reachSlot(page, 'site-rail', pathname, 'ko');
-  const compactRequests = () => requests.filter(url => url.includes(ADSTERRA_FORMATS.compact.key)).length;
+  const compactRequests = () => requests.filter(request => request.slot === 'site-rail' && new URL(request.url).searchParams.get('id') === String(PARTNER_AD_FORMATS.compact.id)).length;
   expect(compactRequests()).toBe(1);
   for (const width of [412, 390]) {
     await page.setViewportSize({ width, height: 800 });

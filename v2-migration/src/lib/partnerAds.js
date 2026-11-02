@@ -8,15 +8,6 @@ export const PARTNER_AD_FORMATS = Object.freeze({
   wide: { id: 1039166, width: 728, height: 90 },
   compact: { id: 1039167, width: 320, height: 100 },
 });
-export const ADSTERRA_FORMATS = Object.freeze({
-  rail: { key: "be1403e83b4724f7782e663391479825", width: 160, height: 600 },
-  wide: { key: "2ee24764f53f4978668687a6999f6b41", width: 728, height: 90 },
-  compact: { key: "0a43e29a28a4a3f50d3c2d1e535b5e44", width: 320, height: 50 },
-});
-export const ADSTERRA_DISCLOSURE = {
-  ko: "Adsterra에서 제공하는 디스플레이 광고입니다.",
-  en: "Display advertising provided by Adsterra.",
-};
 export const PARTNER_TRACKING_CODE = "AF3219545";
 export const PARTNER_AD_DISCLOSURE = {
   ko: "이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
@@ -38,11 +29,11 @@ export function currentPartnerAdMode() {
 }
 export const PARTNER_AD_RAIL_MIN_WIDTH = 1180;
 export const PARTNER_AD_PLACEMENTS = Object.freeze({
-  "site-rail": { provider: "adsterra", ko: "오른쪽 또는 분석 본문 뒤 광고", en: "Ad beside or after the analysis content", formats: ["rail", "compact"] },
-  "home-intro": { provider: "adsterra", ko: "홈 소개 아래 광고", en: "Ad below the home introduction", formats: ["wide", "compact"] },
-  "blog-byline": { provider: "adsterra", ko: "블로그 작성자 아래 광고", en: "Ad below the article byline", formats: ["wide", "compact"] },
+  "site-rail": { provider: "coupang", ko: "오른쪽 또는 분석 본문 뒤 광고", en: "Ad beside or after the analysis content", formats: ["rail", "compact"] },
+  "home-intro": { provider: "coupang", ko: "홈 소개 아래 광고", en: "Ad below the home introduction", formats: ["wide", "compact"] },
+  "blog-byline": { provider: "coupang", ko: "블로그 작성자 아래 광고", en: "Ad below the article byline", formats: ["wide", "compact"] },
   "analysis-bottom": { provider: "coupang", ko: "분석 결과 아래 광고", en: "Ad below the analysis results", formats: ["wide", "compact"] },
-  "page-bottom": { provider: "adsterra", ko: "페이지 하단 광고", en: "Bottom of page ad", formats: ["wide", "compact"] },
+  "page-bottom": { provider: "coupang", ko: "페이지 하단 광고", en: "Bottom of page ad", formats: ["wide", "compact"] },
 });
 
 // 광고 송출/클릭이 아니라 영역 도달이다. 원본 입력이나 전역 측정 버전은 받지 않는다.
@@ -56,14 +47,13 @@ export function partnerAdEventParams(params = {}) {
 
 export function partnerAdFormat(placement, availableWidth) {
   if (!Number.isFinite(availableWidth)) return null;
-  const formats = PARTNER_AD_PLACEMENTS[placement]?.provider === "adsterra" ? ADSTERRA_FORMATS : PARTNER_AD_FORMATS;
-  return PARTNER_AD_PLACEMENTS[placement]?.formats.find(key => formats[key].width <= availableWidth) || null;
+  return PARTNER_AD_PLACEMENTS[placement]?.formats.find(key => PARTNER_AD_FORMATS[key].width <= availableWidth) || null;
 }
 
 // 본문 폭이 모자랄 때만 compact에 필요한 여백을 빌린다. 소재를 축소하지 않는다.
 export function partnerAdInlineLayout({ contentLeft, contentWidth, safeLeft, safeRight, preferredWidth = contentWidth, maxWidth = Infinity }) {
   const safeWidth = Math.max(0, safeRight - safeLeft);
-  const width = Math.max(0, Math.min(safeWidth, maxWidth, Math.max(preferredWidth, ADSTERRA_FORMATS.compact.width)));
+  const width = Math.max(0, Math.min(safeWidth, maxWidth, Math.max(preferredWidth, PARTNER_AD_FORMATS.compact.width)));
   const left = Math.max(safeLeft, Math.min(contentLeft + (contentWidth - width) / 2, safeRight - width));
   return { width, marginLeft: left - contentLeft };
 }
@@ -71,7 +61,7 @@ export function partnerAdInlineLayout({ contentLeft, contentWidth, safeLeft, saf
 export function partnerAdRailFormat(pathname, availableWidth) {
   if (!Number.isFinite(availableWidth)) return null;
   if (availableWidth >= PARTNER_AD_RAIL_MIN_WIDTH) return "rail";
-  return pageAdPlacement(pathname) === "analysis-bottom" && availableWidth >= ADSTERRA_FORMATS.compact.width ? "compact" : null;
+  return pageAdPlacement(pathname) === "analysis-bottom" && availableWidth >= PARTNER_AD_FORMATS.compact.width ? "compact" : null;
 }
 
 export function isAnalysisAdRoute(routeId) {
