@@ -20,7 +20,7 @@ describe("partner ad sizing and placement", () => {
       }
       for (const path of ["/", "/guide", "/blog/correlation-vs-causation"]) expect(partnerAdRailFormat(`${prefix}${path}`, 1179)).toBeNull();
     }
-    expect(partnerAdEventParams({ ad_slot: "site-rail", ad_format: "compact", locale: "ko", page_path: "/dashboard" })).toMatchObject({ ad_provider: "adsterra", ad_format: "compact", ad_measurement_version: 1 });
+    expect(partnerAdEventParams({ ad_slot: "site-rail", ad_format: "compact", locale: "ko", page_path: "/dashboard" })).toMatchObject({ ad_provider: "coupang", ad_format: "compact", ad_measurement_version: 1 });
     expect(partnerAdEventParams({ ad_slot: "site-rail", ad_format: "wide", locale: "ko", page_path: "/dashboard" })).toBeNull();
   });
   it("selects exactly one unscaled horizontal format that fits the available width", () => {

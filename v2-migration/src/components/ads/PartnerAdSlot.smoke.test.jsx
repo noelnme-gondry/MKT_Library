@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import PartnerAdSlot, { PartnerAdRail } from "./PartnerAdSlot";
-import { PARTNER_AD_PLACEMENTS } from "@/lib/partnerAds";
+import { PARTNER_AD_DISCLOSURE, PARTNER_AD_PLACEMENTS } from "@/lib/partnerAds";
 import { CONSENT_STORAGE_KEY, writeStoredConsent } from "@/lib/consent";
 import * as adMode from "./usePartnerAdMode";
-import { adsterraSource, ADSTERRA_FRAME_SANDBOX, partnerAdSource } from "@/lib/partnerAdFrame";
+import { PARTNER_FRAME_SANDBOX, partnerAdSource } from "@/lib/partnerAdFrame";
 
 let pathname = "/";
 vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
@@ -93,21 +93,22 @@ it("mounts only the fitting live iframe on the partner origin", () => {
   expect(parent.querySelector("iframe")).toBeNull();
 });
 
-it("replaces general slots with one isolated Adsterra frame and hides undersized slots", () => {
+it.each(Object.keys(PARTNER_AD_PLACEMENTS).filter(placement => placement !== "site-rail").flatMap(placement => ["ko", "en"].map(locale => [placement, locale])))("restores %s to one Coupang dynamic banner (%s)", (placement, locale) => {
   vi.spyOn(adMode, "default").mockReturnValue("live");
   let notify;
   vi.stubGlobal("ResizeObserver", class { constructor(callback) { notify = callback; } observe() {} disconnect() {} });
-  const { container } = render(<div><PartnerAdSlot placement="home-intro" /></div>);
+  const { container } = render(<div><PartnerAdSlot placement={placement} locale={locale} /></div>);
   const parent = container.firstChild;
-  for (const [width, format, height] of [[800, "wide", "90"], [360, "compact", "50"]]) {
+  for (const [width, format, height] of [[800, "wide", "90"], [360, "compact", "100"]]) {
     act(() => { Object.defineProperty(parent, "clientWidth", { configurable: true, value: width }); notify(); });
     expect(parent.querySelectorAll("iframe")).toHaveLength(1);
     const frame = parent.querySelector("iframe");
-    expect(frame.getAttribute("data-ad-provider")).toBe("adsterra");
+    expect(frame.getAttribute("data-ad-provider")).toBe("coupang");
     expect(frame.hasAttribute("srcdoc")).toBe(false);
-    expect(frame.getAttribute("src")).toBe(adsterraSource(format));
+    expect(frame.getAttribute("src")).toBe(partnerAdSource(format));
     expect(frame.getAttribute("height")).toBe(height);
-    expect(frame.getAttribute("sandbox")).toBe(ADSTERRA_FRAME_SANDBOX);
+    expect(frame.getAttribute("sandbox")).toBe(PARTNER_FRAME_SANDBOX);
+    expect(parent.querySelector(".partner-ad-preview__note").textContent).toBe(PARTNER_AD_DISCLOSURE[locale]);
     expect(new URL(frame.src).origin).not.toBe(window.location.origin);
     expect(parent.querySelector("script")).toBeNull();
   }

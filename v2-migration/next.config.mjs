@@ -1,6 +1,5 @@
 import { fileURLToPath } from "node:url";
 import { legacyBlogTagRedirects } from "./src/lib/blogTags.mjs";
-import { ADSTERRA_FRAME_ORIGIN } from "./src/lib/adsterraHost.mjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -83,14 +82,6 @@ const nextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Strict-Transport-Security", value: "max-age=31536000" },
-        ],
-      },
-      {
-        // Config headers override route responses. The ad-only host must use the
-        // endpoint's explicit parent allowlist; ordinary pages there redirect.
-        source: "/:path*",
-        missing: [{ type: "host", value: new URL(ADSTERRA_FRAME_ORIGIN).hostname.replaceAll(".", "\\.") }],
-        headers: [
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
