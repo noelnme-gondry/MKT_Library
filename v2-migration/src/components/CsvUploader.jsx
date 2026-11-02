@@ -5,7 +5,7 @@ import { applyAccountMappings } from "@/lib/account/mappingContract";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
-import React, { useState, useRef, useMemo, useEffect, useImperativeHandle } from "react";
+import React, { useState, useRef, useMemo, useEffect, useImperativeHandle, useId } from "react";
 import Papa from "papaparse";
 import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -318,6 +318,7 @@ export default function CsvUploader({
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
   const isStale = useAppStore((s) => s.isGroupStale(toolId));
   const fileInputRef = useRef(null);
+  const fileHintId = useId();
   const mappingDetailsRef = useRef(null);
   const isHydrated = useClientReady();
   const [isDragging, setIsDragging] = useState(false);
@@ -881,6 +882,7 @@ export default function CsvUploader({
           onClick={() => fileInputRef.current?.click()}
           disabled={!isHydrated || isImporting}
           aria-busy={!isHydrated || isImporting}
+          aria-describedby={fileHintId}
         >
           <div className="csv-drop-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -891,8 +893,8 @@ export default function CsvUploader({
           </div>
           <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
-          <div className="csv-drop-sub">{T.dropSizeHint}</div>
         </button>
+        <p id={fileHintId} className="csv-drop-sub">{T.dropSizeHint}</p>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} disabled={!isHydrated || isImporting} />
         {toolId === "start-gate" && hasToolTemplate(toolId) && (
           <div className="csv-upload-quick-actions">
