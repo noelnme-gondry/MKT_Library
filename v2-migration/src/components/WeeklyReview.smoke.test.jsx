@@ -200,6 +200,7 @@ describe("WeeklyReview", () => {
     const baseGroups = useAppStore.getState().csvGroups;
     const plan = serializeAllocationPlan({
       start: "2020-01-02", days: 7, metric: "installs", unitField: "channel", byPlatform: false,
+      scope: { countries: ["KR"], channels: [], platform: "all", currency: "KRW", cadence: "daily" },
       targets: [{ unit: "KR · Meta", cost: 7000, results: 70 }, { unit: "KR · TikTok", cost: 7000, results: 35 }],
     });
     const mappedRows = [];
@@ -230,12 +231,15 @@ describe("WeeklyReview", () => {
     expect(record.learning).toContain("KR · TikTok");
   });
 
-  it("says a saved plan is waiting for data when the CSV does not cover its period", () => {
-    const plan = serializeAllocationPlan({ start: "2099-01-02", days: 7, metric: "installs", unitField: "channel", byPlatform: false, targets: [{ unit: "KR · Meta", cost: 1, results: 1 }] });
+  it.each([
+    ["current plan missing data", { countries: [], channels: [], platform: "all", currency: "KRW", cadence: "daily" }, "No data to compare yet"],
+    ["legacy plan missing criteria", null, "Comparison criteria were not saved"],
+  ])("explains why comparison is unavailable for a %s", (_description, scope, message) => {
+    const plan = serializeAllocationPlan({ start: "2099-01-02", days: 7, metric: "installs", unitField: "channel", byPlatform: false, scope, targets: [{ unit: "KR · Meta", cost: 1, results: 1 }] });
     useAppStore.setState({ decisionRecords: [{ id: "plan_2", toolId: "5-3", action: "Plan", metric: "CPI", baseline: "₩1", reviewDate: "2099-01-09", comparisonKind: "allocation_plan", allocationPlan: plan, actual: "", learning: "", status: "pending" }] });
     render(<WeeklyReview locale="en" />);
     expect(screen.getByText("Automatic plan comparison")).toBeTruthy();
-    expect(screen.getByText("No data to compare yet")).toBeTruthy();
+    expect(screen.getByText(message)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open budget allocation" }).getAttribute("href")).toBe("/en/tools/budget-allocation");
   });
 

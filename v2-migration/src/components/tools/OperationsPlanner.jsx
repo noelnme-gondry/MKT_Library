@@ -19,10 +19,11 @@ import { OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
 import { comparisonWarnings } from "@/lib/analysisPeriod";
 import { scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import { prepareOperationsBrief, planOperationsBudget, OPERATIONS_HOLDS } from "@/lib/operations/operationsBrief";
-import { operationsReviewCandidates } from "@/lib/operations/operationsReview";
+import { buildOperationsHistory } from "@/lib/operations/changeHistory";
+import { operationsCreativeSignals } from "@/lib/operations/operationLoop";
+import OperationsActionLoop from "./OperationsActionLoop";
 import { operationsInputEvidence } from "@/lib/operations/operationsEvidence";
 import OperationsWorkbench from "./OperationsWorkbench";
-import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DataTable from "@/components/ds/DataTable";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
@@ -48,8 +49,6 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
   const [bundle, setBundle] = useState(null);
   const [selected, setSelected] = useState(null);
   const [creativeSelection, setCreativeSelection] = useState(null);
-  const [reviewSelection, setReviewSelection] = useState(null);
-  const reviewRef = useRef(null);
   const [replanning, setReplanning] = useState(false);
   const [failure, setFailure] = useState(null);
   const [limit, setLimit] = useState(0.2);
@@ -65,7 +64,7 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
         const brief = prepareOperationsBrief({ rows, periods: input.periods, metric: input.metric,
           mappedFields: Object.values(input.csvData.mapping || {}) });
         const evidence = operationsInputEvidence({ rows, mapping: input.csvData.mapping, period: input.periods.current, metric: input.metric });
-        setBundle({ input, brief, evidence, plan: planOperationsBudget(brief, { changeLimit: limitRef.current, currency: input.currency }) });
+        setBundle({ input, brief, evidence, rows: getMappedRows(input.csvData), history: buildOperationsHistory(rows, input.metric), signals: operationsCreativeSignals(rows, input.metric), plan: planOperationsBudget(brief, { changeLimit: limitRef.current, currency: input.currency }) });
         setFailure(null);
       } catch { setFailure(input); }
     }); });
@@ -108,18 +107,6 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
   const budgetRows = plan.items.map(row => ({ ...row, name: entity(campaignById.get(row.id)), context: campaignById.get(row.id).context,
     observedCpr: campaignById.get(row.id).current.cpr, baselineCpr: row.current / row.currentResults }));
   const isDemo = isDemoData(csvData);
-  const reviewCandidates = operationsReviewCandidates({ brief, plan, currency, locale });
-  const chooseReview = (id, { reveal = true } = {}) => {
-    const current = reviewCandidates.find(row => row.id === reviewSelection) || reviewCandidates[0];
-    if (id !== current?.id && !confirmReviewExit(useAppStore.getState().activeProjectId, locale)) return;
-    setReviewSelection(id);
-    if (!reveal) return;
-    requestAnimationFrame(() => {
-      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      reviewRef.current?.scrollIntoView?.({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-      reviewRef.current?.querySelector("h3")?.focus({ preventScroll: true });
-    });
-  };
   const notes = [tr("단가 상승과 단계별 기여는 관측 비교이며, 원인을 증명하지 않습니다.", "Unit-cost changes and stage contributions compare observations; they do not prove causation."),
     ...comparisonWarnings(periods.current, periods.previous, locale)];
   if (brief.missingCreativeRows) notes.push(tr(`최근 ${brief.missingCreativeRows}행에 소재 ID가 없어 소재별 목록에 포함되지 않았습니다.`, `${brief.missingCreativeRows} recent rows have no creative ID and are excluded from the creative list.`));
@@ -147,7 +134,8 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
       ...bundle.evidence.metrics.map(row => [row.id, metric, row.unit, row.value ?? "", row.dependencies.map(input => input.key).join(" · "), row.reason || ""]) ] },
   ], method: { name: "operations-brief", version: "1", assumptions: ["Same daily budget; observed daily coverage; historical curves, recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range."], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
 
-  return <ResultActionCard title={tr("이번 운영에서 확인할 일", "Checks for your next operating plan")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
+  return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo }}
+    evidence={chooseReview => <ResultActionCard title={tr("이번 운영에서 확인할 일", "Checks for your next operating plan")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
     locale={locale} toolId={OPERATIONS_TOOL_ID} analysisKey="operations" resultState={brief.recentObservations ? "ready" : "insufficient"} issues={notes}
     stats={[{ label: tr("최근 광고비", "Recent spend"), value: money(brief.current.cost), detail: `${tr("직전", "Prior")} ${money(brief.previous.cost)}` },
       { label: tr(`최근 ${outcomeName}`, `Recent ${outcomeName}`), value: number(brief.current.results), detail: `${tr("직전", "Prior")} ${number(brief.previous.results)}` },
@@ -158,16 +146,10 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
       periods: [{ id: "after", ...periods.current, observations: brief.recentObservations }, { id: "before", ...periods.previous, observations: brief.priorObservations }] }}
     workbookExport={workbookExport}
     decisionReview={false}
-    coreFigure={<nav className="operations-result-actions" aria-label={tr("결과와 다음 행동", "Results and next actions")}>
-      <a href="#ops-budget-title">{tr("예산안 확인", "Inspect budget plan")}<span>{plan.ok ? tr(`${pct(plan.improvementPct)} 모형 예상`, `${pct(plan.improvementPct)} modeled`) : tr("추정 보류", "Estimate withheld")} →</span></a>
-      <a href="#ops-campaign">{tr("캠페인 변화 확인", "Inspect campaign changes")}<span>{comparable ? tr(`단가 상승 ${deteriorated.length}개`, `${deteriorated.length} with rising unit cost`) : tr("비교 불가", "Not comparable")} →</span></a>
-      <a href="#ops-new-title">{tr("새 소재 비교", "Compare new creatives")}<span>{brief.creatives.length ? tr(`첫 관측 ${brief.creatives.filter(row => row.isNew).length}개`, `${brief.creatives.filter(row => row.isNew).length} first observed`) : tr("소재 식별 부족", "Insufficient creative IDs")} →</span></a>
-      <a href="#ops-review-title">{tr("주간 리뷰 준비", "Prepare weekly review")}<span>{tr("다음 검토로 연결", "Plan a follow-up")} →</span></a>
-    </nav>}
     analysisContent={<div className="operations-brief">
       <OperationsWorkbench {...{ brief, plan, budgetRows, campaign, creative, setSelected, setCreativeSelection,
         limit, replanning, changeLimit, holdMessages, metricName, outcomeName, currency, locale, periods, isDemo,
-        money, number, pct, reviewCandidates, reviewSelection, chooseReview, reviewRef, onInspectMapping }} evidence={bundle.evidence} />
+        money, number, pct, chooseReview, onInspectMapping }} evidence={bundle.evidence} showReview={false} />
       <details className="operations-data">
         <summary>{tr("차트의 상세 데이터", "Data behind the charts")}<span>{tr("예산·캠페인·소재·단계별 지표", "Budget, campaigns, creatives and stage metrics")}</span></summary>
         <div className="operations-data__body">
@@ -203,7 +185,7 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
         </div>
       </details>
       <AnalyzingOverlay show={replanning} title={tr("예산 조정안 계산 중…", "Calculating budget adjustment…")} />
-    </div>} />;
+    </div>} />} />;
 }
 
 
@@ -271,7 +253,7 @@ export default function OperationsPlanner({ locale = "ko" }) {
             onPeriodChange={(current, previous) => setFilter({ dateStart: current.start, dateEnd: current.end, compareEnabled: true, comparisonStart: previous.start, comparisonEnd: previous.end, comparisonPreset: "custom" })} />
           {isDemoData(csvData) && <aside className="operations-planner__demo" aria-label={tr("가상 데이터 데모 안내", "Fictional demo data")}>
             <div><strong>{tr("가상 운영 데이터로 체험 중", "Exploring fictional operations data")}</strong>
-              <p>{tr("98일 이력 · 4개 캠페인. 기본은 최근 7일과 직전 7일 비교입니다. 후기 영상·기능 비교 이미지의 첫 관측과 캠페인 효율 변화를 확인하세요.", "98 days · 4 campaigns. Defaults to recent versus prior 7 days. Inspect first observations of new creatives and changing campaign efficiency.")}</p></div>
+              <p>{tr("98일 이력 · 4개 캠페인. 전체 이력의 변화와 액션을 함께 보고, 근거 보기에서 선택한 기간의 효율을 비교하세요.", "98 days · 4 campaigns. Inspect changes and actions across the full history, then compare selected periods in Evidence.")}</p></div>
             <button type="button" className="btn ghost" onClick={downloadDemo}>{tr("데모 원본 CSV", "Download demo CSV")}</button>
           </aside>}
         </>}

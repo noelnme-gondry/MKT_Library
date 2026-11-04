@@ -1,6 +1,9 @@
 "use client";
 import { useId, useMemo, useRef, useState } from "react";
 import { buildOperationsHomePreview } from "@/lib/operations/operationsHomePreview";
+import Link from "next/link";
+import { OPERATIONS_PATH } from "@/lib/operations/operationsDemo";
+import { OPERATION_ACTION_KINDS } from "@/lib/operations/actionContract";
 import DataTable from "@/components/ds/DataTable";
 import OperationsHomeTrend from "./OperationsHomeTrend";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
@@ -13,9 +16,10 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   const [probeDate, setProbeDate] = useState(sample.periods.current.end);
   const campaign = sample.campaigns.find(row => row.id === campaignId) || sample.campaigns[0];
   const trend = useMemo(() => fullHistory ? campaign.trend : campaign.trend.slice(-28), [campaign, fullHistory]);
-  const [view, setView] = useState("campaigns");
+  const [view, setView] = useState("actions");
   const id = useId(), tabsRef = useRef(null);
   const views = [
+    { id: "actions", label: tr("운영 액션", "Operating actions") },
     { id: "campaigns", label: tr("캠페인", "Campaigns") },
     { id: "budget", label: tr("예산", "Budget") },
     { id: "creatives", label: tr("소재", "Creatives") },
@@ -39,7 +43,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   const tone = value => value > 0 ? "bad" : value < 0 ? "good" : "neutral";
   const showBudget = () => {
     setView("budget");
-    tabsRef.current.querySelectorAll('[role="tab"]')[1].focus();
+    tabsRef.current.querySelectorAll('[role="tab"]')[views.findIndex(item => item.id === 'budget')].focus();
   };
   const creativeColumns = [
     { key: "creative", label: tr("소재", "Creative"), fmt: name => <span className="operations-sample-creative__name"><strong>{name}</strong></span> },
@@ -50,11 +54,23 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   ];
   return <aside className="home-result-preview home-result-preview--comparison operations-sample-preview" aria-label={tr("운영 플래너 데모 미리보기", "Operations planner demo preview")}>
     <h2>{tr("운영 플래너 미리보기", "Operations planner preview")}</h2>
-    <p className="home-sample-context">{tr("가상 데이터 · 최근 7일", "Fictional data · recent 7 days")} {sample.periods.current.start} – {sample.periods.current.end}</p>
+    <p className="home-sample-context">{tr(`가상 데이터 · 전체 ${sample.historyDays}일 이력`, `Fictional data · ${sample.historyDays} days of history`)} {sample.dates[0]} – {sample.dates.at(-1)}</p>
     <div className="operations-sample-tabs" role="tablist" aria-label={tr("데모 분석 보기", "Demo analysis views")} ref={tabsRef}>
       {views.map((item, index) => <button key={item.id} type="button" role="tab" id={`${id}-tab-${item.id}`} aria-controls={`${id}-panel-${item.id}`} aria-selected={view === item.id} tabIndex={view === item.id ? 0 : -1} onClick={() => setView(item.id)} onKeyDown={event => handleTabKey(event, index)}>{item.label}</button>)}
     </div>
     <div className="operations-sample-preview__body">
+    <section className="home-action-preview" role="tabpanel" id={`${id}-panel-actions`} aria-labelledby={`${id}-tab-actions`} tabIndex={0} hidden={view !== "actions"}>
+      <div><h3>{tr("변화를 확인하고, 다음 액션까지", "From observed changes to your next action")}</h3><p>{tr("예산 조정과 소재 교체를 함께 정하고, 실행일과 다음 검토를 하나의 기록으로 이어갑니다.", "Plan budget and creative actions together, then connect execution dates and the next review in one record.")}</p>
+        <ol className="home-action-preview__steps"><li>{tr("변화 확인", "Inspect changes")}</li><li>{tr("액션·실행 기록", "Plan and record execution")}</li><li>{tr("결과 검토·후속 액션", "Review and follow up")}</li></ol>
+        <Link className="btn ghost" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("예시로 운영 플래너 열기", "Open planner with example")}</Link>
+      </div>
+      <div className="home-action-preview__queue">{[...new Set(sample.recommendations.map(item => item.kind))].map(kind => {
+        const items = sample.recommendations.filter(item => item.kind === kind), first = items[0];
+        return <section key={kind}><h4><span>{OPERATION_ACTION_KINDS[kind][en ? 1 : 0]}</span><b>{tr(`${items.length}건 제안`, `${items.length} proposed`)}</b></h4><strong>{first.name}</strong><p>{kind === "budget" ? `${money(first.beforeBudget)} → ${money(first.afterBudget)} / ${tr("일", "day")}` : first.creative}</p><small>{kind === "budget" ? tr("관측 일평균 지출 → 제안 예산", "Observed daily spend → proposed budget") : tr("성과·피로도 근거를 확인하고 액션 결정", "Review performance and fatigue evidence before acting")}</small></section>;
+      })}
+      {!sample.recommendations.length && <p>{tr("이 예시에서는 새 액션 제안이 없습니다.", "No new actions are proposed for this example.")}</p>}
+      <p className="home-sample-context">{tr("가상 데이터에서 계산한 제안입니다. 실행·검토 기록은 플래너에서 직접 남깁니다.", "Proposals calculated from fictional data. Record execution and reviews in the planner.")}</p></div>
+    </section>
     <section className="operations-sample-preview__campaigns" role="tabpanel" id={`${id}-panel-campaigns`} aria-labelledby={`${id}-tab-campaigns`} tabIndex={0} hidden={view !== "campaigns"}>
     <div className="home-preview-story">
     <h3 id="home-campaign-title">{tr("전체 평균 뒤의 캠페인 차이", "Look beyond the overall average")}</h3>

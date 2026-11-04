@@ -1,4 +1,5 @@
 import { buildOperationsDemo } from "./operationsDemo";
+import { operationRecommendations, operationsCreativeSignals } from "./operationLoop";
 import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { prepareOperationsBrief, planOperationsBudget } from "./operationsBrief";
@@ -13,6 +14,7 @@ export function buildOperationsHomePreview(locale = "ko") {
   const byId = new Map(brief.campaigns.map(campaign => [campaign.id, campaign]));
   return {
     ...brief, dates: periods.dates, changeLimit, plan,
+    recommendations: operationRecommendations(brief, plan, operationsCreativeSignals(getMappedRows(data), "installs")),
     historyDays: periods.dates.length,
     newCreatives: brief.creatives.filter(creative => creative.isNew),
     budgetMoves: plan.items.map(item => ({ id: item.id, name: byId.get(item.id).name, delta: item.budget - item.current })),

@@ -5,6 +5,7 @@ import { efficiencyStages } from "@/utils/efficiencyStages";
 import { allocationModelMap, allocationPointMap, predictAllocationCost } from "@/utils/allocationModels";
 import { allocConfidence } from "@/utils/allocationConfidence";
 import { getAllocationEvidenceLimits, improveAllocationFromCurrent, isAllocationFullyFunded } from "@/utils/budgetAllocTool";
+import { operationsEntityKey, operationsTarget, operationsUnit } from "./operationsIdentity";
 
 export const OPERATIONS_HOLDS = {
   period: { ko: "유효한 분석 기간이 필요합니다.", en: "A valid analysis period is required." },
@@ -50,9 +51,8 @@ export function operationsDailyTrend(rows, metric) {
 
 export function prepareOperationsBrief({ rows, periods, metric = "installs", mappedFields = [] }) {
   const days = periodDays(periods.current);
-  const unit = rows.some(row => text(row.campaign_id) || text(row.campaign_name)) ? "campaign" : "channel";
-  const keyOf = row => JSON.stringify([text(row.country), text(row.platform), text(row.channel), text(row.source),
-    unit === "campaign" ? text(row.campaign_id) || text(row.campaign_name) : ""]);
+  const unit = operationsUnit(rows);
+  const keyOf = row => operationsEntityKey(row, unit);
   const history = rows.filter(row => dateOrdinal(row.date) != null && row.date <= periods.current.end);
   const recent = history.filter(row => inRange(row, periods.current));
   const prior = history.filter(row => inRange(row, periods.previous));
@@ -77,7 +77,7 @@ export function prepareOperationsBrief({ rows, periods, metric = "installs", map
     const keys = { ch: "_entity", cr: "creative_id", resultField: metric };
     const pvm = before.length && PVM_MATH.inspectFinestInputs(projected(before), projected(after), keys).ok
       ? PVM_MATH.decomposeFinest(projected(before), projected(after), keys) : null;
-    return { id, name, context, current, previous,
+    return { id, name, context, target: operationsTarget(row, unit), current, previous,
       changePct: previous.cpr > 0 && current.cpr != null ? (current.cpr / previous.cpr - 1) * 100 : null,
       pvm, stages: efficiencyStages(projected(before), projected(after), metric, mappedFields),
       observedDays: new Set(after.map(item => item.date)).size,

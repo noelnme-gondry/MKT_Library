@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
+import OperationsHomeActions from "@/components/landing/OperationsHomeActions";
+import { readOperationAction } from "@/lib/operations/actionContract";
 import HeroArtwork from "@/components/landing/HeroArtwork";
 import { OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
 import { exampleHref } from "@/lib/exampleLink";
@@ -131,7 +133,8 @@ export default function LandingPage({ locale = "ko", reading }) {
     window.addEventListener("hashchange", revealFromHash);
     return () => window.removeEventListener("hashchange", revealFromHash);
   }, [lang, router]);
-  const decisionRecords = useAppStore((state) => state.decisionRecords);
+  const savedRecords = useAppStore((state) => state.decisionRecords);
+  const decisionRecords = savedRecords.filter(record => !readOperationAction(record.operationAction));
   const activeDecisionRecords = decisionRecords.filter((record) => getDecisionReviewBucket(record) !== "reviewed");
   const dueDecisionRecords = activeDecisionRecords.filter((record) => ["overdue", "today"].includes(getDecisionReviewBucket(record)));
   const nextDecision = activeDecisionRecords
@@ -164,6 +167,7 @@ export default function LandingPage({ locale = "ko", reading }) {
 
   return (
     <div className="decision-console-landing home-approved" ref={rootRef}>
+      <OperationsHomeActions locale={lang} />
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
         <header className="dc-return__head">
           <div><h2 id="dc-return-title">{T.continueTitle}</h2></div>

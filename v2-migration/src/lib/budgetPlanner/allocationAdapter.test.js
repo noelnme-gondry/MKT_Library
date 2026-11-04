@@ -5,6 +5,7 @@ import { allocationPointMap } from "@/utils/allocationModels";
 import { selectBudgetForTarget } from "@/utils/budgetAllocTool";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { allocationAt, deltaAllocationAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "./allocationAdapter";
+import { newCreativeLaunches } from "./plannerScenarios";
 
 const demoRows = getMappedRows(buildToolDemo("5-3"));
 const ADV = { trendType: "auto", outlierMethod: "iqr", outlierStrength: "standard", weightMode: "none", regimeMode: "all" };
@@ -19,6 +20,18 @@ function setup(unitField, extra = {}) {
 }
 
 describe("5-3 ↔ 플래너 어댑터", () => {
+  it("trend-only public forecasts do not apply assumed creative launch or fatigue penalties", () => {
+    const { planner } = setup("channel");
+    const budget = plannerEvidence(planner).maxBudget;
+    const key = planner.allocationNodes.find(node => node.curve).key;
+    const base = allocationAt(planner, budget, { withForecast: true, forecastOptions: { trendOnly: true } });
+    const extraLaunches = newCreativeLaunches(planner, key, {});
+    expect(extraLaunches.get(key).length).toBeGreaterThan(0);
+    const withCreative = allocationAt(planner, budget, { withForecast: true, forecastOptions: { trendOnly: true, applyFatigue: true, extraLaunches } });
+    expect(withCreative.forecast.total).toEqual(base.forecast.total);
+    expect(withCreative.forecast.flags.fatigueNodes).toBe(0);
+    expect(withCreative.forecast.flags.assumedLaunchProfiles).toBe(0);
+  });
   it.each(["channel", "country", "campaign_name"])("단위 %s: 5-3 단위 키와 플래너 노드가 1:1로 맞고 빠진 키가 없다", (unitField) => {
     const { keys, planner, currentSpends } = setup(unitField);
     expect(planner.ok).toBe(true);

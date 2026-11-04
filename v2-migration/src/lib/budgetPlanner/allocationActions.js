@@ -2,6 +2,26 @@
 // 배분 결과·대상 상태·원인 판정을 한 줄짜리 행동으로 합친다. 문장은 화면이 만들고 여기서는 코드만 고른다 —
 // 같은 판정을 결론·표·내보내기가 서로 다르게 말하지 않게 하려는 것이다.
 
+import { ALLOC_MATH } from "@/utils/allocationMath";
+
+// 관측 평균과 예측의 차이는 조정 효과가 아니다. 같은 곡선에서 두 예산을 평가한다.
+export function allocationPredictionChange(items, modelsMap, isRoas = false) {
+  let currentCost = 0, currentResults = 0, nextCost = 0, nextResults = 0;
+  for (const item of items) {
+    const model = modelsMap.get(item.channel);
+    if (!model || item.resultsBasis === "recent_average" || item.resultsBasis === "unknown") return null;
+    const cpr = ALLOC_MATH.predictSafeCpr(model, item.current);
+    if (!(cpr > 0) || !(item.results >= 0)) return null;
+    currentCost += item.current;
+    currentResults += item.current / cpr;
+    nextCost += item.cost;
+    nextResults += item.results;
+  }
+  if (!(currentCost > 0 && currentResults > 0 && nextCost > 0 && nextResults > 0)) return null;
+  const ratio = (nextCost / nextResults) / (currentCost / currentResults);
+  return isRoas ? 1 / ratio - 1 : ratio - 1;
+}
+
 const WORSE_VERDICTS = new Set(["AUCTION_COST", "CREATIVE", "FUNNEL_POST_CLICK", "MARKET", "BUDGET_CURVE", "MIXED", "NEW_CREATIVE_LEARNING"]);
 const HOLD_BINDINGS = new Set(["locked", "held", "low_confidence", "no_curve", "state:INSUFFICIENT"]);
 
@@ -91,15 +111,13 @@ export function moveGroups(moves) {
  * "확인할 점" — 배분만으로 해결되지 않아 사람이 해야 하는 일. 실제 신호가 있을 때만, 중요한 순서로.
  * @returns {{code:string, params:object}[]}
  */
-export function allocationIssues({ creatives = [], toUnit = new Map(), asOf = "", horizonDays = 14, learningWarnings = [], loserScenario = null, reviewHeldUnits = [], unallocated = 0, addDays }) {
+export function allocationIssues({ creatives = [], toUnit = new Map(), asOf = "", horizonDays = 14, learningWarnings = [], reviewHeldUnits = [], unallocated = 0, addDays }) {
   const issues = [];
   for (const warning of learningWarnings.filter((item) => item.status === "short")) {
     issues.push({ code: "learning_short", params: { unit: warning.unit, creative: warning.creativeId, needed: warning.neededDaily, expected: warning.expectedDaily } });
   }
-  if (loserScenario?.base && loserScenario?.scenario && loserScenario.scenario.results > loserScenario.base.results) {
-    for (const off of loserScenario.offs.filter((item) => item.multiplier > 0 && item.multiplier < 1)) {
-      issues.push({ code: "loser_creative", params: { unit: off.unit, creatives: off.creativeIds, gain: loserScenario.scenario.results - loserScenario.base.results, horizonDays: loserScenario.horizonDays } });
-    }
+  for (const entry of creatives.filter(entry => !entry.ended && entry.state === "LOSER")) {
+    issues.push({ code: "loser_creative", params: { unit: toUnit.get(entry.nodeKey) || entry.nodeKey, creatives: [entry.creativeId] } });
   }
   if (addDays && asOf) {
     const end = addDays(asOf, horizonDays);
@@ -136,15 +154,17 @@ export function allocationHeadline({ groups, change, isRoas = false, metricLabel
   const pct = (value) => `${value > 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(1)}%`;
   let tone = "neutral";
   let lines;
-  if (change != null && (Math.abs(change) < 0.02 || !actions.length)) {
+  if (!actions.length) {
+    lines = [{ kind: "keep", chunks: [en ? "Keep the current split" : "현 배분 유지 권고"] }];
+  } else if (change != null && Math.abs(change) < 0.02) {
     lines = [
       { kind: "keep", chunks: [en ? "Keep the current split" : "현 배분 유지 권고"] },
-      { kind: "effect", chunks: [en ? `reallocation moves ${metricLabel} by ${Math.abs(change * 100).toFixed(1)}%` : `재배분 효과 ${metricLabel} ${Math.abs(change * 100).toFixed(1)}%`] },
+      { kind: "effect", chunks: [en ? `Modeled ${metricLabel} change ${pct(change)}` : `모형 예상 ${metricLabel} ${pct(change)}`] },
     ];
   } else if (change != null) {
     const good = isRoas ? change > 0 : change < 0;
     tone = good ? "good" : "bad";
-    lines = [...actions, { kind: "effect", chunks: [good ? `→ ${metricLabel} ${pct(change)}` : (en ? `→ ${metricLabel} worsens ${pct(change)}` : `→ ${metricLabel} ${pct(change)} 악화`)] }];
+    lines = [...actions, { kind: "effect", chunks: [good ? `→ ${en ? "Modeled" : "모형 예상"} ${metricLabel} ${pct(change)}` : (en ? `→ Modeled ${metricLabel} worsens ${pct(change)}` : `→ 모형 예상 ${metricLabel} ${pct(change)} 악화`)] }];
   } else {
     lines = actions.length ? actions : [{ kind: "keep", chunks: [en ? "Keep the current split" : "현 배분 유지 권고"] }];
   }

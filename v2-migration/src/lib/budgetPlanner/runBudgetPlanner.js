@@ -257,7 +257,8 @@ export function plannerNodesFor(ctx, { fixed = {}, optimizerPatch = null, fixedS
  *   applyFatigue: 주력 소재의 피로 예상일부터 CPR을 fatiguePenalty만큼 올린다(시나리오 전용, spec §8)
  *   extraLaunches: "새 소재를 넣으면" 시나리오의 가상 출시(spec §8.1)
  */
-export function forecastAllocation(ctx, allocation, { applyFatigue = ctx.cfg.forecast.applyFatigue, extraLaunches = null, curveOverrides = null } = {}) {
+export function forecastAllocation(ctx, allocation, { applyFatigue = ctx.cfg.forecast.applyFatigue, extraLaunches = null, curveOverrides = null, trendOnly = false } = {}) {
+  if (trendOnly) applyFatigue = false;
   const fatigue = applyFatigue ? fatigueStarts(ctx) : new Map();
   const cfg = applyFatigue === ctx.cfg.forecast.applyFatigue ? ctx.cfg : mergePlannerConfig(ctx.cfg, { forecast: { applyFatigue } });
   const forecast = forecastPlan(allocation.items.map((item) => {
@@ -271,7 +272,7 @@ export function forecastAllocation(ctx, allocation, { applyFatigue = ctx.cfg.for
       cost: item.proposed,
       curve: curveOverrides?.get(item.key) ?? data.curve,
       costDow: data.costDow,
-      launches: [...launches, ...(extraLaunches?.get(item.key) ?? [])],
+      launches: trendOnly ? [] : [...launches, ...(extraLaunches?.get(item.key) ?? [])],
       fatigueFrom: fatigue.get(item.key)?.date ?? null,
     };
   }), { startDate: addDays(ctx.asOf, 1), cfg });

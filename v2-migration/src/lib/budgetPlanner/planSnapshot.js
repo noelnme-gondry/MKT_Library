@@ -3,18 +3,30 @@
 // 사람이 만든 이름(단위 키 = 캠페인명 등)은 퍼센트 인코딩해 구분자·CSV를 깨지 않게 한다.
 // 이 파일은 의존성이 없어야 한다 — decisionReview가 읽고, decisionReview는 많은 곳이 읽는다.
 
-export const PLAN_SNAPSHOT_VERSION = "v1";
+export const PLAN_SNAPSHOT_VERSION = "v2";
 export const PLAN_SNAPSHOT_MAX_TARGETS = 60;
 export const PLAN_SNAPSHOT_METRICS = Object.freeze(["installs", "actions", "revenue_d7"]);
 export const PLAN_SNAPSHOT_UNITS = Object.freeze(["channel", "country", "campaign_name"]);
 const UNIT_TEXT_LIMIT = 160;
 
-const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 const finite = (value) => {
+  if (value == null || String(value).trim() === "") return null;
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
 };
 const round = (value, digits) => Number(value.toFixed(digits));
+
+export function normalizePlanScope(scope = null) {
+  if (scope === null) return null; // v1: 필터를 보관하지 않았으므로 자동 대조하지 않는다.
+  const list = value => [...new Set((Array.isArray(value) ? value : []).map(v => String(v).trim()).filter(Boolean))].sort();
+  return {
+    countries: list(scope.countries), channels: list(scope.channels),
+    platform: ["ios", "android"].includes(scope.platform) ? scope.platform : "all",
+    currency: ["KRW", "USD"].includes(scope.currency) ? scope.currency : "",
+    cadence: scope.cadence === "weekly" ? "weekly" : "daily",
+  };
+}
 
 function decode(text) {
   try {
@@ -39,8 +51,11 @@ export function serializeAllocationPlan(plan) {
     .map((target) => ({ unit: String(target?.unit ?? "").slice(0, UNIT_TEXT_LIMIT), cost: finite(target?.cost), results: finite(target?.results) }))
     .filter((target) => target.unit && target.cost != null && target.results != null);
   if (!targets.length || targets.length > PLAN_SNAPSHOT_MAX_TARGETS) return "";
+  if (targets.length !== plan.targets.length) return "";
   if (new Set(targets.map((target) => target.unit)).size !== targets.length) return "";
-  const head = [PLAN_SNAPSHOT_VERSION, plan.start, days, plan.metric, plan.unitField, plan.byPlatform ? "1" : "0"].join("|");
+  const scope = normalizePlanScope(plan.scope);
+  const head = [scope === null ? "v1" : PLAN_SNAPSHOT_VERSION, plan.start, days, plan.metric, plan.unitField, plan.byPlatform ? "1" : "0",
+    ...(scope === null ? [] : [encodeURIComponent(JSON.stringify(scope))])].join("|");
   const body = targets
     .sort((a, b) => a.unit.localeCompare(b.unit))
     .map((target) => [encodeURIComponent(target.unit), round(target.cost, 2), round(target.results, 4)].join("|"));
@@ -51,8 +66,18 @@ export function serializeAllocationPlan(plan) {
 export function parseAllocationPlan(text) {
   const parts = String(text ?? "").trim().split(";");
   if (parts.length < 2) return null;
-  const [version, start, days, metric, unitField, platformFlag] = parts[0].split("|");
-  if (version !== PLAN_SNAPSHOT_VERSION || !isDate(start) || !["0", "1"].includes(platformFlag)) return null;
+  const [version, start, days, metric, unitField, platformFlag, encodedScope] = parts[0].split("|");
+  if (!["v1", PLAN_SNAPSHOT_VERSION].includes(version) || !isDate(start) || !["0", "1"].includes(platformFlag)) return null;
+  let scope = null;
+  if (version === PLAN_SNAPSHOT_VERSION) {
+    try {
+      const raw = JSON.parse(decode(encodedScope));
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      if (![raw.countries, raw.channels].every(list => Array.isArray(list) && list.every(value => typeof value === "string"))
+        || !["all", "ios", "android"].includes(raw.platform) || !["KRW", "USD", ""].includes(raw.currency) || !["daily", "weekly"].includes(raw.cadence)) return null;
+      scope = normalizePlanScope(raw);
+    } catch { return null; }
+  }
   const dayCount = Number(days);
   if (!Number.isInteger(dayCount) || dayCount < 1 || dayCount > 92) return null;
   if (!PLAN_SNAPSHOT_METRICS.includes(metric) || !PLAN_SNAPSHOT_UNITS.includes(unitField)) return null;
@@ -67,7 +92,7 @@ export function parseAllocationPlan(text) {
     targets.push({ unit: unit.slice(0, UNIT_TEXT_LIMIT), cost, results });
   }
   if (targets.length > PLAN_SNAPSHOT_MAX_TARGETS || new Set(targets.map((target) => target.unit)).size !== targets.length) return null;
-  return { start, days: dayCount, metric, unitField, byPlatform: platformFlag === "1", targets };
+  return { start, days: dayCount, metric, unitField, byPlatform: platformFlag === "1", targets, scope };
 }
 
 /** 계획 기간의 마지막 날. */

@@ -7,6 +7,8 @@ import { FigureHead } from "@/components/ds/FigurePngButton";
 import PillGroup from "@/components/ds/PillGroup";
 import { figureExportContext } from "@/utils/figureExportContext";
 import { stageWaterfall } from "@/lib/operations/operationsReview";
+import { ALLOC_MATH } from "@/utils/allocationMath";
+import { operationContributionLabels, operationsScatterEvidence } from "@/lib/operations/operationsPresentation";
 
 const money = (value, currency) => fmtCurrency(value, { currency, precise: true });
 const shortDate = date => date.slice(5);
@@ -40,6 +42,46 @@ function ChartCanvas({ config, label, title = label, description, headingId, sco
     {controls}
     <div className="chart-container" style={height ? { height } : undefined}><canvas ref={canvas} role="img" aria-label={label} /></div>
   </figure>;
+}
+
+export function OperationsCprScatter({ campaign, model, metricName, currency, locale, isDemo }) {
+  const en = locale === "en", tr = (ko, english) => en ? english : ko;
+  const title = tr(`일 지출 × ${metricName}: 관측과 추세`, `Daily spend × ${metricName}: observations and trend`);
+  const [showEarlier, setShowEarlier] = useState(false), [spend, setSpend] = useState(null);
+  const evidence = useMemo(() => operationsScatterEvidence(campaign, model), [campaign, model]);
+  const x = model ? Math.max(model.xMin, Math.min(model.xMax, spend ?? (model.xMin + model.xMax) / 2)) : null;
+  const prediction = x != null && evidence.fitted.length ? model.model.predict(x) : null;
+  const budgetPrediction = x != null ? ALLOC_MATH.predictSafeCpr(model, x) : null;
+  const config = useMemo(() => {
+    const opts = operationsChartOptions();
+    const datasets = [
+      { label: evidence.fitted.length ? tr("모형에 사용한 관측", "Observations used in fit") : tr("일별 관측", "Daily observations"), data: evidence.used, backgroundColor: CHART_THEME.primary, pointRadius: 4 },
+    ];
+    if (evidence.fitted.length) datasets.push({ label: tr("적합한 추세선", "Fitted trend"), data: evidence.fitted, showLine: true, borderColor: CHART_THEME.primary, pointRadius: 0, borderWidth: 2 });
+    if (evidence.excluded.length) datasets.push({ label: tr("해당 기간의 제외 관측", "Excluded observations in fit period"), data: evidence.excluded, pointStyle: "crossRot", pointRadius: 6, borderWidth: 2, borderColor: CHART_THEME.comparison });
+    if (showEarlier && evidence.earlier.length) datasets.push({ label: tr("이전 기간 관측", "Earlier observations"), data: evidence.earlier, backgroundColor: "transparent", borderColor: CHART_THEME.comparison, pointRadius: 3 });
+    if (Number.isFinite(prediction) && prediction > 0) datasets.push({ label: tr("선택한 지출의 추세값", "Trend at selected spend"), data: [{ x, y: prediction }], backgroundColor: CHART_THEME.surface, borderColor: CHART_THEME.primary, borderWidth: 3, pointRadius: 6 });
+    return { type: "scatter", data: { datasets }, options: { ...opts, responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: false },
+      scales: { ...opts.scales, x: { ...opts.scales?.x, type: "linear", title: { display: true, text: tr(`하루 지출 (${currency})`, `Daily spend (${currency})`), color: CHART_THEME.text } },
+        y: { ...opts.scales?.y, title: { display: true, text: `${metricName} (${currency})`, color: CHART_THEME.text } } },
+      plugins: { ...opts.plugins, tooltip: { mode: "nearest", intersect: false, callbacks: { label: context => `${context.raw.date || context.dataset.label}: ${money(context.raw.x, currency)} / ${money(context.raw.y, currency)}` } } },
+    } };
+  // Locale is the sole dependency of the text selector.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evidence, showEarlier, metricName, currency, locale, x, prediction]);
+  const fitted = evidence.fitted.length > 0;
+  return <div className="operations-scatter">
+    <ChartCanvas config={config} title={title} label={`${campaign.name} · ${title}`} scopeLabel={campaign.name}
+      description={fitted ? tr(`${evidence.start}–${evidence.end} · 모형에 사용한 관측 ${evidence.used.length}개 · 제외 ${evidence.excluded.length}개`, `${evidence.start}–${evidence.end} · ${evidence.used.length} observations used · ${evidence.excluded.length} excluded`)
+        : tr("모형 근거가 부족해 추세 예측을 보류합니다. 실제 관측점만 표시합니다.", "Trend prediction withheld: insufficient model evidence. Observed points remain visible.")}
+      controls={evidence.earlier.length > 0 && <label className="operations-scatter__toggle"><input type="checkbox" checked={showEarlier} onChange={event => setShowEarlier(event.target.checked)} />{tr(`이전 기간 관측 ${evidence.earlier.length}개 함께 보기`, `Show ${evidence.earlier.length} earlier observations`)}</label>}
+      fileName="operations-spend-cpr-trend" {...{ locale, currency, isDemo }} periods={{ current: { start: showEarlier ? campaign.trend[0]?.date : evidence.start, end: evidence.end } }} />
+    {fitted && <div className="operations-scatter__prediction"><label>{tr("모형 관측 범위 안의 하루 지출", "Daily spend within the fitted range")} <strong>{money(x, currency)}</strong><input type="range" min={model.xMin} max={model.xMax} step="any" value={x} onChange={event => setSpend(Number(event.target.value))} /></label>
+      <p>{tr(`같은 추세가 이어질 때 예상 ${metricName}`, `Predicted ${metricName} if the trend continues`)} <strong>{Number.isFinite(prediction) && prediction > 0 ? money(prediction, currency) : tr("추정 불가", "Unavailable")}</strong></p>
+      {Number.isFinite(prediction) && Number.isFinite(budgetPrediction) && Math.abs(prediction - budgetPrediction) > 0.01 && <p className="operations-chart__caption">{tr(`예산 계산에는 보정된 ${metricName} ${money(budgetPrediction, currency)}를 씁니다. 곡선이 꺾이는 구간을 그 경계값으로 고정한 값이며, 위 추세선과 구분합니다.`, `Budget calculations use adjusted ${metricName} ${money(budgetPrediction, currency)}. Values beyond a turning point are held at that boundary, separately from the fitted trend above.`)}</p>}
+      <p className="operations-chart__caption">{tr("소재 투입·종료·교체에 따른 CPRR 효과는 예측하지 않습니다.", "CPRR effects of creative launches, removals or replacements are not predicted.")}</p>
+    </div>}
+  </div>;
 }
 
 export function OperationsTrend({ rows, metricName, currency, locale, periods, isDemo }) {
@@ -194,13 +236,13 @@ export function OperationsMixChart({ value, currency, locale, periods, isDemo, m
   const config = useMemo(() => {
     const opts = operationsChartOptions(), rows = value?.finest || [];
     return { type: "bar", data: { labels: rows.map(row => nameLines(row.crKey || (locale === "en" ? "Unspecified" : "미지정"))), datasets: [
-      { label: locale === "en" ? "Creative mix" : "소재 구성 변화", data: rows.map(row => row.mix), backgroundColor: CHART_THEME.comparison, maxBarThickness: 12 },
-      { label: locale === "en" ? "Creative unit costs" : "소재 단가 변화", data: rows.map(row => row.rate), backgroundColor: CHART_THEME.primary, maxBarThickness: 18 }] },
+      { label: operationContributionLabels(metricName, locale).share, data: rows.map(row => row.mix), backgroundColor: CHART_THEME.comparison, maxBarThickness: 12 },
+      { label: operationContributionLabels(metricName, locale).cost, data: rows.map(row => row.rate), backgroundColor: CHART_THEME.primary, maxBarThickness: 18 }] },
       options: { ...opts, indexAxis: "y", plugins: { ...opts.plugins, tooltip: { ...opts.plugins.tooltip, callbacks: { label: context => `${context.dataset.label} ${money(context.parsed.x, currency)}` } } },
         scales: { x: { ...opts.scales.x, stacked: true, title: { display: true, text: `${metricName} ${locale === "en" ? "contribution" : "변화 기여"} · ${currency}`, color: CHART_THEME.muted }, ticks: { ...opts.scales.x.ticks, maxTicksLimit: 5, callback: amount => money(amount, currency) } }, y: { ...opts.scales.y, stacked: true, grid: { display: false } } } } };
   }, [value, currency, locale, metricName]);
   if (!value) return <p className="chart-empty">{locale === "en" ? "Insufficient creative observations in the two periods." : "두 기간의 소재별 관측이 부족해 구성·단가 기여를 구분할 수 없습니다."}</p>;
-  return <ChartCanvas config={config} scopeLabel={scopeLabel} label={locale === "en" ? "Creative mix and unit-cost contributions" : "소재 구성·단가 변화 기여"} fileName="operations_creative_contributions" locale={locale} currency={currency} periods={periods} isDemo={isDemo} height={Math.max(280, value.finest.length * 40 + 70)} />;
+  return <ChartCanvas config={config} scopeLabel={scopeLabel} label={operationContributionLabels(metricName, locale).title} fileName="operations_creative_contributions" locale={locale} currency={currency} periods={periods} isDemo={isDemo} height={Math.max(280, value.finest.length * 40 + 70)} />;
 }
 
 export function OperationsCreativeChart({ rows, currency, locale, metricName, periods, isDemo, selected, onSelect }) {

@@ -41,9 +41,9 @@ import { AllocationActionSummary, AllocationHeadline, allocationActionPoints, Pl
 import DataTable from "@/components/ds/DataTable";
 import { allocationCadence, prepareAllocationObservations, allocationHistory } from "@/utils/allocationObservations";
 import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
-import { allocationAt, deltaAllocationAt, fatigueScenarioAt, loserOffScenarioAt, newCreativeScenarioAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
+import { allocationAt, deltaAllocationAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { createAllocationPlanSnapshot, findAllocationPlanMatches, plannerDowngradeUnits, planReviewText } from "@/lib/budgetPlanner/planReview";
-import { allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "@/lib/budgetPlanner/allocationActions";
+import { allocationHeadline, allocationIssues, allocationMoves, allocationPredictionChange, moveGroups } from "@/lib/budgetPlanner/allocationActions";
 import { addDays as plannerAddDays } from "@/lib/budgetPlanner/plannerStats";
 import { appendDecisionEpisode, toLocalDecisionDate } from "@/lib/decisionReview";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -692,11 +692,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   // 지난 배분안 대조에서 같은 대상의 예측이 연속으로 크게 빗나갔으면(spec §8.2) 그 대상도 신뢰도를 한 단계 낮춘다 —
   // 곡선 적합이 좋아 보여도 실제로는 맞히지 못했다는 증거라, 같은 고정 규칙에 함께 넣는다.
   const decisionRecords = useAppStore((state) => state.decisionRecords);
-  const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
+  const commitDecisionRecord = useAppStore((state) => state.commitDecisionRecord);
   const isDemoInput = isDemoData(csvData);
   const reviewDowngradeUnits = useMemo(
-    () => (isDemoInput || !allRows.length ? [] : plannerDowngradeUnits(decisionRecords, allRows)),
-    [isDemoInput, allRows, decisionRecords],
+    () => (isDemoInput || !allRows.length ? [] : plannerDowngradeUnits(decisionRecords, allRows, undefined, { currency })),
+    [isDemoInput, allRows, decisionRecords, currency],
   );
   const reviewHeldUnits = useMemo(
     () => (holdLowConfidence ? reviewDowngradeUnits.filter((unit) => Number(historyByCh?.[unit]?.totalCost) > 0) : []),
@@ -998,32 +998,19 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     : plannedDailyBudget;
   const plannerPlan = useMemo(() => {
     if (!planner.ok || !(budgetForPlan > 0)) return { allocation: EMPTY_ALLOCATION, forecast: null };
-    return allocationAt(planner, budgetForPlan, { pace: allocPace, holds: lowConfidenceHolds, withForecast: true });
+    return allocationAt(planner, budgetForPlan, { pace: allocPace, holds: lowConfidenceHolds, withForecast: true, forecastOptions: { trendOnly: true } });
   }, [budgetForPlan, planner, allocPace, lowConfidenceHolds]);
   const allocation = plannerPlan.allocation;
   const planForecast = plannerPlan.forecast;
-  // 가정을 바꿔 보는 시나리오(spec §8·§8.1). 배분은 그대로 두고 같은 예측 엔진에 입력만 바꾼다.
-  const [newCreativeUnit, setNewCreativeUnit] = useState("");
-  const fatigueScenario = useMemo(
-    () => (planner.ok && budgetForPlan > 0 ? fatigueScenarioAt(planner, budgetForPlan, { pace: allocPace, holds: lowConfidenceHolds }) : null),
-    [planner, budgetForPlan, allocPace, lowConfidenceHolds],
-  );
-  const loserScenario = useMemo(
-    () => (planner.ok && budgetForPlan > 0 ? loserOffScenarioAt(planner, budgetForPlan, { pace: allocPace, holds: lowConfidenceHolds }) : null),
-    [planner, budgetForPlan, allocPace, lowConfidenceHolds],
-  );
-  const newCreativeScenario = useMemo(
-    () => (planner.ok && budgetForPlan > 0 && newCreativeUnit && planner.toPlanner.has(newCreativeUnit) ? newCreativeScenarioAt(planner, budgetForPlan, newCreativeUnit, { pace: allocPace, holds: lowConfidenceHolds }) : null),
-    [planner, budgetForPlan, newCreativeUnit, allocPace, lowConfidenceHolds],
-  );
   // 결정으로 저장하면 배분안을 함께 실어, 기간이 끝난 뒤 새 CSV로 계획 대비 실적을 대조한다(spec §8.2).
   const planSnapshot = useMemo(
-    () => (planForecast && planner.ok && !isDemoInput ? createAllocationPlanSnapshot({ forecast: planForecast, metric: effectiveMetric, unitField, byPlatform: groupByPlatform, asOf: planner.asOf }) : null),
-    [planForecast, planner, isDemoInput, effectiveMetric, unitField, groupByPlatform],
+    () => (planForecast && planner.ok && !isDemoInput ? createAllocationPlanSnapshot({ forecast: planForecast, metric: effectiveMetric, unitField, byPlatform: groupByPlatform, asOf: planner.asOf,
+      scope: { countries: [...(selectedCountries || [])], channels: [...(selectedChannelsFilter || [])], platform: platformFilter, currency, cadence } }) : null),
+    [planForecast, planner, isDemoInput, effectiveMetric, unitField, groupByPlatform, selectedCountries, selectedChannelsFilter, platformFilter, currency, cadence],
   );
   const planMatches = useMemo(
-    () => (isDemoInput || !allRows.length ? [] : findAllocationPlanMatches(decisionRecords, allRows)),
-    [isDemoInput, allRows, decisionRecords],
+    () => (isDemoInput || !allRows.length ? [] : findAllocationPlanMatches(decisionRecords, allRows, undefined, { currency })),
+    [isDemoInput, allRows, decisionRecords, currency],
   );
   const [pendingPlanReview, setPendingPlanReview] = useState(null);
 
@@ -2027,7 +2014,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     asOf: planner.asOf,
     horizonDays: planner.cfg.forecast.horizonDays,
     learningWarnings: allocation.learningWarnings,
-    loserScenario,
     reviewHeldUnits,
     unallocated: allocation.unallocated,
     addDays: plannerAddDays,
@@ -2035,12 +2021,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const verdict = (() => {
     if (!summary || !items.length) return null;
     const S = summary;
-    const dPrev = displayMetricValue(S.prevAvgCPR, effectiveMetric);
-    const dNext = displayMetricValue(S.nextAvgCPR, effectiveMetric);
     const groups = moveGroups(actionMoves);
     // 결론은 한 줄 — 무엇을 얼마나 옮기는지와 그 결과(지표 변화율)만. 화면은 방향별로 줄을 나누고
     // 이름·금액 덩어리 안에서는 끊지 않는다(allocationHeadline). 수치 근거는 아래 표가 말한다.
-    const change = dPrev != null && dNext != null && dPrev !== 0 ? (dNext - dPrev) / dPrev : null;
+    const change = allocationPredictionChange(items, modelsMap, roas);
     const { tone, lines, text } = allocationHeadline({
       groups,
       change,
@@ -2329,11 +2313,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         fmtMoney={(value) => fmtCurrency(value, currency)}
         fmtCount={(value) => formatNumberK(value)}
         fmtUnitCost={(value) => fmtCostMetric(value, effectiveMetric, currency)}
-        units={planner.ok ? planner.units.map((unit) => unit.unit).filter(Boolean).sort() : []}
-        newCreativeUnit={newCreativeUnit}
-        onNewCreativeUnit={setNewCreativeUnit}
-        newCreativeScenario={newCreativeScenario}
-        fatigueScenario={fatigueScenario}
       />}
     </>,
     comparison: <>
@@ -2553,7 +2532,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         locale={locale}
         metricLabel={metricLabel}
         learningWarnings={allocation.learningWarnings}
-        loserScenario={loserScenario}
         resultLabel={unitLabel}
         resultIsMoney={roas}
         fmtMoney={(value) => fmtCurrency(value, currency)}
@@ -2967,6 +2945,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       </ModalDialog>
 
       {/* 저장해 둔 배분안의 기간이 이 CSV에 다 들어 있으면 계획 대비 실적을 먼저 보여 준다(spec §8.2). */}
+      {decisionRecords.some(record => record.toolId === "5-3" && record.allocationPlan?.startsWith("v1|")) && <p className="operations-chart__caption">{tr("예전에 저장한 배분안은 필터·통화가 보관되지 않아 자동 비교를 보류합니다. 조건이 포함된 새 배분안을 저장해 주세요.", "Older plans lack saved filters and currency, so automatic comparisons are withheld. Save a new plan with its scope.")}</p>}
       <PlannerPlanReview
         matches={planMatches}
         locale={locale}
@@ -2975,12 +2954,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         fmtCount={(value) => formatNumberK(value)}
         onApply={(match, text) => setPendingPlanReview({ match, text })}
       />
-      {pendingPlanReview && <ReviewSaveDialog locale={locale} onClose={() => setPendingPlanReview(null)} onConfirm={() => {
+      {pendingPlanReview && <ReviewSaveDialog locale={locale} onClose={() => setPendingPlanReview(null)} onConfirm={async () => {
         const { match, text } = pendingPlanReview;
         const record = useAppStore.getState().decisionRecords.find((item) => item.id === match.recordId);
         const patch = appendDecisionEpisode(record || {}, { actual: text.actual, learning: text.learning });
         if (!patch) return;
-        updateDecisionRecord(match.recordId, { ...patch, status: "reviewed" });
+        await commitDecisionRecord(match.recordId, { ...patch, status: "reviewed" });
       }} />}
       {/* 결론부터 분석·점검을 거친 뒤 저장·다음 기간 검토로 이어진다. */}
       <div id="s-result">

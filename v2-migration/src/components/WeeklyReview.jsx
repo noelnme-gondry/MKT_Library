@@ -161,6 +161,8 @@ const COPY = {
     planPeriod: (start, end, count) => `${start}–${end} · 대상 ${count}개`,
     planPending: "아직 대조할 데이터가 없습니다",
     planPendingHint: "계획 기간이 끝난 뒤의 효율 CSV를 예산 배분 도구에 올리면 여기서 대조합니다.",
+    planScopeMissing: "저장된 비교 조건이 없습니다",
+    planScopeMissingHint: "이전 형식의 기록에는 통화·필터·집계 주기가 없어 자동 비교할 수 없습니다. 기존 기록은 유지되며, 새 배분안부터 비교 조건이 함께 저장됩니다.",
     planMatched: "새 데이터로 대조한 결과",
     planApply: "이 대조 결과 기록",
     openPlanTool: "예산 배분 열기",
@@ -283,6 +285,8 @@ const COPY = {
     planPeriod: (start, end, count) => `${start}–${end} · ${count} ${count === 1 ? "target" : "targets"}`,
     planPending: "No data to compare yet",
     planPendingHint: "Upload an efficiency CSV covering the plan period to the budget allocation tool, then compare it here.",
+    planScopeMissing: "Comparison criteria were not saved",
+    planScopeMissingHint: "This older record has no saved currency, filters or cadence, so automatic comparison is unavailable. The record is retained; new allocation plans include these criteria.",
     planMatched: "Compared with new data",
     planApply: "Record this comparison",
     openPlanTool: "Open budget allocation",
@@ -366,8 +370,8 @@ function AllocationPlanTicket({ record, match, t, locale, isReviewed, isReviewDu
       {text.learning && <p>{text.learning}</p>}
       {!isReviewed && <button type="button" className="btn" disabled={!isReviewDue} onClick={(event) => onComplete(text, event.currentTarget)}>{t.planApply}</button>}
     </div> : !isReviewed && <div className="weekly-review-record__forecast-pending">
-      <span>{t.planPending}</span>
-      <p>{t.planPendingHint}</p>
+      <span>{plan.scope?.currency ? t.planPending : t.planScopeMissing}</span>
+      <p>{plan.scope?.currency ? t.planPendingHint : t.planScopeMissingHint}</p>
       <Link href={locale === "en" ? "/en/tools/budget-allocation" : "/tools/budget-allocation"}>{t.openPlanTool}</Link>
     </div>}
   </div>;
@@ -448,7 +452,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
   const planMatches = useMemo(() => {
     const slice = csvGroups?.efficiency || (activeDataGroup === "efficiency" ? csvData : null);
     if (!slice?.raw?.length || !records.some((record) => record.comparisonKind === "allocation_plan")) return new Map();
-    return new Map(findAllocationPlanMatches(records, getMappedRows(slice)).map((match) => [match.recordId, match]));
+    return new Map(findAllocationPlanMatches(records, getMappedRows(slice), undefined, { currency: slice.currency }).map((match) => [match.recordId, match]));
   }, [activeDataGroup, csvData, csvGroups, records]);
   const planCurrency = csvGroups?.efficiency?.currency || "KRW";
   const formatPlanCpr = (metric) => (value) => {

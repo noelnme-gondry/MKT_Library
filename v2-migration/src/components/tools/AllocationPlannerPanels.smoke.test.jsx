@@ -7,7 +7,7 @@ import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 import { buildSampleJourney } from "@/lib/sampleJourney";
 import { AllocationActionSummary, allocationActionPoints, PlannerCreativeStatus, PlannerForecast, PlannerPlanReview } from "@/components/tools/AllocationPlannerPanels";
-import { allocationAt, loserOffScenarioAt, newCreativeScenarioAt, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
+import { allocationAt, loserOffScenarioAt, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { reviewAllocationPlan } from "@/lib/budgetPlanner/planReview";
 import { serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
 import { vi } from "vitest";
@@ -82,41 +82,23 @@ describe("5-3 플래너 근거 구역", () => {
     expect(first.textContent).toContain("학습 중");
   });
 
-  it("새 소재를 넣는다면: 대상을 고르면 같은 배분의 예측이 어떻게 바뀌는지 출시 이력 근거와 함께 말한다", () => {
-    const start = Date.parse("2026-06-01T00:00:00Z");
-    const day = (t) => new Date(start + t * 86400000).toISOString().slice(0, 10);
-    const rows = [];
-    for (let t = 0; t <= 40; t += 1) {
-      for (const [channel, base] of [["Meta", 20000], ["TikTok", 12000]]) {
-        const cost = base * (1 + 0.4 * Math.sin(t / 3.7 + base));
-        rows.push({ date: day(t), country: "KR", channel, platform: "", cost, installs: cost / (base / 20) });
-      }
-    }
-    const planner = prepareAllocationPlanner(rows, { unitField: "channel", metric: "installs", adv: { trendType: "auto", outlierMethod: "none" } });
-    expect(planner.ok).toBe(true);
-    const budget = planner.allocationNodes.reduce((acc, node) => acc + node.current, 0);
-    const { forecast } = allocationAt(planner, budget, { withForecast: true });
-    const scenario = newCreativeScenarioAt(planner, budget, "KR · Meta");
-    const onUnit = vi.fn();
-    const props = { forecast, backtest: planner.backtest, locale: "ko", resultLabel: "설치", metricLabel: "CPI", fmtMoney: (v) => `₩${Math.round(v)}`, fmtCount: (v) => String(Math.round(v)), fmtUnitCost: (v) => `₩${Math.round(v)}`, units: ["KR · Meta", "KR · TikTok"], onNewCreativeUnit: onUnit };
-    const { rerender } = render(<PlannerForecast {...props} />);
-    fireEvent.change(screen.getByLabelText("새 소재를 넣는다면"), { target: { value: "KR · Meta" } });
-    expect(onUnit).toHaveBeenCalledWith("KR · Meta");
-    rerender(<PlannerForecast {...props} newCreativeUnit="KR · Meta" newCreativeScenario={scenario} />);
-    const text = screen.getByText(/KR · Meta에 내일 새 소재를 넣으면 14일 예상 설치/).textContent;
-    expect(text).toContain(`${Math.round(scenario.base.results)} → ${Math.round(scenario.scenario.results)}`);
-    expect(scenario.scenario.results).toBeLessThan(scenario.base.results);
-    expect(text).toContain("기본 가정");
+  it.each(["ko", "en"])("%s: 소재 투입 효과를 수치로 제시하는 컨트롤을 노출하지 않는다", locale => {
+    render(<PlannerForecast forecast={{ startDate: "2026-09-01", horizonDays: 14, total: { cost: 100, results: 10 }, nodes: [], flags: {} }} locale={locale}
+      fmtMoney={String} fmtCount={String} fmtUnitCost={String} resultLabel="installs" metricLabel="CPI"
+      newCreativeScenario={{ base: { results: 100 }, scenario: { results: 80 } }} />);
+    expect(screen.queryByLabelText(/새 소재를 넣는다면|Launch a new creative/)).toBeNull();
+    expect(document.querySelector(".planner-forecast-scenarios")).toBeNull();
+    expect(screen.queryByText(/새 소재를 넣으면|launching a new creative/i)).toBeNull();
   });
 
   it("지난 배분안 대조: 검토일 전에는 기록 버튼을 막고, 지나면 문장과 함께 넘긴다", () => {
-    const plan = serializeAllocationPlan({ start: "2026-09-01", days: 7, metric: "installs", unitField: "channel", byPlatform: false, targets: [{ unit: "KR · Meta", cost: 7000, results: 70 }, { unit: "KR · TikTok", cost: 7000, results: 35 }] });
+    const plan = serializeAllocationPlan({ start: "2026-09-01", days: 7, metric: "installs", unitField: "channel", byPlatform: false, scope: { currency: "KRW" }, targets: [{ unit: "KR · Meta", cost: 7000, results: 70 }, { unit: "KR · TikTok", cost: 7000, results: 35 }] });
     const rows = [];
     for (let d = 1; d <= 9; d += 1) {
       const date = `2026-09-0${d}`;
       rows.push({ date, country: "KR", channel: "Meta", cost: 1000, installs: 10 }, { date, country: "KR", channel: "TikTok", cost: 1000, installs: 4 });
     }
-    const match = reviewAllocationPlan({ id: "p", toolId: "5-3", action: "배분안 적용", comparisonKind: "allocation_plan", allocationPlan: plan, reviewDate: "2026-09-08" }, rows);
+    const match = reviewAllocationPlan({ id: "p", toolId: "5-3", action: "배분안 적용", comparisonKind: "allocation_plan", allocationPlan: plan, reviewDate: "2026-09-08" }, rows, undefined, { currency: "KRW" });
     const onApply = vi.fn();
     const props = { matches: [match], locale: "ko", fmtCpr: () => (v) => `₩${Math.round(v)}`, fmtCount: (v) => String(Math.round(v)), onApply };
     const { rerender } = render(<PlannerPlanReview {...props} today="2026-09-07" />);
@@ -127,7 +109,7 @@ describe("5-3 플래너 근거 구역", () => {
     expect(onApply.mock.calls[0][1].actual).toContain("실제 CPI ₩143 · 계획 ₩133");
   });
 
-  it("학습 예산 부족과 '나쁜 소재를 끄면' 안이 소재 표 안팎에 숫자와 함께 나온다", () => {
+  it("학습 예산 부족은 보이되 소재를 끄면 성과가 늘어난다는 수치는 없다", () => {
     const start = Date.parse("2026-06-01T00:00:00Z");
     const day = (t) => new Date(start + t * 86400000).toISOString().slice(0, 10);
     const rows = [];
@@ -145,7 +127,8 @@ describe("5-3 플래너 근거 구역", () => {
     render(<PlannerCreativeStatus planner={planner} locale="ko" metricLabel="CPI" learningWarnings={allocation.learningWarnings} loserScenario={loser} resultLabel="설치" fmtMoney={(v) => `₩${Math.round(v)}`} fmtCount={(v) => String(Math.round(v))} />);
     const table = screen.getByRole("table", { name: "소재 상태" });
     expect(within(table).getByText(/이 배분으로는 학습 완료가 어려움: 하루 약 ₩\d+ 필요/)).toBeTruthy();
-    expect(screen.getByText(/기존보다 나쁜 소재 bad \(KR · Meta\)를 끄면 같은 예산으로 14일 예상 설치/)).toBeTruthy();
+    expect(screen.queryByText(/를 끄면 같은 예산으로/)).toBeNull();
+    expect(within(table).getByText("bad")).toBeTruthy();
   });
 });
 

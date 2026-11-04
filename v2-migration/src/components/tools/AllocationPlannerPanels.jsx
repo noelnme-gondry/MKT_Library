@@ -2,7 +2,7 @@
 // 5-3 결과에 붙는 플래너 근거: 성과 예측 · 대상별 상태와 원인 · 단가 변화 분해 · 소재 상태.
 // 계산은 lib/budgetPlanner가 하고, 여기서는 읽는 순서대로 보여 주기만 한다.
 import { efficiencyUnitLabel } from "@/lib/efficiencyUnits";
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import DataTable from "@/components/ds/DataTable";
 import {
   bindingLabel, CREATIVE_STATE_LABELS, CREATIVE_STATE_ORDER, NODE_STATE_LABELS, PVM_COLUMN_LABELS,
@@ -21,7 +21,6 @@ const pct = (value) => {
 /** 이 배분안으로 앞으로 N일 — 기간 합계와 범위, 그리고 그 범위를 얼마나 믿을 수 있는지(백테스트). */
 export function PlannerForecast({
   forecast, backtest, locale = "ko", resultLabel, metricLabel, fmtMoney, fmtCount, fmtUnitCost, resultIsMoney = false,
-  units = [], newCreativeUnit = "", onNewCreativeUnit, newCreativeScenario = null, fatigueScenario = null,
 }) {
   if (!forecast?.total || !(forecast.total.results > 0)) return null;
   const tr = (ko, en) => (locale === "en" ? en : ko);
@@ -61,78 +60,8 @@ export function PlannerForecast({
           <li>{tr("과거 기간으로 맞춰 볼 데이터가 부족해 예측 오차를 확인하지 못했습니다.", "Not enough history to check the forecast error against a held-out period.")}</li>
         )}
         {flags.extrapolatedNodes > 0 && <li>{tr(`${flags.extrapolatedNodes}개 대상은 써 본 적 없는 지출 수준이 섞여 있어 추정치입니다.`, `${flags.extrapolatedNodes} target(s) include spend levels outside history, so their numbers are estimates.`)}</li>}
-        {flags.assumedLaunchProfiles > 0 && <li>{tr(`${flags.assumedLaunchProfiles}개 대상은 신규 소재 출시 이력이 부족해 학습 비용을 기본 가정으로 넣었습니다.`, `${flags.assumedLaunchProfiles} target(s) lack launch history, so new-creative learning costs use default assumptions.`)}</li>}
       </ul>
-      <PlannerForecastScenarios
-        locale={locale}
-        resultLabel={resultLabel}
-        metricLabel={metricLabel}
-        fmtResult={fmtResult}
-        fmtUnitCost={fmtUnitCost}
-        horizonDays={horizonDays}
-        units={units}
-        newCreativeUnit={newCreativeUnit}
-        onNewCreativeUnit={onNewCreativeUnit}
-        newCreativeScenario={newCreativeScenario}
-        fatigueScenario={fatigueScenario}
-      />
     </section>
-  );
-}
-
-const changeText = (from, to) => (from > 0 && Number.isFinite(to) ? pct(to / from - 1) : "—");
-
-/** 가정을 바꿔 보기: 같은 배분에서 신규 소재 투입·주력 소재 피로를 가정하면 예측이 어떻게 바뀌나(spec §8·§8.1). */
-function PlannerForecastScenarios({ locale, resultLabel, metricLabel, fmtResult, fmtUnitCost, horizonDays, units, newCreativeUnit, onNewCreativeUnit, newCreativeScenario, fatigueScenario }) {
-  const [showFatigue, setShowFatigue] = useState(false);
-  const tr = (ko, en) => (locale === "en" ? en : ko);
-  if (!units.length || !onNewCreativeUnit) return null;
-  const selectId = "planner-new-creative-unit";
-  const nc = newCreativeScenario;
-  const fatigueTargets = fatigueScenario?.targets ?? [];
-  const fatigueNames = fatigueTargets.slice(0, 3).map((target) => `${target.unit} (${target.date})`).join(", ");
-  const fatigueMore = fatigueTargets.length - 3;
-  return (
-    <div className="planner-scenarios" role="group" aria-label={tr("가정을 바꿔 보기", "Try different assumptions")}>
-      <div className="planner-scenarios__row">
-        <label htmlFor={selectId}>{tr("새 소재를 넣는다면", "If you launch a new creative")}</label>
-        <select id={selectId} value={newCreativeUnit} onChange={(event) => onNewCreativeUnit(event.target.value)}>
-          <option value="">{tr("넣지 않음", "No new creative")}</option>
-          {units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
-        </select>
-      </div>
-      {nc?.base && nc?.scenario && (
-        <p className="planner-scenarios__result" aria-live="polite">
-          {tr(
-            `${nc.unit}에 내일 새 소재를 넣으면 ${horizonDays}일 예상 ${resultLabel} ${fmtResult(nc.base.results)} → ${fmtResult(nc.scenario.results)} (${changeText(nc.base.results, nc.scenario.results)})`,
-            `Launching a new creative in ${nc.unit} tomorrow: ${horizonDays}-day expected ${resultLabel} ${fmtResult(nc.base.results)} → ${fmtResult(nc.scenario.results)} (${changeText(nc.base.results, nc.scenario.results)})`,
-          )}
-          {nc.node ? tr(`, 이 대상 ${metricLabel} ${fmtUnitCost(nc.node.baseCpr)} → ${fmtUnitCost(nc.node.scenarioCpr)}.`, `; this target's ${metricLabel} ${fmtUnitCost(nc.node.baseCpr)} → ${fmtUnitCost(nc.node.scenarioCpr)}.`) : "."}
-          {" "}
-          {nc.assumed
-            ? tr("과거 출시 이력이 부족해 학습 비용은 기본 가정(첫 3일·다음 4일·그다음 7일 동안 기존 대비 비싸게)으로 넣었습니다.", "Launch history is too short, so learning costs use the default assumption (pricier than incumbents for the first 3, next 4 and following 7 days).")
-            : tr(`과거 출시 ${nc.launches}건에서 배운 학습 비용을 썼습니다.`, `Learning costs come from ${nc.launches} past launches.`)}
-        </p>
-      )}
-      {fatigueScenario?.base && fatigueScenario?.scenario && (
-        <>
-          <label className="planner-scenarios__check">
-            <input type="checkbox" checked={showFatigue} onChange={(event) => setShowFatigue(event.target.checked)} />
-            <span>{tr("주력 소재 피로를 반영", "Include main-creative fatigue")}</span>
-          </label>
-          <p className="planner-scenarios__result">
-            {tr(
-              `피로 지수가 지금 추세대로 임계에 닿는 날: ${fatigueNames}${fatigueMore > 0 ? ` 외 ${fatigueMore}개` : ""}.`,
-              `Days when the fatigue index reaches its threshold at the current trend: ${fatigueNames}${fatigueMore > 0 ? ` and ${fatigueMore} more` : ""}.`,
-            )}
-            {showFatigue && tr(
-              ` 그날부터 ${metricLabel}가 ${Math.round(fatigueScenario.penalty * 100)}% 나빠진다고 보면 ${horizonDays}일 예상 ${resultLabel} ${fmtResult(fatigueScenario.base.results)} → ${fmtResult(fatigueScenario.scenario.results)} (${changeText(fatigueScenario.base.results, fatigueScenario.scenario.results)}).`,
-              ` If ${metricLabel} worsens by ${Math.round(fatigueScenario.penalty * 100)}% from then, ${horizonDays}-day expected ${resultLabel} ${fmtResult(fatigueScenario.base.results)} → ${fmtResult(fatigueScenario.scenario.results)} (${changeText(fatigueScenario.base.results, fatigueScenario.scenario.results)}).`,
-            )}
-          </p>
-        </>
-      )}
-    </div>
   );
 }
 
@@ -241,11 +170,10 @@ export function PlannerChangeBreakdown({ planner, locale = "ko", metricLabel, fm
 }
 
 /** 소재 상태: 신규 소재는 학습·노출 확대·정체·판정, 기존 소재는 피로만. 행동이 필요한 것부터. */
-export function PlannerCreativeStatus({ planner, locale = "ko", metricLabel, limit = 20, learningWarnings = [], loserScenario = null, resultLabel = "", resultIsMoney = false, fmtMoney = String, fmtCount = String }) {
+export function PlannerCreativeStatus({ planner, locale = "ko", metricLabel, limit = 20, learningWarnings = [], fmtMoney = String }) {
   if (!planner?.ok || !planner.creatives?.length) return null;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const warningOf = new Map((learningWarnings || []).map((warning) => [`${warning.nodeKey}|${warning.creativeId}`, warning]));
-  const fmtResult = resultIsMoney ? fmtMoney : fmtCount;
   // 지금 피로 신호는 없어도 같은 추세로 예측 기간 안에 임계에 닿는 소재는 함께 보여 준다 — 예측의 "피로 반영"과 같은 기준.
   const horizonEnd = addDays(planner.asOf, planner.cfg.forecast.horizonDays);
   const projectedOf = (entry) => {
@@ -311,25 +239,7 @@ export function PlannerCreativeStatus({ planner, locale = "ko", metricLabel, lim
         ]}
       />
       {rows.length > shown.length && <p className="planner-cell-note">{tr(`외 ${rows.length - shown.length}개 소재`, `${rows.length - shown.length} more creative(s)`)}</p>}
-      {loserScenario && <PlannerLoserOff scenario={loserScenario} locale={locale} resultLabel={resultLabel} fmtResult={fmtResult} />}
     </section>
-  );
-}
-
-/** "기존보다 나쁜 소재를 끄면" — 자동 반영하지 않는 별도 안(spec §6.6.4 [F]). 구성 효과만이라는 가정을 같이 말한다. */
-function PlannerLoserOff({ scenario, locale, resultLabel, fmtResult }) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
-  const names = scenario.offs.map((off) => `${off.creativeIds.join(", ")} (${off.unit})`).join(" · ");
-  if (!scenario.base || !scenario.scenario) {
-    return <p className="planner-scenarios__result">{tr(`기존보다 나쁜 소재 ${names}를 끄는 효과는 최근 결과가 부족해 계산하지 않았습니다.`, `The effect of turning off ${names} was not computed: too few recent results.`)}</p>;
-  }
-  return (
-    <p className="planner-scenarios__result">
-      {tr(
-        `기존보다 나쁜 소재 ${names}를 끄면 같은 예산으로 ${scenario.horizonDays}일 예상 ${resultLabel} ${fmtResult(scenario.base.results)} → ${fmtResult(scenario.scenario.results)} (${changeText(scenario.base.results, scenario.scenario.results)}). 남은 소재가 늘어난 예산을 지금 효율 그대로 쓴다는 가정이라 실제 증액분 효율은 다를 수 있고, 배분안에는 자동으로 넣지 않았습니다.`,
-        `Turning off worse-than-incumbent creatives ${names} would move ${scenario.horizonDays}-day expected ${resultLabel} ${fmtResult(scenario.base.results)} → ${fmtResult(scenario.scenario.results)} (${changeText(scenario.base.results, scenario.scenario.results)}) at the same budget. This assumes the remaining creatives spend the extra at today's efficiency, which may not hold, so it is not applied to the plan.`,
-      )}
-    </p>
   );
 }
 
@@ -393,7 +303,7 @@ function reasonText(reason, tr, metricLabel) {
 }
 
 /** 확인할 점 한 행: 구분 · 대상 · 내용. */
-function issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel }) {
+function issueRow(issue, tr, { fmtMoney }) {
   const p = issue.params;
   switch (issue.code) {
     case "learning_short": return {
@@ -404,7 +314,7 @@ function issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel }) {
     case "loser_creative": return {
       kind: tr("저효율 소재", "Underperforming creative"),
       target: `${p.unit} · ${p.creatives.join(", ")}`,
-      detail: tr(`끄면 ${p.horizonDays}일 ${resultLabel} +${fmtResult(p.gain)}`, `Turning off adds ${fmtResult(p.gain)} ${resultLabel} in ${p.horizonDays}d`),
+      detail: tr("성과 열위 신호 · 교체 또는 종료 검토", "Underperformance signal · review replacement or removal"),
     };
     case "fatigue_now": return {
       kind: tr("소재 피로", "Creative fatigue"),
@@ -477,7 +387,7 @@ export function AllocationActionSummary({ moves = [], issues = [], locale = "ko"
     if (!/[1-9]/.test(text)) return "0";
     return `${value > 0 ? "+" : "−"}${text}`;
   };
-  const rows = issues.slice(0, issueLimit).map((issue) => issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel })).filter(Boolean);
+  const rows = issues.slice(0, issueLimit).map((issue) => issueRow(issue, tr, { fmtMoney })).filter(Boolean);
   return (
     <div className="alloc-actions">
       {shown.length > 0 && (
@@ -493,9 +403,9 @@ export function AllocationActionSummary({ moves = [], issues = [], locale = "ko"
             rowKey={(move) => move.unit}
             columns={[
               { key: "unit", label: tr("대상", "Target"), cellClassName: "alloc-plan__unit" },
-              { key: "budget", label: tr("일예산 현재 → 변경", "Daily budget now → plan"), align: "right", cellClassName: "alloc-plan__budget", fmt: (_, move) => <><span className="alloc-plan__label">{tr("일예산 ", "Budget ")}</span>{fmtMoney(move.current)} → <strong>{fmtMoney(move.proposed)}</strong></> },
+              { key: "budget", label: tr("일평균 지출 → 배정안", "Daily spend → planned budget"), align: "right", cellClassName: "alloc-plan__budget", fmt: (_, move) => <><span className="alloc-plan__label">{tr("일예산 ", "Budget ")}</span>{fmtMoney(move.current)} → <strong>{fmtMoney(move.proposed)}</strong></> },
               { key: "delta", label: tr("증감", "Change"), align: "right", cellClassName: "alloc-plan__delta", fmt: (_, move) => <><ChangeBar delta={move.delta} max={max} /><strong className={`is-${move.direction}`}>{signed(move.delta)}</strong>{move.changePct != null && <span> {pct(move.changePct)}</span>}</> },
-              { key: "cpr", label: tr(`${metricLabel} 현재 → 예상`, `${metricLabel} now → expected`), align: "right", cellClassName: "alloc-plan__cpr", fmt: (_, move) => move.currentCpr == null && move.plannedCpr == null ? "—" : <><span className="alloc-plan__label">{metricLabel} </span>{move.currentCpr != null ? fmtMetric(move.currentCpr) : "—"} → {move.plannedCpr != null ? fmtMetric(move.plannedCpr) : "—"}</> },
+              { key: "cpr", label: tr(`${metricLabel} 관측 → 모형 예상`, `${metricLabel} observed → modeled`), align: "right", cellClassName: "alloc-plan__cpr", fmt: (_, move) => move.currentCpr == null && move.plannedCpr == null ? "—" : <><span className="alloc-plan__label">{metricLabel} </span>{move.currentCpr != null ? fmtMetric(move.currentCpr) : "—"} → {move.plannedCpr != null ? fmtMetric(move.plannedCpr) : "—"}</> },
               { key: "why", label: tr("근거", "Why"), cellClassName: "alloc-plan__why", fmt: (_, move) => reasonText(move.reason, tr, metricLabel) },
             ]}
           />
@@ -538,6 +448,6 @@ export function allocationActionPoints({ moves = [], issues = [], locale = "ko",
       text: tr(`${move.unit}: 하루 ${signed(move.delta)} (${fmtMoney(move.current)} → ${fmtMoney(move.proposed)}) — ${reasonText(move.reason, tr, metricLabel)}`, `${move.unit}: ${signed(move.delta)}/day (${fmtMoney(move.current)} → ${fmtMoney(move.proposed)}) — ${reasonText(move.reason, tr, metricLabel)}`),
       cls: move.direction === "up" ? "good" : undefined,
     })),
-    ...issues.map((issue) => issueRow(issue, tr, { fmtMoney, fmtResult, resultLabel })).filter(Boolean).map((row) => ({ text: `${row.kind} · ${row.target} — ${row.detail}`, cls: "muted" })),
+    ...issues.map((issue) => issueRow(issue, tr, { fmtMoney })).filter(Boolean).map((row) => ({ text: `${row.kind} · ${row.target} — ${row.detail}`, cls: "muted" })),
   ];
 }

@@ -34,8 +34,8 @@ export const ROUTE_SEO = {
     },
   },
   "5-31": {
-    ko: { title: "운영 플래너 | 캠페인 예산·성과·소재", description: "긴 캠페인 이력으로 최근 효율 변화와 신규 소재를 확인하고, 동일 예산 조정안과 조건부 예상 개선을 계산합니다." },
-    en: { title: "Operations Planner: Budget, Campaigns and Creatives", description: "Review recent campaign efficiency and newly observed creatives, then calculate same-budget adjustments and conditional improvements from historical data." },
+    ko: { title: "운영 플래너 | 캠페인 예산·성과·소재", description: "전체 캠페인 이력의 변화와 기록한 액션을 모아 예산 조정·소재 교체를 결정하고, 실행 이력과 다음 검토를 연결합니다." },
+    en: { title: "Operations Planner: Budget, Campaigns and Creatives", description: "Review full-history changes, plan budget and creative actions, and connect execution records to follow-up reviews with scoped before-and-after evidence." },
   },
   "5-2": {
     ko: {

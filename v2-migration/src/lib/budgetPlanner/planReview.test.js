@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { decisionReviewFollowUpMode, normalizeDecisionReviewRows, serializeDecisionReviewCsv, sanitizeDecisionReviewRecord } from "@/lib/decisionReview";
 import Papa from "papaparse";
-import { actualForPlan, createAllocationPlanSnapshot, findAllocationPlanMatches, plannerDowngradeUnits, planReviewText, reviewAllocationPlan } from "./planReview";
+import { actualForPlan as actualForPlanRaw, createAllocationPlanSnapshot, findAllocationPlanMatches as findMatchesRaw, plannerDowngradeUnits as downgradeRaw, planReviewText, reviewAllocationPlan as reviewPlanRaw } from "./planReview";
 import { allocationPlanEnd, parseAllocationPlan, serializeAllocationPlan } from "./planSnapshot";
 import { addDays } from "./plannerStats";
+
+// The uploader explicitly declares the same source currency for these fixtures.
+const actualForPlan = (plan, rows) => actualForPlanRaw(plan, rows, { currency: "KRW" });
+const reviewAllocationPlan = (record, rows) => reviewPlanRaw(record, rows, undefined, { currency: "KRW" });
+const findAllocationPlanMatches = (records, rows) => findMatchesRaw(records, rows, undefined, { currency: "KRW" });
+const plannerDowngradeUnits = (records, rows) => downgradeRaw(records, rows, undefined, { currency: "KRW" });
 
 const PLAN = {
   start: "2026-09-01",
@@ -11,6 +17,7 @@ const PLAN = {
   metric: "installs",
   unitField: "channel",
   byPlatform: true,
+  scope: { countries: [], channels: [], platform: "all", currency: "KRW", cadence: "daily" },
   targets: [
     { unit: "KR · Meta · iOS", cost: 7000, results: 70 },
     { unit: "KR · TikTok; \"A|B\" · iOS", cost: 7000, results: 35 },
@@ -30,13 +37,13 @@ function rowsFor({ from = "2026-08-25", to = "2026-09-08", meta = [1000, 10], ti
 describe("배분안 스냅샷 직렬화", () => {
   it("구분자·따옴표가 든 이름도 왕복한다", () => {
     const text = serializeAllocationPlan(PLAN);
-    expect(parseAllocationPlan(text)).toEqual({ ...PLAN, targets: [...PLAN.targets].sort((a, b) => a.unit.localeCompare(b.unit)) });
+    expect(parseAllocationPlan(text)).toMatchObject({ ...PLAN, targets: [...PLAN.targets].sort((a, b) => a.unit.localeCompare(b.unit)) });
     expect(allocationPlanEnd(PLAN)).toBe("2026-09-07");
   });
 
   it("깨진 칸·모르는 버전·중복 대상은 일부만 살리지 않고 통째로 거절한다", () => {
     const text = serializeAllocationPlan(PLAN);
-    expect(parseAllocationPlan(text.replace("v1|", "v9|"))).toBeNull();
+    expect(parseAllocationPlan(text.replace("v2|", "v9|"))).toBeNull();
     expect(parseAllocationPlan(`${text};broken`)).toBeNull();
     expect(parseAllocationPlan(text.replace("|7000|", "|-1|"))).toBeNull();
     expect(serializeAllocationPlan({ ...PLAN, targets: [PLAN.targets[0], PLAN.targets[0]] })).toBe("");
