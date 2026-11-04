@@ -13362,7 +13362,7 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
   .home-action-preview p, .home-action-preview small { font-size: var(--fs-xs); line-height: 1.7; color: var(--text-secondary); }
   .home-action-preview__steps { padding-left: 24px; margin: 24px 0; display: grid; gap: 14px; font-size: var(--fs-sm); }
   .home-action-preview__queue section + section { margin-top: 24px; }
-  .home-action-preview__queue h4 { display: flex; justify-content: space-between; gap: 16px; background: var(--bg-2); padding: 12px; margin: 0 0 16px; border-bottom: 2px solid var(--border); font-size: var(--fs-sm); }
+  .home-action-preview__queue h4 { display: flex; justify-content: space-between; gap: 16px; background: var(--bg-2); padding: 12px; margin: 0 0 16px; border-bottom: 2px solid var(--border); font-size: var(--fs-md); }
   .home-action-preview__queue h4 b { font-size: var(--fs-xs); font-weight: 400; color: var(--text-secondary); }
   @media (max-width: 1000px) {
     .operations-queue__workbench { grid-template-columns: minmax(0,1fr); }
