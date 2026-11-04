@@ -255,7 +255,9 @@ for (const locale of ["ko", "en"]) {
     await queue.getByRole("button", { name: en ? "Follow-up" : "후속 액션", exact: true }).click();
     await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
     await confirmReviewDialog(page, en);
-    await page.locator(`#sidebar a[href="${en ? "/en" : "/"}"]`).first().click();
+    const navigation = page.locator(".header-sidebar-toggle");
+    if (await navigation.getAttribute("aria-haspopup") === "dialog") await navigation.click();
+    await page.locator(`.library-nav-item[href="${en ? "/en" : "/"}"]`).click();
     await expect(page.locator(".home-operations-actions")).toBeVisible();
     await expect(page.locator(".home-operations-actions")).toContainText("리타겟팅");
     await expect(page.locator(".dc-return")).toHaveCount(0);
