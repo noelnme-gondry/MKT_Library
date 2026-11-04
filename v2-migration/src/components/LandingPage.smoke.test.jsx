@@ -76,9 +76,9 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".home-service-terms")?.textContent).toContain("7일 체험에는 포함되지 않습니다.");
     expect(document.querySelector('.home-entry__no-file a[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('.home-entry__no-file a[href="/diagnose"]')).toBeTruthy();
-    // 결과 미리보기에서 같은 버튼을 또 반복하지 않는다.
-    expect(document.querySelector('.home-result-preview a[href]')).toBeNull();
-    expect(document.querySelectorAll('.home-result-preview [role="tab"]')).toHaveLength(3);
+    // 액션 흐름 미리보기는 실제 예시 진입으로 이어진다.
+    expect(document.querySelector('.home-result-preview a[href]').getAttribute("href")).toContain("/tools/operations-planner?example=1");
+    expect(document.querySelectorAll('.home-result-preview [role="tab"]')).toHaveLength(4);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     // 홈 아래쪽의 전체 분석 목록은 분석 찾기로 합쳤다 — 같은 목록을 두 곳에 두지 않는다.
     expect(document.querySelector(".home-tool-directory")).toBeNull();
@@ -104,6 +104,7 @@ describe("LandingPage render smoke", () => {
   });
   it.each(["ko", "en"])("shows all source campaign comparisons and selects their actual daily observations (%s)", locale => {
     render(<LandingPage locale={locale} />);
+    fireEvent.click(document.querySelectorAll('.operations-sample-tabs [role="tab"]')[1]);
     const rows = buildOperationsDemo(locale).raw;
     const campaignRows = [...document.querySelectorAll(".operations-sample-campaigns > div")];
     expect(campaignRows).toHaveLength(4);
@@ -144,6 +145,7 @@ describe("LandingPage render smoke", () => {
     const brief = prepareOperationsBrief({ rows: getMappedRows(data), periods, metric: "installs", mappedFields: Object.values(data.mapping) });
     const plan = planOperationsBudget(brief, { changeLimit: 0.2, currency: "KRW" });
     expect(plan.ok).toBe(true);
+    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인", exact: true }));
     fireEvent.click(getByRole("button", { name: locale === "en" ? "Explore a plan for the same budget" : "같은 예산으로 조정안 보기", exact: true }));
     expect(document.activeElement).toBe(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }));
     expect(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }).getAttribute("aria-selected")).toBe("true");
@@ -184,7 +186,7 @@ describe("LandingPage render smoke", () => {
   it.each(["ko", "en"])("switches preview views with owned tabs, keyboard focus and one visible panel (%s)", locale => {
     const { getAllByRole } = render(<LandingPage locale={locale} />);
     const tabs = getAllByRole("tab");
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
     const selected = index => {
       tabs.forEach((tab, i) => {
         const panel = document.getElementById(tab.getAttribute("aria-controls"));
@@ -202,12 +204,12 @@ describe("LandingPage render smoke", () => {
     selected(1);
     expect(document.activeElement).toBe(tabs[1]);
     fireEvent.keyDown(tabs[1], { key: "End" });
-    selected(2);
-    fireEvent.keyDown(tabs[2], { key: "Home" });
+    selected(tabs.length - 1);
+    fireEvent.keyDown(tabs.at(-1), { key: "Home" });
     selected(0);
     fireEvent.keyDown(tabs[0], { key: "ArrowLeft" });
-    selected(2);
-    expect(document.activeElement).toBe(tabs[2]);
+    selected(tabs.length - 1);
+    expect(document.activeElement).toBe(tabs.at(-1));
   });
   it("shows a local-only continue panel for saved decisions", () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -235,6 +237,15 @@ describe("LandingPage render smoke", () => {
       locale: "ko",
     });
     delete window.gtag;
+  });
+
+  it("shows operating records once above the entry, with the planner as the next destination", () => {
+    useAppStore.setState({ decisionRecords: [{ id: "operating", actionTarget: "Campaign A", operationAction: { version: 1, kind: "budget", state: "planned", target: { channel: "Meta", campaign: "A" }, plannedDate: "2026-01-01", reviewDays: 7 } }] });
+    const { container, getByRole } = render(<LandingPage />);
+    expect(container.querySelector(".dc-return")).toBeNull();
+    expect(container.querySelector(".home-operations-actions").compareDocumentPosition(container.querySelector(".dc-hero")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(getByRole("link", { name: "플래너에서 이어가기" }).getAttribute("href")).toBe("/tools/operations-planner");
+    expect(container.querySelector(".home-operations-actions").textContent).toContain("진행 중 1건");
   });
   it("starts the clearly labeled hero example without requiring a CSV", () => {
     window.gtag = vi.fn();

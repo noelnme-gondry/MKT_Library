@@ -11,6 +11,7 @@ import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import { parseNumericStrict } from "@/utils/parseNumeric";
 import { parseAllocationPlan, serializeAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
 import { reimportableCsvBody, restoreCsvRecord } from "@/utils/download";
+import { readOperationAction, serializeOperationAction } from "@/lib/operations/actionContract";
 
 // v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
 // v8까지는 `action`이 자유 문자열이라 "예산 +15%"가 성공인지 판단할 근거가 없었다.
@@ -19,7 +20,8 @@ import { reimportableCsvBody, restoreCsvRecord } from "@/utils/download";
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
 // v16: 5-3 배분안 스냅샷(`allocationPlan`, comparisonKind "allocation_plan"). 저장한 배분안을 새 CSV의
 // 같은 기간·대상 실제값과 대조해 실행 편차와 모형 오차로 나눈다(spec §8.2). 옛 레코드는 빈 칸이다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 16;
+// v17: 운영 플래너의 대상·계획·실행일·검토 조건. 원본 행 없이 로컬 프로젝트에서 왕복한다.
+export const DECISION_REVIEW_SCHEMA_VERSION = 17;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "schemaVersion",
@@ -62,6 +64,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "forecastUpper",
   "forecastSourceThrough",
   "allocationPlan",
+  "operationAction",
   "baseline",
   "baselineDate",
   "comparisonWindowDays",
@@ -114,6 +117,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "forecast_upper",
   "forecast_source_through",
   "allocation_plan",
+  "operation_action",
   "baseline",
   "baseline_date",
   "comparison_window_days",
@@ -537,6 +541,7 @@ function hasComparableMetric(metric) {
 // 새 CSV로 자동 대조할 수 있는 기록과, 같은 도구에서 재분석한 값을 사용자가
 // 기록해야 하는 진단형 결정을 구분한다. 후자를 자동 성과처럼 만들지 않는다.
 export function decisionReviewFollowUpMode(record = {}) {
+  if (readOperationAction(record.operationAction ?? record.operation_action)) return "rerun_manual"; // 운영 플래너에서 대상별 실행 전후를 검토한다.
   if (String(record.comparisonKind ?? record.comparison_kind) === "forecast_actual") return "forecast_auto";
   if (String(record.comparisonKind ?? record.comparison_kind) === "allocation_plan") return "plan_auto";
   if (needsExplicitPlanReview(record.reviewPlan)) return "rerun_manual";
@@ -625,6 +630,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     locale,
     conclusion: asText(field(row, "conclusion"), FIELD_LIMITS.conclusion),
     action,
+    operationAction: serializeOperationAction(field(row, "operationAction", "operation_action")),
     actionKind: asActionKind(field(row, "actionKind", "action_kind")),
     actionTarget: asText(field(row, "actionTarget", "action_target"), FIELD_LIMITS.metric),
     actionAmount: asText(field(row, "actionAmount", "action_amount"), 32),

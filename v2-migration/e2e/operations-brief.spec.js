@@ -25,6 +25,7 @@ async function openOperations(page, en, options = {}) {
   await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "synthetic-operations.csv", mimeType: "text/csv", buffer: csvFixture(options) });
   await uploader.getByRole("button", { name: en ? "KRW ₩" : "원 ₩", exact: true }).click();
   await uploader.getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+  await page.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
   await expect(page.locator("#ops-budget-title")).toBeVisible();
 }
 
@@ -39,11 +40,13 @@ for (const locale of ["ko", "en"]) {
     const previewCpi = (await page.locator(".operations-sample-preview__metric strong").textContent()).split("→").at(-1).trim();
     await page.screenshot({ path: testInfo.outputPath("operations-home.png") });
     await page.getByRole("link", { name: en ? /View demo/ : /데모 보기/ }).click();
+    await expect(page.locator(".operations-queue")).toBeVisible();
+    await page.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
     await expect(page.locator("#ops-budget-title")).toBeVisible();
     await expect(page.locator(".operations-planner__demo")).toContainText(en ? "98 days" : "98일");
     await expect(page.locator(".result-action-card__stats")).toContainText(previewCpi);
     await expect(page.locator(".operations-new-creatives")).toContainText(en ? "Customer review video" : "고객 후기 영상");
-    await expect(page.locator(".operations-workbench canvas")).toHaveCount(6);
+    await expect(page.locator(".operations-workbench canvas")).toHaveCount(7);
     const figureHeader = page.locator(".operations-trend .figure-head");
     const titleBounds = await figureHeader.locator("h3").boundingBox();
     const pngBounds = await figureHeader.getByRole("button", { name: en ? "Download PNG" : "PNG 받기", exact: true }).boundingBox();
@@ -103,13 +106,14 @@ for (const locale of ["ko", "en"]) {
     await trendControls.getByRole("radio", { name: en ? "Spend" : "광고비", exact: true }).press("Home");
     await expect(trendControls.getByRole("radio", { name: "CPI", exact: true })).toBeFocused();
     await page.getByRole("button", { name: en ? "Select Customer review video" : "고객 후기 영상 선택", exact: true }).click();
-    await page.getByRole("button", { name: en ? /Follow up on this creative next week/ : /이 소재를 다음 주에도 확인/ }).click();
-    await expect(page.locator(".operations-review-plan")).toContainText(en ? "Customer review video" : "고객 후기 영상");
-    const baseline = await page.locator(".operations-review-plan > div").first().locator("strong").textContent();
-    await expect(page.locator(".operations-review-demo")).toBeVisible();
-    await expect(page.locator(".decision-review-launch")).toHaveCount(0);
-    await page.locator("#ops-review").evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
-    await page.screenshot({ path: testInfo.outputPath("operations-review.png") });
+    const baseline = await page.locator(".operations-creative-detail dl > div").filter({ has: page.locator("dt", { hasText: /^CPI$/ }) }).locator("dd").textContent();
+    await page.getByRole("button", { name: en ? /Define an action for this creative/ : /이 소재의 액션 정하기/ }).click();
+    const action = page.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기", exact: true });
+    await expect(action.getByLabel(en ? "Creative name / ID" : "소재 이름 / ID", { exact: true })).toHaveValue(en ? "Customer review video" : "고객 후기 영상");
+    await expect(action.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true })).toBeDisabled();
+    await expect(action).toContainText(en ? "CPRR gains or losses from creative actions are not predicted" : "소재 액션의 CPRR 개선·악화 수치는 예측하지 않습니다");
+    await page.screenshot({ path: testInfo.outputPath("operations-action.png") });
+    await action.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
     await page.locator(".operations-planner__conditions > summary").click();
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: en ? "Download demo CSV" : "데모 원본 CSV", exact: true }).click();
@@ -211,34 +215,55 @@ for (const locale of ["ko", "en"]) {
     await expect(budget.locator(".operations-comparison--single > .operations-panel--trend")).toBeVisible();
     await expect(page.locator(".operations-observed-queue tbody tr")).toHaveCount(2);
     await expect(page.locator("#ops-input-detail")).toContainText(en ? "Complete total" : "유효한 합계");
-    await expect(page.locator(".operations-review-choices")).not.toContainText(en ? "Budget adjustment" : "예산 조정");
+    await expect(budget.getByRole("button", { name: en ? /Define a budget action/ : /예산 조정 액션 정하기/ })).toHaveCount(0);
     const grid = await budget.locator(".operations-comparison--single").boundingBox();
     const trend = await budget.locator(".operations-panel--trend").boundingBox();
     expect(Math.abs(grid.width - trend.width), "observed trend uses the full column when predictions are withheld").toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 
-  test(`operations planner: chart decision saved and opened in weekly review (${locale})`, async ({ page }) => {
+  test(`operations planner: saved plan, execution, review, follow-up and home (${locale})`, async ({ page }) => {
     const en = locale === "en";
     await enableReviewLogin(page);
     await openOperations(page, en);
-    await page.getByRole("button", { name: en ? /Review this campaign next week/ : /이 캠페인 점검을 주간 리뷰로/ }).click();
-    await page.locator(".decision-review-launch").click();
-    const editor = page.getByRole("dialog", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기", exact: true });
-    await expect(editor.getByLabel(en ? "Target" : "대상", { exact: true })).toHaveValue(/리타겟팅/);
-    await expect(editor).toContainText(en ? "no automatic outcome match" : "자동 실제값 대조는 제공하지 않습니다");
-    await editor.getByRole("switch", { name: en ? "Store source files and decision records on this device" : "원본 파일과 결정 기록을 이 기기에 저장", exact: true }).check();
-    await editor.getByRole("button", { name: en ? "Create it" : "이대로 만들기", exact: true }).click();
+    await page.getByRole("button", { name: en ? /Define an action for this campaign/ : /이 캠페인의 액션 정하기/ }).click();
+    const editor = page.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기", exact: true });
+    await expect(editor.getByRole("combobox", { name: en ? "Target" : "대상", exact: true }).locator("option:checked")).toContainText("리타겟팅");
+    await editor.getByLabel(en ? "Planned date" : "계획일", { exact: true }).fill("2026-08-20");
+    await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
+    // 기기 저장은 기본으로 켜져 있다. 실제 저장 대화상자의 확인과 완료를 밟는다.
     await confirmReviewDialog(page, en);
-    await page.getByRole("link", { name: en ? "Open Weekly review" : "주간 리뷰 열기", exact: true }).click();
-    await expect(page).toHaveURL(/weekly-review#wr-history$/);
-    await expect(page.locator("#wr-history")).toContainText("리타겟팅");
-    await expect(page.locator(".header-data-context")).toContainText("synthetic-operations.csv");
-    await page.locator("#wr-history").getByRole("button", { name: /2026-09-15.*리타겟팅/ }).click();
-    const review = page.getByRole("dialog", { name: /리타겟팅/ });
-    await expect(review).toContainText("2026-09-08");
-    await expect(review).toContainText("CPI");
-    await expect(review.getByRole("link", { name: en ? /Operations planner/ : /운영 플래너/ })).toHaveAttribute("href", /tools\/operations-planner/);
+    await page.getByRole("tab", { name: en ? "Actions & reviews" : "지금 할 일", exact: true }).click();
+    const queue = page.locator(".operations-queue");
+    await queue.getByRole("button", { name: en ? /^In progress/ : /^진행 중/ }).click();
+    await expect(queue.locator(".operations-queue__choice")).toHaveCount(1);
+    await queue.getByRole("button", { name: en ? "Record execution" : "실행 기록", exact: true }).click();
+    await editor.getByRole("combobox", { name: en ? "State" : "상태", exact: true }).selectOption("executed");
+    await editor.getByLabel(en ? "Actual execution date" : "실제 실행일", { exact: true }).fill("2026-08-21");
+    await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    await queue.getByRole("button", { name: en ? /^Review results/ : /^검토할 결과/ }).click();
+    await expect(queue.locator(".operations-queue__dates")).toContainText("2026-08-28");
+    await queue.getByRole("button", { name: en ? "Review before/after" : "전후 검토", exact: true }).click();
+    const review = page.getByRole("dialog", { name: en ? "Review after execution" : "실행 후 검토", exact: true });
+    await expect(review).toContainText("2026-08-14 – 2026-08-20 → 2026-08-21 – 2026-08-27");
+    await review.getByLabel(en ? "Review note" : "검토 메모").fill("Observed with concurrent changes");
+    await review.getByRole("button", { name: en ? "Save observation" : "관측 결과 저장", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    await queue.getByRole("button", { name: en ? /^Completed/ : /^완료/ }).click();
+    await expect(queue.locator(".operations-queue__detail")).toContainText("Observed with concurrent changes");
+    await queue.getByRole("button", { name: en ? "Follow-up" : "후속 액션", exact: true }).click();
+    await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    const navigation = page.locator(".header-sidebar-toggle");
+    if (await navigation.getAttribute("aria-haspopup") === "dialog") await navigation.click();
+    await page.locator(`.library-nav-item[href="${en ? "/en" : "/"}"]`).click();
+    await expect(page.locator(".home-operations-actions")).toBeVisible();
+    await expect(page.locator(".home-operations-actions")).toContainText("리타겟팅");
+    await expect(page.locator(".dc-return")).toHaveCount(0);
+    await page.locator(".home-operations-actions a").click();
+    await expect(page).toHaveURL(/tools\/operations-planner$/);
+    await expect(page.locator(".operations-queue")).toBeVisible();
   });
 
   test(`operations planner: results first, editable scope and keyboard actions (${locale})`, async ({ page }, testInfo) => {
@@ -246,20 +271,21 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${en ? "/en" : ""}/tools/operations-planner?example=1`);
     const settings = page.locator(".operations-planner__conditions");
     const summary = settings.locator(":scope > summary");
-    await expect(page.locator("#ops-budget-title")).toBeVisible();
+    await expect(page.locator(".operations-queue")).toBeVisible();
     await expect(settings).not.toHaveAttribute("open");
     await expect(summary).toContainText("2026-09-30");
     await expect(summary).toContainText("2026-09-23");
     await expect(summary).toContainText(en ? "Fictional sample" : "가상 예시");
     await expect(summary).toContainText("CPI · KRW");
     await expect(settings.getByRole("button", { name: en ? /^Comparison period/ : /^비교 기간/ })).toBeHidden();
+    const tabs = page.getByRole("tablist", { name: en ? "Operations planner views" : "운영 플래너 보기", exact: true });
+    await tabs.getByRole("tab", { name: en ? "Actions & reviews" : "지금 할 일", exact: true }).press("ArrowRight");
+    await expect(tabs.getByRole("tab", { name: en ? "Full change history" : "전체 변화 이력", exact: true })).toBeFocused();
+    await expect(page.getByRole("table", { name: en ? "Full change list" : "전체 변화 목록", exact: true })).toBeVisible();
+    await tabs.getByRole("tab", { name: en ? "Full change history" : "전체 변화 이력", exact: true }).press("ArrowRight");
+    await expect(tabs.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기", exact: true })).toBeFocused();
     await expect(page.locator(".operations-data")).not.toHaveAttribute("open");
-    await expect(page.locator(".operations-workbench canvas")).toHaveCount(6);
-    const nav = page.getByRole("navigation", { name: en ? "Results and next actions" : "결과와 다음 행동" });
-    for (const [name, id] of [[en ? /Inspect budget plan/ : /예산안 확인/, "ops-budget-title"], [en ? /Inspect campaign changes/ : /캠페인 변화 확인/, "ops-campaign"], [en ? /Compare new creatives/ : /새 소재 비교/, "ops-new-title"], [en ? /Prepare weekly review/ : /주간 리뷰 준비/, "ops-review-title"]]) {
-      await nav.getByRole("link", { name }).press("Enter");
-      await expect(page.locator(`#${id}`)).toBeFocused();
-    }
+    await expect(page.locator(".operations-workbench canvas")).toHaveCount(7);
     await summary.press("Enter");
     await expect(settings).toHaveAttribute("open", "");
     const editData = settings.getByRole("button", { name: en ? "Change data or mapping" : "데이터·매핑 바꾸기", exact: true });
@@ -304,7 +330,8 @@ for (const locale of ["ko", "en"]) {
     expect(expanded.figureCrowding).toEqual([]);
     await summary.press("Enter");
     await page.locator(".operations-data > summary").press("Enter");
-    await nav.getByRole("link", { name: en ? /Inspect budget plan/ : /예산안 확인/ }).press("Enter");
+    await tabs.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기", exact: true }).press("Home");
+    await expect(page.locator(".operations-queue")).toBeVisible();
     if (testInfo.project.name === "desktop-1440") {
       await page.locator(".operations-planner__conditions > summary").scrollIntoViewIfNeeded();
       await page.screenshot({ path: testInfo.outputPath("operations-result-first.png") });
@@ -318,6 +345,7 @@ test("operations planner daily chart exports a real PNG with paid access", async
   await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "planner-test", email: "planner@example.com" }, entitlement } }));
   await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement } }));
   await page.goto("/tools/operations-planner?example=1");
+  await page.getByRole("tab", { name: "근거 살펴보기", exact: true }).click();
   const figure = page.locator(".operations-trend");
   await expect(figure).toBeVisible();
   await expect(figure).toContainText("2026-07-01");

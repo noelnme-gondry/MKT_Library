@@ -5,7 +5,8 @@ import { chooseDashboardView } from "./support/dashboardView.js";
 for (const locale of ["ko", "en"]) {
   test(`shared title, named progress and uncrowded PNG controls (${locale})`, async ({ page }, testInfo) => {
     await page.goto(`${locale === "en" ? "/en" : ""}/tools/operations-planner?example=1`);
-    await expect(page.locator(".operations-workbench canvas")).toHaveCount(6);
+    await page.getByRole("tab", { name: locale === "en" ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
+    await expect(page.locator(".operations-workbench canvas")).toHaveCount(7);
     const inset = await page.locator(".page-sticky-bar:has(h1)").evaluate(node => {
       const title = node.querySelector("h1").getBoundingClientRect(), box = node.getBoundingClientRect();
       return { left: title.left - box.left, right: box.right - title.right };
@@ -19,7 +20,7 @@ for (const locale of ["ko", "en"]) {
       expect(size.height).toBeGreaterThan(14);
     }
     const result = await measureDesignRules(page);
-    expect(result.figureExports).toBe(6);
+    expect(result.figureExports).toBe(7);
     expect(result.figureCrowding).toEqual([]);
     expect(result.titleInsets).toEqual([]);
     const periods = page.locator(".operations-trend .operations-chart__caption").first();

@@ -16,6 +16,8 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".home-result-preview > h2")).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/calculator"]`)).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeVisible();
+    await expect(page.locator(".home-action-preview")).toBeVisible();
+    await page.getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인", exact: true }).click();
     await expect(page.getByRole("figure", { name: locale === "en" ? "Campaign daily CPI trend and period comparison" : "캠페인 일별 CPI 추세와 직전·최근 비교" })).toBeVisible();
     await expect(page.locator(".operations-sample-campaigns > div")).toHaveCount(4);
     const currentCpi = (await page.locator(".operations-sample-preview__metric strong").textContent()).split("→").at(-1).trim();
@@ -40,16 +42,17 @@ for (const locale of ["ko", "en"]) {
     await expect(conditions).not.toHaveAttribute("open", "");
     await expect(conditions.locator("summary")).toBeVisible();
     await expect(conditions.locator("summary")).toContainText(locale === "en" ? "Fictional sample" : "가상 예시");
+    await expect(page.locator(".operations-queue")).toBeVisible();
+    await page.getByRole("tab", { name: locale === "en" ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
     await expect(page.locator(".result-action-card__stats")).toContainText(currentCpi);
     await expect(page.locator(".operations-brief__forecast")).toContainText(forecast);
     for (const creative of creatives) await expect(page.locator(".operations-panel--creative")).toContainText(creative);
-    // 제품 계약의 예산·캠페인·소재·주간 리뷰 행동이 실제 근거 영역으로 연결된다.
-    const actions = page.getByRole("navigation", { name: locale === "en" ? "Results and next actions" : "결과와 다음 행동" });
-    await expect(actions.getByRole("link")).toHaveCount(4);
-    for (const [index, target] of ["#ops-budget-title", "#ops-campaign", "#ops-new-title", "#ops-review-title"].entries()) {
-      await expect(actions.getByRole("link").nth(index)).toHaveAttribute("href", target);
-      await expect(page.locator(target)).toBeVisible();
-    }
+    // 홈에서 가져온 데이터가 액션, 전체 변화, 근거를 한 플래너에서 지원한다.
+    await page.getByRole("tab", { name: locale === "en" ? "Full change history" : "전체 변화 이력", exact: true }).click();
+    await expect(page.getByRole("table", { name: locale === "en" ? "Full change list" : "전체 변화 목록", exact: true })).toBeVisible();
+    await page.getByRole("tab", { name: locale === "en" ? "Actions & reviews" : "지금 할 일", exact: true }).click();
+    await expect(page.locator(".operations-queue__group > h3")).toContainText(locale === "en" ? "Adjust budget" : "예산 조정");
+    await expect(page.locator(".operations-queue__pagination")).toHaveCount(0);
   });
 
   test(`operations home preview uses the full width for entry and evidence (${locale})`, async ({ page }, testInfo) => {
@@ -74,7 +77,7 @@ for (const locale of ["ko", "en"]) {
         expect(box.height).toBeGreaterThanOrEqual(44);
         expect(box.height).toBeLessThanOrEqual(72);
       }
-      await expect(page.locator(".operations-sample-preview__body > section")).toHaveCount(3);
+      await expect(page.locator(".operations-sample-preview__body > section")).toHaveCount(4);
       await expect(page.getByRole("tabpanel")).toHaveCount(1);
       await expect(page.locator(".operations-sample-budget__moves > div")).toHaveCount(4);
       await expect(page.locator(".operations-sample-preview__creatives tbody tr")).toHaveCount(2);
@@ -109,13 +112,13 @@ for (const locale of ["ko", "en"]) {
       await tabs.first().focus();
       await page.keyboard.press("ArrowRight");
       await expect(tabs.nth(1)).toBeFocused();
-      await expect(page.locator(".operations-sample-preview__budget")).toBeVisible();
+      await expect(page.locator(".operations-sample-preview__campaigns")).toBeVisible();
       await page.keyboard.press("End");
-      await expect(tabs.nth(2)).toBeFocused();
+      await expect(tabs.nth(3)).toBeFocused();
       await expect(page.locator(".operations-sample-preview__creatives")).toBeVisible();
       await page.keyboard.press("Home");
       await expect(tabs.first()).toBeFocused();
-      for (let index = 0; index < 3; index++) {
+      for (let index = 0; index < 4; index++) {
         await tabs.nth(index).click();
         await expect(tabs.nth(index)).toHaveAttribute("aria-selected", "true");
         await expect(page.getByRole("tabpanel")).toHaveCount(1);
@@ -127,7 +130,7 @@ for (const locale of ["ko", "en"]) {
         expect(design.smallHeadings).toEqual([]);
         expect(design.nested).toEqual([]);
         expect(design.horizontalOverflow).toBeLessThanOrEqual(1);
-        if (index === 2 && page.viewportSize().width <= 720) {
+        if (index === 3 && page.viewportSize().width <= 720) {
           const region = page.locator(".operations-sample-preview__creatives .table-wrap");
           const box = await region.boundingBox();
           const cost = await page.locator(".operations-sample-creative__result strong").first().boundingBox();

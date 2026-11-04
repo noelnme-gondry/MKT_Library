@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { fmtPct } from "@/utils/format";
-import { OperationsTrend, OperationsBudgetChart, OperationsCampaignChart, OperationsStageChart, OperationsMixChart, OperationsCreativeChart } from "./OperationsCharts";
+import { OperationsTrend, OperationsBudgetChart, OperationsCampaignChart, OperationsStageChart, OperationsMixChart, OperationsCreativeChart, OperationsCprScatter } from "./OperationsCharts";
 import OperationsWeeklyReview from "./OperationsWeeklyReview";
 import DataTable from "@/components/ds/DataTable";
 import OperationsMetricEvidence from "./OperationsMetricEvidence";
@@ -9,7 +9,7 @@ import OperationsObservedQueue from "./OperationsObservedQueue";
 
 export default function OperationsWorkbench({ brief, plan, budgetRows, campaign, creative, setSelected, setCreativeSelection,
   limit, replanning, changeLimit, holdMessages, metricName, outcomeName, currency, locale, periods, isDemo,
-  money, number, pct, reviewCandidates, reviewSelection, chooseReview, reviewRef, evidence, onInspectMapping }) {
+  money, number, pct, reviewCandidates, reviewSelection, chooseReview, reviewRef, evidence, onInspectMapping, showReview = true }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const showEvidence = id => requestAnimationFrame(() => {
     const heading = document.getElementById(id);
@@ -56,7 +56,7 @@ export default function OperationsWorkbench({ brief, plan, budgetRows, campaign,
           <OperationsBudgetChart rows={budgetRows} currency={currency} locale={locale} periods={periods} isDemo={isDemo} />
           <div className="operations-budget-shifts">{budgetRows.map(row => <div key={row.id}><span>{row.name}<small>{tr(`예상 ${metricName}`, `Predicted ${metricName}`)} {money(row.baselineCpr)} → {money(row.expectedCpr)}</small></span><b data-tone={row.budget > row.current + 1e-6 ? "increase" : row.budget < row.current - 1e-6 ? "decrease" : "neutral"}>{row.budget > row.current + 1e-6 ? "+" : row.budget < row.current - 1e-6 ? "−" : ""}{money(Math.abs(row.budget - row.current))}<small> / {tr("일", "day")}</small></b></div>)}</div>
           <p className="operations-chart__caption">{tr(`유지안 → 조정안 예상 ${metricName}`, `Maintenance → revised predicted ${metricName}`)} {money(plan.baselineCpr)} → {money(plan.expectedCpr)}. {tr("같은 모형의 조건부 예측이며 개선은 보장되지 않습니다.", "Conditional predictions from the same model; improvement is not guaranteed.")}</p>
-          <button className="btn primary" type="button" onClick={() => chooseReview("budget")}>{tr("이 예산안을 주간 리뷰로", "Review this budget plan next week")} →</button>
+          <button className="btn primary" type="button" onClick={() => chooseReview("budget")}>{tr("예산 조정 액션 정하기", "Define a budget action")} →</button>
         </section>}
 
       <section className="operations-panel operations-panel--trend" aria-labelledby="ops-trend-title">
@@ -89,8 +89,9 @@ export default function OperationsWorkbench({ brief, plan, budgetRows, campaign,
             <div><OperationsStageChart value={campaign.stages} metricName={metricName} currency={currency} locale={locale} periods={periods} isDemo={isDemo} scopeLabel={campaign.name} /></div>
             <div><OperationsMixChart value={campaign.pvm} metricName={metricName} currency={currency} locale={locale} periods={periods} isDemo={isDemo} scopeLabel={campaign.name} /></div>
           </div>
-          <p className="operations-chart__caption">{tr("구성: 소재 간 성과 비중 변화 · 단가: 각 소재의 단가 변화. 단계별 분해와 같은 변화를 다른 기준으로 설명하며 서로 더하지 않습니다.", "Mix: outcome-share shifts between creatives. Unit cost: changes within creatives. This explains the same change as the stage breakdown from a different perspective; do not add the two.")}</p>
-          {campaign.current.cpr != null && <button className="btn ghost" type="button" onClick={() => chooseReview(`campaign:${campaign.id}`)}>{tr("이 캠페인 점검을 주간 리뷰로", "Review this campaign next week")} →</button>}
+          <OperationsCprScatter campaign={campaign} model={brief.models.get(campaign.id)} {...{ metricName, currency, locale, periods, isDemo }} />
+          <p className="operations-chart__caption">{tr("소재별 성과 비중이 바뀐 몫과 소재별 성과당 비용이 바뀐 몫입니다. 단계별 분해와 같은 변화를 다른 기준으로 설명하며 서로 더하지 않습니다.", "Changes in outcome share and cost per outcome by creative. This explains the same change as the stage breakdown from a different perspective; do not add the two.")}</p>
+          {campaign.current.cpr != null && <button className="btn ghost" type="button" onClick={() => chooseReview(`campaign:${campaign.id}`)}>{tr("이 캠페인의 액션 정하기", "Define an action for this campaign")} →</button>}
         </> : <p>{tr("분석할 캠페인이 없습니다.", "No campaigns to analyze.")}</p>}
       </section>
       </div>
@@ -109,7 +110,7 @@ export default function OperationsWorkbench({ brief, plan, budgetRows, campaign,
             <div><dt>{metricName}</dt><dd>{money(creative.cpr)}</dd></div><div><dt>{tr("관측일", "Observed days")}</dt><dd>{creative.days}{tr("일", " days")}</dd></div>
             <div><dt>{tr("업로드 이력의 첫 관측일", "First observed in uploaded history")}</dt><dd>{creative.firstDate}</dd></div>
             {creative.isNew && <div><dt>{tr("기존 소재 대비", "vs established creatives")}</dt><dd>{creative.vsEstablishedPct == null ? tr("비교 불가", "Not comparable") : pct(creative.vsEstablishedPct)}</dd></div>}</dl>
-          {creative.isNew && creative.cpr != null && <button className="btn ghost" type="button" onClick={() => chooseReview(`creative:${creative.id}`)}>{tr("이 소재를 다음 주에도 확인", "Follow up on this creative next week")} →</button>}
+          {creative.isNew && creative.cpr != null && <button className="btn ghost" type="button" onClick={() => chooseReview(`creative:${creative.id}`)}>{tr("이 소재의 액션 정하기", "Define an action for this creative")} →</button>}
         </div>
         <p className="operations-chart__caption">{tr("첫 관측은 업로드 이력 기준입니다. 실제 생성일은 미확인입니다. 기존 대비는 같은 캠페인·같은 기간의 비용 합계 ÷ 성과 합계이며 소재 효과를 확정하지 않습니다.", "First observed in uploaded history; creation dates are unverified. The established comparison is total spend ÷ outcomes for the same campaign and period, not a causal creative effect.")}</p>
       </section>}
@@ -130,6 +131,6 @@ export default function OperationsWorkbench({ brief, plan, budgetRows, campaign,
       </section>
       </div>
     </div>
-    <div ref={reviewRef}><OperationsWeeklyReview candidates={reviewCandidates} selected={reviewSelection} onSelect={chooseReview} isDemo={isDemo} locale={locale} currency={currency} periods={periods} /></div>
+    {showReview && <div ref={reviewRef}><OperationsWeeklyReview candidates={reviewCandidates} selected={reviewSelection} onSelect={chooseReview} isDemo={isDemo} locale={locale} currency={currency} periods={periods} /></div>}
   </>;
 }

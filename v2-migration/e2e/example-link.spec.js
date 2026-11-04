@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { publishedToolIds } from "../src/lib/routeMap";
 import { exampleHref } from "../src/lib/exampleLink";
+import { toolResultSelector } from "./support/toolResult";
 import { TEMPLATE_PAGES } from "../src/lib/templateCatalog";
 
 // 예시 결과는 버튼뿐 아니라 주소 하나로도 열린다(?example=1, 2026-09-29) — 블로그·템플릿·외부 공유·AI
@@ -18,7 +19,7 @@ for (const toolId of TOOLS) {
     const href = exampleHref(toolId, "ko");
     expect(href).toMatch(/\?example=1$/);
     await page.goto(href);
-    await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator(toolResultSelector(toolId)).first()).toBeVisible({ timeout: 120_000 });
     await expect(page.getByRole("dialog")).toHaveCount(0);
     // 한 번 쓴 파라미터는 지운다 — 새로고침·주소 복사가 올린 파일을 예시로 덮지 않게.
     await expect(page).not.toHaveURL(/example=1/);
@@ -35,5 +36,5 @@ test("template detail links to its tool's example result", async ({ page }) => {
   const link = page.getByRole("link", { name: "예시 결과 보기 →" });
   await expect(link).toHaveAttribute("href", exampleHref(template.toolId, "ko"));
   await link.click();
-  await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 120_000 });
+  await expect(page.locator(toolResultSelector(template.toolId)).first()).toBeVisible({ timeout: 120_000 });
 });

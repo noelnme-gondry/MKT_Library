@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 import { toolIndexEntry, toolIndexByStage } from "../src/lib/toolIndex";
+import { toolResultSelector } from "./support/toolResult";
 import { idToSlug, publishedToolIds } from "../src/lib/routeMap";
 
 for (const locale of ["ko", "en"]) {
@@ -118,7 +119,7 @@ for (const locale of ["ko", "en"]) {
       await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
       await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
       await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId]}$`), { timeout: 30_000 });
-      const reached = await page.locator(".result-action-card").first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
+      const reached = await page.locator(toolResultSelector(toolId)).first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
       if (!reached || await page.getByRole("dialog").count()) stuck.push(toolId);
     }
     expect(stuck).toEqual([]);

@@ -164,17 +164,26 @@ for (const path of RESULT_PAGES) {
     // 9-6은 소재 480개를 분석해 그리는 데만 1분 가까이 걸린다(빌드본 기준).
     test.setTimeout(150_000);
     await page.goto(path);
-    if (path.includes("?example=1")) await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
+    if (path.includes("?example=1")) await expect(page.locator(".result-action-card, .operations-queue").first()).toBeVisible({ timeout: 30_000 });
     else await openExampleResult(page);
     expectClean(await measureDesignRules(page));
     // 결과가 나왔으면 매핑 선택상자는 결론 카드 위에 하나도 없어야 한다 — 매핑은 한 줄 요약으로 접힌다.
     const mappingAbove = await page.evaluate(() => {
-      const card = [...document.querySelectorAll(".result-action-card")].find((el) => el.checkVisibility());
+      const card = [...document.querySelectorAll(".result-action-card, .operations-queue")].find((el) => el.checkVisibility());
       const top = card.getBoundingClientRect().top;
       return [...document.querySelectorAll(".mapping-grid select, .segment-role-mapper select, #s-aha-map select, #brand-its-setup select")]
         .filter((el) => el.checkVisibility() && el.getBoundingClientRect().top < top).length;
     });
     expect(mappingAbove).toBe(0);
+    // 운영 플래너는 액션 작업대가 기본이다. 이력과 근거 탭도 같은 규칙으로 검사한다.
+    if (path.split("?")[0].endsWith("/operations-planner")) {
+      const tabs = page.locator(".operations-loop > .allocation-result-workspace > .allocation-result-tabs [role=tab]");
+      await expect(tabs).toHaveCount(3);
+      for (let index = 1; index < 3; index++) {
+        await tabs.nth(index).click();
+        expectClean(await measureDesignRules(page));
+      }
+    }
   });
 }
 

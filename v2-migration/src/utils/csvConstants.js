@@ -1448,7 +1448,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "arm_id", unlocks: "다변형 대량검정 (Variant A/B/C…)" },
                 { key: "date", unlocks: "기간 표기 (선택)" },
               ],
-              "5-31": ["campaign_id", "campaign_name", "channel", "creative_id", "platform", "country", "source", "impressions", "clicks", "installs", "actions"].map(key => ({ key, unlocks: "운영 범위와 캠페인·소재·단계별 근거" })),
+              "5-31": ["daily_budget", "campaign_id", "campaign_name", "channel", "creative_id", "platform", "country", "source", "impressions", "clicks", "installs", "actions"].map(key => ({ key, unlocks: "운영 범위와 캠페인·소재·단계별 근거" })),
               "5-2": [
                 { key: "snapshot_date", unlocks: "리텐션 Dn 마감 판정 — 데이터 추출 기준일" },
                 { key: "source", unlocks: "광고/오가닉(소스) 필터 — 유료·자연 유입 분리" },

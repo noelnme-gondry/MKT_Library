@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { drawPoint } from "chart.js/helpers";
-import { OperationsTrend, OperationsCampaignChart, OperationsCreativeChart } from "./OperationsCharts";
+import { OperationsTrend, OperationsCampaignChart, OperationsCreativeChart, OperationsCprScatter } from "./OperationsCharts";
 const calls = vi.hoisted(() => []);
 vi.mock("@/utils/chartGlobals", () => ({ default: class {
   constructor(_, config) { calls.push(config); }
@@ -11,6 +11,18 @@ vi.mock("@/utils/chartGlobals", () => ({ default: class {
 const periods = { previous: { start: "2026-10-01", end: "2026-10-07" }, current: { start: "2026-10-08", end: "2026-10-14" } };
 const props = { periods, locale: "ko", currency: "KRW", metricName: "CPI", isDemo: true };
 beforeEach(() => { calls.length = 0; });
+
+it("separates observed scatter points and trend predictions without pairing unrelated array indices", () => {
+  render(<OperationsCprScatter {...props} campaign={{ name: "Campaign", trend: [{ date: "2026-10-01", cost: 100, cpr: 11 }, { date: "2026-10-02", cost: 300, cpr: 13 }] }}
+    model={{ xMin: 100, xMax: 300, kept: [{ x: 100, y: 11, date: "2026-10-01" }, { x: 300, y: 13, date: "2026-10-02" }], model: { type: "Linear", predict: cost => 10 + cost / 100 } }} />);
+  const config = calls.at(-1);
+  expect(config.data.datasets[0].data).toEqual([{ x: 100, y: 11, date: "2026-10-01" }, { x: 300, y: 13, date: "2026-10-02" }]);
+  expect(config.data.datasets[1].data[0]).toEqual({ x: 100, y: 11 });
+  expect(config.data.datasets[1].data.at(-1)).toEqual({ x: 300, y: 13 });
+  // 2 observed days and 41 model points are not paired observations. Index mode would mix different spends in one tooltip.
+  expect(config.options.interaction.mode).toBe("nearest");
+  expect(config.options.plugins.tooltip.mode).toBe("nearest");
+});
 
 // 반지름 비만 검사하면 서로 다른 도형의 실제 면적 왜곡을 놓친다.
 // Chart.js가 그리는 원/다각형 경로에서 면적을 독립적으로 측정한다.

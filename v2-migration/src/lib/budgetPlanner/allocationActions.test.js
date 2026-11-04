@@ -85,6 +85,7 @@ describe("확인할 점 — 실제 신호가 있을 때만", () => {
   it("학습 부족 → 손해 소재 → 피로(지금, 예측 기간 안) → 고정 → 미배분 순서", () => {
     const issues = allocationIssues({
       creatives: [
+        creative({ creativeId: "bad", nodeKey: "n2", state: "LOSER" }),
         creative({ creativeId: "soon", fatigue: { fatigued: false, etaDays: 5.2 } }),
         creative({ creativeId: "later", fatigue: { fatigued: false, etaDays: 40 } }),
         creative({ creativeId: "now", nodeKey: "n2", fatigue: { fatigued: true } }),
@@ -101,12 +102,13 @@ describe("확인할 점 — 실제 신호가 있을 때만", () => {
       addDays,
     });
     expect(issues.map((issue) => issue.code)).toEqual(["learning_short", "loser_creative", "fatigue_now", "fatigue_soon", "review_held", "unallocated"]);
-    expect(issues[1].params.gain).toBe(12);
+    expect(issues[1].params.creatives).toEqual(["bad"]);
+    expect(issues[1].params).not.toHaveProperty("gain");
     expect(issues[2].params).toEqual({ unit: "KR · TikTok · iOS", creative: "now", date: null });
     expect(issues[3].params).toEqual({ unit: "KR · Meta · iOS", creative: "soon", date: "2026-10-06" });
   });
 
-  it("소재를 꺼도 결과가 늘지 않으면 손해 소재로 말하지 않는다", () => {
+  it("가정한 종료 시나리오만으로 소재 액션이나 개선치를 제시하지 않는다", () => {
     const issues = allocationIssues({ loserScenario: { base: { results: 100 }, scenario: { results: 100 }, offs: [{ unit: "u", creativeIds: ["c"], multiplier: 0.8 }] } });
     expect(issues).toEqual([]);
   });
@@ -127,20 +129,20 @@ describe("결론 문장 — 줄은 방향별, 줄 안은 끊기지 않는 덩어
     expect(result.lines).toEqual([
       { kind: "down", chunks: ["Meta AAP", "일 ₩390만 감액"] },
       { kind: "up", chunks: ["Google UAC 외 2곳", "일 ₩265만 증액"] },
-      { kind: "effect", chunks: ["→ CPI −8.9%"] },
+      { kind: "effect", chunks: ["→ 모형 예상 CPI −8.9%"] },
     ]);
-    expect(result.text).toBe("Meta AAP 일 ₩390만 감액 · Google UAC 외 2곳 일 ₩265만 증액 → CPI −8.9%");
+    expect(result.text).toBe("Meta AAP 일 ₩390만 감액 · Google UAC 외 2곳 일 ₩265만 증액 → 모형 예상 CPI −8.9%");
   });
 
   it("EN과 악화·ROAS 방향", () => {
     const en = allocationHeadline({ groups, change: -0.089, metricLabel: "CPI", money: (v) => `₩${(v / 1e6).toFixed(1)}M`, locale: "en" });
-    expect(en.lines.map((line) => line.chunks)).toEqual([["Cut Meta AAP", "by ₩3.9M/day"], ["Add ₩2.6M/day to", "Google UAC +2"], ["→ CPI −8.9%"]]);
-    expect(allocationHeadline({ groups, change: 0.05, metricLabel: "CPI", money }).lines.at(-1).chunks[0]).toBe("→ CPI +5.0% 악화");
+    expect(en.lines.map((line) => line.chunks)).toEqual([["Cut Meta AAP", "by ₩3.9M/day"], ["Add ₩2.6M/day to", "Google UAC +2"], ["→ Modeled CPI −8.9%"]]);
+    expect(allocationHeadline({ groups, change: 0.05, metricLabel: "CPI", money }).lines.at(-1).chunks[0]).toBe("→ 모형 예상 CPI +5.0% 악화");
     expect(allocationHeadline({ groups, change: 0.05, isRoas: true, metricLabel: "ROAS", money }).tone).toBe("good");
   });
 
   it("변화가 2% 미만이면 유지 권고, 과거가 없으면 행동만", () => {
-    expect(allocationHeadline({ groups, change: 0.01, metricLabel: "CPI", money }).text).toBe("현 배분 유지 권고 · 재배분 효과 CPI 1.0%");
+    expect(allocationHeadline({ groups, change: 0.01, metricLabel: "CPI", money }).text).toBe("현 배분 유지 권고 · 모형 예상 CPI +1.0%");
     const none = allocationHeadline({ groups, change: null, metricLabel: "CPI", money });
     expect(none.tone).toBe("neutral");
     expect(none.lines.map((line) => line.kind)).toEqual(["down", "up"]);
