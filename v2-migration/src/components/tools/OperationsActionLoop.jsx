@@ -55,12 +55,12 @@ function ReviewObservation({ item, currency, metricName, locale, isDemo, concurr
   </>;
 }
 
-export default function OperationsActionLoop({ brief, plan, history, signals, rows, metric, currency, locale, isDemo, evidence }) {
+export default function OperationsActionLoop({ brief, plan, history, signals, rows, metric, currency, locale, isDemo, evidence, view, setView }) {
   const tr = (ko, en) => locale === "en" ? en : ko, lang = locale === "en" ? 1 : 0;
   const metricName = metric === "actions" ? "CPA" : "CPI", today = localToday();
   const observedHeadingRef = useRef(null);
   const records = useAppStore(state => state.decisionRecords);
-  const [view, setView] = useState("actions"), [source, setSource] = useState("all"), [limit, setLimit] = useState(30);
+  const [source, setSource] = useState("all"), [limit, setLimit] = useState(30);
   const [editor, setEditor] = useState(null), [selectedEvent, setSelectedEvent] = useState(null), [reviewing, setReviewing] = useState(null);
   const recommendations = useMemo(() => operationRecommendations(brief, plan, signals), [brief, plan, signals]);
   const items = useMemo(() => (isDemo ? [] : records).filter(record => ["efficiency", "creative"].includes(TOOL_GROUP[record.toolId]) || record.operationAction)

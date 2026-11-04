@@ -76,7 +76,7 @@ describe("standalone operations planner entry path", () => {
     act(() => useAppStore.getState().setDashboardFilter({ dateStart: "2026-08-26", dateEnd: "2026-09-01", compareEnabled: true,
       comparisonStart: "2026-08-19", comparisonEnd: "2026-08-25" }));
     expect(screen.queryByText("동일 예산 조정안")).toBeNull();
-    await openEvidence();
+    // 기간을 바꿔도 사용자가 보던 근거 탭을 유지한다.
     await screen.findByText("동일 예산 조정안");
     expect(screen.getByRole("region", { name: "소재별 최근 효율" }).textContent).not.toContain("new");
     expect(screen.getByRole("combobox", { name: "변경 한도" }).value).toBe("0");

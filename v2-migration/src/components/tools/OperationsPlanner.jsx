@@ -48,6 +48,7 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
   const input = useMemo(() => ({ csvData, filter, periods, metric, currency }), [csvData, filter, periods, metric, currency]);
   const [bundle, setBundle] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [view, setView] = useState("actions");
   const [creativeSelection, setCreativeSelection] = useState(null);
   const [replanning, setReplanning] = useState(false);
   const [failure, setFailure] = useState(null);
@@ -134,7 +135,7 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
       ...bundle.evidence.metrics.map(row => [row.id, metric, row.unit, row.value ?? "", row.dependencies.map(input => input.key).join(" · "), row.reason || ""]) ] },
   ], method: { name: "operations-brief", version: "1", assumptions: ["Same daily budget; observed daily coverage; historical curves, recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range."], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
 
-  return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo }}
+  return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo, view, setView }}
     evidence={chooseReview => <ResultActionCard title={tr("이번 운영에서 확인할 일", "Checks for your next operating plan")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
     locale={locale} toolId={OPERATIONS_TOOL_ID} analysisKey="operations" resultState={brief.recentObservations ? "ready" : "insufficient"} issues={notes}
     stats={[{ label: tr("최근 광고비", "Recent spend"), value: money(brief.current.cost), detail: `${tr("직전", "Prior")} ${money(brief.previous.cost)}` },
