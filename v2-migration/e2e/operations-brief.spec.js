@@ -231,7 +231,7 @@ for (const locale of ["ko", "en"]) {
     await expect(editor.getByRole("combobox", { name: en ? "Target" : "대상", exact: true }).locator("option:checked")).toContainText("리타겟팅");
     await editor.getByLabel(en ? "Planned date" : "계획일", { exact: true }).fill("2026-08-20");
     await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
-    await page.getByRole("checkbox", { name: en ? /Enable device storage/ : /이 기기에 리뷰 보관하기/ }).check();
+    // 기기 저장은 기본으로 켜져 있다. 실제 저장 대화상자의 확인과 완료를 밟는다.
     await confirmReviewDialog(page, en);
     await page.getByRole("tab", { name: en ? "Actions & reviews" : "지금 할 일", exact: true }).click();
     const queue = page.locator(".operations-queue");
