@@ -7,6 +7,8 @@ for (const en of [false, true]) {
     await page.goto(prefix || "/");
     const intro = page.locator(".dc-hero__intro");
     const preview = page.locator(".home-result-preview");
+    await expect(page.locator(".home-action-preview")).toBeVisible();
+    await page.getByRole("tab", { name: en ? "Campaigns" : "캠페인", exact: true }).click();
     await expect(preview.locator("canvas")).toHaveAttribute("data-chart-ready", "true");
     // 큰 소개 상자가 실제 결과를 밀어내지 않도록 결과까지의 간격을 확인한다.
     await expect(intro).toHaveCSS("border-top-width", "0px");

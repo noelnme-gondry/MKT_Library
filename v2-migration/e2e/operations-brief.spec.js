@@ -228,7 +228,7 @@ for (const locale of ["ko", "en"]) {
     await openOperations(page, en);
     await page.getByRole("button", { name: en ? /Define an action for this campaign/ : /이 캠페인의 액션 정하기/ }).click();
     const editor = page.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기", exact: true });
-    await expect(editor.getByLabel(en ? "Target" : "대상", { exact: true }).locator("option:checked")).toContainText("리타겟팅");
+    await expect(editor.getByRole("combobox", { name: en ? "Target" : "대상", exact: true }).locator("option:checked")).toContainText("리타겟팅");
     await editor.getByLabel(en ? "Planned date" : "계획일", { exact: true }).fill("2026-08-20");
     await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
     await page.getByRole("checkbox", { name: en ? /Enable device storage/ : /이 기기에 리뷰 보관하기/ }).check();
@@ -238,7 +238,7 @@ for (const locale of ["ko", "en"]) {
     await queue.getByRole("button", { name: en ? /^In progress/ : /^진행 중/ }).click();
     await expect(queue.locator(".operations-queue__choice")).toHaveCount(1);
     await queue.getByRole("button", { name: en ? "Record execution" : "실행 기록", exact: true }).click();
-    await editor.getByLabel(en ? "State" : "상태", { exact: true }).selectOption("executed");
+    await editor.getByRole("combobox", { name: en ? "State" : "상태", exact: true }).selectOption("executed");
     await editor.getByLabel(en ? "Actual execution date" : "실제 실행일", { exact: true }).fill("2026-08-21");
     await editor.getByRole("button", { name: en ? "Save action" : "액션 저장", exact: true }).click();
     await confirmReviewDialog(page, en);

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { toolResultEntrySelector } from "./support/toolResult";
 import { publishedToolIds, idToSlug } from "../src/lib/routeMap";
 import { ALWAYS_OWN_INPUT_LINE_TOOL_IDS, SETUP_BAR_INPUT_TOOL_IDS } from "../src/lib/report/reportContextTools";
 
@@ -17,7 +18,6 @@ const VIEWPORTS = [
 const KNOWN_GAPS = {};
 // 운영 플래너는 보고서 대신 전체 관측 범위와 액션 기록 진입을 첫 화면에 둔다.
 // 같은 첫 화면 기준으로 검사하며, 근거 보고서는 사용자가 해당 탭에서 연다.
-const resultEntry = tool => tool.id === "5-31" ? ".operations-loop__header" : ".result-action-card__headline";
 
 for (const locale of ["ko", "en"]) {
   for (const viewport of VIEWPORTS) {
@@ -30,7 +30,7 @@ for (const locale of ["ko", "en"]) {
         await page.setViewportSize(viewport);
         await page.goto(`${locale === "en" ? "/en" : ""}${tool.path}?example=1`);
         // 무거운 엔진(MMM 등)은 CI에서 예시 결과까지 10초를 넘긴다. 숨은 결론 칸은 세지 않는다.
-        const headline = page.locator(resultEntry(tool)).filter({ visible: true }).first();
+        const headline = page.locator(toolResultEntrySelector(tool.id)).filter({ visible: true }).first();
         await expect(headline).toBeVisible({ timeout: 30000 });
         await expect(headline).not.toBeEmpty();
         const bottom = await headline.evaluate((node) => node.getBoundingClientRect().bottom + window.scrollY);
@@ -54,7 +54,7 @@ for (const tool of TOOLS) {
     test.skip(testInfo.project.name !== "desktop-1440", "one width is enough for presence");
     await page.goto(`${tool.path}?example=1`);
     // 무거운 엔진(MMM 등)은 예시 결과까지 10초를 넘길 수 있다.
-    await expect(page.locator(resultEntry(tool)).filter({ visible: true }).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(toolResultEntrySelector(tool.id)).filter({ visible: true }).first()).toBeVisible({ timeout: 30000 });
     const visible = async (selector) => page.locator(selector).evaluateAll((nodes) => nodes.some((node) => node.checkVisibility()));
     await expect.poll(async () => ({ bar: await visible(".analysis-setup__context"), own: await visible(OWN_INPUT_LINES) }))
       .toEqual(SETUP_BAR_INPUT_TOOL_IDS.includes(tool.id) ? { bar: true, own: false } : { bar: false, own: true });
