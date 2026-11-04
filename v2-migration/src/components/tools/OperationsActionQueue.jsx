@@ -14,9 +14,9 @@ export default function OperationsActionQueue({ items, proposals, today, locale,
   const current = operationQueuePage(queue, { bucket, target, page });
   const selected = current.visible.find(item => item.id === selectedId) || current.visible[0];
   const targets = [...new Map(queue.map(item => [operationTargetKey(item.action.target), item.name])).entries()];
-  const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("미확인", "Unverified");
+  const money = (value, unit = currency) => Number.isFinite(value) ? fmtCurrency(value, { currency: unit, precise: true }) : tr("미확인", "Unverified");
   const kindLabel = kind => OPERATION_ACTION_KINDS[kind][en ? 1 : 0];
-  const summary = item => item.action.kind === "budget" ? `${money(item.action.beforeBudget)} → ${money(item.action.afterBudget)}`
+  const summary = item => item.action.kind === "budget" ? `${money(item.action.beforeBudget, item.action.currency || currency)} → ${money(item.action.afterBudget, item.action.currency || currency)}`
     : [item.action.creative, item.action.replacementCreative].filter(Boolean).join(" → ") || kindLabel(item.action.kind);
   const status = item => item.bucket === "new" ? tr("액션 제안", "Proposed action")
     : item.action.state === "cancelled" ? tr("취소", "Cancelled") : item.bucket === "done" ? tr("검토 완료", "Reviewed")

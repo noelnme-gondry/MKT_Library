@@ -37,3 +37,12 @@ it("keeps all records reachable across multiple pages and disables review withou
   expect(screen.getByText("전체 17건 중 17번째")).toBeTruthy();
   expect(within(screen.getByRole("group", { name: "액션 진행 상태" })).getByRole("button", { name: /검토할 결과/ }).textContent).toContain("17");
 });
+it("keeps recorded budget currency when the loaded data uses another currency", () => {
+  const item = makeItems(2)[1];
+  item.record.operationAction.currency = "KRW";
+  item.review.state = "scope";
+  const { container } = render(<OperationsActionQueue {...props} currency="USD" items={[item]} locale="ko" />);
+  expect(container.querySelector(".operations-queue__choice").textContent).toContain("₩100 → ₩120");
+  expect(container.querySelector(".operations-queue__detail").textContent).toContain("₩100 → ₩120");
+  expect(screen.getByRole("button", { name: "전후 검토" }).disabled).toBe(true);
+});
