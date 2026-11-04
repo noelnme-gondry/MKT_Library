@@ -13326,7 +13326,7 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
   .operations-queue__count strong { color: var(--text-primary); }
   .operations-queue__count > span { margin-left: auto; }
   .operations-queue__group + .operations-queue__group { margin-top: 28px; }
-  .operations-queue__group > h3 { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 12px; margin: 0 0 8px; background: color-mix(in srgb, var(--primary) 10%, var(--surface-container-lowest)); border-left: 3px solid var(--primary); border-bottom: 1px solid var(--border); font-size: var(--fs-md); font-weight: 700; color: var(--text-primary); }
+  .operations-queue__group > h3 { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 12px; margin: 0 0 8px; background: color-mix(in srgb, var(--primary) 10%, var(--surface-container-lowest)); border-bottom: 2px solid var(--border); font-size: var(--fs-md); font-weight: 700; color: var(--text-primary); }
   .operations-queue__group > h3 b { font-size: var(--fs-xs); font-weight: 400; color: var(--text-secondary); white-space: nowrap; }
   .operations-queue__choice { width: 100%; display: grid; gap: 10px; padding: 16px 12px; text-align: left; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-xs); line-height: 1.6; overflow-wrap: anywhere; cursor: pointer; }
   .operations-queue__choice[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 9%, var(--surface-container-lowest)); }
@@ -13362,7 +13362,7 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
   .home-action-preview p, .home-action-preview small { font-size: var(--fs-xs); line-height: 1.7; color: var(--text-secondary); }
   .home-action-preview__steps { padding-left: 24px; margin: 24px 0; display: grid; gap: 14px; font-size: var(--fs-sm); }
   .home-action-preview__queue section + section { margin-top: 24px; }
-  .home-action-preview__queue h4 { display: flex; justify-content: space-between; gap: 16px; background: var(--bg-2); padding: 12px; margin: 0 0 16px; border-left: 3px solid var(--primary); font-size: var(--fs-sm); }
+  .home-action-preview__queue h4 { display: flex; justify-content: space-between; gap: 16px; background: var(--bg-2); padding: 12px; margin: 0 0 16px; border-bottom: 2px solid var(--border); font-size: var(--fs-sm); }
   .home-action-preview__queue h4 b { font-size: var(--fs-xs); font-weight: 400; color: var(--text-secondary); }
   @media (max-width: 1000px) {
     .operations-queue__workbench { grid-template-columns: minmax(0,1fr); }

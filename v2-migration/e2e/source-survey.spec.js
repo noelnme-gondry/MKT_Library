@@ -27,6 +27,7 @@ for (const locale of ["ko", "en"]) test(`유입 설문은 결과 아래에 표�
   await expect(card).toHaveCount(0);
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
   await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+  await page.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
   await expect(page.locator("#ops-budget-title")).toBeVisible();
   const metric = page.getByRole("button", { name: /^CTR / });
   await metric.focus();
@@ -73,6 +74,7 @@ for (const locale of ["ko", "en"]) test(`유입 설문은 결과 아래에 표�
   await page.reload();
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
   await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+  await page.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
   await expect(page.locator("#ops-budget-title")).toBeVisible();
   await page.clock.fastForward(60_001);
   await expect(card).toHaveCount(0);

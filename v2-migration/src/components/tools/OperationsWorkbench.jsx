@@ -56,7 +56,7 @@ export default function OperationsWorkbench({ brief, plan, budgetRows, campaign,
           <OperationsBudgetChart rows={budgetRows} currency={currency} locale={locale} periods={periods} isDemo={isDemo} />
           <div className="operations-budget-shifts">{budgetRows.map(row => <div key={row.id}><span>{row.name}<small>{tr(`예상 ${metricName}`, `Predicted ${metricName}`)} {money(row.baselineCpr)} → {money(row.expectedCpr)}</small></span><b data-tone={row.budget > row.current + 1e-6 ? "increase" : row.budget < row.current - 1e-6 ? "decrease" : "neutral"}>{row.budget > row.current + 1e-6 ? "+" : row.budget < row.current - 1e-6 ? "−" : ""}{money(Math.abs(row.budget - row.current))}<small> / {tr("일", "day")}</small></b></div>)}</div>
           <p className="operations-chart__caption">{tr(`유지안 → 조정안 예상 ${metricName}`, `Maintenance → revised predicted ${metricName}`)} {money(plan.baselineCpr)} → {money(plan.expectedCpr)}. {tr("같은 모형의 조건부 예측이며 개선은 보장되지 않습니다.", "Conditional predictions from the same model; improvement is not guaranteed.")}</p>
-          <button className="btn primary" type="button" onClick={() => chooseReview("budget")}>{tr("이 예산안을 주간 리뷰로", "Review this budget plan next week")} →</button>
+          <button className="btn primary" type="button" onClick={() => chooseReview("budget")}>{tr("예산 조정 액션 정하기", "Define a budget action")} →</button>
         </section>}
 
       <section className="operations-panel operations-panel--trend" aria-labelledby="ops-trend-title">
