@@ -24,7 +24,7 @@ const COPY = {
   ko: {
     title: "성과는 왜 바뀌었고,",
     titleAccent: "다음엔 뭘 해야 할까?",
-    deck: ["최근 효율과 새 소재를 보고, 다음 예산을 정하세요."],
+    deck: ["운영 플래너에서 예산 조정과 소재 액션을 정하고, 실행 후 결과까지 확인하세요."],
     actionAria: "바로 시작할 작업",
     situationTitle: "어떤 상황인가요?",
     allAnalyses: (n) => `분석 ${n}개 모두 보기`,
@@ -37,7 +37,7 @@ const COPY = {
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
     diagnoseCta: "성과 원인 찾기",
-    demoCta: "데모 보기",
+    demoCta: "예시로 운영 플래너 체험",
     demoHint: "가상 데이터로 결과를 살펴봅니다.",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
@@ -73,7 +73,7 @@ const COPY = {
   en: {
     title: "Why did performance change?",
     titleAccent: "What should you do next?",
-    deck: ["Review recent efficiency and new creatives, then plan your next budget."],
+    deck: ["Use the operations planner to decide budget and creative actions, then review what happened after execution."],
     actionAria: "Start a task",
     situationTitle: "What is going on?",
     allAnalyses: (n) => `See all ${n} analyses`,
@@ -86,7 +86,7 @@ const COPY = {
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
-    demoCta: "View demo",
+    demoCta: "Try the operations planner",
     demoHint: "Explore results with fictional data.",
     assurance: ["Free analysis, no sign-up", "CSV processed in your browser"],
     continueTitle: "Decisions to review",
@@ -202,6 +202,7 @@ export default function LandingPage({ locale = "ko", reading }) {
       </section>}
       <section className="dc-hero brand-hero" aria-labelledby="dc-hero-title">
         <div className="dc-hero__copy brand-hero__stage">
+          <div className="home-planner-intro">
           <header className="dc-hero__intro">
           <div className="dc-hero__message">
           <div className="brand-hero__heading">
@@ -212,10 +213,16 @@ export default function LandingPage({ locale = "ko", reading }) {
           <HeroArtwork />
           </div>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
+          <div className="home-planner-entry">
+            <Link className="btn primary" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}>{T.demoCta} →</Link>
+            <Link className="btn secondary" href={toolHref(OPERATIONS_TOOL_ID)}>{lang === "en" ? "Plan with my data" : "내 데이터로 운영 계획"}</Link>
+            <p>{lang === "en" ? "Budget up, down or unchanged → campaign actions → execution and next review" : "예산 유지·증액·감액 → 캠페인별 실행안 → 실행과 다음 검토"}</p>
+          </div>
           </div>
           </header>
-          {/* 첫 화면의 주 행동 = 상황 고르기 + 파일 놓기(product-ssot §1.1c 결정 2).
-              상황을 누르면 분석 찾기가 그 상황의 분석 카드(결론 예시·필요한 파일)로 열린다. */}
+          <OperationsSamplePreview locale={lang} />
+          </div>
+          {/* 플래너 체험 다음에 다른 질문과 공용 파일 진입을 제공한다(product-ssot §1.1c). */}
           <div className="home-entry">
             <nav className="home-entry__situations" aria-labelledby="home-situation-title">
               <h2 id="home-situation-title">{T.situationTitle}</h2>
@@ -250,10 +257,6 @@ export default function LandingPage({ locale = "ko", reading }) {
                 onPrepared={() => router.push(lang === "en" ? "/en/dochi-result" : "/dochi-result")}
                 onImportFailed={() => setImporting(false)}
               />
-              <p className="home-entry__more">
-                <Link href={exampleHref(OPERATIONS_TOOL_ID, lang)} aria-describedby="home-demo-hint" onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}>{T.demoCta} →</Link>
-                <span className="sr-only" id="home-demo-hint">{T.demoHint}</span>
-              </p>
               <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
             </section>
           </div>
@@ -264,7 +267,6 @@ export default function LandingPage({ locale = "ko", reading }) {
           </p>
         </div>
         <PartnerAdSlot placement="home-intro" locale={lang} />
-        <OperationsSamplePreview locale={lang} />
       </section>
 
       <section className="dc-loop" aria-labelledby="dc-loop-title">

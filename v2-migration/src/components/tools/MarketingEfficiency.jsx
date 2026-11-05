@@ -647,8 +647,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           points={[{ label: tr("다음 행동", "Next action"), text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
           stats={[
             { label: tr("판단한 대상", "Judged"), value: `${okRows.length}/${rows.length}`, detail: rows.length > okRows.length ? tr(`${rows.length - okRows.length}곳은 데이터 부족`, `${rows.length - okRows.length} lack data`) : "" },
-            { label: tr("증액 멈춤 (포화)", "Hold increases (saturated)"), value: sat.length, detail: sat.slice(0, 2).map((row) => row.name).join(", ") },
-            { label: tr("증액 여유", "Headroom"), value: scale.length, detail: scale.slice(0, 2).map((row) => row.name).join(", ") },
+            { label: tr("증액 멈춤 (포화)", "Hold increases (saturated)"), emphasis: sat.length ? "primary" : undefined, value: sat.length, detail: sat.slice(0, 2).map((row) => row.name).join(", ") },
+            { label: tr("증액 여유", "Headroom"), emphasis: !sat.length && scale.length ? "primary" : undefined, value: scale.length, detail: scale.slice(0, 2).map((row) => row.name).join(", ") },
           ]}
           // 확인할 점은 결론 옆 버튼 하나로 모은다(product-ssot §5.5). 예전에는 범위 근거와 분석 상세가
           // 각자 "확인 1"을 그려 폰에서 결론 칸을 좁혔다.

@@ -29,7 +29,9 @@ export function operationRecommendations(brief, plan, signals) {
   const budget = (plan.ok ? plan.items : []).filter(row => row.current > 0 && Math.abs(row.budget / row.current - 1) >= 0.01).map(row => ({
     id: `budget:${row.id}`, entityId: row.id, target: entities.get(row.id).target, name: entities.get(row.id).name,
     kind: "budget", source: "recommendation", beforeBudget: row.current, afterBudget: row.budget,
+    ...(plan.planRange ? { plannedDate: plan.planRange.start, reviewDays: plan.horizonDays, planContext: { mode: plan.mode, ...plan.planRange, totalBudget: plan.totalBudget * plan.horizonDays } } : {}),
     baselineCpr: row.currentResults > 0 ? row.current / row.currentResults : null, expectedCpr: row.expectedCpr,
+    expectedOutcomeChange: row.expectedResults - row.currentResults, overallChangePct: plan.improvementPct,
     creativeAttention: signals.some(signal => signal.entityId === row.id && signal.needsAction),
   }));
   const creative = signals.filter(signal => signal.needsAction && entities.has(signal.entityId)).map(signal => ({

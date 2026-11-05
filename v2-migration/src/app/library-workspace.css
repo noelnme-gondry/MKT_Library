@@ -1166,6 +1166,16 @@
 .home-budget-axis { display: flex; justify-content: space-between; grid-column: 2; padding-top: 8px; color: var(--library-muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .operations-sample-preview__budget > .home-sample-context { grid-column: 2; }
 .operations-sample-preview__budget > :is(.operations-sample-preview__note, [role="status"]) { grid-column: 1 / -1; }
+/* The home introduction uses a narrower preview: keep totals above full-width campaign moves. */
+.home-planner-intro .operations-sample-preview__budget:not([hidden]), .home-planner-intro .operations-sample-preview__campaigns:not([hidden]) { display: block; }
+.home-planner-intro .operations-sample-budget__metrics { grid-template-columns: repeat(2,minmax(0,1fr)); margin-bottom: 1rem; gap: 1rem; }
+.home-planner-intro .operations-sample-budget__moves > div { padding-block: .5rem; gap: .3rem 1rem; }
+.home-planner-intro .operations-sample-budget__moves dt { font-size: var(--fs-sm); }
+.home-planner-intro .operations-sample-budget__metrics dd { font-size: var(--fs-lg); }
+.home-planner-intro .operations-sample-preview__budget > h3 { font-size: var(--fs-lg); margin-bottom: 1rem; }
+.home-planner-intro .home-preview-evidence { padding-left: 0; border-left: 0; }
+.home-planner-intro .home-preview-story { margin-bottom: 1rem; }
+.home-planner-intro .operations-sample-preview__budget > .btn { display: flex; width: 100%; margin-top: .75rem; text-decoration: none; }
 .operations-sample-creative__summary { margin: 12px 0 0; font-size: var(--fs-base); color: var(--library-muted); line-height: 1.6; }
 .operations-sample-preview__creatives .table-wrap { max-width: 100%; margin: 16px 0 0; border: 0; border-radius: 0; background: transparent; }
 .operations-sample-preview__creatives table.data { width: 100%; min-width: 640px; table-layout: fixed; font-size: var(--fs-base); }

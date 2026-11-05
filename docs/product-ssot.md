@@ -86,7 +86,7 @@
 | 결정 | 확정 | 적용 단계 |
 |---|---|---|
 | 입구 통합 범위 | 앱 안 입구(홈 목록·`/start`·분석 방법 둘러보기·`/data-guide`)를 **분석 찾기** 하나로 모은다. `/compare`·`/guide` 분석 지도·`/diagnose`는 검색 유입 페이지로 두고 분석 찾기로 연결만 한다. 기존 주소는 유지하거나 301로 보존한다. | 2 |
-| 홈 첫 화면 주 행동 | **상황 고르기 + 파일 놓기**. 운영 플래너 미리보기는 그 아래로 내린다(2026-10-27 적용, §5.1.1). | 2 |
+| 홈 첫 화면 주 행동 | **운영 플래너로 할 수 있는 일 + 계산된 예시 체험**. 내 데이터 진입은 같은 도구로 연결하고, 상황별 분석 찾기와 공용 업로드는 아래에 둔다(2026-11-05 사용자 방향 적용). | 2 |
 | 고급 분석 12개(5-32~5-43) | 숨기지 않고 상황 안에 함께 두되, 같은 상황에서 광고 운영 분석 뒤에 놓는다. | 0 |
 | 결과 화면의 설정 블록 | 결과가 있으면 기간·지표·대상을 **맥락 한 줄 + `조건 바꾸기` 창**으로 접는다(`MappingEditorDialog`와 같은 방식). | 1 |
 
@@ -96,7 +96,7 @@
 
 **분석 카드 계약(2단계 화면).** 카드 한 장 = 쓰는 상황(사용자 말) · 받게 될 보고서의 결론 예시(예시 데이터의 실제 엔진 결과에서 파생, 지어낸 수치 금지) · 필요한 파일(이름 → 출처 → 필수 열 → 있으면 더 좋은 열) · `예시 보고서 보기`(주 행동)와 `내 파일로 하기` · 같은 파일로 되는 다른 분석. 방법 이름(CUPED·RFM·VIF 등)은 부제와 검색어로 남긴다.
 
-**보고서 틀(1단계 화면).** 결과 첫 화면은 맥락 한 줄 → 결론(무엇이 얼마나 변했고 어디 때문인지 또는 무엇을 얼마나 할지, 수치와 대상 포함) → 결론을 받치는 숫자 3개 → 핵심 그림 1개 → 이번 주 할 일 2~3개(주 행동 1개) → 결론을 바꿀 수 있는 한계 1줄 → `자세히`(표·단계 분해·방법론·FAQ) 순이다. §5.5의 층위·확인 N·XLSX 계약을 그대로 따른다. 5-3의 `allocationHeadline`이 결론 문장의 기준 사례다. / Report-first layout; keeps the §5.5 contract.
+**결과와 행동의 틀(2026-11-05 사용자 확장 요청).** 맥락 한 줄 → 결론과 핵심 수치 → 지금 정할 액션과 검토 조건 → 그 판단의 그림·세부 근거 순으로 읽는다. 홈은 운영 플래너로 할 수 있는 예산 계획·소재 점검·실행 후 검토를 먼저 소개하고 예시로 바로 진입하게 한다. 내 파일·다른 분석 찾기는 함께 제공하되 같은 무게의 여러 시작 버튼으로 경쟁시키지 않는다. §5.5의 확인 N·XLSX·보류 계약은 유지한다. / Outcome and action first: context, conclusion and key figures, next action and review criteria, then supporting evidence. Home leads with the operations planner and a direct example; file entry and analysis discovery remain available.
 
 **1단계 적용(2026-10-27).** 맥락 줄과 창은 `ds/ReportContext` 하나다. 결과가 있을 때만 접고, 판단할 대상이 하나도 없으면 접지 않는다(바로 고쳐야 하는 상태). 분석 설정 입력창과 `분석 대상` 버튼은 머리에 남긴다 — 결과를 보며 바로 고쳐 보는 경로라 창에 넣으면 흐름이 끊긴다(§5.5a). 창에는 기간·지표·표시 기준과 (5-22) 파일·매핑이 들어간다. 해석을 바꾸는 기간 경고는 결과 위에 남긴다. 결론 문장은 한 문장이고 화면의 판정에서 파생한다: 5-21 `lib/report/pvmHeadline`(전체 변화와 **같은 방향** 중 최대 기여만 원인으로 지목), 5-22 `lib/report/saturationHeadline`. 5-31은 이미 이 틀(분석 조건 한 줄 + 변경)이다. 5-3은 실행안이 있을 때 예산·지표·실행 방식·비교 기준·금액 단위·데이터를 맥락 한 줄과 `조건 바꾸기` 창 하나로 접고(창 위에 지금 결론을 함께 보여 준다), 분석 기간·배분 대상은 머리에 남긴다. 실행안이 없으면 예산 칸과 사유를 본문에 펼치고, 그 칸을 고치는 동안에는 접지 않는다. 5-2는 폰(≤720px, 또는 터치 입력 ≤1000px)에서 하위 보기 9개를 `보기: 이름 ▾` 한 줄로 바꾸고, 누르면 묶음·한 줄 설명과 함께 모든 보기가 나온다(가로로 밀어 숨기지 않는다). 예시 데이터 안내는 머리 줄이 먼저 말하므로 결론 뒤로 옮겼다. 결론 문장이 첫 화면 안에 있는지는 `e2e/report-first-viewport.spec.js`가 5개 도구 × 3폭 × KO/EN으로 잰다(2026-10-27 사용자 결정: 추천안대로). / ReportContext folds periods, metrics and view options after a result; the command input and scope stay visible. Headlines derive from the on-screen verdicts. 5-3 folds all plan settings once a plan exists; the 5-2 phone view uses a one-line view picker.
 
@@ -483,14 +483,23 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 4층 | 다음 검토일 또는 검증 조건 | 언제·어떤 수치로 재검토할지 |
 | 상세 | 근거 차트·표·가정·제약 | 주요 그림은 결론 바로 뒤에, 추가 차트·표는 하단에 둔다. **분석 범위·분모·신뢰도·방법·실행 정보는 화면에 늘어놓지 않는다**(2026-09-24 사용자 결정) — 확인할 점이 있을 때만 결론 옆 중립적인 `확인 N` 버튼(`ds/IssueMark`, 2026-10-01 사용자 수정)가 어느 기간·열·칸이 문제인지 말하고, 전체 기록은 상세 워크북(XLSX)의 `00_README`·`04_SCOPE`에 남긴다 |
 
-- 순서: 머리(결론 + 확인할 점 버튼) → 핵심 수치·그림 → 다음 행동 → 검토·저장 → 보조 버튼 → 추가 근거. 핵심 그림은 결론과 같은 면에 두고, 그림이 이미 보여 주는 수치는 별도 타일로 반복하지 않는다. 신뢰도 라벨(`주의해서 해석` 등)은 쓰지 않는다 — 문제가 없으면 아무 표시도 없다. / Read the conclusion, key figures/visual, next action, review/save, then secondary actions and supporting detail. Keep the core visual on the same surface and avoid repeating its numbers in tiles.
+- 순서(2026-11-05): 머리(결론 + 확인할 점 버튼) → 핵심 수치 → 다음 행동·검토 조건 → 핵심 그림 → 세부 근거·기록·보조 기능. 다음 행동은 해당 도구가 실제로 계산한 제안에서 가져온다. 제안이 없으면 임의 추천을 채우지 않는다. 핵심 그림은 결론과 같은 면에 두고, 같은 문장·수치를 타일이나 불릿으로 반복하지 않는다. / Read the conclusion, key figures, next action and review criteria, core visual, then detailed evidence and record utilities. Actions come from the tool's actual proposal; absent proposals are not fabricated.
 - 요약에서 상세로 이동하면 실제 계산에 쓴 기간·지표·필터를 전달한다. 다른 비교 조건으로 조용히 전환하지 않는다. 날짜는 완전한 날짜 단위로 묶고 분석/비교 기간은 별도 행으로 표시한다. 결론과 행동은 의미상 다른 문단이며 화면 폭에 맞춘 강제 줄바꿈은 넣지 않는다. / Preserve calculated periods, metric and filters on drill-down. Keep dates intact, separate current/prior period rows, and use semantic paragraphs for conclusion and action.
 - 핵심 그림을 일부만 보여 주면 전체/표시 개수와 전체보기 동작을 제공한다. VIF는 심각도순이며 미계산 값을 정상으로 간주하지 않는다. PNG에도 표시 범위가 남는다. / Partial figures disclose shown/total counts and provide a full view; rank VIF by severity, keep unknowns explicit, and retain coverage in PNGs.
 - `/start`에서 분석할 수 있는 도구는 품질 검사·승인 단계 없이 `분석 열기` 한 번으로 연다. 확인할 점은 도구 결과의 확인 버튼가 말한다.
 - 예시 데이터 결과에서는 핵심 그림과 다음 행동 뒤에 **다음 기간 결과와 비교하기 / Review this decision next period**(`ds/DecisionReviewPreview`)를 둔다. 문구: **예시 결과는 저장되지 않습니다. 내 데이터로 분석하면 결론·핵심 수치·검토일을 저장할 수 있습니다. / Sample results are not saved. Analyze your own data to save the conclusion, key figures and review date.** 조건: **저장은 로그인과 Pro(7일 체험 포함)가 필요합니다. 분석은 무료입니다. / Saving requires sign-in and Pro, including the 7-day trial. Analysis is free.** `내 데이터로 분석하기`·`Pro 안내`를 제공하며 입력 폼은 두지 않는다(가짜 결정 금지).
 - 분석이 끝난 도구의 업로드·매핑은 **한 줄 요약 + `데이터·매핑 편집` 대화상자**(`ds/MappingEditorDialog`)로 고친다. 접기·펼치기가 아니라 이름 있는 편집 화면이다(§4). 결론 카드 위에 매핑 선택상자가 보이면 안 된다.
 - 결과 아래 '이어서 볼 수 있는 분석'은 지금 되는 것 3개 + `전체 분석 보기` 링크.
-- 첫 화면의 읽기 순서와 설정 블록 접기는 §1.1c **보고서 틀**을 따른다(2026-10-26 승인, 1단계에서 상위 5개 도구부터 적용).
+- 첫 화면의 읽기 순서와 설정 블록 접기는 §1.1c **결과와 행동의 틀**을 따른다(2026-11-05 공용 결과 카드로 확대).
+
+#### 5.5.0 운영 플래너와 서비스 공통 적용 (2026-11-05)
+
+- 예산 계획은 유지·재배분 / 증액 / 감액을 구분한다. 증액안은 현재 지출보다 줄이는 캠페인 없이, 감액안은 늘리는 캠페인 없이 같은 예측 곡선과 관측 범위 안에서 계산한다. 총예산 변경을 포함한 예상 성과는 순수 재배분 효과라고 부르지 않는다. / Separate reallocation, increases and cuts, with direction constraints and a common model baseline.
+- 적용 기간·기간 총액과 캠페인별 금액을 함께 표시한다. 월은 실제 달력 일수이며, 실행 기록의 하루 환산액과 원래 기간·총액을 구분해 보관한다. 관측 지출은 확인된 예산 설정값이 아니다. / Show period and total together; preserve period context alongside daily execution equivalents.
+- 일·주·월 집계는 원본 날짜 형식으로 구분한다. 주·월 합계를 일별 관측으로 복제하지 않고 불완전한 구간은 추세 계산에서 제외한다. 월별 추세의 30일 환산과 실제 월 합계는 명시적으로 구분한다. / Respect source interval grain; never fabricate daily observations from aggregates.
+- 소재는 모든 항목을 선택할 수 있고, 우선 표시 이유·실제 성과 합산 기간·파일 첫 관측일을 구별한다. 성과 비중 변화는 예산을 더 배정한 효과가 아니다. 기존 소재의 성과 비중·단가, 새로 성과가 있는 소재·성과가 없어진 소재의 기여를 분리하되 투입·종료의 인과 효과나 예상 개선으로 해석하지 않는다. / Keep observation and causal claims distinct, including four-part creative contributions.
+- 공용 결과 수치는 바뀐 최종 값에만 짧게 전환한다. 가짜 중간 숫자, 장식용 무한 반복, 감소 모션 선호를 무시하는 움직임을 사용하지 않는다. 비분석 화면은 문서 찾기·계정 설정 등 원래 과업을 우선한다. / Animate changed final results only and respect reduced motion; preserve each non-analysis page's original task.
+- 이 흐름에서 실행·검토 영역, 선택한 소재의 상세, 관측 전후 값, 스크롤 가능한 캠페인 표는 목적이 다른 하위 구획으로 허용한다. 액션 종류 제목과 선택한 캠페인의 판단은 선택 행과 구별해 강조하고, 예상 성과·전체 예상 단가에는 지표 이름을 값 옆에 붙인다. 예외는 해당 요소의 사유 있는 DOM 표식으로 한정하며 정렬·겹침·대비 검사는 유지한다. / Allow task-specific subgroups for actions, selected-creative details, observed comparisons and scrollable campaign tables. Keep labels and emphasis meaningful; scoped DOM annotations do not waive alignment, overlap or contrast checks.
 
 #### 5.5.1 상세 XLSX 계약
 

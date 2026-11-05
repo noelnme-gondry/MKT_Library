@@ -13,7 +13,11 @@ export function readOperationAction(value) {
     if (!input || input.version !== 1 || !Object.hasOwn(OPERATION_ACTION_KINDS, input.kind) || !input.target) return null;
     const target = { unit: input.target.unit === "channel" ? "channel" : "campaign", ...Object.fromEntries(["country", "platform", "channel", "source", "campaignId", "campaign"].map(key => [key, text(input.target[key])])) };
     if (!target.channel && !target.campaign && !target.campaignId) return null;
+    const context = input.planContext;
+    const planContext = context && ["maintain", "increase", "decrease"].includes(context.mode) && date(context.start) && date(context.end) && context.end >= context.start && amount(context.totalBudget) > 0
+      ? { mode: context.mode, start: context.start, end: context.end, totalBudget: amount(context.totalBudget) } : null;
     return { version: 1, kind: input.kind, target, creative: text(input.creative).trim(), replacementCreative: text(input.replacementCreative).trim(), note: text(input.note, 500).trim(),
+      ...(planContext ? { planContext } : {}),
       source: ["manual", "observed", "recommendation"].includes(input.source) ? input.source : "manual",
       eventId: text(input.eventId, 1200), state: ["planned", "executed", "cancelled"].includes(input.state) ? input.state : "planned",
       plannedDate: date(input.plannedDate), executedDate: date(input.executedDate),

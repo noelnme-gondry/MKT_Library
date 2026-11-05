@@ -22,6 +22,8 @@ import { localizedTool } from "@/lib/toolConnections";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
+import ResultChange from "./ResultChange";
+import { requestDecisionReviewOpen } from "@/lib/decisionReviewUi";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -177,8 +179,10 @@ export default function ResultActionCard({
   const combinedIssues = useMemo(() => issues == null ? null : [...new Set([
     ...issues, ...analysisScopeIssues(scopeEvidence, locale), ...basisIssues,
   ].filter(line => line != null && String(line).trim()))], [issues, scopeEvidence, locale, basisIssues]);
-  const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
-  const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
+  // Keep export/share evidence intact; avoid repeating the action in the visible evidence list.
+  const supportingPoints = hasDecisionPrefill && decisionReview ? points.filter(point => point.text !== resolvedDecisionPrefill.action) : points;
+  const visiblePoints = collapsePointsAfter == null ? supportingPoints : supportingPoints.slice(0, collapsePointsAfter);
+  const hiddenPoints = collapsePointsAfter == null ? [] : supportingPoints.slice(collapsePointsAfter);
   useEffect(() => {
     if (!toolId) return;
     if (trackAnalysisStart) {
@@ -348,14 +352,22 @@ export default function ResultActionCard({
           {stats.map((s, i) => (
             <div className={s.emphasis === "primary" ? "is-primary" : ""} key={i}>
               <span>{s.label}</span>
-              <strong>{typeof s.value === "string" ? s.value.split(/(\s*→\s*)/).map((part, index) => (
+              <ResultChange as="strong" value={s.value}>{typeof s.value === "string" ? s.value.split(/(\s*→\s*)/).map((part, index) => (
                 <span key={index} className={/^[+\-−]?[₩$]?[+\-−]?\d[\d,.]*(?:\s*(?:%|원|건|회|일|주|배))?$/.test(part.trim()) ? "metric-value-atom" : undefined}>{part}</span>
-              )) : typeof s.value === "number" ? <span className="metric-value-atom">{s.value}</span> : s.value}</strong>
+              )) : typeof s.value === "number" ? <span className="metric-value-atom">{s.value}</span> : s.value}</ResultChange>
               {s.detail && <small>{s.detail}</small>}
             </div>
           ))}
         </div>
       )}
+
+      {hasDecisionPrefill && decisionReview && <section className="result-next-action" data-design-exempt="nested: Action and review criteria are distinct from the statistical evidence; accent: The primary follow-up has a separate action emphasis; eyebrow: Labels the proposed next action rather than the conclusion" aria-label={locale === "en" ? "Next action" : "다음 액션"}>
+        <div><span className="result-next-action__label">{locale === "en" ? "Next action" : "다음 액션"}</span><h3>{resolvedDecisionPrefill.action}</h3>
+          {resolvedDecisionPrefill.reviewQuestion && <p><b>{locale === "en" ? "Check next: " : "다음 검토: "}</b>{resolvedDecisionPrefill.reviewQuestion}</p>}
+        </div>
+        {canScheduleDecision && <button className="btn primary" type="button" onClick={() => requestDecisionReviewOpen(toolId, "result_next_action")}>{locale === "en" ? "Plan action & review" : "액션·검토일 정하기"} →</button>}
+        {canPreviewDecision && <span className="result-next-action__sample">{locale === "en" ? "Sample proposal · not saved" : "예시 데이터 제안 · 저장되지 않음"}</span>}
+      </section>}
 
       {coreFigure}
 

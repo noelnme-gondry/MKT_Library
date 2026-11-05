@@ -8,6 +8,10 @@ describe("format", () => {
     expect(fmtCurrency(0.42, { currency: "USD", precise: true })).toBe("$0.42");
     expect(fmtCurrency(null)).toBe("—");
     expect(fmtCurrency("abc")).toBe("—");
+    expect(fmtCurrency(-46, { currency: "KRW", precise: true })).toBe("−₩46");
+    expect(fmtCurrency(0, { currency: "KRW", precise: true })).toBe("₩0");
+    expect(fmtCurrency(-0, { currency: "KRW", precise: true })).toBe("₩0");
+    expect(fmtCurrency(-0.42, { currency: "USD", precise: true })).toBe("−$0.42");
   });
 
   it("fmtPct: ratio vs points", () => {

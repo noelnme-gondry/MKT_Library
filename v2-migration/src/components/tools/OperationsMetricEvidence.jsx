@@ -3,7 +3,7 @@ import { useState } from "react";
 import DataTable from "@/components/ds/DataTable";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 
-export default function OperationsMetricEvidence({ evidence, currency, locale = "ko", onInspectMapping }) {
+export default function OperationsMetricEvidence({ evidence, currency, locale = "ko", onInspectMapping, inDialog = false }) {
   const [selected, setSelected] = useState("cpi");
   const tr = (ko, en) => locale === "en" ? en : ko;
   const metricLabel = metric => metric.id === "cpi" ? evidence.metric === "actions" ? "CPA" : "CPI" : metric.id.toUpperCase();
@@ -56,6 +56,6 @@ export default function OperationsMetricEvidence({ evidence, currency, locale = 
       </section>
     </div>
     <p className="operations-chart__caption">{tr("동일 사용자의 이동이나 인과관계를 뜻하지 않습니다.", "These aggregates do not identify user-level progression or causal effects.")}</p>
-    <div className="operations-metric-evidence__actions"><a href="#ops-campaign">{tr("관측 검토 목록으로", "Inspect the observed review queue")} →</a><a href="#ops-budget-title">{tr("같은 예산의 현재안·조정안 비교", "Compare current and adjusted budgets")} →</a></div>
+    {!inDialog && <div className="operations-metric-evidence__actions"><a href="#ops-campaign">{tr("관측 검토 목록으로", "Inspect the observed review queue")} →</a><a href="#ops-budget-title">{tr("같은 예산의 현재안·조정안 비교", "Compare current and adjusted budgets")} →</a></div>}
   </section>;
 }

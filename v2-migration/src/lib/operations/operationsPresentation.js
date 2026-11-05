@@ -11,6 +11,19 @@ export function operationContributionLabels(metricName, locale) {
   };
 }
 
+// Keep entering and disappearing outcomes separate, even when they cancel out.
+// These are an accounting decomposition, never the causal effect of a launch/removal.
+export function operationCreativeContributions(pvm) {
+  if (!pvm?.finest?.length) return null;
+  return pvm.finest.reduce((sum, row) => {
+    if (row.result1 > 0 && row.result2 > 0) { sum.share += row.mix; sum.cost += row.rate; }
+    else if (row.result2 > 0) sum.entered += row.contribution;
+    else if (row.result1 > 0) sum.absent += row.contribution;
+    else sum.unattributed += row.contribution;
+    return sum;
+  }, { share: 0, cost: 0, entered: 0, absent: 0, unattributed: 0 });
+}
+
 // Plot the fitted curve against its own observations. Budget guardrails are not a fitted curve.
 export function operationsScatterEvidence(campaign, model) {
   const points = campaign.trend.filter(row => row.cost > 0 && Number.isFinite(row.cpr)).map(row => ({ x: row.cost, y: row.cpr, date: row.date }));

@@ -51,7 +51,7 @@ describe("LandingPage render smoke", () => {
     // 히어로 우측의 예시 판단 카드(가짜 수치 + 장식 차트)는 제거됨 — 되살리지 말 것.
     expect(document.querySelector(".dc-instrument")).toBeNull();
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
-    // 첫 화면의 주 행동 = 상황 고르기 + 파일 놓기(product-ssot §1.1c 결정 2). 버튼 셋(운영하기·데모·양식)은 없앴다.
+    // 플래너 진입 아래의 다른 상황도 전체 분석 목록을 빠뜨리지 않는다.
     expect(document.querySelectorAll(".dc-action-route")).toHaveLength(0);
     const situations = [...document.querySelectorAll(".home-entry__situations li:not(.home-entry__all-tile) a")];
     expect(situations).toHaveLength(TOOL_JOURNEY.length);
@@ -66,9 +66,9 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".home-entry__all").textContent).toContain(String(PUBLISHED_TOOL_IDS.length));
     // 파일 놓기는 하나 — 놓으면 그 파일로 되는 분석을 계산하는 결과 작업대로 간다.
     expect(document.querySelectorAll(".home-entry__file .csv-uploader")).toHaveLength(1);
-    expect(document.querySelector(".home-entry__more a").getAttribute("href")).toBe("/tools/operations-planner?example=1");
+    expect(document.querySelector(".home-planner-entry a.primary").getAttribute("href")).toBe("/tools/operations-planner?example=1");
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고, 다음엔 뭘 해야 할까?");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toBe("최근 효율과 새 소재를 보고, 다음 예산을 정하세요.");
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toBe("운영 플래너에서 예산 조정과 소재 액션을 정하고, 실행 후 결과까지 확인하세요.");
     expect(document.querySelectorAll(".dc-hero__deck p")).toHaveLength(1);
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
@@ -91,11 +91,11 @@ describe("LandingPage render smoke", () => {
       expect(document.querySelector(`.dc-resource-strip a[href*="${host}"]`)).toBeTruthy();
     }
   });
-  it.each(["ko", "en"])("puts the situation picker ahead of the sample preview and the weekly-loop explainer (%s)", (locale) => {
+  it.each(["ko", "en"])("shows the planner example before other analysis choices and the weekly-loop explainer (%s)", (locale) => {
     render(<LandingPage locale={locale} />);
     const situations = document.querySelector(".home-entry__situations");
-    // 상황 고르기가 미리보기·개념 설명보다 먼저 와야 첫 화면에서 바로 분석을 찾는다.
-    expect(situations.compareDocumentPosition(document.querySelector(".home-result-preview, .operations-sample-preview, .dc-loop")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 실제 계산 예시가 다른 분석 목록보다 먼저 보여야 플래너로 할 수 있는 일이 읽힌다.
+    expect(document.querySelector(".operations-sample-preview").compareDocumentPosition(situations) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(situations.compareDocumentPosition(document.querySelector(".dc-loop")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     if (locale === "en") {
       expect(document.querySelector(".home-entry__situations li:not(.home-entry__all-tile) a").getAttribute("href")).toBe(`/en/start?situation=${TOOL_JOURNEY[0].id}#finder`);
@@ -145,15 +145,15 @@ describe("LandingPage render smoke", () => {
     const brief = prepareOperationsBrief({ rows: getMappedRows(data), periods, metric: "installs", mappedFields: Object.values(data.mapping) });
     const plan = planOperationsBudget(brief, { changeLimit: 0.2, currency: "KRW" });
     expect(plan.ok).toBe(true);
-    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인", exact: true }));
+    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Campaign evidence" : "캠페인 근거", exact: true }));
     fireEvent.click(getByRole("button", { name: locale === "en" ? "Explore a plan for the same budget" : "같은 예산으로 조정안 보기", exact: true }));
-    expect(document.activeElement).toBe(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }));
-    expect(getByRole("tab", { name: locale === "en" ? "Budget" : "예산", exact: true }).getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(getByRole("tab", { name: locale === "en" ? "Budget actions" : "예산 액션", exact: true }));
+    expect(getByRole("tab", { name: locale === "en" ? "Budget actions" : "예산 액션", exact: true }).getAttribute("aria-selected")).toBe("true");
     const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
     const metrics = [...document.querySelectorAll(".operations-sample-budget__metrics dd")];
     const recent = data.raw.filter(row => row.Date >= periods.current.start && row.Date <= periods.current.end);
     expect(metrics[0].textContent).toBe(money(recent.reduce((total, row) => total + row.Cost, 0) / 7));
-    expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults, 1)} → ${fmtNum(plan.expectedResults, 1)}`);
+    expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults, 0)} → ${fmtNum(plan.expectedResults, 0)}`);
     expect(document.querySelectorAll(".operations-sample-budget__moves > div")).toHaveLength(4);
     const axis = Math.ceil(Math.max(...plan.items.map(item => Math.abs(item.budget - item.current))) / 10000) * 10000;
     for (const item of plan.items) {
@@ -168,7 +168,7 @@ describe("LandingPage render smoke", () => {
     for (const row of data.raw) if (!firstDates.has(row["Creative ID"])) firstDates.set(row["Creative ID"], row.Date);
     const newNames = [...firstDates].filter(([, date]) => date >= periods.current.start).map(([name]) => name);
     expect(newNames).toHaveLength(2);
-    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Creatives" : "소재", exact: true }));
+    fireEvent.click(getByRole("tab", { name: locale === "en" ? "New creatives" : "새 소재 확인", exact: true }));
     const tableRows = [...document.querySelectorAll(".operations-sample-preview__creatives tbody tr")];
     expect(tableRows).toHaveLength(newNames.length);
     for (const name of newNames) {
@@ -250,7 +250,7 @@ describe("LandingPage render smoke", () => {
   it("starts the clearly labeled hero example without requiring a CSV", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    const link = container.querySelector(".home-entry__more a");
+    const link = container.querySelector(".home-planner-entry a.primary");
     expect(link.getAttribute("href")).toBe("/tools/operations-planner?example=1");
     clickWithoutNavigation(link);
     // 홈은 사용자 데이터를 바꾸지 않는다. 예시 진입은 대상 도구에서 처리한다.
@@ -295,14 +295,14 @@ describe("LandingPage render smoke", () => {
     delete window.gtag;
   });
   // 첫 화면의 행동은 상황 고르기와 파일 놓기 둘이다. 파란 주 버튼을 여럿 두지 않는다(design.md §2).
-  it("keeps the hero to situations and one file drop, without competing primary buttons", () => {
+  it("gives the planner one primary entry and keeps the original file drop", () => {
     for (const locale of ["ko", "en"]) {
       const { container, unmount } = render(<LandingPage locale={locale} />);
       const prefix = locale === "en" ? "/en" : "";
       const hero = container.querySelector(".dc-hero");
       expect(hero.querySelector(".home-entry__situations"), `${locale}: 상황 고르기가 히어로 안에 없다`).toBeTruthy();
       expect(hero.querySelectorAll(".home-entry__file .csv-uploader")).toHaveLength(1);
-      expect(hero.querySelectorAll(".btn.primary, .dc-action-route--primary")).toHaveLength(0);
+      expect(hero.querySelectorAll(".home-planner-entry .btn.primary")).toHaveLength(1);
       expect(container.querySelector(`a[href="${prefix}/blog"]`)).toBeTruthy();
       expect(container.querySelector(`a[href="${prefix}/guide"]`)).toBeTruthy();
       // 질문(진단)으로 가는 길은 한 번만 둔다.
@@ -322,7 +322,7 @@ describe("LandingPage render smoke", () => {
     expect(container.querySelector(".home-entry__all").getAttribute("href")).toBe("/en/start#finder");
     expect(container.querySelector('.home-entry__no-file a[href="/en/calculator"]')).toBeTruthy();
     expect(container.querySelector('.home-entry__no-file a[href="/en/diagnose"]')).toBeTruthy();
-    expect(container.querySelector(".home-entry__more a").getAttribute("href")).toBe("/en/tools/operations-planner?example=1");
+    expect(container.querySelector(".home-planner-entry a.primary").getAttribute("href")).toBe("/en/tools/operations-planner?example=1");
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
     expect(container.textContent).toContain("Decisions and follow-up reviews");
     expect(container.querySelector(".home-service-terms").textContent).toContain("They are not included in the 7-day trial.");

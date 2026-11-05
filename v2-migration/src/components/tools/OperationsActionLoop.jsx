@@ -17,7 +17,7 @@ import ModalDialog from "@/components/ds/ModalDialog";
 import DataTable from "@/components/ds/DataTable";
 import { useReviewDraftGuard, confirmReviewExit } from "@/lib/project/reviewDraftGuard";
 
-const VIEWS = [{ id: "actions", ko: "지금 할 일", en: "Actions & reviews" }, { id: "history", ko: "전체 변화 이력", en: "Full change history" }, { id: "evidence", ko: "근거 살펴보기", en: "Explore evidence" }];
+const VIEWS = [{ id: "actions", ko: "실행과 다음 검토", en: "Execution & next review" }, { id: "history", ko: "전체 변화 이력", en: "Full change history" }, { id: "evidence", ko: "상세 데이터·내보내기", en: "Detailed data & export" }];
 const EVENT_LABELS = { spend: ["지출 변화 후보", "Spend change candidate"], efficiency: ["단가 변화 후보", "Unit-cost change candidate"],
   budget_setting: ["예산 설정값 변화", "Budget setting changed"], creative_first: ["소재 첫 관측", "Creative first observed"],
   creative_absent: ["소재 지출 미관측", "Creative spend absent"], creative_return: ["소재 지출 재관측", "Creative spend resumed"] };
@@ -36,7 +36,7 @@ function ReviewObservation({ item, currency, metricName, locale, isDemo, concurr
   useReviewDraftGuard(!!learning && !saving);
   const c = item.review.comparison;
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("추정 불가", "Unavailable");
-  const actual = c?.ok ? `${c.before.start}–${c.before.end} → ${c.after.start}–${c.after.end} · ${tr("일평균 지출", "Daily spend")} ${money(c.previous.cost / c.days)} → ${money(c.current.cost / c.days)} · ${metricName} ${money(c.previous.cpr)} → ${money(c.current.cpr)} · ${tr("관측 비교, 인과 효과 미확인", "Observed comparison; causal effect unverified")}` : "";
+  const actual = c?.ok ? `${c.before.start}–${c.before.end} → ${c.after.start}–${c.after.end} · ${tr("일평균 지출", "Daily spend")} ${money(c.previous.cost / (c.previousDays || c.days))} → ${money(c.current.cost / c.days)} · ${metricName} ${money(c.previous.cpr)} → ${money(c.current.cpr)} · ${tr("관측 비교, 인과 효과 미확인", "Observed comparison; causal effect unverified")}` : "";
   return <>
     <ModalDialog open={!saving} onClose={close} initialFocusRef={headingRef} ariaLabel={tr("실행 후 검토", "Review after execution")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
       <h2 ref={headingRef} tabIndex={-1}>{tr("실행 후 검토", "Review after execution")}</h2><p>{item.record.action}</p>
@@ -55,7 +55,7 @@ function ReviewObservation({ item, currency, metricName, locale, isDemo, concurr
   </>;
 }
 
-export default function OperationsActionLoop({ brief, plan, history, signals, rows, metric, currency, locale, isDemo, evidence, view, setView }) {
+export default function OperationsActionLoop({ brief, plan, history, signals, rows, metric, currency, locale, isDemo, evidence, overview, view, setView }) {
   const tr = (ko, en) => locale === "en" ? en : ko, lang = locale === "en" ? 1 : 0;
   const metricName = metric === "actions" ? "CPA" : "CPI", today = localToday();
   const observedHeadingRef = useRef(null);
@@ -70,10 +70,10 @@ export default function OperationsActionLoop({ brief, plan, history, signals, ro
     ...items.map(item => ({ id: item.record.id, date: item.review.action?.executedDate && item.review.action.state === "executed" ? item.review.action.executedDate : item.record.baselineDate || item.record.createdAt?.slice(0, 10) || "",
       source: "manual", name: item.record.actionTarget, label: item.record.action, item })),
   ].filter(event => source === "all" || event.source === source).sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id)), [history.events, items, source, lang]);
-  const comparison = useMemo(() => selectedEvent ? compareOperationsChange(rows, { date: selectedEvent.date, target: selectedEvent.target, metric, days: history.rules.windowDays }) : null, [selectedEvent, rows, metric, history.rules.windowDays]);
+  const comparison = useMemo(() => selectedEvent ? selectedEvent.comparison || compareOperationsChange(rows, { date: selectedEvent.date, target: selectedEvent.target, metric, days: history.rules.windowDays }) : null, [selectedEvent, rows, metric, history.rules.windowDays]);
   const overlapping = (target, comparison, exclude) => !comparison?.before ? 0 : history.events.filter(event => event.id !== exclude && event.date >= comparison.before.start && event.date <= comparison.after.end && matchesOperationsTarget(targetAsRow(event.target), target)).length
     + items.filter(item => item.record.id !== exclude && item.review.action?.state === "executed" && item.review.action.executedDate >= comparison.before.start && item.review.action.executedDate <= comparison.after.end && matchesOperationsTarget(targetAsRow(item.review.action.target), target)).length;
-  const openNew = seed => setEditor({ seed: { ...seed, plannedDate: today, executedDate: "", state: "planned" } });
+  const openNew = seed => setEditor({ seed: { ...seed, plannedDate: seed.plannedDate || today, executedDate: "", state: "planned" } });
   const followup = item => { setReviewing(null); setEditor({ seed: { ...(item.review.followup || item.review.action), state: "planned", plannedDate: today, executedDate: "", source: "manual", eventId: "" }, parentDecisionId: item.record.id }); };
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("추정 불가", "Unavailable");
   const queued = recommendations.filter(rec => !items.some(item => item.record.status !== "reviewed" && item.review.action && item.review.action.state !== "cancelled"
@@ -86,21 +86,24 @@ export default function OperationsActionLoop({ brief, plan, history, signals, ro
       : <Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>{tr("기존 기록 보기", "Open existing record")}</Link>}
   </div>;
   const chooseFromEvidence = id => {
-    if (id === "budget") openNew(queued.find(rec => rec.kind === "budget") || { kind: "budget" });
+    if (id === "budget") { setView("actions"); requestAnimationFrame(() => { const heading = document.getElementById("ops-execution-title"); heading?.focus({ preventScroll: true }); heading?.scrollIntoView?.({ block: "start", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth" }); }); }
+    else if (id.startsWith("budget:")) { const row = brief.campaigns.find(row => row.id === id.slice(7)), amount = plan.items.find(row => row.id === id.slice(7)); openNew({ kind: "budget", source: "recommendation", target: row?.target, beforeBudget: amount?.current, afterBudget: amount?.budget, reviewDays: plan.horizonDays || 7, plannedDate: plan.planRange?.start, planContext: { mode: plan.mode, ...plan.planRange, totalBudget: plan.totalBudget * plan.horizonDays } }); }
     else if (id.startsWith("campaign:")) { const row = brief.campaigns.find(row => row.id === id.slice(9)); openNew({ kind: "investigate", target: row?.target }); }
-    else { const row = brief.creatives.find(row => row.id === id.slice(9)), parent = brief.campaigns.find(campaign => campaign.id === row?.campaignId); openNew({ kind: "creative_replace", target: parent?.target, creative: row?.creative }); }
+    else { const row = brief.creatives.find(row => row.id === id.slice(9)), parent = brief.campaigns.find(campaign => campaign.id === row?.campaignId), signal = signals.find(item => item.entityId === row?.campaignId && item.creative === row?.creative); openNew({ kind: signal?.needsAction ? "creative_replace" : "investigate", target: parent?.target, creative: row?.creative }); }
   };
   return <section className="operations-loop" aria-label={tr("운영 액션 루프", "Operations action loop")}>
-    <header className="operations-loop__header"><div><h2>{tr("변화 확인부터 다음 검토까지", "From changes to the next review")}</h2>
-      <p>{history.dates[0] || "—"} – {history.dates.at(-1) || "—"} · {tr(`전체 ${history.dates.length}개 관측일 · 변화 후보 ${history.events.length}건 · 저장한 기록 ${items.length}건`, `${history.dates.length} observed days · ${history.events.length} change candidates · ${items.length} saved records`)}</p></div>
-      <button className="btn primary" onClick={() => openNew({})} disabled={!history.groups.size}>{tr("직접 액션 기록", "Record an action")}</button></header>
+    {overview?.(chooseFromEvidence)}
+    <header className="operations-loop__header"><div><h2 id="ops-execution-title" tabIndex={-1}>{tr("실행을 기록하고 결과를 검토하세요", "Record execution and review the outcome")}</h2>
+      <p>{history.dates[0] || "—"} – {history.end || history.dates.at(-1) || "—"} · {tr(`전체 ${history.dates.length}개 관측 시점 · 변화 후보 ${history.events.length}건 · 저장한 기록 ${items.length}건`, `${history.dates.length} observations · ${history.events.length} change candidates · ${items.length} saved records`)}</p></div>
+      <button className="btn ghost" onClick={() => openNew({})} disabled={!history.groups.size}>{tr("직접 액션 기록", "Record an action")}</button></header>
     <AllocationResultWorkspace value={view} onChange={setView} views={VIEWS} locale={locale} label={tr("운영 플래너 보기", "Operations planner views")} panels={{
       actions: <><OperationsActionQueue {...{ items, today, locale, currency, metricName, isDemo }} proposals={queued}
         onNew={openNew} onEdit={record => setEditor({ record })} onReview={setReviewing} onFollowup={followup} concurrent={overlapping} />
         {!signals.some(signal => signal.fatigueAvailable) && <p className="operations-loop__section operations-chart__caption">{tr("소재 피로도를 확인할 근거가 부족합니다. 소재 ID·노출·클릭과 충분한 일별 이력을 확인하세요.", "Evidence is insufficient to assess creative fatigue. Check creative IDs, impressions, clicks and sufficient daily history.")}</p>}
       </>,
       history: <section className="operations-loop__section"><h3>{tr("업로드한 전체 기간의 변화", "Changes across the full uploaded history")}</h3>
-        <p>{tr(`지출·단가는 모든 날짜에서 전후 ${history.rules.windowDays}일 평균의 ${history.rules.changeThreshold * 100}% 이상 변화 후보를 찾습니다. 동일 유형은 ${history.rules.windowDays}일 간격으로 묶습니다. 소재는 첫 지출과 ${history.rules.absentDays}일 연속 미관측을 확인합니다. 실제 투입·종료나 예산 변경으로 확정하지 않습니다.`, `Scans every date for spend or unit-cost changes of at least ${history.rules.changeThreshold * 100}% across ${history.rules.windowDays}-day windows. Same-type candidates are spaced ${history.rules.windowDays} days apart. Creatives use first spend and ${history.rules.absentDays} consecutive missing days. These do not confirm actual launches, removals or budget interventions.`)}</p>
+        <p>{history.unit ? tr(`전체 이력에서 연속한 ${history.unit === "week" ? "두 주" : "두 달"}의 일평균 지출·단가가 ${history.rules.changeThreshold * 100}% 이상 달라진 지점을 확인합니다. 소재는 첫 관측과 한 집계 기간의 미관측을 찾습니다. 실제 투입·종료나 예산 변경으로 확정하지 않습니다.`, `Across the full history, compares consecutive ${history.unit === "week" ? "weeks" : "months"} for daily-average spend or unit-cost changes of at least ${history.rules.changeThreshold * 100}%. Creatives use first observation and one absent interval. These do not confirm launches, removals or budget interventions.`) : tr(`지출·단가는 모든 날짜에서 전후 ${history.rules.windowDays}일 평균의 ${history.rules.changeThreshold * 100}% 이상 변화 후보를 찾습니다. 동일 유형은 ${history.rules.windowDays}일 간격으로 묶습니다. 소재는 첫 지출과 ${history.rules.absentDays}일 연속 미관측을 확인합니다. 실제 투입·종료나 예산 변경으로 확정하지 않습니다.`, `Scans every date for spend or unit-cost changes of at least ${history.rules.changeThreshold * 100}% across ${history.rules.windowDays}-day windows. Same-type candidates are spaced ${history.rules.windowDays} days apart. Creatives use first spend and ${history.rules.absentDays} consecutive missing days. These do not confirm actual launches, removals or budget interventions.`)}</p>
+        {history.unknownIntervals && <p role="status">{tr("일·주·월 집계가 섞였거나 날짜 형식을 확인할 수 없어 자동 변화 탐지를 보류했습니다. 집계 단위를 맞춰 주세요. 직접 저장한 기록은 계속 표시합니다.", "Automatic change detection is withheld because source intervals are mixed or unidentified. Use a consistent date format. Manually saved records remain visible.")}</p>}
         <label>{tr("변화 출처", "Change source")} <select value={source} onChange={event => { setSource(event.target.value); setLimit(30); }}><option value="all">{tr("모두", "All")}</option><option value="observed">{tr("데이터에서 관측", "Observed in data")}</option><option value="manual">{tr("사람이 기록", "Recorded by a person")}</option></select></label>
         <DataTable ariaLabel={tr("전체 변화 목록", "Full change list")} rows={timeline.slice(0, limit)} rowKey={event => event.id} emptyText={tr("이 조건에서 발견한 변화나 저장 기록이 없습니다. 안정적이라는 판정은 아닙니다.", "No detected changes or saved records for this scope. This is not a stability verdict.")} columns={[
           { key: "date", label: tr("날짜", "Date") }, { key: "source", label: tr("출처", "Source"), fmt: value => value === "observed" ? tr("관측", "Observed") : tr("직접 기록", "Manual") },
@@ -116,7 +119,7 @@ export default function OperationsActionLoop({ brief, plan, history, signals, ro
       <OperationsChangeComparison {...{ comparison, currency, metricName, locale, isDemo }} concurrent={overlapping(selectedEvent.target, comparison, selectedEvent.id)} />
       <div className="operations-loop__buttons"><button className="btn primary" onClick={() => { openNew({ target: selectedEvent.target, kind: selectedEvent.kind.startsWith("creative") ? "creative_replace" : "investigate", creative: selectedEvent.creative || "", source: "observed", eventId: selectedEvent.id }); setSelectedEvent(null); }}>{tr("이 변화에 액션 연결", "Link an action to this change")}</button><button className="btn ghost" onClick={() => setSelectedEvent(null)}>{tr("닫기", "Close")}</button></div>
     </ModalDialog>}
-    {editor && <OperationsActionEditor {...editor} groups={[...history.groups.values()]} {...{ metric, currency, today, locale, isDemo }} sourceThrough={history.dates.at(-1)} onClose={() => setEditor(null)} />}
+    {editor && <OperationsActionEditor {...editor} groups={[...history.groups.values()]} {...{ metric, currency, today, locale, isDemo }} sourceThrough={history.end || history.dates.at(-1)} onClose={() => setEditor(null)} />}
     {reviewing && <ReviewObservation item={reviewing} {...{ currency, metricName, locale, isDemo }} concurrent={overlapping(reviewing.review.action.target, reviewing.review.comparison, reviewing.record.id)} onClose={() => setReviewing(null)} onFollowup={followup} />}
   </section>;
 }

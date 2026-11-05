@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Bookmark } from "lucide-react";
+import ResultChange from "@/components/ds/ResultChange";
 import ModalDialog from "@/components/ds/ModalDialog";
 import AnalysisDataPrep from "@/components/finder/AnalysisDataPrep";
 import { filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
@@ -34,11 +35,11 @@ const COPY = {
     clear: "검색 지우기",
     results: (n) => `분석 ${n}개`,
     example: "예시 결론",
-    answer: "보고서에 담기는 것",
+    answer: "분석으로 확인할 것",
     file: "필요한 파일",
     required: "필수",
     optional: "있으면 더 좋음",
-    exampleCta: "예시 보고서 보기",
+    exampleCta: "예시로 분석해 보기",
     toolCta: "내 파일로 하기",
     prep: "준비 방법",
     sameFile: "같은 파일로",
@@ -64,11 +65,11 @@ const COPY = {
     clear: "Clear search",
     results: (n) => `${n} analyses`,
     example: "Example conclusion",
-    answer: "What the report shows",
+    answer: "What this analysis answers",
     file: "File you need",
     required: "Required",
     optional: "Helpful",
-    exampleCta: "View example report",
+    exampleCta: "Explore an example",
     toolCta: "Use my file",
     prep: "How to prepare",
     sameFile: "Same file",
@@ -205,7 +206,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           <input ref={searchInput} id="finder-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={T.searchPlaceholder} aria-controls="finder-results" />
           {searching && <button type="button" className="btn" onClick={() => { setQuery(""); searchInput.current?.focus(); }}>{T.clear}</button>}
         </div>
-        <p role="status" className="analysis-finder__count">{T.results(visible.length)}</p>
+        <ResultChange as="p" value={visible.length} role="status" className="analysis-finder__count">{T.results(visible.length)}</ResultChange>
       </div>
 
       <div id="finder-results" className="analysis-finder__results">

@@ -106,7 +106,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
         title={tr("판정", "Verdict")}
         headline={resultHeadline}
         points={[{ text: copy }]}
-        stats={[{ label: tr("최대 VIF", "Maximum VIF"), value: formattedMaxVif }, { label: tr("변동 채널", "Varying channels"), value: String(vifRows.length) }, { label: tr("공통 기간", "Common periods"), value: String(result?.matrix?.length || 0) }]}
+        stats={[{ label: tr("최대 VIF", "Maximum VIF"), emphasis: "primary", value: formattedMaxVif }, { label: tr("변동 채널", "Varying channels"), value: String(vifRows.length) }, { label: tr("공통 기간", "Common periods"), value: String(result?.matrix?.length || 0) }]}
         toolId="5-25"
         analysisType="multicollinearity"
         analysisKey={`${verdict || "unknown"}:${formattedMaxVif}`}

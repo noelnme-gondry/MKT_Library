@@ -45,7 +45,7 @@ export function fmtCurrencyPrecise(value, currency = "KRW") {
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
   const a = Math.abs(value);
   const dec = a === 0 ? 0 : a < 10 ? 2 : a < 1000 ? 1 : 0;
-  return `${sym}${Number(value).toLocaleString("ko-KR", {
+  return `${Number(value) < 0 ? "−" : ""}${sym}${Math.abs(Number(value)).toLocaleString("ko-KR", {
     minimumFractionDigits: dec,
     maximumFractionDigits: dec,
   })}`;

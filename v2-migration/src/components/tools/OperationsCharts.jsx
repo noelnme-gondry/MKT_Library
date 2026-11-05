@@ -44,31 +44,46 @@ function ChartCanvas({ config, label, title = label, description, headingId, sco
   </figure>;
 }
 
-export function OperationsCprScatter({ campaign, model, metricName, currency, locale, isDemo }) {
+export function OperationsCprScatter({ campaign, model, metricName, currency, locale, isDemo, currentSpend, plannedSpend }) {
   const en = locale === "en", tr = (ko, english) => en ? english : ko;
-  const title = tr(`일 지출 × ${metricName}: 관측과 추세`, `Daily spend × ${metricName}: observations and trend`);
+  const scale = campaign.displayDays || 1;
+  const unit = campaign.grain === "week" ? tr("주", "week") : campaign.grain === "month" ? tr("30일 환산", "30-day equivalent") : tr("일", "day");
+  const title = tr(`지출과 ${metricName}의 관측 관계`, `Observed relationship between spend and ${metricName}`);
   const [showEarlier, setShowEarlier] = useState(false), [spend, setSpend] = useState(null);
   const evidence = useMemo(() => operationsScatterEvidence(campaign, model), [campaign, model]);
-  const x = model ? Math.max(model.xMin, Math.min(model.xMax, spend ?? (model.xMin + model.xMax) / 2)) : null;
+  const x = model ? Math.max(model.xMin, Math.min(model.xMax, spend ?? currentSpend ?? (model.xMin + model.xMax) / 2)) : null;
   const prediction = x != null && evidence.fitted.length ? model.model.predict(x) : null;
   const budgetPrediction = x != null ? ALLOC_MATH.predictSafeCpr(model, x) : null;
   const config = useMemo(() => {
     const opts = operationsChartOptions();
+    const displayPoints = points => points.map(point => ({ ...point, x: point.x * scale }));
     const datasets = [
-      { label: evidence.fitted.length ? tr("모형에 사용한 관측", "Observations used in fit") : tr("일별 관측", "Daily observations"), data: evidence.used, backgroundColor: CHART_THEME.primary, pointRadius: 4 },
+      { label: evidence.fitted.length ? tr("추세에 사용한 관측", "Observations used in fit") : tr("실제 관측", "Observed data"), data: displayPoints(evidence.used), backgroundColor: CHART_THEME.primary, pointRadius: 4 },
     ];
-    if (evidence.fitted.length) datasets.push({ label: tr("적합한 추세선", "Fitted trend"), data: evidence.fitted, showLine: true, borderColor: CHART_THEME.primary, pointRadius: 0, borderWidth: 2 });
-    if (evidence.excluded.length) datasets.push({ label: tr("해당 기간의 제외 관측", "Excluded observations in fit period"), data: evidence.excluded, pointStyle: "crossRot", pointRadius: 6, borderWidth: 2, borderColor: CHART_THEME.comparison });
-    if (showEarlier && evidence.earlier.length) datasets.push({ label: tr("이전 기간 관측", "Earlier observations"), data: evidence.earlier, backgroundColor: "transparent", borderColor: CHART_THEME.comparison, pointRadius: 3 });
-    if (Number.isFinite(prediction) && prediction > 0) datasets.push({ label: tr("선택한 지출의 추세값", "Trend at selected spend"), data: [{ x, y: prediction }], backgroundColor: CHART_THEME.surface, borderColor: CHART_THEME.primary, borderWidth: 3, pointRadius: 6 });
-    return { type: "scatter", data: { datasets }, options: { ...opts, responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: false },
-      scales: { ...opts.scales, x: { ...opts.scales?.x, type: "linear", title: { display: true, text: tr(`하루 지출 (${currency})`, `Daily spend (${currency})`), color: CHART_THEME.text } },
+    if (evidence.fitted.length) datasets.push({ label: tr("관측 추세", "Observed trend"), data: displayPoints(evidence.fitted), showLine: true, borderColor: CHART_THEME.primary, pointRadius: 0, borderWidth: 2 });
+    if (evidence.excluded.length) datasets.push({ label: tr("해당 기간의 제외 관측", "Excluded observations in fit period"), data: displayPoints(evidence.excluded), pointStyle: "crossRot", pointRadius: 6, borderWidth: 2, borderColor: CHART_THEME.comparison });
+    if (showEarlier && evidence.earlier.length) datasets.push({ label: tr("이전 기간 관측", "Earlier observations"), data: displayPoints(evidence.earlier), backgroundColor: "transparent", borderColor: CHART_THEME.comparison, pointRadius: 3 });
+    if (Number.isFinite(prediction) && prediction > 0) datasets.push({ label: tr("선택한 지출의 추세값", "Trend at selected spend"), data: [{ x: x * scale, y: prediction }], backgroundColor: CHART_THEME.surface, borderColor: CHART_THEME.primary, borderWidth: 3, pointRadius: 6 });
+    return { type: "scatter", data: { datasets }, plugins: [{ id: "operations-budget-markers", afterDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      const markers = [[currentSpend, tr("현재", "Current"), CHART_THEME.comparison], [plannedSpend, tr("조정안", "Plan"), CHART_THEME.primary]].filter(([value]) => Number.isFinite(value) && value * scale >= scales.x.min && value * scale <= scales.x.max).map(([value, label, color]) => ({ x: scales.x.getPixelForValue(value * scale), label, color }));
+      ctx.save(); ctx.font = `600 ${Chart.defaults.font.size}px ${Chart.defaults.font.family}`; ctx.textAlign = "center";
+      const close = markers.length === 2 && Math.abs(markers[0].x - markers[1].x) < 90;
+      const center = close ? Math.max(chartArea.left + 50, Math.min(chartArea.right - 50, (markers[0].x + markers[1].x) / 2)) : 0;
+      markers.forEach((marker, index) => {
+        const labelX = close ? center + (index ? 38 : -38) : Math.max(chartArea.left + 30, Math.min(chartArea.right - 30, marker.x));
+        ctx.strokeStyle = marker.color; ctx.fillStyle = marker.color; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(marker.x, chartArea.top); ctx.lineTo(marker.x, chartArea.bottom); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(labelX, chartArea.top - 6); ctx.lineTo(marker.x, chartArea.top); ctx.stroke(); ctx.fillText(marker.label, labelX, chartArea.top - 12);
+      }); ctx.restore();
+    } }], options: { ...opts, layout: { ...opts.layout, padding: { top: 28 } }, responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: false },
+      scales: { ...opts.scales, x: { ...opts.scales?.x, type: "linear", title: { display: true, text: tr(`${unit} 지출 (${currency})`, `Spend per ${unit} (${currency})`), color: CHART_THEME.text } },
         y: { ...opts.scales?.y, title: { display: true, text: `${metricName} (${currency})`, color: CHART_THEME.text } } },
-      plugins: { ...opts.plugins, tooltip: { mode: "nearest", intersect: false, callbacks: { label: context => `${context.raw.date || context.dataset.label}: ${money(context.raw.x, currency)} / ${money(context.raw.y, currency)}` } } },
+      plugins: { ...opts.plugins, legend: { ...opts.plugins.legend, position: "bottom" }, tooltip: { mode: "nearest", intersect: false, callbacks: { label: context => `${context.raw.date || context.dataset.label}: ${money(context.raw.x, currency)} / ${money(context.raw.y, currency)}` } } },
     } };
   // Locale is the sole dependency of the text selector.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evidence, showEarlier, metricName, currency, locale, x, prediction]);
+  }, [evidence, showEarlier, metricName, currency, locale, x, prediction, scale, unit, currentSpend, plannedSpend]);
   const fitted = evidence.fitted.length > 0;
   return <div className="operations-scatter">
     <ChartCanvas config={config} title={title} label={`${campaign.name} · ${title}`} scopeLabel={campaign.name}
@@ -76,15 +91,18 @@ export function OperationsCprScatter({ campaign, model, metricName, currency, lo
         : tr("모형 근거가 부족해 추세 예측을 보류합니다. 실제 관측점만 표시합니다.", "Trend prediction withheld: insufficient model evidence. Observed points remain visible.")}
       controls={evidence.earlier.length > 0 && <label className="operations-scatter__toggle"><input type="checkbox" checked={showEarlier} onChange={event => setShowEarlier(event.target.checked)} />{tr(`이전 기간 관측 ${evidence.earlier.length}개 함께 보기`, `Show ${evidence.earlier.length} earlier observations`)}</label>}
       fileName="operations-spend-cpr-trend" {...{ locale, currency, isDemo }} periods={{ current: { start: showEarlier ? campaign.trend[0]?.date : evidence.start, end: evidence.end } }} />
-    {fitted && <div className="operations-scatter__prediction"><label>{tr("모형 관측 범위 안의 하루 지출", "Daily spend within the fitted range")} <strong>{money(x, currency)}</strong><input type="range" min={model.xMin} max={model.xMax} step="any" value={x} onChange={event => setSpend(Number(event.target.value))} /></label>
+    <div className="ops-spend-range"><span>{tr("실제 지출 범위 · 전체 자료", "Observed spending range · all data")} · {campaign.grain === "month" ? tr("월 합계", "monthly totals") : campaign.grain === "week" ? tr("주 합계", "weekly totals") : tr("일 합계", "daily totals")}</span><span>{tr("최소", "Min")} {money(Math.min(...campaign.trend.map(row => row.rawCost ?? row.cost)), currency)} · {tr("최대", "Max")} {money(Math.max(...campaign.trend.map(row => row.rawCost ?? row.cost)), currency)}</span></div>
+    {campaign.grain === "month" && <p className="operations-chart__caption">{tr("월별 관측점을 30일 기준으로 환산한 추세입니다. 위 최소·최대는 실제 월 합계입니다.", "Monthly observations are normalized to 30 days in the trend. Min/max above are actual monthly totals.")}</p>}
+    {campaign.incompleteIntervals > 0 && <p className="operations-chart__caption">{tr(`집계 기간이 완전하지 않은 ${campaign.incompleteIntervals}개 구간은 추세에서 제외했습니다.`, `${campaign.incompleteIntervals} incomplete intervals are excluded from the trend.`)}</p>}
+    {fitted && <div className="operations-scatter__prediction"><label>{tr("비교할 지출", "Spend to compare")} · {unit} <strong>{money(x * scale, currency)}</strong><input type="range" min={model.xMin * scale} max={model.xMax * scale} step="any" value={x * scale} onChange={event => setSpend(Number(event.target.value) / scale)} /></label>
       <p>{tr(`같은 추세가 이어질 때 예상 ${metricName}`, `Predicted ${metricName} if the trend continues`)} <strong>{Number.isFinite(prediction) && prediction > 0 ? money(prediction, currency) : tr("추정 불가", "Unavailable")}</strong></p>
       {Number.isFinite(prediction) && Number.isFinite(budgetPrediction) && Math.abs(prediction - budgetPrediction) > 0.01 && <p className="operations-chart__caption">{tr(`예산 계산에는 보정된 ${metricName} ${money(budgetPrediction, currency)}를 씁니다. 곡선이 꺾이는 구간을 그 경계값으로 고정한 값이며, 위 추세선과 구분합니다.`, `Budget calculations use adjusted ${metricName} ${money(budgetPrediction, currency)}. Values beyond a turning point are held at that boundary, separately from the fitted trend above.`)}</p>}
-      <p className="operations-chart__caption">{tr("소재 투입·종료·교체에 따른 CPRR 효과는 예측하지 않습니다.", "CPRR effects of creative launches, removals or replacements are not predicted.")}</p>
+      <p className="operations-chart__caption">{tr("소재 투입·종료·교체의 성과 효과는 예측하지 않습니다.", "Performance effects of creative launches, removals or replacements are not predicted.")}</p>
     </div>}
   </div>;
 }
 
-export function OperationsTrend({ rows, metricName, currency, locale, periods, isDemo }) {
+export function OperationsTrend({ rows, metricName, currency, locale, periods, isDemo, grain = "day" }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const [view, setView] = useState("cpr");
   const views = { cpr: metricName, cost: tr("광고비", "Spend"), results: tr("성과수", "Outcomes") };
@@ -124,7 +142,7 @@ export function OperationsTrend({ rows, metricName, currency, locale, periods, i
   }, [rows, view, metricName, currency, locale, periods]);
   if (!rows.length) return <><h3 id="ops-trend-title">{tr("전체 실적 추이", "Portfolio performance trend")}</h3><p>{tr("추세를 계산할 관측이 없습니다.", "No observations are available for a trend.")}</p></>;
   return <div className="operations-trend">
-    <ChartCanvas config={config} headingId="ops-trend-title" title={tr(`일별 ${views[view]} 추이`, `Daily ${views[view]} trend`)} description={tr("전체 이력의 일별 실측", "Daily observations across the uploaded history")} label={tr(`전체 일별 실측 ${views[view]}`, `Daily observed portfolio ${views[view]}`)} fileName="operations_daily_unit_cost" locale={locale} currency={currency} periods={{ current: { start: rows[0].date, end: rows.at(-1).date } }} isDemo={isDemo} controls={<div className="operations-chart__toolbar">
+    <ChartCanvas config={config} headingId="ops-trend-title" title={tr(`${grain === "month" ? "월별" : grain === "week" ? "주별" : "일별"} ${views[view]} 추이`, `${grain === "month" ? "Monthly" : grain === "week" ? "Weekly" : "Daily"} ${views[view]} trend`)} description={tr("각 집계 기간에 실제 관측한 값", "Actual observations for each interval")} label={tr(`기간별 실측 ${views[view]}`, `Observed ${views[view]} by interval`)} fileName="operations_daily_unit_cost" locale={locale} currency={currency} periods={{ current: { start: rows[0].date, end: rows.at(-1).end || rows.at(-1).date } }} isDemo={isDemo} controls={<div className="operations-chart__toolbar">
       <PillGroup ariaLabel={tr("추세 지표", "Trend metric")} options={Object.entries(views).map(([value, label]) => ({ value, label }))} value={view} onChange={setView} />
       <span>{rows[0].date} – {rows.at(-1).date}</span>
     </div>} />
