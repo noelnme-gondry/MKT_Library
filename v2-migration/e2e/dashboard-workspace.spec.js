@@ -15,7 +15,9 @@ for (const locale of ['ko','en']) {
     for (const id of tabs) {
       await chooseDashboardView(page,id);
       await expect(page.locator('.dashboard-block-grid')).toBeVisible();
-      const surfaces=page.locator('.dashboard-layout-block > .block');
+      // Visualization groups own no extra background: KPI and plot cards are the reading surfaces.
+      const surfaces=page.locator('.dashboard-layout-block > .block:not(.dashboard-supporting-charts), .dashboard-viz-workbench .kpi-card, .dashboard-explorer, .dashboard-supporting-charts .chart-card');
+      expect(await surfaces.count()).toBeGreaterThan(0);
       for(let i=0;i<await surfaces.count();i++) {
         if(await surfaces.nth(i).isVisible()) expect(await surfaces.nth(i).evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
       }
