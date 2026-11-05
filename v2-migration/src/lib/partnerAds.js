@@ -50,6 +50,17 @@ export function partnerAdFormat(placement, availableWidth) {
   return PARTNER_AD_PLACEMENTS[placement]?.formats.find(key => PARTNER_AD_FORMATS[key].width <= availableWidth) || null;
 }
 
+// 홈에서만 지면을 넓힌다. 선택한 프레임과 위젯이 같은 실제 크기를 사용한다.
+export function partnerAdDimensions(format, { placement, availableWidth, isHome = false } = {}) {
+  if (!Object.hasOwn(PARTNER_AD_FORMATS, format)) return null;
+  const { width, height } = PARTNER_AD_FORMATS[format];
+  if (format === "wide" && placement === "home-intro" && Number.isFinite(availableWidth) && availableWidth >= width) {
+    return { width: Math.min(1600, Math.floor(availableWidth)), height: 140 };
+  }
+  if (format === "rail" && isHome) return { width, height: 800 };
+  return { width, height };
+}
+
 // 본문 폭이 모자랄 때만 compact에 필요한 여백을 빌린다. 소재를 축소하지 않는다.
 export function partnerAdInlineLayout({ contentLeft, contentWidth, safeLeft, safeRight, preferredWidth = contentWidth, maxWidth = Infinity }) {
   const safeWidth = Math.max(0, safeRight - safeLeft);

@@ -105,8 +105,9 @@ it.each(Object.keys(PARTNER_AD_PLACEMENTS).filter(placement => placement !== "si
     const frame = parent.querySelector("iframe");
     expect(frame.getAttribute("data-ad-provider")).toBe("coupang");
     expect(frame.hasAttribute("srcdoc")).toBe(false);
-    expect(frame.getAttribute("src")).toBe(partnerAdSource(format));
-    expect(frame.getAttribute("height")).toBe(height);
+    expect(frame.getAttribute("src")).toBe(partnerAdSource(format, { placement, availableWidth: width }));
+    expect(frame.getAttribute("height")).toBe(placement === "home-intro" && format === "wide" ? "140" : height);
+    if (placement === "home-intro" && format === "wide") expect(frame.getAttribute("width")).toBe(String(width));
     expect(frame.getAttribute("sandbox")).toBe(PARTNER_FRAME_SANDBOX);
     expect(parent.querySelector(".partner-ad-preview__note").textContent).toBe(PARTNER_AD_DISCLOSURE[locale]);
     expect(new URL(frame.src).origin).not.toBe(window.location.origin);

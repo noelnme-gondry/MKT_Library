@@ -286,6 +286,7 @@ export default function CsvUploader({
   mappingReviewStage = "combined",
   onMappingReviewNeedsSemanticFallback = null,
   entryVariant = "default",
+  entryActionsPosition = "below",
   analyticsPlacement = "uploader",
   sheetInitiallyOpen = false,
   onImportStart = null,
@@ -828,13 +829,27 @@ export default function CsvUploader({
   const semanticEligibility = evaluateV2Eligibility({ toolId, bindings: semanticBindings });
 
   if (!hasFile) {
+    const sheetEntry = <GoogleSheetConnect
+      onLoaded={handleSheetLoaded}
+      onImportStart={() => {
+        onImportStart?.({ source: "google_sheets" });
+        trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
+      }}
+      onError={handleSheetError}
+      locale={locale}
+      toolId={sheetSourceScope}
+      initialOpen={sheetInitiallyOpen}
+    />;
+    const templateEntry = toolId === "start-gate" && hasToolTemplate(toolId) && <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId)}>{T.starterTemplateBtn}</button>;
+    const helpEntry = !showGuide && <VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton>;
+    const actionsAbove = entryActionsPosition === "above";
     return (
       <div className={`csv-uploader ${entryVariant === "dochi" ? "csv-uploader--dochi" : ""}`} data-analysis-status={ANALYSIS_STATUS.EMPTY} data-hydrated={isHydrated ? "true" : "false"}>
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
         {showGuide && <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} helpAction={<VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton>} />}
-        {!showGuide && <div className="tutorial-upload-entry"><VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton></div>}
+        {!actionsAbove && helpEntry && <div className="tutorial-upload-entry">{helpEntry}</div>}
         {pendingWorkbook ? (
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
             <strong>{T.workbookTitle}</strong>
@@ -862,6 +877,7 @@ export default function CsvUploader({
           </section>
         ) : (
           <>
+        {actionsAbove && <div className="csv-upload-entry-toolbar">{sheetEntry}{templateEntry}{helpEntry}</div>}
         {/* 예시 데이터 진입점은 화면에 하나만 둔다. CsvGuide가 이미 같은 버튼을
             그리고 있으면 여기서 또 그리지 않는다 — 나란히 놓인 같은 동작의 버튼 둘은
             "무엇이 다른가"를 먼저 묻게 만든다(제품 SSOT §5.3 위계 없는 CTA). */}
@@ -896,23 +912,9 @@ export default function CsvUploader({
         </button>
         <p id={fileHintId} className="csv-drop-sub">{T.dropSizeHint}</p>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} disabled={!isHydrated || isImporting} />
-        {toolId === "start-gate" && hasToolTemplate(toolId) && (
-          <div className="csv-upload-quick-actions">
-            <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId)}>{T.starterTemplateBtn}</button>
-          </div>
-        )}
+        {!actionsAbove && templateEntry && <div className="csv-upload-quick-actions">{templateEntry}</div>}
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
-        <GoogleSheetConnect
-          onLoaded={handleSheetLoaded}
-          onImportStart={() => {
-            onImportStart?.({ source: "google_sheets" });
-            trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
-          }}
-          onError={handleSheetError}
-          locale={locale}
-          toolId={sheetSourceScope}
-          initialOpen={sheetInitiallyOpen}
-        />
+        {!actionsAbove && sheetEntry}
           </>
         )}
         {errorMsg && <div role="alert" className="csv-upload-error">{errorMsg}</div>}

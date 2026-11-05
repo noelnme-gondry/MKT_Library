@@ -252,6 +252,7 @@ export default function LandingPage({ locale = "ko", reading }) {
                 toolId="start-gate"
                 locale={lang}
                 entryVariant="dochi"
+                entryActionsPosition="above"
                 analyticsPlacement="landing_hero"
                 onImportStart={() => setImporting(true)}
                 onPrepared={() => router.push(lang === "en" ? "/en/dochi-result" : "/dochi-result")}

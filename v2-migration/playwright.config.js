@@ -2,6 +2,10 @@ import { defineConfig } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./e2e/support/sourceSurvey.js";
 
 const isCi = Boolean(process.env.CI);
+const representative = process.env.E2E_SCOPE === "representative";
+// PR: 전체 기능은 데스크톱에서, 모바일은 주요 사용자 경로와 명시된 모바일 전용 검사에서 확인한다.
+// E2E_SCOPE를 생략하면 기존 전체 조합을 그대로 실행한다.
+const mobileJourneys = /@mobile-only|(?:product-entry|upload-entry|operations-brief|account-mappings|weekly-review|review-save-failure|mobile-header|partner-ad-measurement|project-decision-loop|payment-review)\.spec\.js/;
 // CI는 빌드 결과물(next start)로 돈다 — dev 서버는 페이지를 처음 열 때마다 컴파일해서
 // 브라우저 테스트가 40분 가까이 걸렸다(2026-09-24). 로컬 기본은 여전히 dev(수정이 바로 반영).
 // 빌드본으로 돌리려면 먼저 `npm run build` 후 E2E_SERVER=production.
@@ -49,8 +53,8 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   timeout: 60_000,
   projects: [
-    { name: "mobile-320", grepInvert: /@light-en/, use: { viewport: { width: 320, height: 800 } } },
-    { name: "tablet-768", grepInvert: /@light-en|@mobile-only/, use: { viewport: { width: 768, height: 1024 } } },
+    { name: "mobile-320", grep: representative ? mobileJourneys : undefined, grepInvert: /@light-en/, use: { viewport: { width: 320, height: 800 } } },
+    { name: "tablet-768", grep: representative ? /operations home preview/ : undefined, grepInvert: /@light-en|@mobile-only/, use: { viewport: { width: 768, height: 1024 } } },
     { name: "desktop-1440", grepInvert: /@light-en|@mobile-only/, use: { viewport: { width: 1440, height: 1000 } } },
     {
       name: "desktop-light-en",

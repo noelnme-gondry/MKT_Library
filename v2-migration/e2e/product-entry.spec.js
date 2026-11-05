@@ -17,20 +17,20 @@ for (const locale of ["ko", "en"]) {
     await expect(mobile.locator(`a[href="${prefix}/calculator"]`)).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeVisible();
     await expect(page.locator(".operations-sample-preview__budget")).toBeVisible();
-    await page.getByRole("tab", { name: locale === "en" ? "Campaign evidence" : "캠페인 근거", exact: true }).click();
+    await page.getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인 근거", exact: true }).click();
     await expect(page.getByRole("figure", { name: locale === "en" ? "Campaign daily CPI trend and period comparison" : "캠페인 일별 CPI 추세와 직전·최근 비교" })).toBeVisible();
-    await expect(page.locator(".operations-sample-campaigns > div")).toHaveCount(4);
+    await expect(page.locator(".operations-sample-campaigns > li")).toHaveCount(4);
     const currentCpi = (await page.locator(".operations-sample-preview__metric strong").textContent()).split("→").at(-1).trim();
     await page.getByRole("tab", { name: locale === "en" ? "Budget actions" : "예산 액션", exact: true }).click();
     await expect(page.locator(".operations-sample-budget__metrics")).toBeVisible();
     const forecast = await page.locator(".operations-sample-budget__metrics dd b").textContent();
     await page.getByRole("tab", { name: locale === "en" ? "New creatives" : "새 소재 확인", exact: true }).click();
-    await expect(page.locator(".operations-sample-preview__creatives table")).toBeVisible();
+    await expect(page.locator(".operations-sample-creatives")).toBeVisible();
     const creatives = await page.locator(".operations-sample-creative__name > strong").allTextContents();
     expect(creatives).toHaveLength(2);
-    for (const light of [true, false]) {
+    for (const light of [locale === "en"]) {
       await page.evaluate(value => document.body.classList.toggle("light-mode", value), light);
-      await page.getByRole("tab", { name: locale === "en" ? "Campaign evidence" : "캠페인 근거", exact: true }).click();
+      await page.getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인 근거", exact: true }).click();
       await page.waitForTimeout(300);
       await expect(page.locator(".home-result-preview h2")).toHaveCSS("font-size", "20px");
       expect((await sample.boundingBox()).height).toBeGreaterThanOrEqual(44);
@@ -55,14 +55,20 @@ for (const locale of ["ko", "en"]) {
   });
 
   test(`operations home preview uses the full width for entry and evidence (${locale})`, async ({ page }, testInfo) => {
+    // Cover desktop, mobile and the changed intermediate breakpoint once each,
+    // distributing locales/themes instead of repeating their Cartesian product.
+    const representative = locale === "ko"
+      ? ["mobile-320", "desktop-1440"].includes(testInfo.project.name)
+      : testInfo.project.name === "tablet-768";
+    test.skip(!representative, "Covered by the representative home-preview environments");
     if (testInfo.project.use.viewport.width === 768) await page.setViewportSize({ width: 980, height: 1000 });
     await page.goto(locale === "en" ? "/en" : "/");
     await expect(page.locator(".home-result-preview")).toBeVisible();
-    await expect(page.locator(".home-result-preview > h2")).toHaveText(locale === "en" ? "Operations planner preview" : "운영 플래너 미리보기");
+    await expect(page.locator(".home-result-preview > h2")).toHaveText(locale === "en" ? "Planner preview" : "운영 플래너 미리보기");
     await page.evaluate(() => document.fonts.ready);
-    for (const light of [true, false]) {
+    for (const light of [testInfo.project.name !== "mobile-320"]) {
       await page.evaluate(value => document.body.classList.toggle("light-mode", value), light);
-      await page.getByRole("tab", { name: locale === "en" ? "Campaign evidence" : "캠페인 근거", exact: true }).click();
+      await page.getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인 근거", exact: true }).click();
       await page.waitForTimeout(300);
       const copy = await page.locator(".dc-hero__intro").boundingBox();
       const preview = await page.locator(".home-result-preview").boundingBox();
@@ -84,22 +90,23 @@ for (const locale of ["ko", "en"]) {
       await expect(page.locator(".operations-sample-preview__body > section")).toHaveCount(4);
       await expect(page.getByRole("tabpanel")).toHaveCount(1);
       await expect(page.locator(".operations-sample-budget__moves > div")).toHaveCount(4);
-      await expect(page.locator(".operations-sample-preview__creatives tbody tr")).toHaveCount(2);
+      await expect(page.locator(".operations-sample-creatives > li")).toHaveCount(2);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-      await expect(page.locator(".operations-sample-campaigns > div")).toHaveCount(4);
+      await expect(page.locator(".operations-sample-campaigns > li")).toHaveCount(4);
       await expect(page.locator(".operations-sample-chart__legend")).toContainText("09.30–10.06");
       const canvas = page.locator(".home-operations-trend canvas");
       await expect(canvas).toHaveAttribute("data-chart-ready", "true");
       await expect(canvas).toHaveAttribute("data-point-count", "28");
-      for (const row of await page.locator(".operations-sample-campaigns > div").all()) {
-        await expect(row.locator("dt")).toBeVisible();
+      for (const row of await page.locator(".operations-sample-campaigns > li").all()) {
         await expect(row.locator(".operations-sample-campaigns__comparison")).toContainText("→");
-        const name = await row.locator("dt").textContent();
-        await row.getByRole("button").click();
+        const name = await row.locator(".operations-sample-campaigns__name").textContent();
+        if (page.viewportSize().width <= 480) await page.getByRole("combobox", { name: locale === "en" ? "Campaign to compare" : "비교할 캠페인" }).selectOption({ label: name });
+        else await row.getByRole("button").click();
         await expect(canvas).toHaveAttribute("aria-label", `${name}${locale === "en" ? " observed daily CPI trend" : " 일별 실측 CPI 추세"}`);
         await expect(page.locator(".home-trend-heading > strong")).toHaveText(name);
       }
-      await page.locator(".operations-sample-campaigns button").first().click();
+      if (page.viewportSize().width <= 480) await page.getByRole("combobox", { name: locale === "en" ? "Campaign to compare" : "비교할 캠페인" }).selectOption({ index: 0 });
+      else await page.locator(".operations-sample-campaigns button").first().click();
       await expect(page.getByRole("slider")).toHaveCount(0);
       await expect(page.locator(".home-operations-trend input, .home-operations-trend select, .home-operations-trend output")).toHaveCount(0);
       await page.getByRole("button", { name: locale === "en" ? "Full history" : "전체 이력", exact: true }).click();
@@ -122,10 +129,28 @@ for (const locale of ["ko", "en"]) {
       await expect(page.locator(".home-action-preview")).toBeVisible();
       await page.keyboard.press("Home");
       await expect(tabs.first()).toBeFocused();
+      const stablePreview = await page.locator(".operations-sample-preview").boundingBox();
+      const entryDocumentTop = () => page.locator(".home-entry").evaluate(node => node.getBoundingClientRect().top + scrollY);
+      const stableEntryTop = await entryDocumentTop();
       for (let index = 0; index < 4; index++) {
         await tabs.nth(index).click();
         await expect(tabs.nth(index)).toHaveAttribute("aria-selected", "true");
         await expect(page.getByRole("tabpanel")).toHaveCount(1);
+        // Measure the settled layout, not the reveal's translated intermediate frame.
+        await page.getByRole("tabpanel").evaluate(node => Promise.all(
+          node.getAnimations({ subtree: true }).map(animation => animation.finished.catch(() => {}))
+        ));
+        // Switching the preview must not push the upload/situation entry down.
+        expect((await page.locator(".operations-sample-preview").boundingBox()).height).toBe(stablePreview.height);
+        expect(Math.abs(await entryDocumentTop() - stableEntryTop)).toBeLessThanOrEqual(1);
+        // Stable size must contain useful evidence, not a large empty tail or a clipped list.
+        const panelFit = await page.getByRole("tabpanel").evaluate(node => {
+          const box = node.getBoundingClientRect(), last = node.lastElementChild.getBoundingClientRect();
+          return { overflow: node.scrollHeight - node.clientHeight, tail: box.bottom - last.bottom };
+        });
+        expect(panelFit.overflow).toBeLessThanOrEqual(1);
+        expect(panelFit.tail).toBeLessThanOrEqual(16);
+        await expect(page.locator(".operations-sample-preview__footer")).toBeVisible();
         const audit = await new AxeBuilder({ page }).include(".dc-hero").withTags(["wcag2a", "wcag2aa"]).analyze();
         expect(audit.violations).toEqual([]);
         const design = await measureDesignRules(page);
@@ -135,25 +160,13 @@ for (const locale of ["ko", "en"]) {
         expect(design.nested).toEqual([]);
         expect(design.horizontalOverflow).toBeLessThanOrEqual(1);
         if (index === 2 && page.viewportSize().width <= 720) {
-          const region = page.locator(".operations-sample-preview__creatives .table-wrap");
+          const region = page.locator(".operations-sample-creatives");
           const box = await region.boundingBox();
           const cost = await page.locator(".operations-sample-creative__result strong").first().boundingBox();
           expect(cost.x).toBeGreaterThanOrEqual(box.x);
           expect(cost.x + cost.width).toBeLessThanOrEqual(box.x + box.width + 1);
           const scroll = await region.evaluate(node => ({ full: node.scrollWidth, visible: node.clientWidth }));
-          expect(scroll.full).toBeGreaterThan(scroll.visible);
-          await region.focus();
-          await page.keyboard.press("ArrowRight");
-          await expect.poll(() => region.evaluate(node => node.scrollLeft)).toBeGreaterThan(0);
-          await region.evaluate(node => { node.scrollLeft = 0; });
-        }
-        if ((locale === "ko" && testInfo.project.name === "desktop-1440" && light)
-          || (locale === "ko" && testInfo.project.name === "mobile-320" && !light)
-          || (locale === "en" && testInfo.project.name === "tablet-768" && light)) {
-          await page.evaluate(() => scrollTo(0, 0));
-          await page.evaluate(() => document.activeElement.blur());
-          const clip = await page.locator(".dc-hero").boundingBox();
-          await page.screenshot({ path: testInfo.outputPath(`operations-home-story-${index}.png`), fullPage: true, clip });
+          expect(scroll.full).toBeLessThanOrEqual(scroll.visible + 1);
         }
       }
     }

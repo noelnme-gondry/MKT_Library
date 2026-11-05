@@ -102,15 +102,28 @@ describe("LandingPage render smoke", () => {
       expect(/[가-힣]/.test(document.querySelector(".home-entry").textContent)).toBe(false);
     }
   });
+  it.each(["ko", "en"])("groups home import actions before the dropzone and keeps Sheets usable (%s)", locale => {
+    const { getByRole, getByLabelText } = render(<LandingPage locale={locale} />);
+    const toolbar = document.querySelector(".home-entry__file .csv-upload-entry-toolbar");
+    const dropzone = document.querySelector(".home-entry__file .csv-dropzone");
+    expect(toolbar.compareDocumentPosition(dropzone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toolbar.querySelectorAll(".sheet-connect-btn")).toHaveLength(1);
+    expect(document.querySelectorAll(".home-entry__file .csv-upload-quick-actions")).toHaveLength(0);
+    fireEvent.click(getByRole("button", { name: locale === "en" ? "Import from a public Google Sheet" : "공개 Google Sheets에서 불러오기", exact: true }));
+    expect(toolbar.contains(getByLabelText(locale === "en" ? "Google Sheets link" : "구글 시트 링크"))).toBe(true);
+    fireEvent.click(getByRole("button", { name: locale === "en" ? "Cancel" : "취소", exact: true }));
+    expect(toolbar.querySelectorAll(".sheet-connect-btn")).toHaveLength(1);
+    expect(dropzone.disabled).toBe(false);
+  });
   it.each(["ko", "en"])("shows all source campaign comparisons and selects their actual daily observations (%s)", locale => {
     render(<LandingPage locale={locale} />);
     fireEvent.click(document.querySelectorAll('.operations-sample-tabs [role="tab"]')[1]);
     const rows = buildOperationsDemo(locale).raw;
-    const campaignRows = [...document.querySelectorAll(".operations-sample-campaigns > div")];
+    const campaignRows = [...document.querySelectorAll(".operations-sample-campaigns > li")];
     expect(campaignRows).toHaveLength(4);
     const sums = values => values.reduce((total, row) => ({ cost: total.cost + row.Cost, installs: total.installs + row.Installs }), { cost: 0, installs: 0 });
     for (const node of campaignRows) {
-      const name = node.querySelector("dt").textContent;
+      const name = node.querySelector(".operations-sample-campaigns__name").textContent;
       const values = rows.filter(row => row["Campaign name"] === name);
       const before = sums(values.filter(row => row.Date >= "2026-09-23" && row.Date <= "2026-09-29"));
       const after = sums(values.filter(row => row.Date >= "2026-09-30"));
@@ -119,8 +132,7 @@ describe("LandingPage render smoke", () => {
       expect(node.querySelector("[data-tone]").dataset.tone).toBe(currentCpi > priorCpi ? "bad" : "good");
       fireEvent.click(node.querySelector("button"));
       expect(document.querySelector(".home-trend-heading > strong").textContent).toBe(name);
-      expect(document.querySelector(".home-preview-story__selection h4").textContent).toBe(name);
-      expect(document.querySelector(".home-preview-story__selection").textContent).toContain(fmtCurrency(currentCpi, { currency: "KRW", precise: true }));
+      expect(document.querySelector(".home-trend-current").textContent).toContain(fmtCurrency(currentCpi, { currency: "KRW", precise: true }));
     }
     expect(document.querySelector(".operations-sample-chart__legend").textContent).toContain("09.30–10.06");
   });
@@ -145,8 +157,8 @@ describe("LandingPage render smoke", () => {
     const brief = prepareOperationsBrief({ rows: getMappedRows(data), periods, metric: "installs", mappedFields: Object.values(data.mapping) });
     const plan = planOperationsBudget(brief, { changeLimit: 0.2, currency: "KRW" });
     expect(plan.ok).toBe(true);
-    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Campaign evidence" : "캠페인 근거", exact: true }));
-    fireEvent.click(getByRole("button", { name: locale === "en" ? "Explore a plan for the same budget" : "같은 예산으로 조정안 보기", exact: true }));
+    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Campaigns" : "캠페인 근거", exact: true }));
+    fireEvent.click(getByRole("button", { name: locale === "en" ? "See this budget plan" : "같은 예산으로 조정안 보기", exact: true }));
     expect(document.activeElement).toBe(getByRole("tab", { name: locale === "en" ? "Budget actions" : "예산 액션", exact: true }));
     expect(getByRole("tab", { name: locale === "en" ? "Budget actions" : "예산 액션", exact: true }).getAttribute("aria-selected")).toBe("true");
     const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
@@ -169,10 +181,10 @@ describe("LandingPage render smoke", () => {
     const newNames = [...firstDates].filter(([, date]) => date >= periods.current.start).map(([name]) => name);
     expect(newNames).toHaveLength(2);
     fireEvent.click(getByRole("tab", { name: locale === "en" ? "New creatives" : "새 소재 확인", exact: true }));
-    const tableRows = [...document.querySelectorAll(".operations-sample-preview__creatives tbody tr")];
-    expect(tableRows).toHaveLength(newNames.length);
+    const creativeRows = [...document.querySelectorAll(".operations-sample-creatives > li")];
+    expect(creativeRows).toHaveLength(newNames.length);
     for (const name of newNames) {
-      const node = tableRows.find(row => row.textContent.includes(name));
+      const node = creativeRows.find(row => row.textContent.includes(name));
       const rows = recent.filter(row => row["Creative ID"] === name);
       expect(node.textContent).toContain(rows[0]["Campaign name"]);
       const cost = rows.reduce((sum, row) => sum + row.Cost, 0);
@@ -180,7 +192,22 @@ describe("LandingPage render smoke", () => {
       expect(node.textContent).toContain(money(cost / installs));
       expect(node.textContent).toContain(fmtNum(installs, 0));
       expect(node.textContent).toContain(firstDates.get(name).slice(5).replace("-", "."));
+      const established = recent.filter(row => row["Campaign name"] === rows[0]["Campaign name"] && firstDates.get(row["Creative ID"]) < periods.current.start);
+      const reference = established.reduce((sum, row) => sum + row.Cost, 0) / established.reduce((sum, row) => sum + row.Installs, 0);
+      const relative = (cost / installs / reference - 1) * 100;
+      expect(node.querySelector("[data-tone]").dataset.tone).toBe(relative > 0 ? "bad" : "good");
+      expect(node.querySelector(".home-creative-delta i").style.width).not.toBe("0%");
     }
+    fireEvent.click(getByRole("tab", { name: locale === "en" ? "Follow-up" : "실행과 검토", exact: true }));
+    const proposals = [...document.querySelectorAll(".home-action-preview__proposals > li")];
+    expect(proposals).toHaveLength(plan.items.length);
+    for (const item of plan.items) {
+      const name = brief.campaigns.find(row => row.id === item.id).name;
+      const proposal = proposals.find(row => row.textContent.includes(name));
+      expect(proposal.textContent).toContain(`${money(item.current)} → ${money(item.budget)}`);
+    }
+    expect(document.querySelectorAll(".operations-sample-preview__footer .btn")).toHaveLength(1);
+    expect(document.querySelectorAll(".operations-sample-preview__body a")).toHaveLength(0);
     expect(useAppStore.getState().csvData).toBe(userData);
   });
   it.each(["ko", "en"])("switches preview views with owned tabs, keyboard focus and one visible panel (%s)", locale => {
