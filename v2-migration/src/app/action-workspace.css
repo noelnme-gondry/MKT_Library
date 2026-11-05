@@ -104,6 +104,8 @@
   .ops-selection__totals dd small { display: block; margin-top: .15rem; color: var(--text-secondary); }
   .ops-selection__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
   .ops-selection__actions .btn { min-height: 44px; }
+  /* There is no global disabled look for buttons; a blocked save must not read as available. */
+  :is(.ops-selection__actions, .ops-plan-save) .btn:disabled { opacity: .45; cursor: not-allowed; }
   .ops-select-row { display: flex; align-items: flex-start; gap: .65rem; min-height: 44px; padding: .35rem 0; cursor: pointer; }
   .ops-select-row input { width: 18px; height: 18px; margin: .2rem 0 0; flex: 0 0 auto; accent-color: var(--primary); }
   .ops-select-row > span { display: grid; gap: .2rem; min-width: 0; }
