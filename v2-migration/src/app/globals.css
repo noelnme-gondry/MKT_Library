@@ -1394,7 +1394,7 @@
       .kpi-card .delta {
         font-family: var(--font-sans);
         font-size: var(--fs-xs);
-        color: var(--secondary);
+        color: var(--text-secondary);
       }
       .kpi-card .delta.down {
         color: var(--danger);

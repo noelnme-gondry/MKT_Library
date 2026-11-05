@@ -22,6 +22,7 @@
   body .dashboard-comparison-period--compact > p { flex-basis: 100%; order: 3; margin: 0; font-size: var(--fs-xs); }
   body .app .content .result-next-action { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.25rem 0; padding: 1.25rem; background: var(--surface-container-lowest); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--radius-md); }
   @media (min-width: 769px) { body .app .content .result-action-card > .result-next-action { margin-left: 47px; } }
+  body .app .content #subscription-survival-result .result-action-card > .result-next-action { margin-left: 0; }
   .result-next-action > div { min-width: 0; }
   .result-next-action__label, .ops-section-label { color: var(--primary); font-size: var(--fs-sm); font-weight: 700; }
   body .result-next-action h3 { font-size: var(--fs-lg); line-height: 1.45; margin: .35rem 0; }
