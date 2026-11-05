@@ -106,6 +106,29 @@ describe("Dashboard render smoke", () => {
     expect(screen.getByText("Use my CSV")).toBeTruthy();
   });
 
+  it("shows the interactive charts before sample review and layout utilities", () => {
+    const demo = buildDemoCsv("efficiency", "ko");
+    useAppStore.setState({ csvGroups: { ...useAppStore.getState().csvGroups, efficiency: demo }, csvData: demo });
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    const { container } = render(<Dashboard />);
+    const panel = container.querySelector("#dashboard-tabpanel");
+    const review = container.querySelector(".decision-review-preview");
+    const chart = container.querySelector("#s-charts");
+    const toolbar = container.querySelector(".dashboard-workspace-toolbar");
+    const downloads = container.querySelector(".result-action-card > .result-action-card__controls");
+    expect(container.querySelectorAll("#dashboard-tabpanel")).toHaveLength(1);
+    expect(review).toBeTruthy();
+    expect(chart).toBeTruthy();
+    expect(toolbar).toBeTruthy();
+    expect(downloads).toBeTruthy();
+    expect(panel.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chart.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panel.compareDocumentPosition(downloads) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^CPI/ }));
+    expect(screen.getByRole("img", { name: "CPI 추이 차트" })).toBeTruthy();
+    expect(screen.getByText("예시 결과는 저장되지 않습니다.")).toBeTruthy();
+  });
+
   for (const tab of TABS) {
     it(`with-data mounts — ${tab} tab`, () => {
       seedWithData();

@@ -1,0 +1,85 @@
+/* Scoped to the dashboard: legacy unlayered figure rules must not erase card headers. */
+  /* 5-2: chart cards own their title, plot and export action. The board itself
+     is a layout, so it does not add another padded white box around them. */
+  .app .content .dashboard-card-board .dashboard-workspace__header { padding: 20px; margin-bottom: 16px; }
+  .dashboard-card-board .dashboard-sticky-context { padding-bottom: 12px; }
+  .dashboard-card-board .dashboard-filter-bar--recipe { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 20px; }
+  .dashboard-card-board .dashboard-filter-bar__command { flex: 1 1 320px; margin: 0; padding-top: 0; border-top: 0; }
+  .dashboard-card-board .dashboard-tabs { margin-top: 12px; padding-top: 12px; }
+  .dashboard-card-board .dashboard-content { gap: 16px; }
+  .dashboard-card-board .report-context { margin-block: 0; }
+
+  .app .content .dashboard-card-board .dashboard-briefing > .result-action-card {
+    background: transparent; padding: 0; border: 0; box-shadow: none;
+  }
+  .dashboard-card-board .result-action-card__head { padding: 16px 20px; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+  .dashboard-card-board .result-action-card__headline { font-size: var(--fs-lg); line-height: 1.45; }
+  .dashboard-card-board .result-action-card__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 16px 20px; background: var(--surface-container-lowest); border-inline: 1px solid var(--border); gap: 16px; }
+  .dashboard-card-board .result-action-card__stats > div { padding: 0; border: 0; }
+  .dashboard-card-board .result-action-card__stats strong { font-size: var(--fs-lg); }
+  .dashboard-card-board .result-action-card > .result-action-card__controls { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .dashboard-card-board .result-next-action { margin: 0 0 20px; padding: 16px 20px; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 var(--radius-md) var(--radius-md); background: var(--surface-container-lowest); }
+  .dashboard-card-board .result-next-action h3 { font-size: var(--fs-base); }
+  .dashboard-card-board .result-next-action p { font-size: var(--fs-xs); }
+  .dashboard-card-board .result-next-action__sample { font-size: var(--fs-xs); }
+  .dashboard-card-board .dashboard-board { margin-block: 0 20px; }
+  .dashboard-card-board .dashboard-cohort-control { justify-content: flex-end; margin: 0; }
+  .dashboard-card-board .dashboard-block-grid { gap: 16px; }
+  @layer app {
+    .app .content .dashboard-card-board .dashboard-layout-block > :is(.dashboard-viz-workbench, .dashboard-supporting-charts) {
+      padding: 0 !important; border: 0 !important; background: transparent !important; overflow: visible;
+    }
+  }
+  .dashboard-card-board .dashboard-viz-workbench > .dashboard-viz-workbench__metrics { padding: 0; border: 0; margin-bottom: 16px; }
+  .dashboard-card-board .dashboard-section-head { margin-bottom: 12px; }
+  .dashboard-card-board .dashboard-layout-block .section-title { font-size: var(--fs-base); }
+  .dashboard-card-board .kpi-grid--overview { gap: 12px; border: 0; background: transparent; border-radius: 0; overflow: visible; }
+  .dashboard-card-board .kpi-grid--overview .kpi-card {
+    min-height: 164px; height: 100%; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-container-lowest);
+  }
+  .dashboard-card-board .kpi-grid--overview .kpi-card.is-selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .dashboard-card-board .kpi-card .label { letter-spacing: 0; font-weight: 400; }
+  .dashboard-card-board .kpi-card .value { font-size: var(--fs-xl); letter-spacing: -.025em; }
+  .dashboard-card-board .kpi-card__select-state { letter-spacing: 0; }
+  .dashboard-card-board .kpi-sparkline { height: 36px; margin-block: 10px; }
+  .dashboard-card-board .kpi-card__note { white-space: normal; line-height: 1.5; }
+  .app .content .dashboard-card-board .dashboard-viz-workbench > .dashboard-explorer,
+  .app .content .dashboard-card-board .dashboard-supporting-charts .chart-card {
+    padding: 0; margin: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-container-lowest); overflow: hidden;
+  }
+  .dashboard-card-board :is(.dashboard-explorer__head, .dashboard-supporting-chart__head) {
+    min-height: 80px; padding: 18px 20px; margin: 0; border-bottom: 1px solid var(--border); align-items: center; gap: 8px 16px;
+  }
+  .dashboard-card-board .dashboard-explorer__head > div { flex: 1; }
+  .dashboard-card-board .dashboard-layout-block .dashboard-explorer__head .section-title { margin: 0 !important; }
+  .dashboard-card-board .chart-title { margin: 0; font-size: var(--fs-base); font-weight: 600; line-height: 1.5; }
+  .dashboard-card-board .chart-sub { margin-top: 4px; line-height: 1.5; }
+  .dashboard-card-board .dashboard-explorer__head .dashboard-explorer__status { padding: 0; border: 0; }
+  .dashboard-card-board .dashboard-explorer__canvas { height: 320px; padding: 20px; }
+  .dashboard-card-board .dashboard-supporting-chart__canvas { height: 280px; padding: 20px; }
+  .dashboard-card-board .dashboard-explorer__interpretation { margin: 0; padding: 0 20px 16px; font-size: var(--fs-xs); }
+  .dashboard-card-board .dashboard-explorer__actions { margin: 0; padding: 12px 20px; border-top: 1px solid var(--border); }
+  .dashboard-card-board .dashboard-supporting-charts .chart-grid { gap: 16px; align-items: stretch; }
+  .dashboard-card-board .dashboard-supporting-charts .chart-card { display: flex; flex-direction: column; }
+  .dashboard-card-board .dashboard-supporting-chart__head { flex: 1; }
+  .dashboard-card-board .dashboard-board > .dashboard-workspace-toolbar { margin: 16px 0 0; padding: 16px 20px; border-radius: var(--radius-md); }
+  .dashboard-card-board .dashboard-board[data-editing] > .dashboard-workspace-toolbar { margin: 0 0 16px; }
+  .dashboard-card-board .result-action-card > :is(.result-action-card__points, .decision-review-preview, .decision-review, .result-action-card__utilities) { margin-inline: 0; }
+
+  @media (max-width: 768px) {
+    .dashboard-card-board .kpi-grid--overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-card-board .kpi-grid--overview > div:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+    .dashboard-card-board .result-action-card__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-card-board .dashboard-filter-bar__command { flex-basis: 100%; }
+    .dashboard-card-board .dashboard-supporting-charts .chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-card-board :is(.dashboard-explorer__head, .dashboard-supporting-chart__head) { padding: 16px; }
+    .dashboard-card-board :is(.dashboard-explorer__canvas, .dashboard-supporting-chart__canvas) { height: 260px; padding: 16px 12px; }
+  }
+  @media (max-width: 380px) {
+    .dashboard-card-board .kpi-grid--overview .kpi-card { padding: 12px; }
+    .dashboard-card-board .kpi-card .value { font-size: var(--fs-lg); }
+    .dashboard-card-board .result-action-card__stats { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-card-board .result-action-card__head:has(> .result-action-card__evidence) { grid-template-columns: minmax(0, 1fr) auto; }
+    .dashboard-card-board .result-action-card__head > .result-action-card__copy { grid-column: 1 / -1; grid-row: 2; }
+    .dashboard-card-board .result-action-card__head > .result-action-card__evidence { grid-column: 2; grid-row: 1; }
+  }

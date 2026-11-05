@@ -546,6 +546,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
   // 3. Chart Rendering Effect
   useEffect(() => {
     const instances = chartsRef.current;
+    const compactTick = (value) => Number(value).toLocaleString(locale, { notation: "compact", maximumFractionDigits: 1 });
 
     // Destroy existing charts + 삭제된 커스텀 차트의 stale 키 정리(다시 생성).
     Object.keys(instances).forEach((k) => {
@@ -589,15 +590,26 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           ...chartCommonOpts(),
           plugins: { ...chartCommonOpts().plugins, eventMarkers: { events: dailyMarkerEvents } },
           scales: {
-            x: { ...chartCommonOpts().scales.x },
+            x: {
+              ...chartCommonOpts().scales.x,
+              ticks: {
+                ...chartCommonOpts().scales.x.ticks, autoSkipPadding: 24, maxTicksLimit: 3,
+                callback(value) {
+                  const label = this.getLabelForValue(value);
+                  return /^\d{4}-\d{2}-\d{2}$/.test(label) ? [label.slice(0, 4), label.slice(5)] : label;
+                },
+              },
+            },
             y: {
               ...chartCommonOpts().scales.y,
               position: "left",
-              title: { display: true, text: T.costLabel, color: CHART_THEME.muted, font: { size: 10 } },
+              ticks: { ...chartCommonOpts().scales.y.ticks, callback: compactTick },
+              title: { display: true, text: `${T.costLabel} (${dataCurrency})`, color: CHART_THEME.muted, font: { size: 10 } },
             },
             y1: {
               ...chartCommonOpts().scales.y,
               position: "right",
+              ticks: { ...chartCommonOpts().scales.y.ticks, callback: compactTick },
               title: { display: true, text: trendOutcomeLabel, color: CHART_THEME.muted, font: { size: 10 } },
               grid: { display: false },
             },
@@ -787,7 +799,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
     // 변경, filteredRows=데이터 변경 시 재생성. customChartDefs/buildCustomChartConfig는
     // 매 렌더 새 참조지만 위 sig가 실질 변경을 모두 커버(매 렌더 재실행 방지).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyAgg, byChannel, totals, dailyMarkerEvents, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale]);
+  }, [dailyAgg, byChannel, totals, dailyMarkerEvents, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale, dataCurrency]);
 
   // KPI 카드는 빠른 스캔용 미니 차트이자 아래 탐색 차트의 지표 선택기다. PVM 결과를
   // 여기서 재계산하지 않으므로 원인 대신 관찰 가능한 추세만 보여준다.
@@ -961,7 +973,6 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
         {kpiEditMode && (
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
-        {!kpiEditMode && <p className="kpi-grid__hint">{locale === "en" ? "Showing the five core KPIs. Enable the rest in Edit." : "핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다."}</p>}
         {allKpiCards.length === 0 ? (
           <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noKpi}</p>
         ) : (
@@ -1016,7 +1027,6 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
             <button className="ab-pill dashboard-legacy-edit" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>{locale === "en" ? "Use the ready-made charts or add your own, then edit visibility and order." : "기본 차트를 바로 사용하거나 새 차트를 추가하고, 표시 여부와 순서를 편집할 수 있습니다."}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는
@@ -1029,7 +1039,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
             {orderedCharts.map((c) => (
               <div key={c.k} className="chart-card" data-design-exempt="nested: independent chart title, plot and export action grouped inside the supporting-chart surface (design.md §2)" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
                 <div className="dashboard-supporting-chart__head figure-head">
-                  <div><div className="chart-title">{c.title}</div><div className="chart-sub">{c.sub}</div></div>
+                  <div><h3 className="chart-title">{c.title}</h3><div className="chart-sub">{c.sub}</div></div>
                   {!customScorecardFor(c.k) && <FigurePngButton title={c.title} target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} />}
                 </div>
                 {customScorecardFor(c.k) ? (
