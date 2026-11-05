@@ -31,7 +31,8 @@ export default function OperationsPlanBoard({ brief, plan, options, onChange, mo
   const base = hasBase ? Object.values(brief.currentSpends).reduce((a, b) => a + b, 0) * n : null;
   const rows = plan.items.map(item => ({ ...item, ...brief.campaigns.find(row => row.id === item.id), allocation: item })).sort((a, b) => (b.allocation.budget - b.allocation.current) - (a.allocation.budget - a.allocation.current));
   const changeMode = mode => onChange({ mode, targetTotal: mode === "maintain" || !hasBase ? null : Math.round(base * (mode === "increase" ? 1.1 : .9)) });
-  const delta = value => `${value > 1e-6 ? "+" : value < -1e-6 ? "−" : ""}${money(Math.abs(value))}`;
+  // 표시 단위보다 작은 잔차(부동소수 합계 차이)는 0이다. "₩0.00"이나 부호 붙은 0을 쓰지 않는다.
+  const delta = value => Math.abs(value) < (currency === "USD" ? 0.005 : 0.5) ? money(0) : `${value > 0 ? "+" : "−"}${money(Math.abs(value))}`;
   // 모형 성과는 소수로 나오지만 설치·가입은 정수로 읽는다. 표시만 반올림하고 0으로 접히면 부호를 붙이지 않는다.
   const countDelta = value => { const rounded = Math.round(value); return `${rounded > 0 ? "+" : rounded < 0 ? "−" : ""}${fmtNum(Math.abs(rounded))}`; };
   const direction = item => item.budget > item.current + 1e-6 ? "increase" : item.budget < item.current - 1e-6 ? "decrease" : "hold";
