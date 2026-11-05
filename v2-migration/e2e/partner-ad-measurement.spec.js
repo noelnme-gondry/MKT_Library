@@ -3,7 +3,7 @@ import path from "node:path";
 import { devices, expect, test } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { CONSENT_STORAGE_KEY } from "../src/lib/consent.js";
-import { PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, pageAdPlacement } from "../src/lib/partnerAds.js";
+import { PARTNER_AD_DISCLOSURE, PARTNER_AD_FORMATS, PARTNER_AD_PLACEMENTS, PARTNER_AD_RAIL_MIN_WIDTH, partnerAdDimensions, pageAdPlacement } from "../src/lib/partnerAds.js";
 import { partnerAdSource } from "../src/lib/partnerAdFrame.js";
 
 // 운영 호스트 분기는 그대로 실행하되 모든 요청은 로컬 빌드 또는 차단으로 끝낸다.
@@ -58,9 +58,11 @@ async function reachSlot(page, slot, pathname, locale, firstFormat) {
   await expect(frame).toBeVisible();
   const format = await frame.getAttribute("data-ad-format");
   await expect(frame).toHaveAttribute("data-ad-provider", "coupang");
-  await expect(frame).toHaveAttribute("src", partnerAdSource(format));
+  const availableWidth = await page.locator(`[data-ad-slot="${slot}"]`).evaluate(el => parseFloat(el.style.width));
+  const layout = { placement: slot, availableWidth, isHome: pageAdPlacement(pathname) === "home-intro" };
+  await expect(frame).toHaveAttribute("src", partnerAdSource(format, layout));
   expect(await frame.getAttribute("srcdoc")).toBeNull();
-  const size = PARTNER_AD_FORMATS[format];
+  const size = partnerAdDimensions(format, layout);
   expect(await frame.boundingBox()).toMatchObject({ width: size.width, height: size.height });
   await expect(page.locator(`[data-ad-slot="${slot}"] .partner-ad-preview__note`)).toHaveText(PARTNER_AD_DISCLOSURE[locale]);
   await frame.scrollIntoViewIfNeeded();
@@ -320,7 +322,7 @@ for (const locale of ['ko', 'en']) test(`mobile CSS geometry and orientation, fo
         for (const frame of slot.frames) {
           expect(frame.left).toBeGreaterThanOrEqual(-0.5);
           expect(frame.right).toBeLessThanOrEqual(geometry.clientWidth + 0.5);
-          const size = PARTNER_AD_FORMATS[frame.format];
+          const size = partnerAdDimensions(frame.format, { placement: slot.slot, availableWidth: frame.width, isHome: placement === 'home-intro' });
           expect(frame.width).toBe(size.width);
           expect(frame.height).toBe(size.height);
         }

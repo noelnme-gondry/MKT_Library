@@ -1,8 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { PARTNER_AD_PLACEMENTS, partnerAdFormat, pageAdPlacement, partnerAdMode, partnerAdInlineLayout, partnerAdRailFormat, partnerAdEventParams } from "./partnerAds";
+import { PARTNER_AD_PLACEMENTS, partnerAdFormat, partnerAdDimensions, pageAdPlacement, partnerAdMode, partnerAdInlineLayout, partnerAdRailFormat, partnerAdEventParams } from "./partnerAds";
 import { partnerAdSource } from "./partnerAdFrame";
 
 describe("partner ad sizing and placement", () => {
+  it("uses the available home width without stretching or changing other placements", () => {
+    for (const width of [728, 931.6, 1440, 2400]) {
+      const layout = { placement: "home-intro", availableWidth: width };
+      const size = partnerAdDimensions("wide", layout);
+      expect(size).toEqual({ width: Math.min(1600, Math.floor(width)), height: 140 });
+      expect(size.width).toBeLessThanOrEqual(width);
+      const params = new URL(partnerAdSource("wide", layout)).searchParams;
+      expect(Number(params.get("width"))).toBe(size.width);
+      expect(Number(params.get("height"))).toBe(size.height);
+    }
+    for (const width of [undefined, NaN, Infinity, -1, 727]) expect(partnerAdDimensions("wide", { placement: "home-intro", availableWidth: width })).toEqual({ width: 728, height: 90 });
+    expect(partnerAdDimensions("wide", { placement: "blog-byline", availableWidth: 1200 })).toEqual({ width: 728, height: 90 });
+    expect(partnerAdDimensions("compact", { placement: "home-intro", availableWidth: 600 })).toEqual({ width: 320, height: 100 });
+    expect(partnerAdDimensions("rail", { isHome: true })).toEqual({ width: 160, height: 800 });
+    expect(partnerAdDimensions("rail", { isHome: false })).toEqual({ width: 160, height: 600 });
+  });
   it("borrows only enough safe space for compact and excludes scrollbars, sidebar and safe-area", () => {
     expect(partnerAdInlineLayout({ contentLeft: 16, contentWidth: 318, safeLeft: 0, safeRight: 350 })).toEqual({ width: 320, marginLeft: -1 });
     expect(partnerAdInlineLayout({ contentLeft: 16, contentWidth: 288, safeLeft: 0, safeRight: 320 })).toEqual({ width: 320, marginLeft: -16 });
