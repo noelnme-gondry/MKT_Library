@@ -171,7 +171,7 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? "Inspect inputs and detailed data" : "입력·상세 데이터 확인", exact: true }).click();
     await expect(page.locator("#ops-input-detail")).toContainText(en ? "Complete total" : "유효한 합계");
     await page.getByRole("dialog").getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
-    await expect(page.getByRole("button", { name: en ? "Plan budget actions" : "예산 액션 정하기", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: en ? /^Plan a budget action for / : /예산 액션 정하기$/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 

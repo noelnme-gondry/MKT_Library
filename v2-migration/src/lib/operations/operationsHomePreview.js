@@ -3,6 +3,8 @@ import { operationRecommendations, operationsCreativeSignals } from "./operation
 import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { prepareOperationsBrief, planOperationsBudget } from "./operationsBrief";
+import { operationsPlanRange } from "./operationsScenario";
+import { periodDays } from "@/lib/analysisPeriod";
 
 // 공개 미리보기는 사용자 상태를 읽지 않는다. 도구의 같은 가상 원본·기간·엔진으로 계산한다.
 export function buildOperationsHomePreview(locale = "ko") {
@@ -12,11 +14,14 @@ export function buildOperationsHomePreview(locale = "ko") {
   const changeLimit = 0.2;
   const plan = planOperationsBudget(brief, { changeLimit, currency: data.currency });
   const byId = new Map(brief.campaigns.map(campaign => [campaign.id, campaign]));
+  // 플래너의 기본 적용 기간(다음 7일)과 같은 단위로 보여 준다. 홈에서 하루 금액, 플래너에서 7일 합계를
+  // 보이면 같은 캠페인이 두 숫자로 읽힌다.
+  const planDays = periodDays(operationsPlanRange(periods.current.end, "week"));
   return {
-    ...brief, dates: periods.dates, changeLimit, plan,
+    ...brief, dates: periods.dates, changeLimit, plan, planDays,
     recommendations: operationRecommendations(brief, plan, operationsCreativeSignals(getMappedRows(data), "installs")),
     historyDays: periods.dates.length,
     newCreatives: brief.creatives.filter(creative => creative.isNew),
-    budgetMoves: plan.items.map(item => ({ id: item.id, name: byId.get(item.id).name, delta: item.budget - item.current })),
+    budgetMoves: plan.items.map(item => ({ id: item.id, name: byId.get(item.id).name, delta: (item.budget - item.current) * planDays })),
   };
 }

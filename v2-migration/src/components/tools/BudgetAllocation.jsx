@@ -2131,8 +2131,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 0.5rem" }}>
             {rollupLevel === "detail"
               ? tr(
-                  <>각 행은 PRISM이 계산한 <strong>권장 배분 Cost</strong>와 그에 따른 <strong>예상 {unitLabel}·효율</strong>을 읽기 전용으로 표시합니다. 조정은 위의 전역 예산 또는 목표 슬라이더에서 합니다.</>,
-                  <>Each row is a read-only result: PRISM&apos;s <strong>recommended allocated cost</strong> and its <strong>projected {unitLabel}s · efficiency</strong>. Adjust the global budget or target slider above, not a channel row.</>
+                  <>각 행은 <strong>권장 배분 비용</strong>과 그에 따른 <strong>예상 {unitLabel}·효율</strong>입니다(읽기 전용). 칸 아래 작은 숫자는 이전 기간 하루 평균입니다. 조정은 위의 전역 예산 또는 목표 슬라이더에서 합니다.</>,
+                  <>Each row is a read-only result: the <strong>recommended allocated cost</strong> and its <strong>projected {unitLabel}s · efficiency</strong>. Small figures under each value are the prior-period daily average. Adjust the global budget or target slider above, not a channel row.</>
                 )
               : tr(
                   <>최소 단위 분배 결과를 <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> 기준으로 합쳐 봅니다(읽기 전용). 효율은 합계에서 재계산합니다(Σ비용÷Σ{unitLabel}).</>,
@@ -2145,39 +2145,28 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 <thead>
                   <tr>
                     <th style={{ minWidth: "150px" }}>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</th>
-                    <th style={{ textAlign: "right" }}>{tr("배분 Cost", "Allocated cost")}</th>
+                    <th style={{ textAlign: "right" }}>{tr("배분 비용", "Allocated cost")}</th>
                     <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
                     <th style={{ textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
                     <th style={{ textAlign: "right" }}>{tr("비중", "Share")}</th>
-                    <th style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
-                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
-                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${roas ? "ROAS" : "CPR"}`, `Prior ${roas ? "ROAS" : "CPR"}`)}</th>
-                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>{tr("이전 비중", "Prior share")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rollupRows.map((g) => (
                     <tr key={g.channel}>
                       <td>{g.channel}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(Math.round(g.cost), currency)}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong></td>
-                      <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{g.prevDaily > 0 ? fmtCurrency(Math.round(g.prevDaily), currency) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevRes > 0 ? formatNumberK(g.prevRes, 0) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevCpr != null ? fmtCostMetric(g.prevCpr, effectiveMetric, currency) : "—"}</td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevShare > 0 ? g.prevShare.toFixed(1) + "%" : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(Math.round(g.cost), currency)}<small className="alloc-prev">{g.prevDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(Math.round(g.prevDaily), currency)}` : ""}</small></td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}<small className="alloc-prev">{g.prevRes > 0 ? `${tr("이전", "Prior")} ${formatNumberK(g.prevRes, 0)}` : ""}</small></td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}<small className="alloc-prev">{g.prevCpr != null ? `${tr("이전", "Prior")} ${fmtCostMetric(g.prevCpr, effectiveMetric, currency)}` : ""}</small></td>
+                      <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong><small className="alloc-prev">{g.prevShare > 0 ? `${tr("이전", "Prior")} ${g.prevShare.toFixed(1)}%` : ""}</small></td>
                     </tr>
                   ))}
                   <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
                     <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
-                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}<small className="alloc-prev">{prevTotalDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(Math.round(prevTotalDaily), currency)}` : ""}</small></td>
                     <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
                     <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
                     <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
-                    <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(Math.round(prevTotalDaily), currency) : "—"}</td>
-                    <td></td><td></td>
-                    <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -2188,27 +2177,23 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               <thead>
                 <tr>
                   <th style={{ minWidth: "150px" }}>{tr("채널 (검증 통과)", "Channel (verified)")}</th>
-                  <th style={{ minWidth: "120px", textAlign: "right" }}>{tr("배분 Cost", "Allocated cost")}</th>
-                  <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
-                  <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
+                  <th style={{ textAlign: "right" }}>{tr("배분 비용", "Allocated cost")}</th>
+                  <th style={{ textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
+                  <th style={{ textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
                   <th style={{ minWidth: "96px", textAlign: "right" }} title={tr("현 지출점에서 지출을 조금 늘렸을 때 추가 1건당 비용(한계효율). 평균보다 나쁘면 증액을 신중히.", "Cost per additional conversion when spending a bit more at the current point (marginal efficiency). Worse than average → scale up cautiously.")}>{tr(`한계 ${roas ? "ROAS" : "CPR"}`, `Marginal ${roas ? "ROAS" : "CPR"}`)}</th>
-                  <th style={{ minWidth: "60px", textAlign: "right" }}>{tr("비중", "Share")}</th>
-                  <th style={{ minWidth: "90px", textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
-                  <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
-                  <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${roas ? "ROAS" : "CPR"}`, `Prior ${roas ? "ROAS" : "CPR"}`)}</th>
-                  <th style={{ minWidth: "60px", textAlign: "right", color: "var(--text-muted)" }}>{tr("이전 비중", "Prior share")}</th>
+                  <th style={{ textAlign: "right" }}>{tr("비중", "Share")}</th>
                 </tr>
               </thead>
               <tbody>
                 {!(plannedDailyBudget > 0) ? (
                   <tr>
-                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
+                    <td colSpan="6" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
                       {tr("전역 예산 또는 효율 목표를 정하면 채널별 분배 결과가 계산됩니다.", "Set a global budget or efficiency target to calculate the channel allocation.")}
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
+                    <td colSpan="6" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
                       {tr("배분 가능한 채널이 없습니다. 검증 단계에서 추세선 적합에 성공한 채널이 있는지 확인하세요.", "No channels are available for allocation. Check whether any channels have a successful trendline fit in the verification step.")}
                     </td>
                   </tr>
@@ -2235,35 +2220,29 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                               )}
                             </div>
                           </td>
-                          <td className="tnum" style={{ textAlign: "right" }}><strong>{fmtCurrency(it.cost, currency)}</strong></td>
+                          <td className="tnum" style={{ textAlign: "right" }}><strong>{fmtCurrency(it.cost, currency)}</strong><small className="alloc-prev">{prev.daily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(prev.daily, currency)}` : ""}</small></td>
                           <td className="tnum" style={{ textAlign: "right" }}>
                             {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : formatNumberK(it.results, 0)}
+                            <small className="alloc-prev">{prev.resDaily > 0 ? `${tr("이전", "Prior")} ${formatNumberK(prev.resDaily, 0)}` : ""}</small>
                           </td>
                           <td className="tnum" style={{ textAlign: "right" }}>
                             {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : fmtCostMetric(it.cpr, effectiveMetric, currency)}
+                            <small className="alloc-prev">{prev.cpr != null ? `${tr("이전", "Prior")} ${fmtCostMetric(prev.cpr, effectiveMetric, currency)}` : ""}</small>
                           </td>
                           <td className="tnum" style={{ textAlign: "right" }}>
                             {isZero || mCpr == null ? <span style={{ color: "var(--text-muted)" }}>—</span> : !isFinite(mCpr) ? <span style={{ color: "var(--text-muted)" }} title={tr("한계효용 ≤ 0 — 더 투입해도 효율↑ 없음", "marginal utility ≤ 0 — no gain from more spend")}>∞</span> : fmtCostMetric(mCpr, effectiveMetric, currency)}
                           </td>
-                          <td className="tnum" style={{ textAlign: "right" }}><strong>{(it.weight * 100).toFixed(1)}%</strong></td>
-                          <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prev.daily > 0 ? fmtCurrency(prev.daily, currency) : "—"}</td>
-                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.resDaily > 0 ? formatNumberK(prev.resDaily, 0) : "—"}</td>
-                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.cpr != null ? fmtCostMetric(prev.cpr, effectiveMetric, currency) : "—"}</td>
-                          <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevShare > 0 ? prevShare.toFixed(1) + "%" : "—"}</td>
+                          <td className="tnum" style={{ textAlign: "right" }}><strong>{(it.weight * 100).toFixed(1)}%</strong><small className="alloc-prev">{prevShare > 0 ? `${tr("이전", "Prior")} ${prevShare.toFixed(1)}%` : ""}</small></td>
                         </tr>
                       );
                     })}
                     <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
                       <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}<small className="alloc-prev">{prevTotalDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(prevTotalDaily, currency)}` : ""}</small></td>
                       <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
                       <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
                       <td></td>
                       <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
-                      <td className="tnum" style={{ textAlign: "right", borderLeft: "1px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(prevTotalDaily, currency) : "—"}</td>
-                      <td></td>
-                      <td></td>
-                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
                     </tr>
                   </>
                 )}
@@ -2275,7 +2254,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "8px" }}>
               · {tr(
                 `미배분 ${fmtCurrency(allocation.unallocated, currency)} (채널별 관측 최대 지출 상한 또는 한계효용 때문에 자동 집행하지 않음)`,
-                `${fmtCurrency(allocation.unallocated, currency)} unallocated (PRISM will not spend beyond a channel's observed-spend ceiling or positive marginal utility)`
+                `${fmtCurrency(allocation.unallocated, currency)} unallocated (not spent beyond a channel's observed-spend ceiling or where marginal utility is no longer positive)`
               )}
             </p>
           )}

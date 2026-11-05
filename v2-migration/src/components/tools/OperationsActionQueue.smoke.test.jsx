@@ -5,7 +5,7 @@ const makeItems = (count = 6) => Array.from({ length: count }, (_, index) => {
   const action = { version: 1, kind: index % 3 === 0 ? "creative_replace" : "budget", target: { channel: "Meta", campaign: "A" }, state: "executed", plannedDate: "2026-09-01", executedDate: "2026-09-02", reviewDays: 7, beforeBudget: 100, afterBudget: 120, creative: "Video A" };
   return { record: { id: `record-${index}`, actionTarget: `Campaign ${index}`, operationAction: action, reviewDate: "2026-09-09", status: "pending" }, review: { action, due: "2026-09-09", state: "ready", comparison: null } };
 });
-const props = { proposals: [], today: "2026-10-01", currency: "KRW", metricName: "CPI", isDemo: false, onNew: vi.fn(), onEdit: vi.fn(), onReview: vi.fn(), onFollowup: vi.fn(), concurrent: () => 0 };
+const props = { today: "2026-10-01", currency: "KRW", metricName: "CPI", isDemo: false, onEdit: vi.fn(), onReview: vi.fn(), onFollowup: vi.fn(), concurrent: () => 0 };
 it.each(["ko", "en"])("shows grouped reviews with no singleton pagination and completes only the selected record (%s)", locale => {
   const en = locale === "en", items = makeItems(), onReview = vi.fn();
   const { rerender, container } = render(<OperationsActionQueue {...props} {...{ items, locale, onReview }} />);
@@ -45,4 +45,14 @@ it("keeps recorded budget currency when the loaded data uses another currency", 
   expect(container.querySelector(".operations-queue__choice").textContent).toContain("₩100 → ₩120");
   expect(container.querySelector(".operations-queue__detail").textContent).toContain("₩100 → ₩120");
   expect(screen.getByRole("button", { name: "전후 검토" }).disabled).toBe(true);
+});
+it("shows a single empty line without proposals and reveals the first saved record without a manual state change", () => {
+  const { container, rerender } = render(<OperationsActionQueue {...props} items={[]} locale="ko" />);
+  expect(container.querySelector(".operations-queue__states")).toBeNull();
+  expect(container.querySelector(".operations-queue__empty").textContent).toContain("아직 기록한 액션이 없습니다");
+  const item = makeItems(2)[1];
+  item.record.operationAction = item.review.action = { ...item.review.action, state: "planned", executedDate: "" };
+  rerender(<OperationsActionQueue {...props} items={[item]} locale="ko" />);
+  expect(within(screen.getByRole("group", { name: "액션 진행 상태" })).getByRole("button", { name: /진행 중/ }).getAttribute("aria-pressed")).toBe("true");
+  expect(container.querySelectorAll(".operations-queue__choice")).toHaveLength(1);
 });

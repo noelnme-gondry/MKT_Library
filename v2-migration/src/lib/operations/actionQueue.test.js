@@ -11,7 +11,7 @@ it("queues due records even when observations are missing, and separates planned
 });
 it("groups interleaved action kinds, paginates without losing records and clamps the page after review", () => {
   const items = Array.from({ length: 17 }, (_, index) => { const record = { id: `record-${index}`, operationAction: { ...action, kind: index % 2 ? "creative_replace" : "budget" }, reviewDate: "2026-09-09" }; return { record, review: { action: record.operationAction, state: "coverage" } }; });
-  const queue = buildOperationQueue(items, [], "2026-10-01");
+  const queue = buildOperationQueue(items, "2026-10-01");
   const pages = [1, 2, 3].map(page => operationQueuePage(queue, { bucket: "review", page }));
   expect(pages.map(page => page.visible.length)).toEqual([8, 8, 1]);
   expect(new Set(pages.flatMap(page => page.visible.map(item => item.id))).size).toBe(17);

@@ -42,7 +42,7 @@ function EvidenceTable({ title, columns, rows, locale, emptyText }) {
   </div>;
 }
 
-function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomBasis, currency, locale = "ko", onInspectMapping }) {
+function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomBasis, currency, locale = "ko", onInspectMapping, dataOpen, setDataOpen }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const metric = effectiveDenomBasis(csvData, denomBasis);
   const metricName = metric === "actions" ? "CPA" : "CPI";
@@ -57,7 +57,6 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   const [options, setOptions] = useState({ mode: "maintain", horizon: "week", targetTotal: null, changeLimit: .2 });
   const optionsRef = useRef(options);
   const limit = options.changeLimit;
-  const [dataOpen, setDataOpen] = useState(false);
   // 매핑/기간 변경 때 이전 결과를 먼저 숨긴다. 계산은 분석 게이트 안에서만,
   // 두 번의 rAF 뒤에 실행해 로딩 상태를 실제로 페인트한다.
   useEffect(() => {
@@ -98,7 +97,7 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   if (!ready) return <><p role="status">{tr("운영 계획을 계산하고 있습니다…", "Calculating your operations plan…")}</p><AnalyzingOverlay show title={tr("운영 계획 계산 중…", "Calculating operations plan…")} /></>;
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("계산 불가", "Unavailable");
   const number = value => Number.isFinite(value) ? fmtNum(value) : tr("계산 불가", "Unavailable");
-  const pct = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${fmtPct(value / 100)}` : tr("비교 불가", "Not comparable");
+  const pct = value => Number.isFinite(value) ? `${value > 0 ? "+" : value < 0 ? "−" : ""}${fmtPct(Math.abs(value) / 100)}` : tr("비교 불가", "Not comparable");
   const entity = row => row.name || tr("대상 미지정", "Unspecified entity");
   const noun = brief.unit === "campaign" ? tr("캠페인", "campaigns") : tr("채널", "channels");
   const deteriorated = brief.campaigns.filter(row => row.changePct > 1e-8);
@@ -145,7 +144,6 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo, view, setView }}
     overview={chooseReview => <><OperationsPlanBoard {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages }} onChange={changeOptions} onAction={chooseReview} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
       <OperationsDecisionEvidence {...{ brief, plan, campaign, creative, setSelected, setCreativeSelection, metricName, outcomeName, currency, locale, periods, isDemo, money, number, pct, chooseReview }} signals={bundle.signals} />
-      <button type="button" className="btn ghost" onClick={() => setDataOpen(true)}>{tr("입력·상세 데이터 확인", "Inspect inputs and detailed data")}</button>
       <ModalDialog open={dataOpen} onClose={() => setDataOpen(false)} ariaLabel={tr("입력·상세 데이터", "Inputs and detailed data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2>{tr("입력과 지표 계산", "Inputs and metric calculations")}</h2><OperationsMetricEvidence inDialog evidence={bundle.evidence} {...{ currency, locale }} onInspectMapping={() => { setDataOpen(false); onInspectMapping(); }} /><button type="button" className="btn ghost" onClick={() => setDataOpen(false)}>{tr("닫기", "Close")}</button></ModalDialog></>}
     evidence={() => <ResultActionCard title={tr("선택 기간의 성과와 원본 근거", "Performance and source evidence for the selected periods")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
     locale={locale} toolId={OPERATIONS_TOOL_ID} analysisKey="operations" resultState={brief.recentObservations ? "ready" : "insufficient"} issues={notes}
@@ -215,6 +213,8 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const [grain, setGrain] = useState("auto");
   const [replaceSample, setReplaceSample] = useState(false);
   const [conditionsOpen, setConditionsOpen] = useState(false);
+  // 입력 검증은 분석 조건의 일부다 — 결과 사이에 혼자 떠 있던 버튼을 조건 줄로 옮겼다.
+  const [dataOpen, setDataOpen] = useState(false);
   const settingsTitleRef = useRef(null);
   const filterNames = { countries: tr("국가", "Country"), platforms: tr("플랫폼", "Platform"), channels: tr("채널", "Channel"), sources: tr("유입", "Source") };
   const appliedScope = Object.entries(scopeFilters(filter)).filter(([, values]) => values.length).map(([key, values]) => `${filterNames[key]} ${values.join(", ")}`).join(" · ") || tr("전체 대상", "All entities");
@@ -245,12 +245,12 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const inspectMapping = () => {
     setConditionsOpen(true);
   };
-  return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} chips={ready ? <button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button> : null}>
+  return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} showJourney={false} chips={ready ? <button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button> : null}>
     <section className="ops-analysis-context" aria-label={tr("분석 조건", "Analysis settings")}>
       <div id="ops-analysis-settings" tabIndex={-1} className="ops-section-heading">
         <span className="operations-planner__context">
           <strong>{ready ? tr("분석 조건", "Analysis settings") : tr("데이터 준비", "Prepare data")}</strong>
-          {ready && <small>{isDemoData(csvData) ? tr("가상 예시", "Fictional sample") : csvData.fileName} · {tr(`${fmtNum(csvData.raw.length)}행`, `${fmtNum(csvData.raw.length)} source rows`)} · {metricName} · {sourceCurrencyOf(csvData)} · {appliedScope}</small>}
+          {ready && <small>{isDemoData(csvData) ? tr("가상 예시", "Fictional sample") : csvData.fileName} · {tr(`${fmtNum(csvData.raw.length)}행`, `${fmtNum(csvData.raw.length)} source rows`)} · {metricName} · {sourceCurrencyOf(csvData)} · {appliedScope} · <button type="button" className="operations-planner__inputs" onClick={() => setDataOpen(true)}>{tr("입력·상세 데이터 확인", "Inspect inputs and detailed data")}</button></small>}
         </span>
       </div>
       {!ready && <div className="operations-planner__entry"><CsvUploader toolId={OPERATIONS_TOOL_ID} locale={locale} onLoadDemo={launchDemo} /></div>}
@@ -283,6 +283,6 @@ export default function OperationsPlanner({ locale = "ko" }) {
       <button className="btn primary" type="button" onClick={applyDemo}>{tr("예시로 교체", "Replace with sample")}</button>
       <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
     </ModalDialog>
-    {ready && <OperationsResults {...{ csvData, sourceRows, grain, filter, periods, denomBasis, locale }} currency={sourceCurrencyOf(csvData)} onInspectMapping={inspectMapping} />}
+    {ready && <OperationsResults {...{ csvData, sourceRows, grain, filter, periods, denomBasis, locale }} currency={sourceCurrencyOf(csvData)} onInspectMapping={inspectMapping} {...{ dataOpen, setDataOpen }} />}
   </ToolPageShell>;
 }

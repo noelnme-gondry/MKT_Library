@@ -21,7 +21,7 @@ const COPY = {
   en: { summaryLabel: "Summary", toc: "Contents" },
 };
 
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1, stickyHeader = true, showBrief = true, className = "" }) {
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1, stickyHeader = true, showBrief = true, showJourney = true, className = "" }) {
   const T = COPY[locale] || COPY.ko;
   // 도구 이름의 SSOT는 스토어 IA다. 컴포넌트가 제목을 직접 넘기면 리네임 때
   // 두 곳이 갈린다 — toolId가 있으면 레지스트리 이름이 이긴다.
@@ -58,7 +58,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
           {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}
         </header>}
 
-        {toolId && toolId !== "5-31" && titleLevel === 1 && !analyzed && <JourneyProgress stage="prepare" locale={locale} placement="tool_header" />}
+        {showJourney && toolId && titleLevel === 1 && !analyzed && <JourneyProgress stage="prepare" locale={locale} placement="tool_header" />}
         {showBrief && toolId && titleLevel !== 0 && <ToolBrief toolId={toolId} locale={locale} />}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}

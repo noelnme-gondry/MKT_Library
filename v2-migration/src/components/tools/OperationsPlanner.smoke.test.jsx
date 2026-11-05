@@ -51,7 +51,10 @@ describe("standalone operations planner entry path", () => {
     expect(document.querySelector(".operations-planner__conditions")).toBeNull();
     const plan = document.querySelector(".ops-plan"), evidence = document.querySelector(".ops-evidence");
     expect(plan.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("button", { name: "예산 액션 정하기" })).toBeTruthy();
+    // 예산 제안은 캠페인별 실행안 표가 소유한다. 아래 실행·검토 목록은 기록한 액션만 다뤄 같은 제안을 다시 싣지 않는다.
+    expect(screen.getAllByRole("button", { name: /예산 액션 정하기$/ }).length).toBe(document.querySelectorAll(".ops-allocation tbody tr").length);
+    expect(document.querySelectorAll(".operations-queue__choice")).toHaveLength(0);
+    expect(document.querySelector(".operations-queue__empty").textContent).toContain("아직 기록한 액션이 없습니다");
     expect(document.querySelectorAll(".ops-evidence canvas")).toHaveLength(1);
     await openData();
     expect(screen.getByRole("region", { name: "소재별 최근 효율" })).toBeTruthy();
@@ -294,7 +297,7 @@ describe("standalone operations planner entry path", () => {
     useAppStore.getState().setGroupAnalyzed("5-31");
     render(<OperationsPlanner locale={locale} />);
     await screen.findByRole("tab", { name: en ? "Execution & next review" : "실행과 다음 검토" });
-    fireEvent.click(screen.getByRole("button", { name: en ? "Define action" : "액션 정하기", exact: true }));
+    fireEvent.click(screen.getAllByRole("button", { name: en ? /^Plan a budget action for / : /예산 액션 정하기$/ })[0]);
     const dialog = screen.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기" });
     expect(within(dialog).getByLabelText(en ? "Previous daily budget (KRW, optional)" : "변경 전 하루 예산 (KRW, 선택)").value).toBe("");
     expect(within(dialog).getByLabelText(en ? "New daily budget (KRW)" : "변경 후 하루 예산 (KRW)").value).toMatch(/^\d{1,3}(,\d{3})*$/);
