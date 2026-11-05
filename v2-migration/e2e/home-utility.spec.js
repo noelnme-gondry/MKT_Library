@@ -8,7 +8,7 @@ for (const en of [false, true]) {
     const intro = page.locator(".dc-hero__intro");
     const preview = page.locator(".home-result-preview");
     await expect(page.locator(".operations-sample-preview__budget")).toBeVisible();
-    await page.getByRole("tab", { name: en ? "Campaign evidence" : "캠페인 근거", exact: true }).click();
+    await page.getByRole("tab", { name: en ? "Campaigns" : "캠페인 근거", exact: true }).click();
     await expect(preview.locator("canvas")).toHaveAttribute("data-chart-ready", "true");
     // 큰 소개 상자가 실제 결과를 밀어내지 않도록 결과까지의 간격을 확인한다.
     await expect(intro).toHaveCSS("border-top-width", "0px");
@@ -19,7 +19,10 @@ for (const en of [false, true]) {
     const entry = await page.locator(".home-entry").boundingBox();
     const result = await preview.boundingBox();
     expect(entry.y).toBeGreaterThanOrEqual(Math.max(introBox.y + introBox.height, result.y + result.height));
-    expect(entry.y - Math.max(introBox.y + introBox.height, result.y + result.height)).toBeLessThanOrEqual(40);
+    // The next entry is a distinct section, with breathing room rather than a blank half-screen.
+    const entryGap = entry.y - Math.max(introBox.y + introBox.height, result.y + result.height);
+    expect(entryGap).toBeGreaterThanOrEqual(24);
+    expect(entryGap).toBeLessThanOrEqual(64);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
     const utilities = page.getByRole("button", { name: en ? "More settings" : "기타 설정", exact: true });
