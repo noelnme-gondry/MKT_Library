@@ -16,13 +16,13 @@ sources:
 draft: false
 faq:
   - q: "How do you check for cannibalization?"
-    a: "The clearest test is turning ads off and watching how much organic rises. Pausing brand search campaigns for a set period or in selected regions surfaces the share that was being taken rather than created."
+    a: "An organic increase after pausing ads does not by itself confirm cannibalization. Use a suitable experimental design, such as a randomized holdout, to compare total conversions in the paused group with a comparable control. Check aligned measurement definitions, concurrent changes such as seasonality or promotions, and uncertainty in the estimate."
   - q: "Is brand keyword advertising cannibalization?"
-    a: "Not entirely, but a large share of it is. Many people searching your brand name would have arrived anyway. Keeping brand terms in the same campaign as generic ones creates the illusion of strong overall efficiency."
+    a: "People searching a brand name may arrive without an ad, so cannibalization is possible. That does not establish that its share is large. Consider competitors bidding on brand terms, organic search visibility and existing demand, then assess net lift and uncertainty for each campaign using a suitable comparison design and aligned measurement. Also separate attributed performance for brand and generic terms."
   - q: "If paid and organic both rise, is that not proof there is no cannibalization?"
-    a: "Moving together proves nothing on its own. Advertising may have created new demand, or the period may simply have been a seasonal peak. Separating them requires a counterfactual — a control group or a before-and-after design."
+    a: "Moving together proves nothing on its own. Advertising may have created new demand, or the period may simply have been a seasonal peak. A simple before-and-after comparison does not establish the counterfactual: what would have happened without advertising. Use a suitable design with random assignment or a comparable control, aligned measurement definitions, and checks of concurrent changes, design assumptions and uncertainty."
   - q: "How do you calculate the cannibalization rate?"
-    a: "Compare the paid conversions lost when a brand campaign is paused against the organic conversions gained. Losing 100 paid while organic rises by 70 is a 70% cannibalization rate and 30 net incremental conversions — meaning that campaign's real CPA is roughly 3.3 times what the dashboard reports."
+    a: "This arithmetic example assumes comparable groups, aligned measurement definitions and a suitable design estimating what would have happened without advertising. A loss of 100 paid conversions and gain of 70 organic conversions gives a cannibalization rate of 70 ÷ 100 = 70% and net lift of 100 − 70 = 30 conversions. At the same ad spend, incremental CPA is 100 ÷ 30 ≈ 3.33 times attributed CPA. Without those conditions, 70% is only an observed ratio; a simple before-and-after difference cannot identify causal cannibalization, net lift or incremental CPA. Decisions also require examining uncertainty in the estimate."
 ---
 
 ## In one line

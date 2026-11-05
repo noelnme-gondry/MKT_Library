@@ -15,7 +15,7 @@ faq:
   - q: "What is the difference between CPA and CPI?"
     a: "CPI counts installs, CPA counts the action after that. $3,000 producing 1,000 installs is a $3 CPI, but if only 150 of them sign up, CPA is $20. The 15% install-to-signup rate is what makes CPA 6.7 times CPI here."
   - q: "Where should I look when CPA rises?"
-    a: "CPA is CPM divided by the product of CTR and CVR, so isolate which of the three moved. At a $5 CPM, 1% CTR and 5% CVR, CPA is $10; drop CTR alone to 0.5% and CPA doubles to $20. When CPM and CVR held steady, that arithmetic is why creative is the first place to look."
+    a: "CPA = CPM ÷ (1,000 × CTR × CVR), with CTR and CVR entered as decimal proportions (1% = 0.01, 5% = 0.05). Isolate which of the three moved. At a $5 CPM, 1% CTR and 5% CVR, CPA is $10; drop CTR alone to 0.5% and CPA doubles to $20. When CPM and CVR held steady, that arithmetic is why creative is the first place to look."
 ---
 
 ## In one line
@@ -32,7 +32,7 @@ CPA is a downstream result. The upstream metrics — CPM, CTR, CVR — usually e
 
 ## Splitting CPA into its parts
 
-CPA is downstream of everything before it. Written out, CPA = CPM ÷ (CTR × CVR × 1,000).
+CPA is downstream of everything before it. Written out, CPA = CPM ÷ (1,000 × CTR × CVR). Enter CTR and CVR as decimal proportions (1% = 0.01, 5% = 0.05).
 
 Put in a $5 CPM, 1% CTR and 5% CVR and CPA comes to $10. Halve CTR to 0.5% and CPA doubles to $20 with nothing else changed. Double CVR from 5% to 10% instead and CPA falls to $5.
 
