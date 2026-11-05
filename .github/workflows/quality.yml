@@ -4,6 +4,16 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      full_browser_suite:
+        description: Run every browser viewport combination
+        type: boolean
+        default: true
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 # 저장소 읽기만 한다 — 토큰 권한을 최소로 둔다(CodeQL actions/missing-workflow-permissions).
 permissions:
@@ -43,9 +53,10 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-  # 브라우저 테스트(약 2,000건 × 4개 화면 조건)는 한 작업에서 58분이 걸렸다. 같은 범위를 4개로 나눠
-  # 동시에 돌린다(공개 저장소라 러너 시간은 무료다). 필수 검사 이름 browser-quality는 아래 집계 작업이 유지한다.
+  # PR은 전체 데스크톱 기능 + 핵심 모바일 경로 + EN/라이트 검사로 중복 화면 조합을 줄인다.
+  # 전체 조합은 workflow_dispatch에서 실행한다. 머지 뒤 main에서는 validate만 다시 확인한다.
   browser-shard:
+    if: github.event_name != 'push'
     name: browser-quality shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     strategy:
@@ -66,14 +77,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # 브라우저 테스트는 빌드본으로 돈다(dev 서버의 요청마다 컴파일을 없앤다).
       - run: npm run build
-      - name: Verify account mapping before the full browser suite
-        if: matrix.shard == 1
-        run: npx playwright test e2e/account-mappings.spec.js --project=desktop-1440
-        env:
-          E2E_SERVER: production
+      # account-mappings는 아래 전체 데스크톱 범위에 포함되므로 따로 중복 실행하지 않는다.
       - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
         env:
           E2E_SERVER: production
+          E2E_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.full_browser_suite && 'full' || 'representative' }}
       - name: Preserve browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -85,7 +93,7 @@ jobs:
           retention-days: 7
 
   browser-quality:
-    if: always()
+    if: always() && github.event_name != 'push'
     needs: browser-shard
     runs-on: ubuntu-latest
     steps:
