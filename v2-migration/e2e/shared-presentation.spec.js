@@ -5,22 +5,15 @@ import { chooseDashboardView } from "./support/dashboardView.js";
 for (const locale of ["ko", "en"]) {
   test(`shared title, named progress and uncrowded PNG controls (${locale})`, async ({ page }, testInfo) => {
     await page.goto(`${locale === "en" ? "/en" : ""}/tools/operations-planner?example=1`);
-    await page.getByRole("tab", { name: locale === "en" ? "Explore evidence" : "근거 살펴보기", exact: true }).click();
-    await expect(page.locator(".operations-workbench canvas")).toHaveCount(7);
-    const inset = await page.locator(".page-sticky-bar:has(h1)").evaluate(node => {
-      const title = node.querySelector("h1").getBoundingClientRect(), box = node.getBoundingClientRect();
-      return { left: title.left - box.left, right: box.right - title.right };
-    });
-    expect(inset.left, "a filled title surface must have an inner gutter").toBeGreaterThanOrEqual(16);
-    const progress = page.locator(".journey-progress");
-    expect(await progress.evaluate(node => getComputedStyle(node).borderTopStyle)).toBe("solid");
-    for (const step of await progress.locator("li").all()) {
-      const size = await step.locator(".journey-progress__label, a").boundingBox();
-      expect(size.width, "all four step names remain legible on a phone").toBeGreaterThan(40);
-      expect(size.height).toBeGreaterThan(14);
-    }
+    await expect(page.locator(".ops-plan-impact")).toBeVisible();
+    // The result header is a compact, unfilled title; execution lives in this planner.
+    await expect(page.locator(".journey-progress")).toHaveCount(0);
+    const title = page.locator(".tool-instrument-header");
+    await expect(title).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await page.getByRole("button", { name: locale === "en" ? /Inspect observations over time/ : /날짜 흐름으로 관측 확인/ }).click();
+    await expect(page.locator(".operations-trend canvas")).toBeVisible();
     const result = await measureDesignRules(page);
-    expect(result.figureExports).toBe(7);
+    expect(result.figureExports).toBeGreaterThanOrEqual(1);
     expect(result.figureCrowding).toEqual([]);
     expect(result.titleInsets).toEqual([]);
     const periods = page.locator(".operations-trend .operations-chart__caption").first();
@@ -28,10 +21,8 @@ for (const locale of ["ko", "en"]) {
     await expect(periods).toContainText("2026-09-30 – 2026-10-06");
     if (testInfo.project.name === "desktop-1440" && locale === "ko") {
       await page.screenshot({ path: testInfo.outputPath("shared-title-progress.png") });
-      // 긴 작업 면을 캡처할 때 스티키 헤더가 제목을 가리지 않도록 충분한 높이를 확보한다.
-      await page.setViewportSize({ width: 1440, height: 1600 });
-      await page.locator(".operations-workbench__group--budget").screenshot({ path: testInfo.outputPath("budget-trend-export.png") });
-      await page.locator(".operations-panel--campaign").screenshot({ path: testInfo.outputPath("campaign-separated-points.png") });
+      await page.getByRole("dialog").getByRole("button", { name: locale === "en" ? "Close" : "닫기", exact: true }).click();
+      await page.locator(".ops-evidence").screenshot({ path: testInfo.outputPath("campaign-separated-points.png") });
     }
   });
 

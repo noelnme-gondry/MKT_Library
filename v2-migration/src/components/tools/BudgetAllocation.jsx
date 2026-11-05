@@ -3037,6 +3037,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           stats={[
             {
               label: tr(`예상 ${metricLabel}`, `Projected ${metricLabel}`),
+              emphasis: "primary",
               value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}`,
               detail: verdict.change != null && Math.abs(verdict.change) >= 0.0005 ? `${verdict.change > 0 ? "+" : "−"}${Math.abs(verdict.change * 100).toFixed(1)}%` : undefined,
             },

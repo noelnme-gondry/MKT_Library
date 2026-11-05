@@ -19,7 +19,7 @@ export default function ToolNextStepPanel({ toolId, locale, evidenceLinks, hasHa
   const inlineReference = hasInlineToolReference(toolId);
   const open = (event, next) => { triggerRef.current = event.currentTarget; setPanel(next); };
   return <section className="tool-next-step-panel" aria-label={en ? "Next analysis" : "다음 분석"}>
-    {!inlineReference && <ToolEntrySummary toolId={toolId} locale={locale} />}
+    {!inlineReference && !hasHandoff && <ToolEntrySummary toolId={toolId} locale={locale} />}
     <ToolConnections toolId={toolId} locale={locale} compact />
     <div className="tool-next-step-panel__actions">
       {!inlineReference && <button type="button" className="btn ghost" onClick={event => open(event, "references")}><BookOpen size={16} aria-hidden="true" />{references}</button>}
@@ -32,7 +32,7 @@ export default function ToolNextStepPanel({ toolId, locale, evidenceLinks, hasHa
     </section>}
     <ModalDialog open={panel !== null} onClose={() => setPanel(null)} returnFocusRef={triggerRef} ariaLabel={panel === "project" ? project : references} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel">
       <header className="tool-reference-panel__head"><h2>{panel === "project" ? project : references}</h2><button type="button" className="btn ghost" aria-label={en ? "Close" : "닫기"} onClick={() => setPanel(null)}><X size={20} aria-hidden="true" /></button></header>
-      {panel === "references" && <><ToolLongform toolId={toolId} locale={locale} /><ToolEvidenceLinks items={evidenceLinks} locale={locale} /></>}
+      {panel === "references" && <><ToolEntrySummary toolId={toolId} locale={locale} /><ToolLongform toolId={toolId} locale={locale} /><ToolEvidenceLinks items={evidenceLinks} locale={locale} /></>}
       {panel === "project" && <ProjectHandoffNote toolId={toolId} locale={locale} />}
     </ModalDialog>
   </section>;

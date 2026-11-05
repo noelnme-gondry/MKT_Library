@@ -1,4 +1,4 @@
-import { dateOrdinal } from "@/lib/analysisPeriod";
+import { dateOrdinal, periodDays } from "@/lib/analysisPeriod";
 import { parseNumericStrict } from "@/utils/parseNumeric";
 import { PVM_MATH } from "@/utils/pvmMath";
 import { operationsTotals } from "./operationsBrief";
@@ -7,29 +7,37 @@ import { operationsEntityKey, operationsTarget, operationsUnit, matchesOperation
 export const HISTORY_RULES = Object.freeze({ windowDays: 7, changeThreshold: 0.2, absentDays: 3 });
 export const shiftDate = (date, days) => new Date((dateOrdinal(date) + days) * 86400000).toISOString().slice(0, 10);
 const validDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date || "") && dateOrdinal(date) != null;
-const rangeRows = (rows, start, end) => rows.filter(row => row.date >= start && row.date <= end);
-const coverage = (rows, days) => new Set(rows.map(row => row.date)).size === days;
+const rangeRows = (rows, start, end) => rows.filter(row => row.date >= start && (row.periodEnd || row.date) <= end);
+const coverage = (rows, days) => {
+  const dates = new Set();
+  for (const row of rows) for (let d = dateOrdinal(row.date); d <= dateOrdinal(row.periodEnd || row.date); d++) dates.add(d);
+  return dates.size === days;
+};
 
-export function compareOperationsChange(rows, { date, target, days = 7, metric = "installs" }) {
+export function compareOperationsChange(rows, { date, target, days = 7, metric = "installs", beforeRange, afterRange }) {
   if (!validDate(date) || !Number.isInteger(days) || days < 1 || days > 90) return { ok: false, reason: "date" };
   const selected = rows.filter(row => matchesOperationsTarget(row, target) && validDate(row.date));
-  const before = { start: shiftDate(date, -days), end: shiftDate(date, -1) };
-  const after = { start: date, end: shiftDate(date, days - 1) };
+  const before = beforeRange || { start: shiftDate(date, -days), end: shiftDate(date, -1) };
+  const after = afterRange || { start: date, end: shiftDate(date, days - 1) };
+  const previousDays = periodDays(before), currentDays = periodDays(after);
+  if (!previousDays || !currentDays || before.end >= after.start) return { ok: false, reason: "date" };
   const a = rangeRows(selected, before.start, before.end), b = rangeRows(selected, after.start, after.end);
-  if (!coverage(a, days) || !coverage(b, days)) return { ok: false, reason: "coverage", before, after };
+  if (!coverage(a, previousDays) || !coverage(b, currentDays)) return { ok: false, reason: "coverage", before, after };
   const previous = operationsTotals(a, metric), current = operationsTotals(b, metric);
   if (previous.cost == null || current.cost == null || previous.results == null || current.results == null) return { ok: false, reason: "values", before, after };
   const project = values => values.map(row => ({ ...row, spend: row.cost, _entity: "target", creative_id: String(row.creative_id || "") }));
   const keys = { ch: "_entity", cr: "creative_id", resultField: metric };
   const left = project(a), right = project(b);
   const pvm = PVM_MATH.inspectFinestInputs(left, right, keys).ok ? PVM_MATH.decomposeFinest(left, right, keys) : null;
-  return { ok: true, before, after, previous, current, days, pvm,
-    costChange: previous.cost > 0 ? current.cost / previous.cost - 1 : null,
+  return { ok: true, before, after, previous, current, days: currentDays, previousDays, pvm,
+    costChange: previous.cost > 0 ? (current.cost / currentDays) / (previous.cost / previousDays) - 1 : null,
     cprChange: previous.cpr > 0 && current.cpr != null ? current.cpr / previous.cpr - 1 : null };
 }
 
 /** Full-history scan. Windows locate sustained changes; they are not significance tests or causal estimates. */
 export function buildOperationsHistory(rows, metric = "installs", rules = HISTORY_RULES) {
+  const grains = [...new Set(rows.map(row => row.sourceGrain).filter(Boolean))];
+  if (grains.length === 1 && ["week", "month"].includes(grains[0])) return buildIntervalHistory(rows, metric, grains[0]);
   const unit = operationsUnit(rows), groups = new Map(), allDates = new Set();
   for (const row of rows) {
     if (!validDate(row.date)) continue;
@@ -90,5 +98,30 @@ export function buildOperationsHistory(rows, metric = "installs", rules = HISTOR
       }
     }
   }
-  return { events: events.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id)), groups, dates, scanned, rules, invalidDates: rows.filter(row => !validDate(row.date)).length };
+  const unknownIntervals = grains.length > 1 || grains.includes("unknown");
+  return { events: unknownIntervals ? [] : events.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id)), groups, dates, scanned: unknownIntervals ? 0 : scanned, rules, unknownIntervals, invalidDates: rows.filter(row => !validDate(row.date)).length };
+}
+
+// Reuse the detector on consecutive source intervals, retaining gaps. The dates
+// below are detector indices only; every displayed date maps back to its source.
+function buildIntervalHistory(rows, metric, grain) {
+  const starts = rows.map(row => row.date).sort(), origin = starts[0], lookup = new Map();
+  const intervalIndex = date => grain === "week" ? (dateOrdinal(date) - dateOrdinal(origin)) / 7
+    : (Number(date.slice(0, 4)) - Number(origin.slice(0, 4))) * 12 + Number(date.slice(5, 7)) - Number(origin.slice(5, 7));
+  const indexed = rows.map(row => {
+    const date = shiftDate("2000-01-01", intervalIndex(row.date)), days = periodDays({ start: row.date, end: row.periodEnd });
+    lookup.set(date, { start: row.date, end: row.periodEnd });
+    const cost = parseNumericStrict(row.cost), outcomes = parseNumericStrict(row[metric]);
+    return { ...row, date, periodEnd: date, sourceGrain: "day", cost: cost == null ? null : cost / days, [metric]: outcomes == null ? null : outcomes / days, sourceRow: row };
+  });
+  const history = buildOperationsHistory(indexed, metric, { windowDays: 1, absentDays: 1, changeThreshold: HISTORY_RULES.changeThreshold });
+  const events = history.events.flatMap(event => {
+    const after = lookup.get(event.date), before = lookup.get(shiftDate(event.date, -1));
+    if (!after) return [];
+    return [{ ...event, id: JSON.stringify([event.entityId, after.start, event.kind, event.creative || ""]), date: after.start, periodEnd: after.end,
+      confirmedThrough: event.confirmedThrough ? lookup.get(event.confirmedThrough)?.end : undefined,
+      comparison: before ? compareOperationsChange(rows, { date: after.start, target: event.target, metric, beforeRange: before, afterRange: after }) : { ok: false, reason: "coverage" } }];
+  });
+  const groups = new Map([...history.groups].map(([id, group]) => [id, { ...group, rows: group.rows.map(row => row.sourceRow), days: new Map([...group.days].map(([date, values]) => [lookup.get(date).start, values.map(row => row.sourceRow)])) }]));
+  return { ...history, events, groups, dates: history.dates.map(date => lookup.get(date).start), unit: grain, end: rows.map(row => row.periodEnd).sort().at(-1) };
 }

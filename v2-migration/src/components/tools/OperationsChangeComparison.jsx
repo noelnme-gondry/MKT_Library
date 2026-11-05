@@ -9,7 +9,7 @@ export default function OperationsChangeComparison({ comparison, currency, metri
   return <div className="operations-change-comparison">
     <p>{comparison.before.start} – {comparison.before.end} → {comparison.after.start} – {comparison.after.end}</p>
     <dl className="operations-loop__metrics">
-      <div><dt>{tr("하루 평균 지출", "Average daily spend")}</dt><dd>{money(comparison.previous.cost / comparison.days)} → {money(comparison.current.cost / comparison.days)}</dd></div>
+      <div><dt>{tr("하루 평균 지출", "Average daily spend")}</dt><dd>{money(comparison.previous.cost / (comparison.previousDays || comparison.days))} → {money(comparison.current.cost / comparison.days)}</dd></div>
       <div><dt>{tr("성과 합계", "Total outcomes")}</dt><dd>{fmtNum(comparison.previous.results)} → {fmtNum(comparison.current.results)}</dd></div>
       <div><dt>{metricName}</dt><dd>{money(comparison.previous.cpr)} → {money(comparison.current.cpr)}</dd></div>
       <div><dt>{operationContributionLabels(metricName, locale).share}</dt><dd>{money(comparison.pvm?.finest.reduce((sum, row) => sum + row.mix, 0))}</dd></div>

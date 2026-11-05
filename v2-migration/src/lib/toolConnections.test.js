@@ -73,7 +73,8 @@ describe("connected tool workflow", () => {
     const dashboardNext = getNextTools("5-2", "ko");
     expect(dashboardNext.every((tool) => tool.isSameData)).toBe(true);
     const saturationNext = getNextTools("5-22", "ko");
-    expect(saturationNext.find((tool) => tool.id === "5-3").isSameData).toBe(true);
+    expect(saturationNext.find((tool) => tool.id === "5-31").isSameData).toBe(true);
+    expect(getNextTools("5-31", "ko").map(tool => tool.id)).not.toContain("5-3");
     expect(saturationNext.find((tool) => tool.id === "9-6").isSameData).toBe(false);
   });
 

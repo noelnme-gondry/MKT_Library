@@ -38,7 +38,7 @@ export default function GuideIndex({ locale = "ko" }) {
   const hrefFor = (id) => (locale === "en" && hasEnVersion(id) ? `/en${idToPath(id)}` : idToPath(id));
 
   return (
-    <>
+    <section className="guide-directory">
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
       <p><a href="#analysis-library">{C.analysisMap} ↓</a></p>
@@ -65,7 +65,7 @@ export default function GuideIndex({ locale = "ko" }) {
                       justifyContent: "space-between",
                       gap: "8px",
                       padding: "8px 10px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--radius-sm)",
                       textDecoration: "none",
                       color: "var(--text-secondary)",
                       fontSize: "var(--fs-sm)",
@@ -86,6 +86,6 @@ export default function GuideIndex({ locale = "ko" }) {
         })}
       </div>
       <MarketingAnalysisLibrary locale={locale} />
-    </>
+    </section>
   );
 }

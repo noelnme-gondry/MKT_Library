@@ -14,14 +14,14 @@ import { useAppStore } from "@/store/useDataStore";
  * 유지하고, tool-instrument-header 계약으로 모든 도구의 제목·상태·범위를
  * 같은 시각 구조에 배치한다.
  *
- * 순수 프레젠테이션 컴포넌트: store 구독·비즈니스 로직 없음.
+ * 분석 게이트를 구독해 입력 안내와 결과 화면의 제목 밀도를 구분한다.
  */
 const COPY = {
   ko: { summaryLabel: "핵심 요약", toc: "목차" },
   en: { summaryLabel: "Summary", toc: "Contents" },
 };
 
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1, stickyHeader = true, className = "" }) {
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1, stickyHeader = true, showBrief = true, className = "" }) {
   const T = COPY[locale] || COPY.ko;
   // 도구 이름의 SSOT는 스토어 IA다. 컴포넌트가 제목을 직접 넘기면 리네임 때
   // 두 곳이 갈린다 — toolId가 있으면 레지스트리 이름이 이긴다.
@@ -29,7 +29,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   // titleToolId는 이름만 레지스트리에서 받는다(진행 표시·ToolBrief는 붙이지 않음).
   const nameToolId = toolId || titleToolId;
   // 결과가 나오면 결론 카드가 요약을 대신한다 — 제목 설명과 같은 말을 결론 위에 다시 두지 않는다(product-ssot §1.1c 4단계).
-  const analyzed = useAppStore((state) => Boolean(toolId) && state.isGroupAnalyzed(toolId));
+  const analyzed = useAppStore((state) => Boolean(nameToolId) && state.isGroupAnalyzed(nameToolId));
   const { name: registeredName, alias } = nameToolId && typeof title !== "object" ? toolDisplayTitle(nameToolId, locale, title || "") : { name: "", alias: null };
   const resolvedTitle = registeredName || title;
   const tocItems = toc || [];
@@ -40,7 +40,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   const hasHeader = hasTitle || Boolean(chips) || Boolean(stickyFilter);
 
   return (
-    <div className={`tool-page-shell${hasToc ? " has-toc" : ""} ${className}`} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof resolvedTitle === "string" ? titleId : undefined}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""} ${className}`} data-results={analyzed ? "true" : undefined} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof resolvedTitle === "string" ? titleId : undefined}>
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
@@ -58,8 +58,8 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
           {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}
         </header>}
 
-        {toolId && titleLevel === 1 && <JourneyProgress stage="analyze" locale={locale} placement="tool_header" />}
-        {toolId && titleLevel !== 0 && <ToolBrief toolId={toolId} locale={locale} />}
+        {toolId && toolId !== "5-31" && titleLevel === 1 && !analyzed && <JourneyProgress stage="prepare" locale={locale} placement="tool_header" />}
+        {showBrief && toolId && titleLevel !== 0 && <ToolBrief toolId={toolId} locale={locale} />}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
         {summary && !analyzed && (

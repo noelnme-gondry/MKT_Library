@@ -162,10 +162,9 @@ async function dochiToWeekly(page, locale) {
   }
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
 
-  // 홈의 주 행동은 상황 고르기다 — 상황 → 분석 찾기 카드 → 내 파일로 하기(product-ssot §5.1.1).
+  // 홈의 내 데이터 행동으로 플래너에 바로 도착하고, 통합 분석의 검토 경로도 이어 확인한다.
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
-  await page.locator(".home-entry__situations li:not(.home-entry__all-tile) a").first().click();
-  await page.locator('.finder-card[data-tool-id="5-31"] .finder-card__tool').click();
+  await page.locator(".home-planner-entry").getByRole("link", { name: en ? "Plan with my data" : "내 데이터로 운영 계획", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/tools/operations-planner$`));
   await expect(page.locator('.operations-planner .csv-uploader[data-hydrated="true"]')).toBeVisible();
   // 홈 대표 행동은 운영 플래너다. 기존 통합 분석→결정 저장 흐름은

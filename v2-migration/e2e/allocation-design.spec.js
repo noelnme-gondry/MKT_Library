@@ -26,9 +26,15 @@ for (const locale of ['ko', 'en']) {
       const outer = el.getBoundingClientRect();
       const heading = el.querySelector('h1').getBoundingClientRect();
       const date = el.querySelector('.result-period-picker').getBoundingClientRect();
-      return { padding: heading.x - outer.x, alignment: Math.abs(heading.x - date.x) };
+      const style = getComputedStyle(el);
+      return { left: heading.x, right: innerWidth - outer.right, background: style.backgroundColor, border: parseFloat(style.borderLeftWidth), alignment: Math.abs(heading.x - date.x) };
     });
-    expect(header.padding).toBeGreaterThanOrEqual(16);
+    // 결과 위의 제목은 별도 상자가 아니다. 페이지 여백과 날짜 정렬은 유지한다.
+    expect(header.background).toBe('rgba(0, 0, 0, 0)');
+    expect(header.border).toBe(0);
+    // 공용 모바일 셸의 페이지 gutter는 12px이며, 별도 상자 패딩과 구분한다.
+    expect(header.left).toBeGreaterThanOrEqual(12);
+    expect(header.right).toBeGreaterThanOrEqual(12);
     expect(header.alignment).toBeLessThanOrEqual(1);
     const views = page.getByRole('tablist', { name: en ? 'Allocation views' : '배분 보기' });
     await expect(views.getByRole('tab')).toHaveCount(4);

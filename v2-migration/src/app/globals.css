@@ -13,6 +13,7 @@
    새로 넣지 말 것.
    ===================================== */
 @layer reset, tokens, app;
+@import "./action-workspace.css";
 
 @layer app {
   .allocation-result-workspace { margin-top: 1.5rem; min-width: 0; }
@@ -263,7 +264,7 @@
         --secondary: #0d9488;
         --text-primary: #111827;
         --text-secondary: #4b5563;
-        --text-muted: #9ca3af;
+        --text-muted: #5c6b80;
 
         --text-1: #111827;
         --text-2: #4b5563;
@@ -284,9 +285,9 @@
         --page-sticky-bg: rgba(255, 255, 255, 0.92);
 
         /* Delta Indicators for Light Mode (Highly visible dark/rich tones) */
-        --success: #059669; /* Dark Green */
-        --danger: #dc2626; /* Dark Red */
-        --warning: #d97706; /* Dark Gold */
+        --success: #0c765f; /* Readable semantic ink, matching the shared light palette. */
+        --danger: #c73737;
+        --warning: #a76400;
         --info: #2563eb;
 
         /* Code block syntax colors — 라이트 배경(--surface-container-lowest: #fff) 위에서 읽히는 어두운 톤 */
@@ -1393,7 +1394,7 @@
       .kpi-card .delta {
         font-family: var(--font-sans);
         font-size: var(--fs-xs);
-        color: var(--secondary);
+        color: var(--text-secondary);
       }
       .kpi-card .delta.down {
         color: var(--danger);
@@ -7660,7 +7661,7 @@ body.light-mode .content-card__featured { color: #fff; }
 .glossary-card .card-title { font-family: var(--font-sans); font-size: var(--fs-md); letter-spacing: -.03em; }
 .glossary-card .card-desc { margin-top: 8px; font-size: var(--fs-xs); line-height: 1.55; }
 .glossary-browser__empty { grid-column: 1 / -1; padding: 38px; border: 1px dashed var(--border); border-radius: var(--radius-lg); color: var(--text-muted); text-align: center; }
-.site-footer { background: #10131a; border-top-color: rgba(255,255,255,.09); }
+.site-footer { --footer-muted: #9aa4b4; background: #10131a; border-top-color: rgba(255,255,255,.09); }
 /* 앱 셸에선 footer를 .app과 flush로 — 기본 margin-top:4rem가 라이트 모드에서
    .app(사이드바 밴드)↔footer 사이에 밝은 여백을 만들어 하단이 "끊겨" 보였음. */
 .site-footer--app { padding-left: var(--sidebar-width); margin-top: 0; }

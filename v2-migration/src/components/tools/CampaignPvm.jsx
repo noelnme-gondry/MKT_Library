@@ -1400,7 +1400,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                   ),
             }}
             stats={[
-              { label: tr("전체 변화", "Overall change"), value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
+              { label: tr("전체 변화", "Overall change"), emphasis: "primary", value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
               // 결론 문장이 지목한 곳과 같은 대상이다(같은 방향 중 최대 기여). 몫은 0~100%일 때만.
               { label: pvmConclusion.direction === "down" ? tr("가장 크게 낮춘 곳", "Lowered it most") : pvmConclusion.direction === "up" ? tr("가장 크게 올린 곳", "Raised it most") : tr("가장 크게 움직인 곳", "Moved it most"), value: pvmConclusion.lead ? (pvmConclusion.lead.key || unspec) : "—", detail: pvmConclusion.lead ? `${pvmConclusion.lead.contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmConclusion.lead.contribution, cur)}${pvmConclusion.share != null ? tr(` · 변화의 ${pvmConclusion.share}%`, ` · ${pvmConclusion.share}% of the change`) : ""}` : "—" },
               { label: tr(`${C.levelChannel} 안의 단가 변화`, `Unit cost within each ${String(C.levelChannel).toLowerCase()}`), value: `${pvmRateTotal >= 0 ? "+" : ""}${pvmFmtMoney(pvmRateTotal, cur)}`, detail: tr(`${C.levelChannel} 비중 변화 ${pvmMixTotal >= 0 ? "+" : ""}${pvmFmtMoney(pvmMixTotal, cur)}`, `${C.levelChannel} share shift ${pvmMixTotal >= 0 ? "+" : ""}${pvmFmtMoney(pvmMixTotal, cur)}`) },

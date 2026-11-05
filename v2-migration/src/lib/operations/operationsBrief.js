@@ -11,7 +11,7 @@ export const OPERATIONS_HOLDS = {
   period: { ko: "유효한 분석 기간이 필요합니다.", en: "A valid analysis period is required." },
   empty: { ko: "선택한 기간에 분석할 데이터가 없습니다.", en: "There are no observations in the selected period." },
   missing: { ko: "비용·성과 또는 날짜가 누락되거나 유효하지 않아 예산 예측을 보류했습니다.", en: "Budget forecasts are withheld because spend, outcomes or dates are missing or invalid." },
-  cadence: { ko: "매일의 관측이 확인되지 않아 하루 예산 예측을 보류했습니다. 주간 집계는 예산 배분 도구에서 분석하세요.", en: "Daily coverage is incomplete, so daily budget forecasts are withheld. Analyze weekly aggregates in Budget allocation." },
+  cadence: { ko: "선택한 성과 기간을 모두 포함하는 데이터가 없어 예산 예측을 보류했습니다. 원본의 집계 단위와 기간을 확인하세요.", en: "The data does not cover the full performance period, so budget forecasts are withheld. Check source intervals and selected dates." },
   countries: { ko: "국가가 여러 개입니다. 공용 필터에서 국가 하나를 선택해 예산을 계산하세요.", en: "Multiple countries are selected. Choose one country in the shared filter to calculate a budget plan." },
   outcomes: { ko: "비용이 있지만 성과가 0인 관측이 있어 예산 예측을 보류했습니다.", en: "Budget forecasts are withheld because an observation has spend but zero outcomes." },
   confidence: { ko: "관측 수 또는 모형 적합도가 부족해 예산 예측을 보류했습니다.", en: "Budget forecasts are withheld because observations or model fit are insufficient." },

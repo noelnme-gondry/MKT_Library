@@ -967,24 +967,24 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         decisionReview={hasDecisionTarget}
         decisionPrefill={hasDecisionTarget ? {
           conclusion: `${fatigueHeadline} · ${decisionEntityLabel}`,
-          action: domain === "content"
+          action: !immediateDecisionTarget ? tr(`${decisionEntityLabel}의 피로 신호를 다시 확인하고 교체 시점을 정한다`, `Recheck fatigue signals for ${decisionEntityLabel} and decide when to replace it`) : domain === "content"
             ? tr(`${decisionEntityLabel}의 한 요소만 바꾼 새 버전을 발행한다`, `Publish a refreshed version of ${decisionEntityLabel} with one element changed`)
             : tr(`${decisionEntityLabel}의 한 요소만 바꾼 대체 소재를 투입한다`, `Launch a replacement for ${decisionEntityLabel} with one element changed`),
-          hypothesis: domain === "content"
+          hypothesis: !immediateDecisionTarget ? tr("피로 신호가 다음 기간에도 이어지는지 확인한다", "Check whether fatigue signals persist in the next period") : domain === "content"
             ? tr("한 요소만 바꾼 새 버전은 CTR 하락을 멈추고 현재 기준을 넘어설 것이다", "A one-variable refresh should stop the CTR decline and beat the current baseline")
             : tr("한 요소만 바꾼 대체 소재는 CTR 하락을 멈추고 현재 기준을 넘어설 것이다", "A one-variable replacement should stop the CTR decline and beat the current baseline"),
           metric: fatiguedDecisionTarget ? "CTR" : tr("CTR 일별 추세", "Daily CTR trend"),
           baseline: fatiguedDecisionTarget ? fmtPct(fatiguedDecisionTarget.currentValue) : fmtPctDay(immediateDecisionTarget?.ctrTrendPctPerDay, locale),
           sourcePeriod: decisionSourcePeriod,
-          reviewQuestion: tr("교체·발행 7일 뒤 CTR이 기준값을 넘었는가?", "Seven days after launch, did CTR beat the baseline?"),
+          reviewQuestion: immediateDecisionTarget ? tr("교체·발행 7일 뒤 CTR이 기준값을 넘었는가?", "Seven days after launch, did CTR beat the baseline?") : tr("다음 7일에도 CTR 하락이 이어지고 교체 경고가 발생했는가?", "Over the next seven days, did CTR keep declining and trigger a replacement alert?"),
         } : null}
         tone={fatigueTone}
         title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
         headline={fatigueHeadline}
         points={fatiguePoints}
         stats={[
-          { label: tr("즉시 교체", "Replace now"), value: `${alertNowN}${tr("개", "")}` },
-          { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
+          { label: tr("즉시 교체", "Replace now"), emphasis: alertNowN > 0 ? "primary" : undefined, value: `${alertNowN}${tr("개", "")}` },
+          { label: tr("피로 신호", "Fatigue signals"), emphasis: alertNowN === 0 && fatiguedCount > 0 ? "primary" : undefined, value: `${fatiguedCount}${tr("개", "")}` },
           { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
         ]}
         workbookExport={() => ({

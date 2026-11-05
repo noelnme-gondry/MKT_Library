@@ -26,7 +26,7 @@ describe("workspaceNav", () => {
   it("경로가 실제 라우트 형태다", () => {
     for (const item of WORKSPACE_NAV) {
       const url = new URL(item.href, "https://growthoptplaybook.com");
-      expect(url.pathname).toMatch(/^\/[a-z-]*$/);
+      expect(url.pathname).toMatch(/^\/(?:[a-z-]+(?:\/[a-z-]+)*)?$/);
       expect(url.origin).toBe("https://growthoptplaybook.com");
     }
   });

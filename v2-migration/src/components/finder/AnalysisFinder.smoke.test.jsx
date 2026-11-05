@@ -18,12 +18,12 @@ describe("analysis finder", () => {
     const first = container.querySelector(`.finder-card[data-tool-id="${cards[0].id}"]`);
     expect(first.querySelector("h3").textContent).toBe(cards[0].name);
     expect(first.querySelector(".finder-card__data").textContent).toContain(cards[0].source.file);
-    expect(within(first).getByRole("link", { name: en ? "View example report" : "예시 보고서 보기" }).getAttribute("href")).toBe(cards[0].exampleHref);
+    expect(within(first).getByRole("link", { name: en ? "Explore an example" : "예시로 분석해 보기" }).getAttribute("href")).toBe(cards[0].exampleHref);
     expect(within(first).getByRole("link", { name: en ? /^Use my file/ : /^내 파일로 하기/ }).getAttribute("href")).toBe(`${en ? "/en" : ""}${cards[0].href}`);
     // 예시가 없는 카드는 지어내지 않고 보고서에 담기는 것을 보여 준다.
     const plain = cards.find((card) => !card.example && card.outputs.length);
     const plainNode = container.querySelector(`.finder-card[data-tool-id="${plain.id}"] .finder-card__result`);
-    expect(plainNode.querySelector("span").textContent).toBe(en ? "What the report shows" : "보고서에 담기는 것");
+    expect(plainNode.querySelector("span").textContent).toBe(en ? "What this analysis answers" : "분석으로 확인할 것");
     expect(plainNode.textContent).toContain(plain.outputs[0]);
     // 결론 예시는 예시 데이터로 계산한 문장일 때만 "예시 결론"이라 부른다.
     const withExample = cards.find((card) => card.example);

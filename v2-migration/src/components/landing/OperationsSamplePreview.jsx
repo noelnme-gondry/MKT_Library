@@ -16,13 +16,13 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   const [probeDate, setProbeDate] = useState(sample.periods.current.end);
   const campaign = sample.campaigns.find(row => row.id === campaignId) || sample.campaigns[0];
   const trend = useMemo(() => fullHistory ? campaign.trend : campaign.trend.slice(-28), [campaign, fullHistory]);
-  const [view, setView] = useState("actions");
+  const [view, setView] = useState("budget");
   const id = useId(), tabsRef = useRef(null);
   const views = [
-    { id: "actions", label: tr("운영 액션", "Operating actions") },
-    { id: "campaigns", label: tr("캠페인", "Campaigns") },
-    { id: "budget", label: tr("예산", "Budget") },
-    { id: "creatives", label: tr("소재", "Creatives") },
+    { id: "budget", label: tr("예산 액션", "Budget actions") },
+    { id: "campaigns", label: tr("캠페인 근거", "Campaign evidence") },
+    { id: "creatives", label: tr("새 소재 확인", "New creatives") },
+    { id: "actions", label: tr("실행과 검토", "Execution & review") },
   ];
   const handleTabKey = (event, index) => {
     let target;
@@ -49,7 +49,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
     { key: "creative", label: tr("소재", "Creative"), fmt: name => <span className="operations-sample-creative__name"><strong>{name}</strong></span> },
     { key: "cpr", label: tr("CPI · 기존 대비", "CPI · vs established"), align: "right", fmt: (value, row) => <span className="operations-sample-creative__result"><strong>{money(value)}</strong><small data-tone={tone(row.vsEstablishedPct)}>{row.vsEstablishedPct == null ? tr("비교 불가", "Not comparable") : pct(row.vsEstablishedPct / 100)}</small></span> },
     { key: "campaign", label: tr("캠페인", "Campaign") },
-    { key: "firstDate", label: tr("첫 관측", "First seen"), fmt: (value, row) => <span className="operations-sample-creative__observations">{value.slice(5).replace("-", ".")}<small>{row.days}{tr("일 관측", " days observed")}</small></span> },
+    { key: "firstDate", label: tr("첫 관측", "First seen"), fmt: (value, row) => <span className="operations-sample-creative__observations">{value.slice(5).replace("-", ".")}<small>{tr(`최근 7일 중 ${row.days}일치 성과`, `${row.days} days of performance within the last 7 days`)}</small></span> },
     { key: "results", label: tr("설치 수", "Installs"), align: "right", fmt: value => fmtNum(value, 0) },
   ];
   return <aside className="home-result-preview home-result-preview--comparison operations-sample-preview" aria-label={tr("운영 플래너 데모 미리보기", "Operations planner demo preview")}>
@@ -62,7 +62,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
     <section className="home-action-preview" role="tabpanel" id={`${id}-panel-actions`} aria-labelledby={`${id}-tab-actions`} tabIndex={0} hidden={view !== "actions"}>
       <div><h3>{tr("변화를 확인하고, 다음 액션까지", "From observed changes to your next action")}</h3><p>{tr("예산 조정과 소재 교체를 함께 정하고, 실행일과 다음 검토를 하나의 기록으로 이어갑니다.", "Plan budget and creative actions together, then connect execution dates and the next review in one record.")}</p>
         <ol className="home-action-preview__steps"><li>{tr("변화 확인", "Inspect changes")}</li><li>{tr("액션·실행 기록", "Plan and record execution")}</li><li>{tr("결과 검토·후속 액션", "Review and follow up")}</li></ol>
-        <Link className="btn ghost" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("예시로 운영 플래너 열기", "Open planner with example")}</Link>
+        <Link className="btn primary" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("이 예산안 직접 조정하기", "Adjust this budget plan")}</Link>
       </div>
       <div className="home-action-preview__queue">{[...new Set(sample.recommendations.map(item => item.kind))].map(kind => {
         const items = sample.recommendations.filter(item => item.kind === kind), first = items[0];
@@ -114,13 +114,14 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
       {sample.plan.ok ? <>
         <dl className="operations-sample-budget__metrics">
           <div><dt>{tr("하루 총 예산", "Total daily budget")}</dt><dd>{money(sample.plan.totalBudget)}</dd></div>
-          <div><dt>{tr("예상 설치 / 일 · 유지 → 조정", "Modeled installs / day · keep → revise")}</dt><dd>{fmtNum(sample.plan.baselineResults, 1)} → {fmtNum(sample.plan.expectedResults, 1)} <b>{pct(sample.plan.improvementPct / 100)}</b></dd></div>
+          <div><dt>{tr("예상 설치 / 일 · 유지 → 조정", "Modeled installs / day · keep → revise")}</dt><dd>{fmtNum(sample.plan.baselineResults, 0)} → {fmtNum(sample.plan.expectedResults, 0)} <b>{pct(sample.plan.improvementPct / 100)}</b></dd></div>
         </dl>
         <dl className="operations-sample-budget__moves">{sample.budgetMoves.map(row => <div key={row.id}><dt>{row.name}</dt><dd>{row.delta > 0 ? "+" : row.delta < 0 ? "−" : ""}{money(Math.abs(row.delta))}</dd>
           <dd className="home-budget-delta" aria-hidden="true"><i data-direction={row.delta < 0 ? "decrease" : "increase"} style={{ left: `${row.delta < 0 ? 50 - Math.abs(row.delta) / budgetMax * 50 : 50}%`, width: `${Math.abs(row.delta) / budgetMax * 50}%` }} /></dd>
         </div>)}</dl>
         <div className="home-budget-axis" aria-hidden="true"><span>−{money(budgetMax)}</span><span>0</span><span>+{money(budgetMax)}</span></div>
         <p className="home-sample-context">{tr("왼쪽 감액 · 오른쪽 증액", "Left: decrease · right: increase")} · {tr("공통 축", "Shared scale")} ±{money(budgetMax)} · {tr("변경 한도", "Change limit")} ±{fmtPct(sample.changeLimit, 0)}</p>
+        <Link className="btn primary" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("이 예산안 직접 조정하기", "Adjust this budget plan")} →</Link>
         <p className="operations-sample-preview__note">{tr(`${sample.historyDays}일 이력에 따른 모형 예상입니다. 앞으로의 성과를 보장하지 않습니다.`, `Modeled from ${sample.historyDays} days of history. Future performance is not guaranteed.`)}</p>
       </> : <p role="status">{tr("이 데이터에서는 예산 조정안을 추정할 수 없습니다.", "A budget plan cannot be estimated from this data.")}</p>}
     </section>

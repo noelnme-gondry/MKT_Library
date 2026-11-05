@@ -24,7 +24,13 @@ function upload() {
 }
 
 async function openEvidence(locale = "ko") {
-  fireEvent.click(await screen.findByRole("tab", { name: locale === "en" ? "Explore evidence" : "근거 살펴보기" }));
+  await screen.findByRole("tab", { name: locale === "en" ? "Detailed data & export" : "상세 데이터·내보내기" });
+}
+async function openData(locale = "ko") {
+  fireEvent.click(await screen.findByRole("tab", { name: locale === "en" ? "Detailed data & export" : "상세 데이터·내보내기" }));
+}
+async function openInputs(locale = "ko") {
+  fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Inspect inputs and detailed data" : "입력·상세 데이터 확인" }));
 }
 
 describe("standalone operations planner entry path", () => {
@@ -36,35 +42,33 @@ describe("standalone operations planner entry path", () => {
   it("keeps the real analysis gate and mounts its independent tool shell", async () => {
     expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(false);
     render(<OperationsPlanner />);
-    expect(screen.queryByText("동일 예산 조정안")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "캠페인별 실행안과 예상 성과" })).toBeNull();
     expect(screen.getByRole("heading", { name: "운영 플래너", level: 1 })).toBeTruthy();
     act(() => useAppStore.getState().setGroupAnalyzed("5-31"));
     expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(true);
     await openEvidence();
-    await screen.findByText("동일 예산 조정안");
-    expect(document.querySelector(".operations-planner__conditions").open).toBe(false);
-    expect(document.querySelector(".operations-data").open).toBe(false);
-    fireEvent.click(document.querySelector(".operations-data > summary"));
+    expect(screen.getByRole("heading", { name: "캠페인별 실행안과 예상 성과" })).toBeTruthy();
+    expect(document.querySelector(".operations-planner__conditions")).toBeNull();
+    const plan = document.querySelector(".ops-plan"), evidence = document.querySelector(".ops-evidence");
+    expect(plan.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("button", { name: "예산 액션 정하기" })).toBeTruthy();
+    expect(document.querySelectorAll(".ops-evidence canvas")).toHaveLength(1);
+    await openData();
     expect(screen.getByRole("region", { name: "소재별 최근 효율" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "대상별 예산과 효율" })).toBeTruthy();
-    expect(document.querySelectorAll(".operations-workbench canvas")).toHaveLength(7);
-    const budgetGroup = document.querySelector(".operations-workbench__group--budget");
-    expect(budgetGroup.querySelector(".operations-panel--budget").contains(budgetGroup.querySelector(".operations-brief__forecast"))).toBe(true);
-    expect(budgetGroup.querySelector(".operations-comparison").contains(budgetGroup.querySelector(".operations-brief__forecast"))).toBe(false);
-    expect(screen.getByRole("img", { name: "전체 일별 실측 CPI" })).toBeTruthy();
-    expect(screen.getByRole("img", { name: "전체 CPI가 달라진 두 가지 몫" })).toBeTruthy();
-    expect(document.querySelector(".operations-workbench").compareDocumentPosition(document.querySelector(".operations-data")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
   });
 
   it("replans, selects campaign evidence, and follows shared filters without showing stale results", async () => {
     useAppStore.getState().setGroupAnalyzed("5-31");
     const { container } = render(<OperationsPlanner />);
     await openEvidence();
-    await screen.findByText("동일 예산 조정안");
-    const select = screen.getByRole("combobox", { name: "변경 한도" });
+    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
+    const select = screen.getByRole("slider", { name: /캠페인별 변경 한도/ });
     fireEvent.change(select, { target: { value: "0" } });
     await waitFor(() => expect(select.value).toBe("0"));
-    fireEvent.click(document.querySelector(".operations-data > summary"));
+    await waitFor(() => expect(container.querySelector(".ops-plan").getAttribute("aria-busy")).toBe("false"));
+    await openData();
     const budgetTable = within(screen.getByRole("region", { name: "대상별 예산과 효율" }));
     for (const row of budgetTable.getAllByRole("row").slice(1)) {
       const cells = within(row).getAllByRole("cell");
@@ -72,14 +76,44 @@ describe("standalone operations planner entry path", () => {
     }
     const campaignSelect = screen.getByRole("combobox", { name: "캠페인 선택" });
     fireEvent.change(campaignSelect, { target: { value: [...campaignSelect.options].find(option => option.textContent.includes("Campaign 0")).value } });
-    expect(container.querySelector(".operations-brief__diagnosis h4").textContent).toContain("Campaign 0");
+    expect(container.querySelector("#ops-diagnosis-title").textContent).toContain("Campaign 0");
     act(() => useAppStore.getState().setDashboardFilter({ dateStart: "2026-08-26", dateEnd: "2026-09-01", compareEnabled: true,
       comparisonStart: "2026-08-19", comparisonEnd: "2026-08-25" }));
-    expect(screen.queryByText("동일 예산 조정안")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "캠페인별 실행안과 예상 성과" })).toBeNull();
     // 기간을 바꿔도 사용자가 보던 근거 탭을 유지한다.
-    await screen.findByText("동일 예산 조정안");
+    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
     expect(screen.getByRole("region", { name: "소재별 최근 효율" }).textContent).not.toContain("new");
-    expect(screen.getByRole("combobox", { name: "변경 한도" }).value).toBe("0");
+    expect(screen.getByRole("slider", { name: /캠페인별 변경 한도/ }).value).toBe("0");
+  });
+
+  it("wires total-budget direction, calendar month, channel selection and chart intervals to visible results", async () => {
+    const demo = buildToolDemo("5-31", "ko");
+    useAppStore.getState().setCsvData(demo);
+    useAppStore.getState().setGroupAnalyzed("5-31");
+    const { container } = render(<OperationsPlanner />);
+    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
+    const settle = async () => waitFor(() => expect(container.querySelector(".ops-plan")?.getAttribute("aria-busy")).toBe("false"));
+    fireEvent.click(screen.getByRole("button", { name: "증액", exact: true }));
+    await settle();
+    expect(container.querySelectorAll('.ops-allocation [data-direction="decrease"]')).toHaveLength(0);
+    expect(container.querySelectorAll('.ops-allocation [data-direction="increase"]').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "감액", exact: true }));
+    fireEvent.change(screen.getByRole("combobox", { name: "적용 기간" }), { target: { value: "month" } });
+    await settle();
+    expect(screen.getByText("2026-11-01 – 2026-11-30 · 30일")).toBeTruthy();
+    expect(container.querySelectorAll('.ops-allocation [data-direction="increase"]')).toHaveLength(0);
+    expect(container.querySelectorAll('.ops-allocation [data-direction="decrease"]').length).toBeGreaterThan(0);
+    const channels = within(screen.getByRole("group", { name: "분석에 포함할 매체" }));
+    fireEvent.click(channels.getByRole("button", { name: /TikTok/ }));
+    await settle();
+    expect(screen.getByRole("combobox", { name: "캠페인 선택", exact: true }).textContent).not.toContain("TikTok");
+    // 명시한 기간 총액은 매체 필터로 덮어쓰지 않는다. 남은 캠페인 제약에 맞지 않으면 제안을 보류한다.
+    expect(screen.getByRole("heading", { name: "이 조건에서는 예산 제안을 보류합니다" })).toBeTruthy();
+    expect(useAppStore.getState().dashboardFilter.channels.has("TikTok")).toBe(false);
+    fireEvent.change(screen.getByRole("combobox", { name: "차트 집계 단위" }), { target: { value: "week" } });
+    await settle();
+    expect(container.querySelector(".operations-scatter").textContent).toContain("주 합계");
+    expect(container.querySelector(".operations-scatter").textContent).toContain("2개 구간은 추세에서 제외");
   });
 
   it("offers the same workflow in English and honest missing-field states", async () => {
@@ -89,16 +123,14 @@ describe("standalone operations planner entry path", () => {
     useAppStore.getState().setGroupAnalyzed("5-31");
     render(<OperationsPlanner locale="en" />);
     await openEvidence("en");
-    await screen.findByText("Same-budget allocation plan");
     expect(screen.getByRole("heading", { name: "Operations planner", level: 1 })).toBeTruthy();
-    expect(screen.getByText("Budget and improvement estimates withheld")).toBeTruthy();
-    const budgetGroup = document.querySelector(".operations-workbench__group--budget");
-    expect(budgetGroup.querySelector(".operations-panel--allocation")).toBeNull();
-    expect(budgetGroup.querySelector(".operations-comparison--single").children).toHaveLength(1);
-    fireEvent.click(document.querySelector(".operations-data > summary"));
+    expect(screen.getByRole("heading", { name: "No budget proposal under these conditions" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Campaign action plan" })).toBeNull();
+    await openData("en");
     expect(screen.getByText("No mapped creative IDs are available.")).toBeTruthy();
     expect(screen.getByText("Recent unit cost cannot be calculated.")).toBeTruthy();
     expect(screen.queryByText("0.0% improvement")).toBeNull();
+
   });
 
   it.each(["ko", "en"])("withholds forecasts for two observed days but keeps actual evidence (%s)", async locale => {
@@ -109,12 +141,13 @@ describe("standalone operations planner entry path", () => {
     expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(true);
     render(<OperationsPlanner locale={locale} />);
     await openEvidence(locale);
-    await screen.findByText(en ? "Budget and improvement estimates withheld" : "예산·개선치 추정 보류");
+    await screen.findByRole("heading", { name: en ? "No budget proposal under these conditions" : "이 조건에서는 예산 제안을 보류합니다" });
     expect(screen.getByText(en ? "Budget forecasts are withheld because observations or model fit are insufficient." : "관측 수 또는 모형 적합도가 부족해 예산 예측을 보류했습니다.")).toBeTruthy();
     expect(document.querySelector(".operations-brief__forecast, .operations-panel--allocation")).toBeNull();
-    expect(document.querySelector(".operations-comparison--single > .operations-panel--trend")).toBeTruthy();
-    expect(document.querySelectorAll(".operations-observed-queue tbody tr")).toHaveLength(2);
+    expect(document.querySelector(".ops-evidence canvas")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: en ? "Select campaign" : "캠페인 선택" }).options).toHaveLength(2);
     expect(screen.queryByRole("radio", { name: en ? "Budget adjustment" : "예산 조정", exact: true })).toBeNull();
+    await openInputs(locale);
     expect(screen.getByRole("button", { name: /^CPI / }).textContent).not.toContain(en ? "Unavailable" : "계산 불가");
   });
 
@@ -124,13 +157,12 @@ describe("standalone operations planner entry path", () => {
     useAppStore.getState().setGroupAnalyzed("5-31");
     render(<OperationsPlanner locale="en" />);
     await openEvidence("en");
-    await screen.findByText("No valid creative-level spend and outcomes are available.");
-    const group = document.querySelector(".operations-workbench__group--creative");
-    expect(group.querySelector(".operations-comparison--single")).toBeTruthy();
-    const detail = within(screen.getByRole("region", { name: "Selected creative", exact: true }));
+    expect(screen.getByRole("heading", { name: "No budget proposal under these conditions" })).toBeTruthy();
+    const detail = within(screen.getByRole("region", { name: "Selected creative details", exact: true }));
     expect(detail.getAllByText("Unavailable")).toHaveLength(1);
-    expect(detail.getByText(/^installs$/i, { selector: "dt" }).nextElementSibling.textContent).toBe("0.0");
+    expect(detail.getByText(/^installs$/i, { selector: "dt" }).nextElementSibling.textContent).toBe("0");
     expect(screen.queryByRole("img", { name: /Creative spend versus/ })).toBeNull();
+
   });
 
   it.each(["ko", "en"])("traces actual metric inputs, opens existing mapping, and selects scoped observations (%s)", async locale => {
@@ -139,6 +171,7 @@ describe("standalone operations planner entry path", () => {
     expect(screen.queryByRole("heading", { name: en ? "Metrics and input evidence" : "지표와 입력 근거" })).toBeNull();
     act(() => useAppStore.getState().setGroupAnalyzed("5-31"));
     await openEvidence(locale);
+    await openInputs(locale);
     await screen.findByRole("heading", { name: en ? "Metrics and input evidence" : "지표와 입력 근거" });
     expect(screen.getByRole("heading", { name: en ? "CPI · Input details" : "CPI · 입력 내역" })).toBeTruthy();
     const chooser = within(screen.getByRole("group", { name: en ? "Select an arithmetic metric" : "산술 지표 선택" }));
@@ -161,11 +194,13 @@ describe("standalone operations planner entry path", () => {
     expect(calculation().textContent).toContain(en ? "Spend total (KRW)" : "광고비 합계 (KRW)");
     expect(calculation().textContent).not.toContain(en ? "Clicks total" : "클릭 합계");
     fireEvent.click(screen.getByRole("button", { name: en ? "Inspect current mapping" : "현재 매핑 확인" }));
-    expect(document.querySelector(".operations-planner__conditions").open).toBe(true);
-    await waitFor(() => expect(document.activeElement.id).toBe("ops-analysis-settings"));
-    fireEvent.click(screen.getByRole("button", { name: en ? "Select observed evidence for Campaign 0" : "Campaign 0 관측 근거 선택" }));
-    expect(document.querySelector(".operations-brief__diagnosis h4").textContent).toContain("Campaign 0");
-    await waitFor(() => expect(document.activeElement.id).toBe("ops-diagnosis-title"));
+    expect(screen.getByRole("dialog", { name: en ? "File and analysis scope" : "파일·분석 대상 설정" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: en ? "Inputs and detailed data" : "입력·상세 데이터" })).toBeNull();
+    await waitFor(() => expect(document.activeElement.id).toBe("ops-settings-dialog-title"));
+    fireEvent.click(screen.getByRole("button", { name: en ? "Back to results" : "결과로 돌아가기" }));
+    const selectedCampaign = screen.getByRole("combobox", { name: en ? "Select campaign" : "캠페인 선택" });
+    fireEvent.change(selectedCampaign, { target: { value: [...selectedCampaign.options].find(option => option.textContent.includes("Campaign 0")).value } });
+    expect(document.querySelector("#ops-diagnosis-title").textContent).toContain("Campaign 0");
     const model = useAppStore.getState().csvData;
     act(() => useAppStore.getState().setCsvData({ ...model, mapping: { ...model.mapping, Clicks: "__ignore__" } }));
     expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(false);
@@ -178,16 +213,18 @@ describe("standalone operations planner entry path", () => {
     useAppStore.getState().setGroupAnalyzed("5-31");
     render(<OperationsPlanner locale="en" />);
     await openEvidence("en");
+    await openInputs("en");
     const chooser = within(await screen.findByRole("group", { name: "Select an arithmetic metric" }));
     expect(chooser.getByRole("button", { name: /^CPI / }).textContent).not.toContain("Unavailable");
     fireEvent.click(chooser.getByRole("button", { name: /^CTR / }));
     expect(document.querySelector(".operations-metric-evidence__status").textContent).toBe("Required column not mapped");
     expect(document.querySelector(".operations-metric-evidence__result > strong").textContent).toBe("Unavailable");
     expect([...document.querySelectorAll(".operations-metric-evidence__operand strong")].map(node => node.textContent)).toEqual(["Unavailable", "Unavailable"]);
-    expect(screen.getByRole("region", { name: "Observed review queue" }).textContent).toContain("Campaign 0");
-    expect(screen.getByText("Stage data is incomplete; contributions cannot be separated.")).toBeTruthy();
-    expect(document.querySelector(".operations-decomposition-grid--single").contains(screen.getByRole("img", { name: "Two contributions to the CPI change" }))).toBe(true);
-    expect(screen.getByRole("img", { name: "Daily observed portfolio CPI" })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Inputs and detailed data" })).getByRole("button", { name: "Close", exact: true }));
+    expect(screen.getByRole("combobox", { name: "Select campaign" }).textContent).toContain("Campaign 0");
+    expect(document.querySelector(".ops-decomposition").textContent).toContain("Contributions to this CPI change");
+    expect(document.querySelector(".ops-evidence canvas")).toBeTruthy();
+
   });
 
   it("carries a chart-selected target into a saved plan, execution and scoped review", async () => {
@@ -207,7 +244,7 @@ describe("standalone operations planner entry path", () => {
     expect(record.toolId).toBe("5-31");
     expect(record.sourcePath).toBe("/tools/operations-planner");
     expect(readOperationAction(record.operationAction)).toMatchObject({ state: "planned", executedDate: "", target: { campaign: "Campaign 0", platform: "iOS" } });
-    fireEvent.click(screen.getByRole("tab", { name: "지금 할 일" }));
+    fireEvent.click(screen.getByRole("tab", { name: "실행과 다음 검토" }));
     fireEvent.click(screen.getByRole("button", { name: /^진행 중/ }));
     fireEvent.click(screen.getByRole("button", { name: "실행 기록" }));
     dialog = screen.getByRole("dialog", { name: "운영 액션 정하기" });
@@ -256,8 +293,8 @@ describe("standalone operations planner entry path", () => {
     const en = locale === "en";
     useAppStore.getState().setGroupAnalyzed("5-31");
     render(<OperationsPlanner locale={locale} />);
-    await screen.findByRole("tab", { name: en ? "Actions & reviews" : "지금 할 일" });
-    fireEvent.click(screen.getAllByRole("button", { name: en ? /Define action/ : /액션 정하기/ })[0]);
+    await screen.findByRole("tab", { name: en ? "Execution & next review" : "실행과 다음 검토" });
+    fireEvent.click(screen.getByRole("button", { name: en ? "Define action" : "액션 정하기", exact: true }));
     const dialog = screen.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기" });
     expect(within(dialog).getByLabelText(en ? "Previous daily budget (KRW, optional)" : "변경 전 하루 예산 (KRW, 선택)").value).toBe("");
     fireEvent.change(within(dialog).getByLabelText(en ? "New daily budget (KRW)" : "변경 후 하루 예산 (KRW)"), { target: { value: "123,456.78" } });
@@ -300,33 +337,26 @@ describe("operations planner built-in demo", () => {
     expect(state.denomBasis).toBe("installs");
     expect(state.displayCurrency).toBe("KRW");
     await openEvidence(locale);
-    await screen.findByText(locale === "en" ? "Same-budget allocation plan" : "동일 예산 조정안");
     const en = locale === "en";
-    const creativeList = screen.getByRole("region", { name: en ? "New creative comparison" : "신규 소재 비교" });
-    expect(creativeList.closest(".operations-comparison")).toBeNull();
-    const selectedCreative = () => screen.getByRole("region", { name: en ? "Selected creative" : "선택한 소재" });
-    const firstRow = within(creativeList).getAllByRole("row")[1];
-    const name = within(firstRow).getAllByRole("cell")[0].querySelector("strong").textContent;
-    fireEvent.click(within(firstRow).getByRole("button"));
-    await waitFor(() => expect(document.activeElement.id).toBe("ops-selected-creative-title"));
-    expect(within(selectedCreative()).getByRole("heading", { name, exact: true })).toBeTruthy();
-    expect(within(selectedCreative()).getByText(en ? "First observed in uploaded history" : "업로드 이력의 첫 관측일", { exact: true })).toBeTruthy();
-    const creativeSelect = screen.getByRole("combobox", { name: en ? "Select a creative" : "소재 선택" });
-    const existing = [...creativeSelect.options].find(option => option.textContent.includes(en ? "Established" : "기존"));
-    expect(existing).toBeTruthy();
-    fireEvent.change(creativeSelect, { target: { value: existing.value } });
-    expect(within(selectedCreative()).queryByText(en ? "vs established creatives" : "기존 소재 대비", { exact: true })).toBeNull();
-    expect(within(selectedCreative()).queryByRole("button", { name: en ? /Follow up on this creative/ : /이 소재를 다음 주에도 확인/ })).toBeNull();
-    const evidenceTab = screen.getByRole("tab", { name: en ? "Explore evidence" : "근거 살펴보기" });
+    expect(screen.getByRole("heading", { name: en ? "Campaign actions and expected outcomes" : "캠페인별 실행안과 예상 성과" })).toBeTruthy();
+    const choices = document.querySelectorAll(".ops-creative-choices button");
+    expect(choices).toHaveLength(6);
+    const selectedCreative = () => screen.getByRole("region", { name: en ? "Selected creative details" : "선택한 소재 상세" });
+    for (const choice of choices) {
+      const name = choice.querySelector("strong").textContent;
+      fireEvent.click(choice);
+      expect(within(selectedCreative()).getByRole("heading", { name, exact: true })).toBeTruthy();
+      expect(within(selectedCreative()).getByText(en ? "First seen in this file" : "파일에서 처음 확인한 날짜", { exact: true })).toBeTruthy();
+      expect(choice.getAttribute("aria-pressed")).toBe("true");
+    }
+    await openData(locale);
+    const evidenceTab = screen.getByRole("tab", { name: en ? "Detailed data & export" : "상세 데이터·내보내기" });
     fireEvent.keyDown(evidenceTab, { key: "Home" });
-    const actionTab = screen.getByRole("tab", { name: en ? "Actions & reviews" : "지금 할 일" });
+    const actionTab = screen.getByRole("tab", { name: en ? "Execution & next review" : "실행과 다음 검토" });
     expect(actionTab.getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(actionTab);
-    await openEvidence(locale);
-    expect(document.querySelector('.operations-planner__settings[data-currency-scope="declare"]')).toBeTruthy();
-    expect(document.querySelector(".operations-planner__conditions > summary").textContent).toContain("2026-09-30");
-    fireEvent.click(document.querySelector(".operations-data > summary"));
-    expect(screen.getByRole("region", { name: locale === "en" ? "Recent efficiency by creative" : "소재별 최근 효율" }).textContent).toContain(locale === "en" ? "Customer review video" : "고객 후기 영상");
+    await openData(locale);
+    expect(screen.getByRole("region", { name: en ? "Recent efficiency by creative" : "소재별 최근 효율" }).textContent).toContain(en ? "Customer review video" : "고객 후기 영상");
     act(() => useAppStore.getState().setCurrentRouteId("5-2"));
     expect(useAppStore.getState().csvData.raw).toBe(state.csvData.raw);
   });
@@ -347,7 +377,7 @@ describe("operations planner built-in demo", () => {
     await screen.findByRole("dialog", { name: "예시 데이터로 교체" });
     fireEvent.click(screen.getByRole("button", { name: "예시로 교체", exact: true }));
     await openEvidence();
-    await screen.findByText("동일 예산 조정안");
+    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
     expect(useAppStore.getState().csvData.fileName).toBe("demo_operations_98days.csv");
   });
 });

@@ -49,8 +49,8 @@ export function fmtCurrency(value, opts = {}) {
   const v = Number(value);
   const sym = CURRENCY_SYMBOL[currency] || "₩";
   let digits = currency === "USD" ? 2 : 0;
-  if (precise && Math.abs(v) < 10) digits = 2;
-  return sym + v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (precise && v !== 0 && Math.abs(v) < 10) digits = 2;
+  return (v < 0 ? "−" : "") + sym + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 // Percent. `value` is a ratio by default (0.123 → "12.3%"); pass asRatio:false

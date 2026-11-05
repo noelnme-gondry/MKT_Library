@@ -296,6 +296,9 @@ export async function measureDesignRules(page) {
       }
     }
     const titleInsets = [...document.querySelectorAll(".page-sticky-bar:has(h1)")].filter(visible).flatMap(node => {
+      const style = getComputedStyle(node);
+      const filled = !["rgba(0, 0, 0, 0)", "transparent"].includes(style.backgroundColor) || style.backgroundImage !== "none" || [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth].some(width => parseFloat(width) > 0);
+      if (!filled) return []; // Only a drawn title surface needs an internal gutter.
       const box = node.getBoundingClientRect(), title = node.querySelector("h1").getBoundingClientRect();
       const minimum = window.innerWidth <= 768 ? 15 : 23;
       return title.left - box.left < minimum ? [`${label(node)}: title has no inner gutter`] : [];

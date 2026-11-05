@@ -2,7 +2,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { OPERATION_ACTION_KINDS } from "@/lib/operations/actionContract";
 import { buildOperationQueue, OPERATION_QUEUE_STATES, operationQueuePage, operationTargetKey } from "@/lib/operations/actionQueue";
-import { fmtCurrency } from "@/utils/format";
+import { fmtCurrency, fmtNum } from "@/utils/format";
 import OperationsChangeComparison from "./OperationsChangeComparison";
 
 export default function OperationsActionQueue({ items, proposals, today, locale, currency, metricName, isDemo, onNew, onEdit, onReview, onFollowup, concurrent }) {
@@ -16,8 +16,11 @@ export default function OperationsActionQueue({ items, proposals, today, locale,
   const targets = [...new Map(queue.map(item => [operationTargetKey(item.action.target), item.name])).entries()];
   const money = (value, unit = currency) => Number.isFinite(value) ? fmtCurrency(value, { currency: unit, precise: true }) : tr("미확인", "Unverified");
   const kindLabel = kind => OPERATION_ACTION_KINDS[kind][en ? 1 : 0];
-  const summary = item => item.action.kind === "budget" ? `${money(item.action.beforeBudget, item.action.currency || currency)} → ${money(item.action.afterBudget, item.action.currency || currency)}`
+  const summary = item => item.action.kind === "budget" ? `${money(item.action.beforeBudget, item.action.currency || currency)} → ${money(item.action.afterBudget, item.action.currency || currency)} / ${tr("일", "day")}`
     : [item.action.creative, item.action.replacementCreative].filter(Boolean).join(" → ") || kindLabel(item.action.kind);
+  const proposalReason = proposal => proposal.kind === "budget" && Number.isFinite(proposal.expectedOutcomeChange)
+    ? tr(`예산 ${proposal.afterBudget > proposal.beforeBudget ? "증액" : "감액"} · 하루 예상 성과 ${proposal.expectedOutcomeChange > 0 ? "+" : ""}${fmtNum(proposal.expectedOutcomeChange, 1)}건`, `Budget ${proposal.afterBudget > proposal.beforeBudget ? "increase" : "decrease"} · expected daily outcomes ${proposal.expectedOutcomeChange > 0 ? "+" : ""}${fmtNum(proposal.expectedOutcomeChange, 1)}`)
+    : tr("성과·피로 신호를 확인하고 교체 여부를 정하세요.", "Review performance and fatigue signals before deciding on replacement.");
   const status = item => item.bucket === "new" ? tr("액션 제안", "Proposed action")
     : item.action.state === "cancelled" ? tr("취소", "Cancelled") : item.bucket === "done" ? tr("검토 완료", "Reviewed")
       : item.action.state === "planned" ? tr("실행 대기", "Planned") : item.bucket === "review"
@@ -36,11 +39,11 @@ export default function OperationsActionQueue({ items, proposals, today, locale,
         <p className="operations-queue__count">{OPERATION_QUEUE_STATES.find(state => state.id === bucket)[en ? "en" : "ko"]} <strong>{tr(`${current.total}건`, `${current.total} items`)}</strong><span>{tr("액션별 묶음", "Grouped by action")}</span></p>
         {!current.total && <p className="operations-queue__empty" role="status">{tr("이 상태에 해당하는 액션이 없습니다. 다른 상태를 선택하거나 직접 액션을 기록하세요.", "No actions in this state. Choose another state or record an action.")}</p>}
         {current.groups.map(([kind, entries]) => <section className="operations-queue__group" key={kind} aria-labelledby={`${id}-${kind}`}>
-          <h3 id={`${id}-${kind}`}><span>{kindLabel(kind)}</span><b>{tr(`${current.groupCounts[kind]}건`, `${current.groupCounts[kind]} items`)}</b></h3>
+          <h3 id={`${id}-${kind}`} data-design-exempt="accent: Action-kind group heading must be distinct from selected records"><span>{kindLabel(kind)}</span><b>{tr(`${current.groupCounts[kind]}건`, `${current.groupCounts[kind]} items`)}</b></h3>
           {entries.map(item => <button key={item.id} type="button" className="operations-queue__choice" aria-pressed={selected?.id === item.id} aria-controls={`${id}-detail`} onClick={() => choose(item)}>
             <span className="operations-queue__row"><strong>{item.name}</strong><small data-attention={item.bucket === "review"}>{status(item)}</small></span>
             <span>{summary(item)}</span>
-            {item.proposal ? <small>{tr("근거를 확인하고 실행 계획을 정하세요.", "Review the evidence and define a plan.")}</small> : <small>{item.action.state === "executed" ? tr(`실행 ${item.action.executedDate}`, `Executed ${item.action.executedDate}`) : tr(`계획 ${item.action.plannedDate}`, `Planned ${item.action.plannedDate}`)} · {tr("검토", "Review")} {item.due}</small>}
+            {item.proposal ? <small>{proposalReason(item.proposal)}</small> : <small>{item.action.state === "executed" ? tr(`실행 ${item.action.executedDate}`, `Executed ${item.action.executedDate}`) : tr(`계획 ${item.action.plannedDate}`, `Planned ${item.action.plannedDate}`)} · {tr("검토", "Review")} {item.due}</small>}
           </button>)}
         </section>)}
         {current.pages > 1 && <div className="operations-queue__pagination"><span>{tr(`전체 ${current.total}건 중 ${current.start === current.end ? current.start : `${current.start}–${current.end}`}번째`, `${current.start}–${current.end} of ${current.total} items`)}</span><button type="button" className="btn ghost" aria-label={tr("이전 액션 목록", "Previous actions")} disabled={current.page === 1} onClick={() => { setPage(current.page - 1); setSelectedId(null); }}>‹</button><button type="button" className="btn ghost" aria-label={tr("다음 액션 목록", "Next actions")} disabled={current.page === current.pages} onClick={() => { setPage(current.page + 1); setSelectedId(null); }}>›</button></div>}
@@ -51,6 +54,7 @@ export default function OperationsActionQueue({ items, proposals, today, locale,
           <p className="operations-queue__eyebrow">{kindLabel(selected.action.kind)} · {status(selected)}</p>
           <h3 tabIndex={-1} ref={detailRef}>{selected.name}</h3><p>{summary(selected)}</p>
           {selected.proposal ? <>
+            {selected.action.kind === "budget" && Number.isFinite(selected.proposal.overallChangePct) && <p className="ops-context-alert">{tr(`모든 캠페인을 합친 예상 성과는 ${selected.proposal.overallChangePct > 0 ? "+" : ""}${fmtNum(selected.proposal.overallChangePct, 1)}%입니다. 각 캠페인의 단가가 아니라 전체 성과 합계로 비교한 안입니다.`, `Expected outcomes across all campaigns change by ${selected.proposal.overallChangePct > 0 ? "+" : ""}${fmtNum(selected.proposal.overallChangePct, 1)}%. This plan compares combined outcomes, not each campaign's unit cost alone.`)}</p>}
             {selected.action.kind === "budget" ? <><p>{tr("관측한 하루 평균 지출과 제안 예산입니다. 실제 예산 설정값은 실행 기록에서 확인합니다.", "Observed daily spend and proposed budget. Confirm actual budget settings when recording execution.")}</p><dl className="operations-loop__metrics"><div><dt>{tr(`같은 추세 모형의 ${metricName} · 유지 → 조정`, `${metricName} from the same trend model · keep → revise`)}</dt><dd>{money(selected.proposal.baselineCpr)} → {money(selected.proposal.expectedCpr)}</dd></div></dl>{selected.proposal.creativeAttention && <p>{tr("소재 신호도 있습니다. 동시에 변경하면 각각의 효과를 구분하기 어렵습니다.", "Creative signals also apply. Concurrent changes make effects difficult to separate.")}</p>}</>
               : <p>{selected.proposal.signal.fatigued ? tr("피로도 신호가 있습니다. 교체할 소재를 준비하고 검토일을 정하세요.", "Fatigue signals detected. Prepare a replacement and set a review date.") : tr("소재 성과·학습 상태를 확인하고 교체 또는 추가 관찰을 정하세요.", "Check creative performance and learning status, then choose replacement or further observation.")}</p>}
             <button type="button" className="btn primary" onClick={() => onNew(selected.proposal)}>{tr("액션 정하기", "Define action")}</button>

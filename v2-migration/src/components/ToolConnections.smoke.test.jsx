@@ -83,7 +83,7 @@ describe("ToolConnections", () => {
     link.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(link);
     expect(gtag).toHaveBeenCalledWith("event", "tool_connection_pick", {
-      tool_id: "5-3",
+      tool_id: "5-31",
       source_tool_id: "5-22",
       interaction_source: "analysis_tool",
       placement: "next_decision",

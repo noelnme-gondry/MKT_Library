@@ -20,6 +20,11 @@ export const WORKSPACE_NAV = [
     en: { name: "Home", desc: "What to check now" },
   },
   {
+    id: "operations", group: "work", href: "/tools/operations-planner", icon: "▦",
+    ko: { name: "운영 플래너", desc: "예산·소재 액션부터 실행과 다음 검토까지" },
+    en: { name: "Operations planner", desc: "Budget and creative actions, execution and review" },
+  },
+  {
     id: "start",
     group: "work",
     href: "/start",
