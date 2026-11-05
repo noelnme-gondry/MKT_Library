@@ -1,5 +1,7 @@
 @layer app {
   .operations-planner, .operations-sample-preview { --text-muted: var(--library-muted); }
+  /* Footer stays dark in both themes; its ad disclosures need the same readable ink. */
+  .site-footer .partner-ad-preview :is(.partner-ad-preview__label, .partner-ad-preview__note) { color: var(--footer-muted); }
   /* Chart palettes are user-selectable, so direction text uses readable semantic ink. */
   .operations-planner .ops-plan [data-direction="decrease"] { color: var(--library-muted); }
   /* Shared hierarchy: decision, evidence and follow-up have different jobs. */

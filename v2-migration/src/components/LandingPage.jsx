@@ -215,7 +215,7 @@ export default function LandingPage({ locale = "ko", reading }) {
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
           <div className="home-planner-entry">
             <Link className="btn primary" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}>{T.demoCta} →</Link>
-            <Link className="btn secondary" href={toolHref(OPERATIONS_TOOL_ID)}>{lang === "en" ? "Plan with my data" : "내 데이터로 운영 계획"}</Link>
+            <Link className="btn secondary" href={toolHref(OPERATIONS_TOOL_ID)} onClick={() => trackLandingNav("landing_data_start_clicked", "hero_data")}>{lang === "en" ? "Plan with my data" : "내 데이터로 운영 계획"}</Link>
             <p>{lang === "en" ? "Budget up, down or unchanged → campaign actions → execution and next review" : "예산 유지·증액·감액 → 캠페인별 실행안 → 실행과 다음 검토"}</p>
           </div>
           </div>

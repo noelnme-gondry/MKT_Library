@@ -16,6 +16,10 @@ for (const locale of ["ko", "en"]) {
           return { left: rect.left - box.left, right: box.right - rect.right };
         };
         return {
+          pageLeft: box.left,
+          pageRight: innerWidth - box.right,
+          background: getComputedStyle(element).backgroundColor,
+          border: parseFloat(getComputedStyle(element).borderLeftWidth),
           heading: bounds(".tool-instrument-header__heading"),
           label: bounds(".recipe-command__label"),
           input: bounds(".recipe-command__input"),
@@ -23,9 +27,14 @@ for (const locale of ["ko", "en"]) {
         };
       });
       const closed = await measure();
-      // 서로 같은 x여도 박스 가장자리에 붙으면 실패다. 여백과 정렬을 함께 검사한다.
-      expect(closed.heading.left).toBeGreaterThanOrEqual(16);
-      expect(closed.input.right).toBeGreaterThanOrEqual(16);
+      // 결과 위 제목의 중복 상자는 제거했다. 바깥 페이지 여백과 내부 기준선은 보존한다.
+      expect(closed.background).toBe("rgba(0, 0, 0, 0)");
+      expect(closed.border).toBe(0);
+      // 공용 모바일 셸의 12px 페이지 gutter를 포함한다.
+      expect(closed.pageLeft).toBeGreaterThanOrEqual(12);
+      expect(closed.pageRight).toBeGreaterThanOrEqual(12);
+      expect(closed.heading.left).toBeGreaterThanOrEqual(0);
+      expect(closed.input.right).toBeGreaterThanOrEqual(0);
       expect(Math.abs(closed.input.left - closed.input.right)).toBeLessThanOrEqual(1);
       for (const part of [closed.label, closed.input]) expect(Math.abs(part.left - closed.heading.left)).toBeLessThanOrEqual(1);
       // 5-22는 같은 행에 날짜가 먼저 있다. 다음 행으로 접혀도 컨테이너 밖으로 나가면 안 된다.

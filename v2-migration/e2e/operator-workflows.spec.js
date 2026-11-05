@@ -73,7 +73,7 @@ async function navigateToTool(page, href, section, query) {
       await sectionButton.click();
     } else {
       await page.getByRole("button", { name: "전체 도구" }).click();
-      await page.getByRole("combobox").fill(query);
+      await page.locator("#cmdk").getByRole("combobox").fill(query);
       await page.locator("#cmdk").getByRole("option").first().click();
       await expect(page).toHaveURL(new RegExp(`${href}$`));
       return;
