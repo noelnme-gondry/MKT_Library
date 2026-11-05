@@ -1200,7 +1200,7 @@
 .home-action-preview__steps li::before { counter-increment: preview-step; content: "0" counter(preview-step); color: var(--library-accent); font-size: var(--fs-xs); }
 .home-planner-intro .home-action-preview__queue, .home-planner-intro .home-action-preview__queue > section { display: flex; flex-direction: column; min-height: 0; }
 .home-planner-intro .home-action-preview__queue > section { flex: 1; padding: 0; background: transparent; border: 0; }
-.home-planner-intro .home-action-preview__queue h4 { display: flex; justify-content: space-between; margin: 0; padding: 0; background: transparent; border: 0; font-size: var(--fs-sm); }
+.home-planner-intro .home-action-preview__queue h4 { display: flex; justify-content: space-between; margin: 0; padding: 0; background: transparent; border: 0; font-size: var(--fs-md); }
 .home-action-preview__proposals { display: grid; flex: 1; grid-auto-rows: 1fr; margin: 12px 0 0; padding: 0; list-style: none; }
 .home-action-preview__proposals li { display: flex; flex-wrap: wrap; align-content: center; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0; padding-block: 10px; border-top: 1px solid var(--library-border); font-size: var(--fs-sm); }
 .home-action-preview__proposals span { color: var(--library-muted); font-variant-numeric: tabular-nums; }

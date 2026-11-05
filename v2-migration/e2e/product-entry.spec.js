@@ -136,6 +136,10 @@ for (const locale of ["ko", "en"]) {
         await tabs.nth(index).click();
         await expect(tabs.nth(index)).toHaveAttribute("aria-selected", "true");
         await expect(page.getByRole("tabpanel")).toHaveCount(1);
+        // Measure the settled layout, not the reveal's translated intermediate frame.
+        await page.getByRole("tabpanel").evaluate(node => Promise.all(
+          node.getAnimations({ subtree: true }).map(animation => animation.finished.catch(() => {}))
+        ));
         // Switching the preview must not push the upload/situation entry down.
         expect((await page.locator(".operations-sample-preview").boundingBox()).height).toBe(stablePreview.height);
         expect(Math.abs(await entryDocumentTop() - stableEntryTop)).toBeLessThanOrEqual(1);
