@@ -95,7 +95,46 @@
   .ops-allocation header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem; }
   .ops-allocation header span { font-size: var(--fs-xs); color: var(--text-muted); }
   .ops-allocation header p { margin: 0 0 1rem; color: var(--text-secondary); font-size: var(--fs-sm); }
-  .ops-row-action { min-height: 44px; white-space: nowrap; }
+  /* Plan selection: what the person chooses, the forecast it implies, and the one save action. */
+  .ops-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; padding: 1rem 0 1.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .ops-selection__totals { display: grid; grid-template-columns: repeat(4, minmax(0, auto)); gap: .5rem 2rem; margin: 0; min-width: 0; }
+  .ops-selection__totals dt { color: var(--text-muted); font-size: var(--fs-xs); }
+  .ops-selection__totals dd { margin: .2rem 0 0; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ops-selection__totals dd b { font-size: var(--fs-md); }
+  .ops-selection__totals dd small { display: block; margin-top: .15rem; color: var(--text-secondary); }
+  .ops-selection__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
+  .ops-selection__actions .btn { min-height: 44px; }
+  .ops-select-row { display: flex; align-items: flex-start; gap: .65rem; min-height: 44px; padding: .35rem 0; cursor: pointer; }
+  .ops-select-row input { width: 18px; height: 18px; margin: .2rem 0 0; flex: 0 0 auto; accent-color: var(--primary); }
+  .ops-select-row > span { display: grid; gap: .2rem; min-width: 0; }
+  .ops-select-row small { color: var(--text-muted); }
+  .ops-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .2rem; }
+  .ops-chip { display: inline-block; padding: .1rem .45rem; border: 1px solid currentColor; border-radius: var(--radius-sm); font-size: var(--fs-xs); white-space: nowrap; }
+  .ops-chip--ok { color: var(--success); }
+  .ops-chip--warn { color: var(--text-secondary); border-color: var(--border); }
+  .ops-budget-input { display: inline-grid; justify-items: end; gap: .25rem; }
+  .ops-budget-input input { width: 9.5rem; max-width: 100%; min-height: 40px; padding: .4rem .55rem; text-align: right; font: inherit; font-variant-numeric: tabular-nums; color: var(--text-primary); background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .ops-budget-input input:disabled { color: var(--text-muted); background: transparent; }
+  .ops-budget-input small { color: var(--text-muted); }
+  .ops-budget-input .ops-budget-input__error { color: var(--danger); }
+  .ops-muted { color: var(--text-muted); }
+  .ops-forecast { margin: 1rem 0; padding: 1rem 0; border-block: 1px solid var(--border); }
+  .ops-forecast h4 { margin: 0 0 .65rem; font-size: var(--fs-sm); }
+  .ops-forecast p { margin: .6rem 0 0; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.65; }
+  .ops-forecast__saved { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 0; }
+  .ops-forecast__saved dt { color: var(--text-muted); font-size: var(--fs-xs); }
+  .ops-forecast__saved dd { margin: .2rem 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ops-forecast__table { overflow-x: auto; }
+  .ops-forecast table { width: 100%; border-collapse: collapse; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+  .ops-forecast :is(th, td) { padding: .45rem .5rem; border-bottom: 1px solid var(--border-subtle); text-align: right; }
+  .ops-forecast :is(thead th, tbody th) { text-align: right; color: var(--text-muted); font-weight: 600; }
+  .ops-forecast :is(thead th:first-child, tbody th) { text-align: left; }
+  .ops-plan-save__list { display: grid; gap: .5rem; padding: 0; margin: 1rem 0; list-style: none; }
+  .ops-plan-save__list li { display: grid; gap: .2rem; padding: .6rem 0; border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
+  .ops-plan-save__list span { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .ops-plan-save__total { font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  body .operations-action-form .ops-plan-save__check { display: flex; align-items: center; gap: .6rem; min-height: 44px; align-self: end; font-size: var(--fs-sm); color: var(--text-primary); }
+  body .operations-action-form .ops-plan-save__check input { width: 18px; height: 18px; min-height: 0; padding: 0; flex: 0 0 auto; accent-color: var(--primary); }
   /* 5-3: prior-period values sit under the current value so the table fits without horizontal scrolling. */
   .alloc-prev { display: block; margin-top: 2px; color: var(--text-muted); font-weight: 400; font-size: var(--fs-xs); white-space: nowrap; }
   .operations-planner__inputs { display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -184,15 +223,18 @@
      switch to cards is a container query on the section itself (no clipped CPI/action columns). */
   .ops-allocation { container: ops-allocation / inline-size; }
   @container ops-allocation (max-width: 1000px) {
+    .ops-selection__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .ops-selection__actions { margin-left: 0; }
     .ops-allocation .data-table-wrap { overflow: visible; border: 0; }
     .ops-allocation table { display: block; width: 100%; min-width: 0; }
     .ops-allocation tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: .75rem; width: 100%; min-width: 0; }
     .ops-allocation thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .ops-allocation .data-table__row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); align-content: start; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
-    /* Name and budget range read across the card; the numbers and the action pair up to keep cards short. */
-    .ops-allocation .data-table__cell:is(:first-child, :nth-child(2)) { grid-column: 1 / -1; }
-    .ops-allocation .data-table__cell:last-child { align-content: center; }
-    .ops-allocation .data-table__cell:is(:first-child, :last-child)::before { display: none; }
+    /* Name, budget input and unit cost read across the card; change and outcomes pair up to keep cards short. */
+    .ops-allocation .data-table__cell:is(:first-child, :nth-child(2), :last-child) { grid-column: 1 / -1; }
+    .ops-allocation .data-table__cell:first-child::before { display: none; }
+    .ops-allocation .ops-budget-input { justify-items: start; }
+    .ops-allocation .ops-budget-input input { text-align: left; }
     body .ops-allocation .data-table__cell { display: grid; grid-template-columns: minmax(0,1fr); gap: .25rem; min-width: 0; padding: .65rem .75rem !important; border-left: 0; white-space: normal; }
     .ops-allocation .data-table__cell::before { content: attr(data-column-label); text-align: left; font-size: var(--fs-xs); color: var(--text-muted); }
     .ops-allocation .data-table__cell > * { min-width: 0; overflow-wrap: anywhere; justify-self: start; text-align: left; }

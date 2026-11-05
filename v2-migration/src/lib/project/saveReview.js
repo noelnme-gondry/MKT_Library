@@ -5,7 +5,9 @@ import { canCreateProject, hasPaidAccess } from "@/lib/subscription/entitlement"
 import { sanitizeDecisionReviewRecord } from "@/lib/decisionReview";
 
 // Creation and the first record commit together. Never switch/clear the source CSV.
-export async function saveProjectReview({ projectId, name, record, report, entitlement, initialDecisions = [], shouldSave = () => true }) {
+// `records` saves several decisions of one plan in the same transaction (all or none).
+export async function saveProjectReview({ projectId, name, record, records, report, entitlement, initialDecisions = [], shouldSave = () => true }) {
+  const list = Array.isArray(records) && records.length ? records : record ? [record] : [];
   if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
   return projectTransaction("readwrite", async meta => {
     const projects = (await requestResult(meta.getAll())).filter(item => item.key === `project:${item.id}`);
@@ -18,15 +20,16 @@ export async function saveProjectReview({ projectId, name, record, report, entit
       const id = projects.length ? crypto.randomUUID() : DEFAULT_PROJECT_ID;
       target = { ...migrateLegacyProject(null, [], projects.length ? [] : initialDecisions, now), id, key: projectMetaKey(id), name: name.trim().slice(0, 120) };
     }
-    let savedRecord = null;
+    let savedRecords = [];
     if (!target.name?.trim()) {
       if (!name?.trim()) throw new Error("PROJECT_NAME_REQUIRED");
       target = { ...target, name: name.trim().slice(0, 120) };
     }
-    if (record) {
-      savedRecord = sanitizeDecisionReviewRecord({ ...record, id: record.id || crypto.randomUUID(), updatedAt: new Date(now).toISOString() }, record.toolId);
-      if (!savedRecord) throw new Error("INVALID_REVIEW");
-      target = { ...target, decisions: [savedRecord, ...(target.decisions || []).filter(item => item.id !== savedRecord.id)] };
+    if (list.length) {
+      savedRecords = list.map(item => sanitizeDecisionReviewRecord({ ...item, id: item.id || crypto.randomUUID(), updatedAt: new Date(now).toISOString() }, item.toolId));
+      if (savedRecords.some(item => !item)) throw new Error("INVALID_REVIEW");
+      const ids = new Set(savedRecords.map(item => item.id));
+      target = { ...target, decisions: [...savedRecords, ...(target.decisions || []).filter(item => !ids.has(item.id))] };
     }
     if (report) target = { ...target, report };
     target = { ...target, lastUsedAt: now };
@@ -34,6 +37,6 @@ export async function saveProjectReview({ projectId, name, record, report, entit
     if (!shouldSave()) throw new Error("SAVE_CONTEXT_CHANGED");
     if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
     meta.put(target);
-    return { project: target, record: savedRecord };
+    return { project: target, record: savedRecords[0] || null, records: savedRecords };
   });
 }

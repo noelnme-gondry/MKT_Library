@@ -53,7 +53,7 @@ for (const locale of ["ko", "en"]) {
     // 제안은 위 실행안 표가 소유하고, 예시에서는 저장 기록이 없으므로 실행·검토 목록은 빈 안내 한 줄이다.
     await expect(page.locator(".operations-queue__empty")).toBeVisible();
     await expect(page.locator(".operations-queue__choice")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: locale === "en" ? /^Plan a budget action for / : /예산 액션 정하기$/ }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: locale === "en" ? /^Save selected plan/ : /^선택한 계획 저장/ })).toBeVisible();
   });
 
   test(`operations home preview uses the full width for entry and evidence (${locale})`, async ({ page }, testInfo) => {

@@ -4,6 +4,7 @@ import { OPERATION_ACTION_KINDS } from "@/lib/operations/actionContract";
 import { buildOperationQueue, OPERATION_QUEUE_STATES, operationQueuePage, operationTargetKey } from "@/lib/operations/actionQueue";
 import { fmtCurrency } from "@/utils/format";
 import OperationsChangeComparison from "./OperationsChangeComparison";
+import OperationsForecastCheck from "./OperationsForecastCheck";
 
 export default function OperationsActionQueue({ items, today, locale, currency, metricName, isDemo, onEdit, onReview, onFollowup, concurrent }) {
   const en = locale === "en", tr = (ko, english) => en ? english : ko;
@@ -18,7 +19,9 @@ export default function OperationsActionQueue({ items, today, locale, currency, 
   const targets = [...new Map(queue.map(item => [operationTargetKey(item.action.target), item.name])).entries()];
   const money = (value, unit = currency) => Number.isFinite(value) ? fmtCurrency(value, { currency: unit, precise: true }) : tr("미확인", "Unverified");
   const kindLabel = kind => OPERATION_ACTION_KINDS[kind][en ? 1 : 0];
-  const summary = item => item.action.kind === "budget" ? `${money(item.action.beforeBudget, item.action.currency || currency)} → ${money(item.action.afterBudget, item.action.currency || currency)} / ${tr("일", "day")}`
+  // 계획에서 저장한 액션은 설정값 대신 관측한 하루 지출을 기준으로 한다(설정값은 사람이 확인해 입력한다).
+  const before = action => action.beforeBudget ?? action.forecast?.currentDailySpend;
+  const summary = item => item.action.kind === "budget" ? `${item.action.beforeBudget == null && item.action.forecast ? tr("관측 ", "Observed ") : ""}${money(before(item.action), item.action.currency || currency)} → ${money(item.action.afterBudget, item.action.currency || currency)} / ${tr("일", "day")}`
     : [item.action.creative, item.action.replacementCreative].filter(Boolean).join(" → ") || kindLabel(item.action.kind);
   const status = item => item.action.state === "cancelled" ? tr("취소", "Cancelled") : item.bucket === "done" ? tr("검토 완료", "Reviewed")
       : item.action.state === "planned" ? tr("실행 대기", "Planned") : item.bucket === "review"
@@ -59,6 +62,7 @@ export default function OperationsActionQueue({ items, today, locale, currency, 
           <h3 tabIndex={-1} ref={detailRef}>{selected.name}</h3><p>{summary(selected)}</p>
           <>
             <dl className="operations-queue__dates"><div><dt>{tr("계획", "Planned")}</dt><dd>{selected.action.plannedDate || "—"}</dd></div><div><dt>{tr("실제 실행", "Executed")}</dt><dd>{selected.action.executedDate || tr("미실행", "Not executed")}</dd></div><div><dt>{tr("검토일", "Review date")}</dt><dd>{selected.due || "—"}</dd></div></dl>
+            <OperationsForecastCheck action={selected.action} check={selected.review.forecastCheck} metricName={metricName} locale={locale} />
             {selected.action.note && <p>{selected.action.note}</p>}
             {selected.record.parentDecisionId && <p>{tr("이전 검토에 연결된 후속 액션입니다.", "This action follows a previous review.")}</p>}
             {selected.bucket === "done" ? <><p>{selected.record.actual}</p><p>{selected.record.learning}</p></>

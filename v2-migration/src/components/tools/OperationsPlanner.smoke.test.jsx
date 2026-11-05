@@ -42,17 +42,18 @@ describe("standalone operations planner entry path", () => {
   it("keeps the real analysis gate and mounts its independent tool shell", async () => {
     expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(false);
     render(<OperationsPlanner />);
-    expect(screen.queryByRole("heading", { name: "캠페인별 실행안과 예상 성과" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "실행할 액션 고르기" })).toBeNull();
     expect(screen.getByRole("heading", { name: "운영 플래너", level: 1 })).toBeTruthy();
     act(() => useAppStore.getState().setGroupAnalyzed("5-31"));
     expect(useAppStore.getState().isGroupAnalyzed("5-31")).toBe(true);
     await openEvidence();
-    expect(screen.getByRole("heading", { name: "캠페인별 실행안과 예상 성과" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "실행할 액션 고르기" })).toBeTruthy();
     expect(document.querySelector(".operations-planner__conditions")).toBeNull();
     const plan = document.querySelector(".ops-plan"), evidence = document.querySelector(".ops-evidence");
     expect(plan.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 예산 제안은 캠페인별 실행안 표가 소유한다. 아래 실행·검토 목록은 기록한 액션만 다뤄 같은 제안을 다시 싣지 않는다.
-    expect(screen.getAllByRole("button", { name: /예산 액션 정하기$/ }).length).toBe(document.querySelectorAll(".ops-allocation tbody tr").length);
+    expect(screen.getAllByRole("checkbox", { name: /실행에 포함$/ }).length).toBe(document.querySelectorAll(".ops-allocation tbody tr").length);
+    expect(screen.getByRole("button", { name: /^선택한 계획 저장/ })).toBeTruthy();
     expect(document.querySelectorAll(".operations-queue__choice")).toHaveLength(0);
     expect(document.querySelector(".operations-queue__empty").textContent).toContain("아직 기록한 액션이 없습니다");
     expect(document.querySelectorAll(".ops-evidence canvas")).toHaveLength(1);
@@ -66,7 +67,7 @@ describe("standalone operations planner entry path", () => {
     useAppStore.getState().setGroupAnalyzed("5-31");
     const { container } = render(<OperationsPlanner />);
     await openEvidence();
-    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
+    await screen.findByRole("heading", { name: "실행할 액션 고르기" });
     const select = screen.getByRole("slider", { name: /캠페인별 변경 한도/ });
     fireEvent.change(select, { target: { value: "0" } });
     await waitFor(() => expect(select.value).toBe("0"));
@@ -82,9 +83,9 @@ describe("standalone operations planner entry path", () => {
     expect(container.querySelector("#ops-diagnosis-title").textContent).toContain("Campaign 0");
     act(() => useAppStore.getState().setDashboardFilter({ dateStart: "2026-08-26", dateEnd: "2026-09-01", compareEnabled: true,
       comparisonStart: "2026-08-19", comparisonEnd: "2026-08-25" }));
-    expect(screen.queryByRole("heading", { name: "캠페인별 실행안과 예상 성과" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "실행할 액션 고르기" })).toBeNull();
     // 기간을 바꿔도 사용자가 보던 근거 탭을 유지한다.
-    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
+    await screen.findByRole("heading", { name: "실행할 액션 고르기" });
     expect(screen.getByRole("region", { name: "소재별 최근 효율" }).textContent).not.toContain("new");
     expect(screen.getByRole("slider", { name: /캠페인별 변경 한도/ }).value).toBe("0");
   });
@@ -94,7 +95,7 @@ describe("standalone operations planner entry path", () => {
     useAppStore.getState().setCsvData(demo);
     useAppStore.getState().setGroupAnalyzed("5-31");
     const { container } = render(<OperationsPlanner />);
-    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
+    await screen.findByRole("heading", { name: "실행할 액션 고르기" });
     const settle = async () => waitFor(() => expect(container.querySelector(".ops-plan")?.getAttribute("aria-busy")).toBe("false"));
     fireEvent.click(screen.getByRole("button", { name: "증액", exact: true }));
     await settle();
@@ -292,20 +293,37 @@ describe("standalone operations planner entry path", () => {
     expect(screen.getByRole("region", { name: "전체 변화 목록" }).textContent).toContain("July budget change");
   });
 
-  it.each(["ko", "en"])("records budget amounts without pretending observed spend is a confirmed setting (%s)", async locale => {
+  it.each(["ko", "en"])("saves only the chosen actions with their forecast and refuses amounts outside the observed range (%s)", async locale => {
     const en = locale === "en";
     useAppStore.getState().setGroupAnalyzed("5-31");
     render(<OperationsPlanner locale={locale} />);
     await screen.findByRole("tab", { name: en ? "Execution & next review" : "실행과 다음 검토" });
-    fireEvent.click(screen.getAllByRole("button", { name: en ? /^Plan a budget action for / : /예산 액션 정하기$/ })[0]);
-    const dialog = screen.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기" });
-    expect(within(dialog).getByLabelText(en ? "Previous daily budget (KRW, optional)" : "변경 전 하루 예산 (KRW, 선택)").value).toBe("");
-    expect(within(dialog).getByLabelText(en ? "New daily budget (KRW)" : "변경 후 하루 예산 (KRW)").value).toMatch(/^\d{1,3}(,\d{3})*$/);
-    fireEvent.change(within(dialog).getByLabelText(en ? "New daily budget (KRW)" : "변경 후 하루 예산 (KRW)"), { target: { value: "123,456.78" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: en ? "Save action" : "액션 저장" }));
+    const save = () => screen.getByRole("button", { name: en ? /^Save selected plan/ : /^선택한 계획 저장/ });
+    const recommendedCount = Number(save().textContent.match(/(\d+)/)[1]);
+    expect(recommendedCount).toBeGreaterThan(0);
+    // 범위 밖 금액은 예측하지 않고 저장도 막는다.
+    const inputs = screen.getAllByLabelText(en ? / 7-day budget$/ : / 7일 예산$/);
+    const editable = inputs.find(input => !input.disabled);
+    fireEvent.change(editable, { target: { value: "999999999999" } });
+    expect(save().disabled).toBe(true);
+    expect(document.querySelector(".ops-selection [role=alert]")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: en ? "Reset to recommendation" : "추천안으로 되돌리기" }));
+    expect(save().disabled).toBe(false);
+    fireEvent.click(save());
+    const dialog = screen.getByRole("dialog", { name: en ? "Save the selected plan" : "선택한 계획 저장" });
+    fireEvent.click(within(dialog).getByRole("button", { name: en ? "Save to project" : "프로젝트에 저장" }));
     confirmReviewSave();
-    await waitFor(() => expect(useAppStore.getState().decisionRecords).toHaveLength(1));
-    expect(readOperationAction(useAppStore.getState().decisionRecords[0].operationAction)).toMatchObject({ state: "planned", beforeBudget: null, afterBudget: 123456.78, currency: "KRW" });
+    await waitFor(() => expect(useAppStore.getState().decisionRecords).toHaveLength(recommendedCount));
+    const actions = useAppStore.getState().decisionRecords.map(record => readOperationAction(record.operationAction));
+    expect(new Set(actions.map(action => action.planContext.planId)).size).toBe(1);
+    for (const action of actions) {
+      expect(action).toMatchObject({ kind: "budget", state: "planned", beforeBudget: null, currency: "KRW", reviewDays: 7, source: "recommendation" });
+      expect(action.forecast.dailySpend).toBe(action.afterBudget);
+      expect(action.forecast.dailyResults).toBeGreaterThan(0);
+    }
+    // 저장한 캠페인은 다시 고를 수 없고 상태가 보인다.
+    await waitFor(() => expect(screen.getAllByText(en ? "Saved · planned" : "저장됨 · 실행 대기")).toHaveLength(recommendedCount));
+    expect(save().disabled).toBe(true);
   });
 });
 
@@ -342,7 +360,7 @@ describe("operations planner built-in demo", () => {
     expect(state.displayCurrency).toBe("KRW");
     await openEvidence(locale);
     const en = locale === "en";
-    expect(screen.getByRole("heading", { name: en ? "Campaign actions and expected outcomes" : "캠페인별 실행안과 예상 성과" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: en ? "Choose the actions to run" : "실행할 액션 고르기" })).toBeTruthy();
     const choices = document.querySelectorAll(".ops-creative-choices button");
     expect(choices).toHaveLength(6);
     const selectedCreative = () => screen.getByRole("region", { name: en ? "Selected creative details" : "선택한 소재 상세" });
@@ -381,7 +399,7 @@ describe("operations planner built-in demo", () => {
     await screen.findByRole("dialog", { name: "예시 데이터로 교체" });
     fireEvent.click(screen.getByRole("button", { name: "예시로 교체", exact: true }));
     await openEvidence();
-    await screen.findByRole("heading", { name: "캠페인별 실행안과 예상 성과" });
+    await screen.findByRole("heading", { name: "실행할 액션 고르기" });
     expect(useAppStore.getState().csvData.fileName).toBe("demo_operations_98days.csv");
   });
 });

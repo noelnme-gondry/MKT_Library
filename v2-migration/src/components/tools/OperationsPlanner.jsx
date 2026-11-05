@@ -31,6 +31,8 @@ import DataTable from "@/components/ds/DataTable";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import PvmEfficiencyStages from "@/components/tools/PvmEfficiencyStages";
 
+const localToday = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; };
+
 function EvidenceTable({ title, columns, rows, locale, emptyText }) {
   const [expanded, setExpanded] = useState(false);
   return <div className="operations-data__section">
@@ -142,7 +144,7 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   ], method: { name: "operations-brief", version: "1", assumptions: [`Budget mode: ${plan.mode}; plan period: ${plan.planRange.start}–${plan.planRange.end}; source: ${brief.sourceGrain}; curve observations: ${brief.grain}. Historical curves with recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range. Execution amounts are daily equivalents.`], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
 
   return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo, view, setView }}
-    overview={chooseReview => <><OperationsPlanBoard {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages }} onChange={changeOptions} onAction={chooseReview} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
+    overview={chooseReview => <><OperationsPlanBoard {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages, metric, currency, isDemo }} signals={bundle.signals} today={localToday()} sourceThrough={bundle.history.end || bundle.history.dates.at(-1) || ""} onChange={changeOptions} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
       <OperationsDecisionEvidence {...{ brief, plan, campaign, creative, setSelected, setCreativeSelection, metricName, outcomeName, currency, locale, periods, isDemo, money, number, pct, chooseReview }} signals={bundle.signals} />
       <ModalDialog open={dataOpen} onClose={() => setDataOpen(false)} ariaLabel={tr("입력·상세 데이터", "Inputs and detailed data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2>{tr("입력과 지표 계산", "Inputs and metric calculations")}</h2><OperationsMetricEvidence inDialog evidence={bundle.evidence} {...{ currency, locale }} onInspectMapping={() => { setDataOpen(false); onInspectMapping(); }} /><button type="button" className="btn ghost" onClick={() => setDataOpen(false)}>{tr("닫기", "Close")}</button></ModalDialog></>}
     evidence={() => <ResultActionCard title={tr("선택 기간의 성과와 원본 근거", "Performance and source evidence for the selected periods")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}

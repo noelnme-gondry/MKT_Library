@@ -1,13 +1,31 @@
 "use client";
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import DataTable from "@/components/ds/DataTable";
+import { useAppStore } from "@/store/useDataStore";
+import { matchesOperationsTarget } from "@/lib/operations/operationsIdentity";
+import { defaultOperationsSelection, forecastOperationsSelection, isRecommendedSelection, pendingBudgetActions } from "@/lib/operations/operationsSelection";
+import { CommaNumberInput } from "./marketingResponseModel";
+import OperationsPlanSaveDialog from "./OperationsPlanSaveDialog";
 import ResultChange from "@/components/ds/ResultChange";
 import { fmtNum } from "@/utils/format";
 import { periodDays } from "@/lib/analysisPeriod";
 import { operationsPlanRange } from "@/lib/operations/operationsScenario";
 
-export default function OperationsPlanBoard({ brief, plan, options, onChange, money, pct, outcomeName, metricName, locale, holdMessages, onAction, selected, onSelect, busy }) {
+export default function OperationsPlanBoard({ brief, plan, options, onChange, money, pct, outcomeName, metricName, locale, holdMessages, selected, onSelect, busy, metric, currency, isDemo, signals = [], today, sourceThrough }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
+  // 사람이 고른 실행안. 추천안이 다시 계산되면(조건 변경) 추천안으로 돌아간다 — 상태는 그 추천안에 묶여 있다.
+  const [edits, setEdits] = useState({ plan: null, choices: null });
+  const [saving, setSaving] = useState(false);
+  const records = useAppStore(state => state.decisionRecords);
+  const choices = edits.plan === plan && edits.choices ? edits.choices : defaultOperationsSelection(plan);
+  const pending = isDemo ? new Map() : pendingBudgetActions(records, brief.campaigns, { metric, currency, matches: matchesOperationsTarget });
+  // 이미 저장한 예산 액션이 진행 중인 캠페인은 다시 고르지 않는다(실행·검토는 아래 목록에서 이어 간다).
+  const effective = Object.fromEntries(Object.entries(choices).map(([id, choice]) => [id, pending.has(id) ? { ...choice, selected: false } : choice]));
+  const forecast = forecastOperationsSelection(brief, plan, effective);
+  const recommended = isRecommendedSelection(plan, choices);
+  const setChoice = (id, patch) => setEdits({ plan, choices: { ...choices, [id]: { ...choices[id], ...patch } } });
+  const creativeAttention = new Set(signals.filter(signal => signal.needsAction).map(signal => signal.entityId));
   const range = plan.planRange || operationsPlanRange(brief.periods.current.end, options.horizon);
   const n = periodDays(range), hasBase = n > 0 && brief.campaigns.length > 0 && brief.campaigns.every(row => Number.isFinite(brief.currentSpends[row.id]));
   const base = hasBase ? Object.values(brief.currentSpends).reduce((a, b) => a + b, 0) * n : null;
@@ -42,16 +60,39 @@ export default function OperationsPlanBoard({ brief, plan, options, onChange, mo
         </div>
       </div>
       {controls}
-      <section className="ops-allocation" data-design-exempt="nested: Scrollable campaign table belongs to the executable allocation section" aria-labelledby="ops-allocation-title"><header><div><h3 id="ops-allocation-title">{tr("캠페인별 실행안과 예상 성과", "Campaign actions and expected outcomes")}</h3><p>{tr("실행할 캠페인의 ‘액션 정하기’로 실행일과 다음 검토를 기록하세요. 광고 계정 설정은 바뀌지 않습니다.", "Use “Plan action” on a campaign to record its execution date and next review. Your ad account is not changed.")}</p></div><span>{range.start} – {range.end} · {tr("기간 합계", "Period totals")}</span></header>
-        <DataTable ariaLabel={tr("캠페인별 실행안", "Campaign action plan")} rows={rows} rowKey={row => row.id} columns={[
-          { key: "name", label: tr("캠페인", "Campaign"), fmt: (value, row) => <button type="button" className="ops-entity-button" aria-pressed={selected === row.id} onClick={() => onSelect(row.id)}><strong>{value}</strong><small>{row.context}</small></button> },
-          { key: "budget", label: tr("기간 예산 · 현재 → 조정안", "Period budget · current → plan"), align: "right", fmt: (_, row) => <span>{money(row.allocation.current * n)} → <b>{money(row.allocation.budget * n)}</b></span> },
-          { key: "delta", label: tr("변경 금액", "Change"), align: "right", fmt: (_, row) => <strong data-direction={direction(row.allocation)}>{delta((row.allocation.budget - row.allocation.current) * n)}<small>{pct((row.allocation.budget / row.allocation.current - 1) * 100)}</small></strong> },
-          { key: "outcomes", label: tr(`예상 ${outcomeName}`, `Expected ${outcomeName}`), align: "right", fmt: (_, row) => <span>{fmtNum(row.allocation.currentResults * n)} → <b>{fmtNum(row.allocation.expectedResults * n)}</b></span> },
-          { key: "cpr", label: tr(`예상 ${metricName}`, `Predicted ${metricName}`), align: "right", fmt: (_, row) => <span>{money(row.allocation.current / row.allocation.currentResults)} → <b>{money(row.allocation.expectedCpr)}</b></span> },
-          { key: "action", label: tr("기록", "Record"), fmt: (_, row) => <button type="button" className="btn secondary ops-row-action" aria-label={tr(`${row.name} 예산 액션 정하기`, `Plan a budget action for ${row.name}`)} onClick={() => onAction(`budget:${row.id}`)}>{tr("액션 정하기", "Plan action")}</button> },
+      <section className="ops-allocation" data-design-exempt="nested: The campaign table belongs to the plan selection section" aria-labelledby="ops-allocation-title"><header><div><h3 id="ops-allocation-title">{tr("실행할 액션 고르기", "Choose the actions to run")}</h3><p>{tr("추천안을 미리 골라 두었습니다. 실행할 캠페인과 기간 예산을 바꾸면 같은 모형으로 예상 성과를 다시 계산합니다.", "The recommendation is preselected. Change the campaigns or period budgets to recalculate expected outcomes with the same model.")}</p></div><span>{range.start} – {range.end} · {tr("기간 합계", "Period totals")}</span></header>
+        <div className="ops-selection" aria-live="polite">
+          {forecast.ok ? <dl className="ops-selection__totals">
+            <div><dt>{tr("고른 변경", "Selected changes")}</dt><dd><b>{tr(`${forecast.changed.length}건`, `${forecast.changed.length}`)}</b></dd></div>
+            <div><dt>{tr("기간 예산", "Period budget")}</dt><dd>{money(forecast.totals.currentSpend * n)} → <b>{money(forecast.totals.spend * n)}</b><small>{delta((forecast.totals.spend - forecast.totals.currentSpend) * n)}</small></dd></div>
+            <div><dt>{tr(`예상 ${outcomeName}`, `Expected ${outcomeName}`)}</dt><dd>{fmtNum(forecast.totals.baselineResults * n)} → <b>{fmtNum(forecast.totals.expectedResults * n)}</b><small>{pct(forecast.totals.resultsChangePct)}</small></dd></div>
+            <div><dt>{tr(`예상 ${metricName}`, `Expected ${metricName}`)}</dt><dd>{money(forecast.totals.baselineCpr)} → <b>{money(forecast.totals.expectedCpr)}</b></dd></div>
+          </dl> : <p role="alert">{tr("관측한 지출 범위를 벗어난 금액이 있어 합계를 예측하지 않습니다. 표시된 범위 안으로 바꿔 주세요.", "Some amounts are outside the observed spend range, so totals are not forecast. Use an amount within the range shown.")}</p>}
+          <div className="ops-selection__actions">
+            {!recommended && <button type="button" className="btn ghost" onClick={() => setEdits({ plan: null, choices: null })}>{tr("추천안으로 되돌리기", "Reset to recommendation")}</button>}
+            <button type="button" className="btn primary" disabled={!forecast.ok || !forecast.changed.length} onClick={() => setSaving(true)}>{tr(`선택한 계획 저장 · ${forecast.changed.length}건`, `Save selected plan · ${forecast.changed.length}`)}</button>
+          </div>
+        </div>
+        <DataTable ariaLabel={tr("실행할 액션과 예상 성과", "Actions to run and expected outcomes")} rows={rows} rowKey={row => row.id} columns={[
+          { key: "name", label: tr("실행 · 캠페인", "Run · campaign"), fmt: (value, row) => { const item = forecast.items.find(entry => entry.id === row.id), saved = pending.get(row.id);
+            return <label className="ops-select-row"><input type="checkbox" checked={item.selected} disabled={!!saved} onChange={event => setChoice(row.id, { selected: event.target.checked })} aria-label={tr(`${value} 실행에 포함`, `Include ${value}`)} />
+              <span><strong>{value}</strong><small>{row.context}</small>
+                {(saved || creativeAttention.has(row.id)) && <span className="ops-chips">{saved && <span className="ops-chip ops-chip--ok">{saved.action.state === "executed" ? tr("저장됨 · 실행 후 관찰 중", "Saved · observing") : tr("저장됨 · 실행 대기", "Saved · planned")}</span>}{creativeAttention.has(row.id) && <span className="ops-chip ops-chip--warn">{tr("소재 신호 있음", "Creative signal")}</span>}</span>}</span></label>; } },
+          { key: "budget", label: tr("기간 예산 · 현재 → 실행", "Period budget · current → run"), align: "right", fmt: (_, row) => { const item = forecast.items.find(entry => entry.id === row.id), choice = effective[row.id];
+            return <span className="ops-budget-input"><small>{tr("현재", "Current")} {money(item.current * n)} →</small>
+              <CommaNumberInput value={item.selected ? Math.round(choice.budget * n * (currency === "USD" ? 100 : 1)) / (currency === "USD" ? 100 : 1) : Math.round(item.current * n)} disabled={!item.selected} allowDecimals={currency === "USD"} maximumFractionDigits={currency === "USD" ? 2 : 0}
+                ariaLabel={tr(`${row.name} ${n}일 예산`, `${row.name} ${n}-day budget`)} onCommit={value => setChoice(row.id, { budget: value == null ? NaN : value / n })} />
+              {item.status === "range" ? <small role="alert" className="ops-budget-input__error">{tr("예측 가능", "Forecastable")} {money(item.min * n)} – {money(item.max * n)}</small>
+                : item.selected ? <small>{tr("하루", "Daily")} {money(item.budget)}</small> : null}</span>; } },
+          { key: "delta", label: tr("변경 금액", "Change"), align: "right", fmt: (_, row) => { const item = forecast.items.find(entry => entry.id === row.id);
+            return !item.selected ? <span className="ops-muted">{tr("유지", "Keep")}</span> : <strong data-direction={direction({ budget: item.budget, current: item.current })}>{delta((item.budget - item.current) * n)}<small>{pct((item.budget / item.current - 1) * 100)}</small></strong>; } },
+          { key: "outcomes", label: tr(`예상 ${outcomeName}`, `Expected ${outcomeName}`), align: "right", fmt: (_, row) => { const item = forecast.items.find(entry => entry.id === row.id);
+            return item.expectedResults == null ? "—" : <span>{fmtNum(item.currentResults * n)} → <b>{fmtNum(item.expectedResults * n)}</b></span>; } },
+          { key: "cpr", label: tr(`예상 ${metricName}`, `Expected ${metricName}`), align: "right", fmt: (_, row) => { const item = forecast.items.find(entry => entry.id === row.id);
+            return item.expectedCpr == null ? "—" : <span>{money(item.current / item.currentResults)} → <b>{money(item.expectedCpr)}</b></span>; } },
         ]} />
-        <p className="ops-plan-note">{options.mode === "maintain" ? tr("현재 배분 유지안과 조정안을 동일 모형으로 비교합니다.", "The current allocation and revised plan use the same model.") : tr("총예산 변화와 배분 변화가 함께 반영된 예상입니다.", "The estimate includes both total-budget and allocation changes.")} {tr("최근 지출을 기준으로 계산하며 실제 예산 설정값과 다를 수 있습니다. 소재 변화·초기 학습의 효과를 분리한 예측은 아닙니다. 금액과 성과 수는 반올림해 표시하므로 행을 더한 값과 합계가 조금 다를 수 있습니다.", "Based on recent spending, which may differ from configured budgets. Creative changes and initial learning are not isolated. Amounts and outcome counts are rounded, so rows may not add exactly to the total.")}</p>
+        <p className="ops-plan-note">{tr("금액은 캠페인마다 관측한 지출 범위 안에서만 예측합니다. 고르지 않은 캠페인은 현재 지출을 유지한다고 계산합니다.", "Amounts are forecast only within each campaign's observed spend range. Unselected campaigns are assumed to keep current spending.")} {options.mode === "maintain" ? tr("현재 배분 유지안과 조정안을 동일 모형으로 비교합니다.", "The current allocation and revised plan use the same model.") : tr("총예산 변화와 배분 변화가 함께 반영된 예상입니다.", "The estimate includes both total-budget and allocation changes.")} {tr("최근 지출을 기준으로 계산하며 실제 예산 설정값과 다를 수 있습니다. 소재 변화·초기 학습의 효과를 분리한 예측은 아닙니다. 금액과 성과 수는 반올림해 표시합니다.", "Based on recent spending, which may differ from configured budgets. Creative changes and initial learning are not isolated. Amounts and outcome counts are rounded.")}{creativeAttention.size ? ` ${tr("‘소재 신호 있음’ 캠페인은 예산과 소재를 함께 바꾸면 각각의 효과를 나눠 볼 수 없습니다.", "For campaigns with a creative signal, changing budget and creative together makes their effects inseparable.")}` : ""}</p>
+        {saving && <OperationsPlanSaveDialog {...{ brief, plan, forecast, metric, currency, locale, isDemo, today, sourceThrough, money }} names={new Map(rows.map(row => [row.id, row.name]))} onClose={() => setSaving(false)} />}
       </section>
     </>}
   </section>;

@@ -12,6 +12,7 @@ import { matchesOperationsTarget } from "@/lib/operations/operationsIdentity";
 import AllocationResultWorkspace from "./AllocationResultWorkspace";
 import OperationsActionEditor from "./OperationsActionEditor";
 import OperationsChangeComparison from "./OperationsChangeComparison";
+import OperationsForecastCheck, { forecastCheckText } from "./OperationsForecastCheck";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import ModalDialog from "@/components/ds/ModalDialog";
 import DataTable from "@/components/ds/DataTable";
@@ -36,10 +37,11 @@ function ReviewObservation({ item, currency, metricName, locale, isDemo, concurr
   useReviewDraftGuard(!!learning && !saving);
   const c = item.review.comparison;
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("추정 불가", "Unavailable");
-  const actual = c?.ok ? `${c.before.start}–${c.before.end} → ${c.after.start}–${c.after.end} · ${tr("일평균 지출", "Daily spend")} ${money(c.previous.cost / (c.previousDays || c.days))} → ${money(c.current.cost / c.days)} · ${metricName} ${money(c.previous.cpr)} → ${money(c.current.cpr)} · ${tr("관측 비교, 인과 효과 미확인", "Observed comparison; causal effect unverified")}` : "";
+  const actual = c?.ok ? `${c.before.start}–${c.before.end} → ${c.after.start}–${c.after.end} · ${tr("일평균 지출", "Daily spend")} ${money(c.previous.cost / (c.previousDays || c.days))} → ${money(c.current.cost / c.days)} · ${metricName} ${money(c.previous.cpr)} → ${money(c.current.cpr)} · ${tr("관측 비교, 인과 효과 미확인", "Observed comparison; causal effect unverified")}${item.review.forecastCheck?.ok ? ` · ${forecastCheckText(item.review.forecastCheck, { metricName, currency, locale })}` : ""}` : "";
   return <>
     <ModalDialog open={!saving} onClose={close} initialFocusRef={headingRef} ariaLabel={tr("실행 후 검토", "Review after execution")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
       <h2 ref={headingRef} tabIndex={-1}>{tr("실행 후 검토", "Review after execution")}</h2><p>{item.record.action}</p>
+      <OperationsForecastCheck action={item.review.action} check={item.review.forecastCheck} metricName={metricName} locale={locale} />
       <OperationsChangeComparison comparison={c} {...{ currency, metricName, locale, isDemo, concurrent }} />
       {item.review.followup && <p>{tr("증액 뒤 지출과 단가가 함께 올랐습니다. 이전 예산으로의 원복을 검토할 수 있지만, 증액이 원인이라고 확정하지 않습니다.", "Spend and unit cost both rose after the increase. Consider reviewing the previous budget, without concluding the increase caused the change.")}</p>}
       <label className="operations-loop__note">{tr("검토 메모", "Review note")}<textarea value={learning} maxLength={1200} onChange={event => setLearning(event.target.value)} /></label>

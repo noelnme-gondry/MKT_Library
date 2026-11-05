@@ -56,3 +56,20 @@ it("shows a single empty line without proposals and reveals the first saved reco
   expect(within(screen.getByRole("group", { name: "액션 진행 상태" })).getByRole("button", { name: /진행 중/ }).getAttribute("aria-pressed")).toBe("true");
   expect(container.querySelectorAll(".operations-queue__choice")).toHaveLength(1);
 });
+it("shows the saved forecast before execution and expected vs actual once the window is covered", () => {
+  const item = makeItems(2)[1];
+  const forecast = { days: 7, dailySpend: 120, dailyResults: 10, currentDailySpend: 100, currentDailyResults: 9 };
+  item.record.operationAction = item.review.action = { ...item.review.action, beforeBudget: null, afterBudget: 120, currency: "KRW", metric: "installs", state: "planned", executedDate: "", forecast };
+  const { container, rerender } = render(<OperationsActionQueue {...props} items={[item]} locale="ko" />);
+  expect(container.querySelector(".operations-queue__choice").textContent).toContain("관측 ₩100 → ₩120");
+  expect(screen.getByRole("region", { name: "저장한 예상" }).textContent).toContain("₩840");
+  expect(screen.getByRole("region", { name: "저장한 예상" }).textContent).toContain("실제 실행일을 기록하면");
+  const executed = { ...item, review: { ...item.review, action: { ...item.review.action, state: "executed", executedDate: "2026-09-02" },
+    forecastCheck: { ok: true, days: 7, plannedSpend: 840, actualSpend: 840, expectedResults: 70, actualResults: 56, expectedCpr: 12, actualCpr: 15, spendGap: 0, resultsGap: -0.2, cprGap: 0.25 } } };
+  executed.record = { ...executed.record, operationAction: executed.review.action };
+  rerender(<OperationsActionQueue {...props} items={[executed]} locale="en" />);
+  const region = screen.getByRole("region", { name: "Expected vs actual" });
+  expect(region.textContent).toContain("+25.0%");
+  expect(region.textContent).toContain("−20.0%");
+  expect(region.textContent).toContain("Spend matched the plan");
+});
