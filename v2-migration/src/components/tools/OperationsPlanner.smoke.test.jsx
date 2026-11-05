@@ -361,6 +361,8 @@ describe("operations planner built-in demo", () => {
     await openEvidence(locale);
     const en = locale === "en";
     expect(screen.getByRole("heading", { name: en ? "Choose the actions to run" : "실행할 액션 고르기" })).toBeTruthy();
+    // 같은 총액 재배분의 예산 증감은 정확히 0이 아니라 부동소수 잔차다 — "₩0.00"으로 보이면 안 된다.
+    expect(document.querySelector(".ops-selection").textContent).not.toMatch(/0\.00/);
     const choices = document.querySelectorAll(".ops-creative-choices button");
     expect(choices).toHaveLength(6);
     const selectedCreative = () => screen.getByRole("region", { name: en ? "Selected creative details" : "선택한 소재 상세" });
