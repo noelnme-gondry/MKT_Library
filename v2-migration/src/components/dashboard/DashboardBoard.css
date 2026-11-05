@@ -26,6 +26,7 @@
   .dashboard-card-board .dashboard-cohort-control { justify-content: flex-end; margin: 0; }
   .dashboard-card-board .dashboard-block-grid { gap: 16px; }
   @layer app {
+    .app .content .dashboard-card-board .dashboard-explorer__head .section-title { margin: 0 !important; }
     .app .content .dashboard-card-board .dashboard-layout-block > :is(.dashboard-viz-workbench, .dashboard-supporting-charts) {
       padding: 0 !important; border: 0 !important; background: transparent !important; overflow: visible;
     }
@@ -51,10 +52,10 @@
     min-height: 80px; padding: 18px 20px; margin: 0; border-bottom: 1px solid var(--border); align-items: center; gap: 8px 16px;
   }
   .dashboard-card-board .dashboard-explorer__head > div { flex: 1; }
-  .dashboard-card-board .dashboard-layout-block .dashboard-explorer__head .section-title { margin: 0 !important; }
+  .dashboard-card-board .dashboard-layout-block .dashboard-explorer__head .section-title { min-height: 0; }
   .dashboard-card-board .chart-title { margin: 0; font-size: var(--fs-base); font-weight: 600; line-height: 1.5; }
   .dashboard-card-board .chart-sub { margin-top: 4px; line-height: 1.5; }
-  .dashboard-card-board .dashboard-explorer__head .dashboard-explorer__status { padding: 0; border: 0; }
+  .dashboard-card-board .dashboard-explorer__head .dashboard-explorer__status { display: block; margin-top: 4px; padding: 0; border: 0; }
   .dashboard-card-board .dashboard-explorer__canvas { height: 320px; padding: 20px; }
   .dashboard-card-board .dashboard-supporting-chart__canvas { height: 280px; padding: 20px; }
   .dashboard-card-board .dashboard-explorer__interpretation { margin: 0; padding: 0 20px 16px; font-size: var(--fs-xs); }

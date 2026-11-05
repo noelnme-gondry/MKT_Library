@@ -992,8 +992,8 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
         <div className="dashboard-explorer__head figure-head">
           <div>
             <h2 className="section-title">{activeMetricLabel} {locale === "en" ? "trend" : "추이"}</h2>
+            <span className="dashboard-explorer__status">{activeTrend.status}</span>
           </div>
-          <span className="dashboard-explorer__status">{activeTrend.status}</span>
           {!isCustomActive && <FigurePngButton title={`${activeMetricLabel} ${locale === "en" ? "trend" : "추이"}`} target={detailCanvasRef} fileName="dashboard_trend" locale={locale} />}
         </div>
         {isCustomActive ? (
