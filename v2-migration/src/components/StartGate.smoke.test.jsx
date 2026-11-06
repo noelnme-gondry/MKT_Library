@@ -18,6 +18,9 @@ async function analyzePreparedFile() {
   await waitFor(() => expect(document.querySelector(".workspace-input-summary")).toBeTruthy());
 }
 
+// 같은 파일 도구는 대표 카드 안의 목록이다(product-ssot §5.1 "묶기") — 카드 수가 아니라 화면에 닿는 분석을 센다.
+const renderedAnalysisIds = () => new Set([...document.querySelectorAll(".finder-card")].flatMap((card) => [card.dataset.toolId, ...[...card.querySelectorAll(".finder-card__members li")].map((item) => item.dataset.toolId)]));
+
 describe("StartGate render smoke", () => {
   beforeEach(() => {
     search = "";
@@ -68,7 +71,7 @@ describe("StartGate render smoke", () => {
     // 홈 목록·내 데이터로 시작·분석 방법 둘러보기·/data-guide를 하나로 합쳤다(product-ssot §1.1c 결정 1).
     // 파일을 올리기 전에도 무엇을 할 수 있는지와 필요한 파일이 보여야 한다.
     expect(screen.getByRole("heading", { name: "분석 찾기", level: 1 })).toBeTruthy();
-    expect(document.querySelectorAll(".finder-card")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
     expect(document.querySelectorAll(".start-upload-panel")).toHaveLength(1);
     expect(document.querySelector(".analysis-finder__file .start-upload-panel")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "어떤 상황인가요?" })).toBeTruthy();
@@ -121,7 +124,7 @@ describe("StartGate render smoke", () => {
     expect(screen.getByRole("heading", { name: "Find an analysis", level: 1 })).toBeTruthy();
     expect(screen.queryByText(/check each tool’s data requirements/)).toBeNull();
     expect(screen.getByRole("button", { name: "⬇ Download starter CSV template" })).toBeTruthy();
-    expect(document.querySelectorAll(".finder-card")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
     expect(screen.getByRole("button", { name: /Run the example and see results/ })).toBeTruthy();
     expect(document.querySelector('a[href="/en/calculator"]')).toBeTruthy();
     expect(document.querySelector('a[href="/en/diagnose"]')).toBeTruthy();
@@ -348,7 +351,7 @@ describe("StartGate render smoke", () => {
     // 옛 "분석 방법 둘러보기"(?view=methods)는 같은 화면이다 — 이미 열어 둔 예시는 지우지 않는다.
     search = "view=methods";
     const first = render(<StartGate locale={locale} />);
-    expect(document.querySelectorAll(".finder-card")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
     expect(document.querySelectorAll(".start-upload-panel")).toHaveLength(1);
     expect(useAppStore.getState().demoDisabled).not.toBe(true);
     first.unmount();

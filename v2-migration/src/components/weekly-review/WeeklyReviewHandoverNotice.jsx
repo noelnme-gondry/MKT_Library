@@ -13,7 +13,6 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import DochiSprite from "@/components/assistant/DochiSprite";
 import {
   handoverServerSnapshot,
   markHandoverSessionSeen,
@@ -105,7 +104,6 @@ export default function WeeklyReviewHandoverNotice({ locale = "ko", decisionCoun
       onClick={(event) => { if (event.target === event.currentTarget) setClosed(true); }}
     >
       <div className="wr-handover__box">
-        <DochiSprite pose="point-up" className="wr-handover__dochi" />
         <div className="wr-handover__body">
           <p className="wr-handover__title" id="wr-handover-title">{t.title}</p>
           <p className="wr-handover__text">{t.body}</p>

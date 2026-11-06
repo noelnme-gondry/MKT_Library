@@ -1,6 +1,6 @@
 import { decodeFollowupStep } from "@/lib/recipe/followupInputs";
 import { sanitizeStep } from "@/lib/recipe/recipe";
-import { publishedToolIds } from "@/lib/routeMap";
+import { analysisToolIds } from "@/lib/routeMap";
 
 // 계정에 이름 붙여 저장하는 분석 설정(레시피) 계약. 서버·클라이언트가 같은 함수로 거른다.
 // 담는 것: 도구 id · 이름 · 고른 단어 목록. 담지 않는 것: 원본 행·파일명·데이터 값.
@@ -23,7 +23,8 @@ export function accountRecipe(input) {
   if (Object.keys(input).some((key) => !["toolId", "name", "steps", "updatedAt"].includes(key))) throw new Error("INVALID_RECIPE");
   const { toolId, steps } = input;
   const name = normalizeRecipeName(input.name);
-  if (typeof toolId !== "string" || !publishedToolIds().includes(toolId)) throw new Error("INVALID_RECIPE");
+  // 흡수된 보기(5-22 → 5-3 증액 여력)도 같은 레시피를 저장한다(product-ssot §4.2a).
+  if (typeof toolId !== "string" || !analysisToolIds().includes(toolId)) throw new Error("INVALID_RECIPE");
   if (typeof input.name !== "string" || !name || name.length > MAX_RECIPE_NAME || /[\u0000-\u001f\u007f]/.test(name)) throw new Error("INVALID_RECIPE");
   if (!Array.isArray(steps) || !steps.length || steps.length > MAX_RECIPE_STEPS) throw new Error("INVALID_RECIPE");
   const clean = steps.map(sanitizeStep);

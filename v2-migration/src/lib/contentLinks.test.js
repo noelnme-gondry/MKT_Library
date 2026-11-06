@@ -20,7 +20,8 @@ import { SITE_URL } from "@/lib/routeMap";
  */
 
 const CONTENT_DIRS = ["content/blog", "content/blog-en", "content/glossary", "content/glossary-en"];
-const LINK_PATTERN = /\]\((\/[a-z0-9/-]+)\)/g;
+// 쿼리(?view=…)가 붙은 링크도 경로를 검사한다 — 패턴이 쿼리를 못 받으면 그 링크는 검사에서 조용히 빠진다.
+const LINK_PATTERN = /\]\((\/[a-z0-9/-]+)(?:\?[a-z0-9=&-]+)?\)/g;
 
 function readContentLinks() {
   const found = new Map();

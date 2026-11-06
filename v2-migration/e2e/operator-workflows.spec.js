@@ -65,6 +65,8 @@ async function setComparableEfficiencyWindow(page) {
   if (folded) await page.getByRole("dialog", { name: "결론 비교 기간", exact: true }).getByRole("button", { name: "닫기", exact: true }).first().click();
 }
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 async function navigateToTool(page, href, section, query) {
   const link = page.locator(`a[href="${href}"]`).first();
   if (!await link.isVisible()) {
@@ -75,12 +77,12 @@ async function navigateToTool(page, href, section, query) {
       await page.getByRole("button", { name: "전체 도구" }).click();
       await page.locator("#cmdk").getByRole("combobox").fill(query);
       await page.locator("#cmdk").getByRole("option").first().click();
-      await expect(page).toHaveURL(new RegExp(`${href}$`));
+      await expect(page).toHaveURL(new RegExp(`${escapeRegExp(href)}$`));
       return;
     }
   }
   await link.click();
-  await expect(page).toHaveURL(new RegExp(`${href}$`));
+  await expect(page).toHaveURL(new RegExp(`${escapeRegExp(href)}$`));
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -422,8 +424,9 @@ test("4개 핵심 도구의 결과를 한 주간 보고서로 수집한다", asy
 
   for (const { href, section, query } of [
     { href: "/tools/campaign-variance", section: "01 성과가 흔들렸다, 왜?", query: "성과 변동" },
-    { href: "/tools/campaign-saturation", section: "02 예산을 어디에 얼마나", query: "포화도" },
     { href: "/tools/budget-allocation", section: "02 예산을 어디에 얼마나", query: "예산 배분" },
+    // 증액 여력은 예산 상세 설계의 보기다(product-ssot §4.2a) — 그 페이지의 보기 링크로 간다.
+    { href: "/tools/budget-allocation?view=headroom", section: "02 예산을 어디에 얼마나", query: "포화도" },
   ]) {
     await navigateToTool(page, href, section, query);
     await addVisibleResultToReport(page);

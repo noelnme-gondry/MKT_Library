@@ -1,4 +1,4 @@
-import { idToSlug, hasEnVersion, publishedToolIds } from "@/lib/routeMap";
+import { idToSlug, hasEnVersion, publishedToolIds, absorbedToolIds, idToPath, resolvePathToId } from "@/lib/routeMap";
 
 // 예시 결과를 "링크로" 여는 계약(2026-09-29). 예전엔 예시가 버튼(상태)으로만 열려서 블로그·템플릿·
 // 외부 공유·AI 답변에 넣을 주소가 없었다(Plausible "View live demo"처럼 주소 하나로 결과가 열려야 한다).
@@ -9,9 +9,13 @@ export const EXAMPLE_PARAM = "example";
 /** 도구의 예시 결과 링크. 발행 도구가 아니면 null(e2e/example-link.spec.js가 발행 도구 전체를 연다). EN은 EN 경로가 있는 도구만. */
 export function exampleHref(toolId, locale = "ko") {
   const slug = idToSlug[toolId];
-  if (!slug || !publishedToolIds().includes(toolId)) return null;
-  if (locale === "en" && !hasEnVersion(toolId)) return null;
-  return `${locale === "en" ? "/en" : ""}${slug}?${EXAMPLE_PARAM}=1`;
+  if (!slug) return null;
+  // 흡수된 보기(5-22 → 5-3?view=headroom)는 그 보기 주소에 예시 파라미터를 잇는다 — 보기 화면의 예시 버튼이 돈다.
+  const absorbed = absorbedToolIds().includes(toolId);
+  if (!absorbed && !publishedToolIds().includes(toolId)) return null;
+  const pageId = absorbed ? resolvePathToId(idToPath(toolId).split("?")[0]) : toolId;
+  if (locale === "en" && !hasEnVersion(pageId)) return null;
+  return `${locale === "en" ? "/en" : ""}${slug}${slug.includes("?") ? "&" : "?"}${EXAMPLE_PARAM}=1`;
 }
 
 /** 현재 주소가 예시 링크인가. */

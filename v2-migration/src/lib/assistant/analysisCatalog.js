@@ -1,5 +1,5 @@
 import { advancedMap } from "@/lib/advanced-marketing/registry";
-import { ROUTES, isRoutePublished } from "@/lib/routeMap";
+import { ROUTES, idToSlug, isAbsorbedRoute, isRoutePublished } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { TOOL_DATA_REQUIREMENTS_V2 } from "@/lib/data-import/schema/toolDataRequirements";
 import { TOOL_OWNED_MAPPING_ROLES } from "@/lib/data-import/schema/toolDataInventory";
@@ -56,8 +56,9 @@ function explicitFields(required = []) {
   return required.flatMap((item) => typeof item === "string" ? [item] : item?.oneOf || []);
 }
 
+// 흡수된 보기(5-22 → 5-3 증액 여력)도 작업대가 계산하는 분석이다(product-ssot §4.2a). 주소는 idToPath가 보기로 푼다.
 function isPublishedAnalysisRoute(route) {
-  return isRoutePublished(route) && Boolean(TOOL_GROUP[route.id]) && /^([59])-/.test(route.id);
+  return (isRoutePublished(route) || isAbsorbedRoute(route)) && Boolean(TOOL_GROUP[route.id]) && /^([59])-/.test(route.id);
 }
 
 export function publishedAnalysisToolIds() {
@@ -81,7 +82,7 @@ function catalogEntry(route) {
   const owned = TOOL_OWNED_MAPPING_ROLES[route.id] || [];
   return Object.freeze({
     toolId: route.id,
-    slug: route.slug,
+    slug: idToSlug[route.id] || route.slug,
     dataGroup: TOOL_GROUP[route.id],
     runMode: declaration.runMode,
     executionCost: declaration.executionCost,

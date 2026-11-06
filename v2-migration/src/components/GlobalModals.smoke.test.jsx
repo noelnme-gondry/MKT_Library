@@ -116,7 +116,8 @@ describe("GlobalModals complete tool menu", () => {
     const search = screen.getByRole("combobox", { name: "작업·도구·가이드 검색" });
 
     fireEvent.change(search, { target: { value: "ROAS가 떨어졌어요" } });
-    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-22")) })).toBeTruthy();
+    // 증액 여력은 예산 상세 설계(5-3)의 보기다(product-ssot §4.2a) — 같은 증상 말로 그 페이지가 찾혀야 한다.
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-3")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "CSV 업로드" } });
     expect(screen.getByRole("option", { name: new RegExp(`${workspaceNavItem("start").name}.*CSV·XLSX를 올리고`) })).toBeTruthy();
@@ -164,7 +165,7 @@ describe("GlobalModals complete tool menu", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Search tasks, tools, and guides" }), {
       target: { value: "my ROAS has been falling since I raised budget" },
     });
-    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-22", "en")) })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-3", "en")) })).toBeTruthy();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Search tasks, tools, and guides" }), {
       target: { value: "need VIF" },

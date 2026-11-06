@@ -3,15 +3,16 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { TOOL_GROUP } from "@/lib/toolGroups";
-import { fmtCurrency } from "@/utils/format";
+import { fmtCurrency, fmtPct } from "@/utils/format";
 import { appendDecisionEpisode } from "@/lib/decisionReview";
 import OperationsActionQueue from "./OperationsActionQueue";
 import { compareOperationsChange } from "@/lib/operations/changeHistory";
-import { operationRecommendations, reviewOperationRecord } from "@/lib/operations/operationLoop";
+import { reviewOperationRecord } from "@/lib/operations/operationLoop";
 import { matchesOperationsTarget } from "@/lib/operations/operationsIdentity";
 import AllocationResultWorkspace from "./AllocationResultWorkspace";
 import OperationsActionEditor from "./OperationsActionEditor";
 import OperationsChangeComparison from "./OperationsChangeComparison";
+import OperationsForecastCheck, { forecastCheckText } from "./OperationsForecastCheck";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import ModalDialog from "@/components/ds/ModalDialog";
 import DataTable from "@/components/ds/DataTable";
@@ -36,10 +37,11 @@ function ReviewObservation({ item, currency, metricName, locale, isDemo, concurr
   useReviewDraftGuard(!!learning && !saving);
   const c = item.review.comparison;
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("추정 불가", "Unavailable");
-  const actual = c?.ok ? `${c.before.start}–${c.before.end} → ${c.after.start}–${c.after.end} · ${tr("일평균 지출", "Daily spend")} ${money(c.previous.cost / (c.previousDays || c.days))} → ${money(c.current.cost / c.days)} · ${metricName} ${money(c.previous.cpr)} → ${money(c.current.cpr)} · ${tr("관측 비교, 인과 효과 미확인", "Observed comparison; causal effect unverified")}` : "";
+  const actual = c?.ok ? `${c.before.start}–${c.before.end} → ${c.after.start}–${c.after.end} · ${tr("일평균 지출", "Daily spend")} ${money(c.previous.cost / (c.previousDays || c.days))} → ${money(c.current.cost / c.days)} · ${metricName} ${money(c.previous.cpr)} → ${money(c.current.cpr)} · ${tr("관측 비교, 인과 효과 미확인", "Observed comparison; causal effect unverified")}${item.review.forecastCheck?.ok ? ` · ${forecastCheckText(item.review.forecastCheck, { metricName, currency, locale })}` : ""}` : "";
   return <>
     <ModalDialog open={!saving} onClose={close} initialFocusRef={headingRef} ariaLabel={tr("실행 후 검토", "Review after execution")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
       <h2 ref={headingRef} tabIndex={-1}>{tr("실행 후 검토", "Review after execution")}</h2><p>{item.record.action}</p>
+      <OperationsForecastCheck action={item.review.action} check={item.review.forecastCheck} metricName={metricName} locale={locale} />
       <OperationsChangeComparison comparison={c} {...{ currency, metricName, locale, isDemo, concurrent }} />
       {item.review.followup && <p>{tr("증액 뒤 지출과 단가가 함께 올랐습니다. 이전 예산으로의 원복을 검토할 수 있지만, 증액이 원인이라고 확정하지 않습니다.", "Spend and unit cost both rose after the increase. Consider reviewing the previous budget, without concluding the increase caused the change.")}</p>}
       <label className="operations-loop__note">{tr("검토 메모", "Review note")}<textarea value={learning} maxLength={1200} onChange={event => setLearning(event.target.value)} /></label>
@@ -62,7 +64,6 @@ export default function OperationsActionLoop({ brief, plan, history, signals, ro
   const records = useAppStore(state => state.decisionRecords);
   const [source, setSource] = useState("all"), [limit, setLimit] = useState(30);
   const [editor, setEditor] = useState(null), [selectedEvent, setSelectedEvent] = useState(null), [reviewing, setReviewing] = useState(null);
-  const recommendations = useMemo(() => operationRecommendations(brief, plan, signals), [brief, plan, signals]);
   const items = useMemo(() => (isDemo ? [] : records).filter(record => ["efficiency", "creative"].includes(TOOL_GROUP[record.toolId]) || record.operationAction)
     .map(record => ({ record, review: reviewOperationRecord(record, rows, { metric, currency, today }) })), [records, rows, metric, currency, today, isDemo]);
   const timeline = useMemo(() => [
@@ -76,9 +77,9 @@ export default function OperationsActionLoop({ brief, plan, history, signals, ro
   const openNew = seed => setEditor({ seed: { ...seed, plannedDate: seed.plannedDate || today, executedDate: "", state: "planned" } });
   const followup = item => { setReviewing(null); setEditor({ seed: { ...(item.review.followup || item.review.action), state: "planned", plannedDate: today, executedDate: "", source: "manual", eventId: "" }, parentDecisionId: item.record.id }); };
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("추정 불가", "Unavailable");
-  const queued = recommendations.filter(rec => !items.some(item => item.record.status !== "reviewed" && item.review.action && item.review.action.state !== "cancelled"
-    && item.review.action.metric === metric && item.review.action.currency === currency
-    && item.review.action.kind === rec.kind && item.review.action.creative === (rec.creative || "") && matchesOperationsTarget(targetAsRow(item.review.action.target), rec.target)));
+  const signedPct = ratio => `${ratio > 0 ? "+" : ratio < 0 ? "−" : ""}${fmtPct(Math.abs(ratio))}`;
+  // 직접 기록이 없으면 모든 행의 출처가 "관측"이라 출처 열·필터가 정보를 더하지 않는다.
+  const hasManual = items.length > 0;
   const recordButtons = item => <div className="operations-loop__buttons">
     {item.review.action ? <><button className="btn ghost" onClick={() => setEditor({ record: item.record })}>{item.review.action.state === "planned" ? tr("실행 기록", "Record execution") : tr("기록 수정", "Edit record")}</button>
       {item.review.action.state === "executed" && <button className="btn ghost" onClick={() => setReviewing(item)}>{tr("전후 검토", "Review before/after")}</button>}
@@ -97,17 +98,16 @@ export default function OperationsActionLoop({ brief, plan, history, signals, ro
       <p>{history.dates[0] || "—"} – {history.end || history.dates.at(-1) || "—"} · {tr(`전체 ${history.dates.length}개 관측 시점 · 변화 후보 ${history.events.length}건 · 저장한 기록 ${items.length}건`, `${history.dates.length} observations · ${history.events.length} change candidates · ${items.length} saved records`)}</p></div>
       <button className="btn ghost" onClick={() => openNew({})} disabled={!history.groups.size}>{tr("직접 액션 기록", "Record an action")}</button></header>
     <AllocationResultWorkspace value={view} onChange={setView} views={VIEWS} locale={locale} label={tr("운영 플래너 보기", "Operations planner views")} panels={{
-      actions: <><OperationsActionQueue {...{ items, today, locale, currency, metricName, isDemo }} proposals={queued}
-        onNew={openNew} onEdit={record => setEditor({ record })} onReview={setReviewing} onFollowup={followup} concurrent={overlapping} />
-        {!signals.some(signal => signal.fatigueAvailable) && <p className="operations-loop__section operations-chart__caption">{tr("소재 피로도를 확인할 근거가 부족합니다. 소재 ID·노출·클릭과 충분한 일별 이력을 확인하세요.", "Evidence is insufficient to assess creative fatigue. Check creative IDs, impressions, clicks and sufficient daily history.")}</p>}
+      actions: <><OperationsActionQueue {...{ items, today, locale, currency, metricName, isDemo }}
+        onEdit={record => setEditor({ record })} onReview={setReviewing} onFollowup={followup} concurrent={overlapping} />
       </>,
       history: <section className="operations-loop__section"><h3>{tr("업로드한 전체 기간의 변화", "Changes across the full uploaded history")}</h3>
         <p>{history.unit ? tr(`전체 이력에서 연속한 ${history.unit === "week" ? "두 주" : "두 달"}의 일평균 지출·단가가 ${history.rules.changeThreshold * 100}% 이상 달라진 지점을 확인합니다. 소재는 첫 관측과 한 집계 기간의 미관측을 찾습니다. 실제 투입·종료나 예산 변경으로 확정하지 않습니다.`, `Across the full history, compares consecutive ${history.unit === "week" ? "weeks" : "months"} for daily-average spend or unit-cost changes of at least ${history.rules.changeThreshold * 100}%. Creatives use first observation and one absent interval. These do not confirm launches, removals or budget interventions.`) : tr(`지출·단가는 모든 날짜에서 전후 ${history.rules.windowDays}일 평균의 ${history.rules.changeThreshold * 100}% 이상 변화 후보를 찾습니다. 동일 유형은 ${history.rules.windowDays}일 간격으로 묶습니다. 소재는 첫 지출과 ${history.rules.absentDays}일 연속 미관측을 확인합니다. 실제 투입·종료나 예산 변경으로 확정하지 않습니다.`, `Scans every date for spend or unit-cost changes of at least ${history.rules.changeThreshold * 100}% across ${history.rules.windowDays}-day windows. Same-type candidates are spaced ${history.rules.windowDays} days apart. Creatives use first spend and ${history.rules.absentDays} consecutive missing days. These do not confirm actual launches, removals or budget interventions.`)}</p>
         {history.unknownIntervals && <p role="status">{tr("일·주·월 집계가 섞였거나 날짜 형식을 확인할 수 없어 자동 변화 탐지를 보류했습니다. 집계 단위를 맞춰 주세요. 직접 저장한 기록은 계속 표시합니다.", "Automatic change detection is withheld because source intervals are mixed or unidentified. Use a consistent date format. Manually saved records remain visible.")}</p>}
-        <label>{tr("변화 출처", "Change source")} <select value={source} onChange={event => { setSource(event.target.value); setLimit(30); }}><option value="all">{tr("모두", "All")}</option><option value="observed">{tr("데이터에서 관측", "Observed in data")}</option><option value="manual">{tr("사람이 기록", "Recorded by a person")}</option></select></label>
+        {hasManual && <label>{tr("변화 출처", "Change source")} <select value={source} onChange={event => { setSource(event.target.value); setLimit(30); }}><option value="all">{tr("모두", "All")}</option><option value="observed">{tr("데이터에서 관측", "Observed in data")}</option><option value="manual">{tr("사람이 기록", "Recorded by a person")}</option></select></label>}
         <DataTable ariaLabel={tr("전체 변화 목록", "Full change list")} rows={timeline.slice(0, limit)} rowKey={event => event.id} emptyText={tr("이 조건에서 발견한 변화나 저장 기록이 없습니다. 안정적이라는 판정은 아닙니다.", "No detected changes or saved records for this scope. This is not a stability verdict.")} columns={[
-          { key: "date", label: tr("날짜", "Date") }, { key: "source", label: tr("출처", "Source"), fmt: value => value === "observed" ? tr("관측", "Observed") : tr("직접 기록", "Manual") },
-          { key: "label", label: tr("변화 · 대상", "Change · target"), fmt: (label, event) => <span className="operations-brief__entity"><strong>{label}</strong><small>{event.name}{event.creative ? ` · ${event.creative}` : ""}</small>{event.source === "observed" && <small>{[event.target.country, event.target.platform, event.target.channel, event.target.source].filter(Boolean).join(" · ")}</small>}{event.beforeValue != null && <small>{money(event.beforeValue)} → {money(event.afterValue)}</small>}{event.change != null && <small>{(event.change * 100).toFixed(1)}%</small>}{event.item && <small>{STATES[event.item.review.state]?.[lang]}</small>}</span> },
+          { key: "date", label: tr("날짜", "Date") }, ...(hasManual ? [{ key: "source", label: tr("출처", "Source"), fmt: value => value === "observed" ? tr("관측", "Observed") : tr("직접 기록", "Manual") }] : []),
+          { key: "label", label: tr("변화 · 대상", "Change · target"), fmt: (label, event) => <span className="operations-brief__entity"><strong>{label}</strong><small>{event.name}{event.creative ? ` · ${event.creative}` : ""}</small>{event.source === "observed" && <small>{[event.target.country, event.target.platform, event.target.channel, event.target.source].filter(Boolean).join(" · ")}</small>}{(event.beforeValue != null || event.change != null) && <small>{[event.beforeValue != null && `${money(event.beforeValue)} → ${money(event.afterValue)}`, event.change != null && signedPct(event.change)].filter(Boolean).join(" · ")}</small>}{event.item && <small>{STATES[event.item.review.state]?.[lang]}</small>}</span> },
           { key: "controls", label: tr("확인", "Inspect"), fmt: (_, event) => event.item ? recordButtons(event.item) : <button className="btn ghost" onClick={() => setSelectedEvent(event)}>{tr("전후 확인", "Compare")}</button> },
         ]} />
         {limit < timeline.length && <button className="btn ghost" onClick={() => setLimit(value => value + 30)}>{tr(`더 보기 (${Math.min(limit, timeline.length)}/${timeline.length})`, `Show more (${Math.min(limit, timeline.length)}/${timeline.length})`)}</button>}

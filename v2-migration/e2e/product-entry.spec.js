@@ -50,8 +50,10 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("tab", { name: locale === "en" ? "Full change history" : "전체 변화 이력", exact: true }).click();
     await expect(page.getByRole("table", { name: locale === "en" ? "Full change list" : "전체 변화 목록", exact: true })).toBeVisible();
     await page.getByRole("tab", { name: locale === "en" ? "Execution & next review" : "실행과 다음 검토", exact: true }).click();
-    await expect(page.locator(".operations-queue__group > h3")).toContainText(locale === "en" ? "Adjust budget" : "예산 조정");
-    await expect(page.locator(".operations-queue__pagination")).toHaveCount(0);
+    // 제안은 위 실행안 표가 소유하고, 예시에서는 저장 기록이 없으므로 실행·검토 목록은 빈 안내 한 줄이다.
+    await expect(page.locator(".operations-queue__empty")).toBeVisible();
+    await expect(page.locator(".operations-queue__choice")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: locale === "en" ? /^Save selected plan/ : /^선택한 계획 저장/ })).toBeVisible();
   });
 
   test(`operations home preview uses the full width for entry and evidence (${locale})`, async ({ page }, testInfo) => {

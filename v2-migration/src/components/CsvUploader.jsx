@@ -43,7 +43,6 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } fro
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
-import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { sourceCurrencyOf } from "@/utils/format";
@@ -278,8 +277,6 @@ export default function CsvUploader({
   locale = "ko",
   afterFileSummary = null,
   showMappingReview = false,
-  showMappingCoach = false,
-  mappingCoachLeaving = false,
   onMappingReviewConfirmed = null,
   mappingReviewActionLabel = "",
   mappingReviewFallbackLabel = "",
@@ -1205,9 +1202,8 @@ export default function CsvUploader({
       {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
       {(!isRouterMode || showMappingReview) && <section data-information-section=""
-        className={`csv-mapping-block${showMappingCoach ? " is-dochi-highlighted" : ""}`}
+        className="csv-mapping-block"
         ref={mappingDetailsRef}
-        aria-describedby={showMappingCoach ? "dochi-mapping-coach-title" : undefined}
       >
         <header data-information-heading="" className="csv-mapping-header">
           <div className="csv-mapping-heading">
@@ -1289,11 +1285,6 @@ export default function CsvUploader({
           })}
         </div>
       </section>}
-      {showMappingCoach && <DochiMappingCoach
-        locale={locale}
-        isLeaving={mappingCoachLeaving}
-        onReview={onMappingReviewConfirmed}
-      />}
       {mappingReviewActionLabel && onMappingReviewConfirmed && (
         <div className="csv-mapping-review-action">
           <button type="button" className="ab-button" onClick={handleMappingReviewAction} disabled={!shouldOfferSemanticFallback && analysisBlocked}>

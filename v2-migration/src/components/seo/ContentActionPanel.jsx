@@ -7,7 +7,7 @@ import { primaryCalculatorForContent, primaryToolForContent } from "@/lib/conten
 import { getCalculator } from "@/lib/calculators";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { growthUseCase } from "@/lib/growthUseCases";
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { templatePageForTool } from "@/lib/templateCatalog";
 
 const TOOL_COPY = {
   "5-2": {
@@ -127,7 +127,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const lang = locale === "en" ? "en" : "ko";
   const copy = TOOL_COPY[resolvedTool][lang];
   const useCase = contentType === "blog" ? growthUseCase(content?.slug, lang) : null;
-  const template = useCase && TEMPLATE_PAGES.find(page => page.toolId === resolvedTool);
+  const template = useCase && templatePageForTool(resolvedTool);
   const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
   const href = `${locale === "en" ? "/en" : ""}${idToSlug[resolvedTool]}`;
   // 계산기가 등록된 용어는 계산기가 1차 CTA다. 분석 도구는 전부 CSV를 요구하는데

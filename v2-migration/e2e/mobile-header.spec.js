@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 // 화면의 15%를 먹었다. 한 줄로 줄여도 메뉴(사이드바)와 가격 링크는 바로 보여야 하고(그게 두 줄의
 // 원래 이유였다), 숨긴 "내 프로젝트"는 ••• 메뉴에서 열린다. 넓은 화면에서는 메뉴에 같은 항목이 두 번
 // 보이지 않는다.
-const PAGES = [["ko", "/", "Pro 안내"], ["ko", "/tools/campaign-saturation", "Pro 안내"], ["en", "/en/tools/campaign-saturation", "About Pro"]];
+const PAGES = [["ko", "/", "Pro 안내"], ["ko", "/tools/budget-allocation?view=headroom", "Pro 안내"], ["en", "/en/tools/budget-allocation?view=headroom", "About Pro"]];
 
 for (const width of [320, 390]) {
   for (const [locale, path, priceText] of PAGES) {
@@ -32,7 +32,7 @@ for (const width of [320, 390]) {
 
 test("wide screens keep the header icon and do not repeat it in the menu", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/tools/campaign-saturation");
+  await page.goto("/tools/budget-allocation?view=headroom");
   await expect(page.locator(".topbar .header-decision-inbox")).toBeVisible();
   await page.locator(".header-utility-menu__trigger").click();
   await expect(page.locator(".utility-popover-panel")).toBeVisible();

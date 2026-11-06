@@ -166,24 +166,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
 
-  // 결론이 가리키는 탭을 실제 전환 액션으로 만든다. 문장만으로는 사용자가 탭
-  // 아홉 개 앞에서 다시 고르게 된다(§5.5 "다음 행동 1개").
-  const briefingPoints = useMemo(() => (verdict?.keyPoints || []).map((point) => (
-    point.tab
-      ? {
-        ...point,
-        text: (
-          <button
-            type="button"
-            className="dashboard-briefing__next-tab"
-            onClick={() => setDashboardTab(point.tab)}
-          >
-            {point.text}<span aria-hidden="true"> →</span>
-          </button>
-        ),
-      }
-      : point
-  )), [verdict?.keyPoints, setDashboardTab]);
+  // 결론 근거 줄(지출 최대 변동·효율 최대 영향). 다음에 볼 탭은 "이어서 확인할 분석"이 맡는다.
+  const briefingPoints = verdict?.keyPoints || [];
   const dashboardWorkbookExport = useMemo(() => {
     if (!verdict || verdict.insufficient) return null;
     const workbookTr = (ko, en) => locale === "en" ? en : ko;
@@ -438,18 +422,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
                 />
-                {/* 예시라는 사실은 머리 줄("예시 데이터 · N행")이 먼저 말한다. 결론을 밀어내지 않도록
-                    교체 안내는 결론 뒤에 둔다(product-ssot §1.1c — 결론이 첫 화면). */}
-                {isDemo && (
-                  <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
-                    <div>
-                      <strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
-                      <p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
-                    </div>
-                    <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
-                  </section>
-                )}
-
+                {/* 예시 교체 안내 띠는 뺐다(2026-11-06) — 머리 줄이 "예시 데이터 · N행"과 "데이터·매핑 편집"을,
+                    결과 카드가 "내 데이터로 분석하기"를 이미 보여 줘 같은 행동이 세 번이었다. */}
               </section>
             )}
 

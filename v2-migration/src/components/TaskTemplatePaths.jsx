@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { templatePageForTool } from "@/lib/templateCatalog";
 import { idToSlug } from "@/lib/routeMap";
 import SampleReportDownloads from "./SampleReportDownloads";
 import { PUBLISHED_BLOG_TOOL_MAP } from "@/lib/contentToolRegistry";
@@ -19,7 +19,7 @@ export default function TaskTemplatePaths({ locale = "ko" }) {
     <ol>{TASKS.map(task => {
       const [title, detail] = task[en ? "en" : "ko"];
       const toolId = PUBLISHED_BLOG_TOOL_MAP[task.article];
-      const template = TEMPLATE_PAGES.find(item => item.toolId === toolId);
+      const template = templatePageForTool(toolId);
       return <li key={task.article}><h3>{title}</h3><p>{detail}</p><nav aria-label={title}>
         <Link href={`${prefix}/blog/${task.article}`}>{en ? "1. Worked example" : "1. 실습 사례"}</Link>
         <Link href={`${prefix}/templates/${template.slug}`}>{en ? "2. Prepare data" : "2. 데이터 준비"}</Link>

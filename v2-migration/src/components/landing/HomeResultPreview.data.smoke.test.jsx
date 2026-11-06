@@ -27,8 +27,8 @@ it.each(["ko", "en"])("shows actual sample evidence and launches the sample (%s)
   expect(bars[1]).toBeCloseTo(lead.recent.cpa / max * 100, 6);
   expect(view.container.querySelector(".home-sample-bar").getAttribute("aria-hidden")).toBe("true");
   expect([...view.container.querySelectorAll("time")].map(time => time.dateTime)).toEqual([result.dates[0], result.dates[6], result.dates[7], result.dates.at(-1)]);
-  // 도치는 장식이다 — 숫자는 표가 말하므로 스크린리더에 같은 내용을 한 번 더 읽히지 않는다.
-  expect(view.container.querySelector("img").getAttribute("alt")).toBe("");
+  // 마스코트(도치)는 제거됐다(2026-11-06) — 장식 이미지가 다시 붙지 않는다.
+  expect(view.container.querySelector("img")).toBeNull();
   expect(view.container.textContent).toContain(locale === "en" ? "Fictional data" : "가상 데이터");
   fireEvent.click(view.getByRole("button"));
   expect(launch).toHaveBeenCalledOnce();

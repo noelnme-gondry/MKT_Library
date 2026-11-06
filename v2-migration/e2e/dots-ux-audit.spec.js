@@ -1,6 +1,7 @@
 import { openDochiSample } from "./support/dochiSample";
 import { test, expect } from "@playwright/test";
 import { ITEM_TITLE_EN } from "../src/lib/enNavCopy";
+import { toolIndexEntry } from "../src/lib/toolIndex";
 import { blogConversionFor } from "../src/lib/blogConversion";
 
 for (const locale of ["ko", "en"]) {
@@ -49,7 +50,7 @@ for (const locale of ["ko", "en"]) {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    await page.locator(".tool-index__chip", { hasText: en ? ITEM_TITLE_EN["5-3"] : "예산 재배분" }).click();
+    await page.locator(".tool-index__chip", { hasText: toolIndexEntry("5-3", locale).name }).click();
     await expect(page.locator(".tool-index__panel .allocation-preview-explanation")).toContainText(en ? "recalculates" : "다시 계산");
     const preview = page.locator(".tool-index__panel .dochi-workspace__result");
     const previous = await preview.locator(".dochi-workspace__decision-tape").innerText();
@@ -104,6 +105,7 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/guide/ios-privacy-att-skan`);
     const code = page.locator(".code-block").first();
     await expect(code.locator("pre")).toBeVisible();
+    await expect(page.locator('[data-copy-ready="true"]').first()).toBeAttached();
     const originalText = await code.locator("pre").textContent();
     expect(originalText).toContain("import");
     expect(originalText).not.toMatch(/<span|class=["']|&quot;/);

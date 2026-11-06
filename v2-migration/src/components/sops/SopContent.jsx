@@ -2844,9 +2844,12 @@ function bindCopyButtons(root) {
     btn.addEventListener("click", onClick);
     handlers.push([btn, onClick]);
   });
+  // 본문 청크는 SOP 화면에서 늦게 받으므로, 버튼이 실제로 눌리는 시점을 DOM이 말하게 한다.
+  root.dataset.copyReady = "true";
   return () => {
     timers.forEach(clearTimeout);
     handlers.forEach(([btn, onClick]) => btn.removeEventListener("click", onClick));
+    delete root.dataset.copyReady;
   };
 }
 

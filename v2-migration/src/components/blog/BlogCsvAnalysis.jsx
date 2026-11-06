@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { templatePageForTool } from "@/lib/templateCatalog";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import { groupForRoute } from "@/lib/toolGroups";
@@ -183,7 +183,7 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
     finally { if (request === task.current && !navigating) setBusy(false); }
   };
   const ex = example?.[en ? "en" : "ko"];
-  const template = TEMPLATE_PAGES.find(page => page.toolId === config.toolId);
+  const template = templatePageForTool(config.toolId);
   // 글이 자기 예제 파일을 가진 경우만 단계 안내를 접어 둔다 — 공용 데모 글의 단계 문구는 도구 사용법 반복이었다.
   const customSteps = Boolean(practice && !practice.demoGroup && practice.steps?.length);
   return <aside ref={ref} className={`blog-inline-insight${practice ? " blog-practice" : ""}${ex ? " blog-example" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>

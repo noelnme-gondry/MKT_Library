@@ -5,6 +5,7 @@ import nextConfig from "../../next.config.mjs";
 import sitemap from "@/app/sitemap";
 import { getAllPosts, getPostsByTag } from "@/lib/blog";
 import { SITE_URL, OG_CARD_URL, resolveSlugToId, isRouteIndexable } from "@/lib/routeMap";
+import { TEMPLATE_PAGE_SLUGS } from "@/lib/templateCatalog";
 
 const redirects = await nextConfig.redirects();
 
@@ -30,6 +31,11 @@ describe("redirects", () => {
         expect(existsSync(new URL(`../../public${rule.destination}`, import.meta.url))).toBe(true);
         continue;
       }
+      const template = /^\/(?:en\/)?templates\/([^/?#]+)$/.exec(rule.destination);
+      if (template) {
+        expect(TEMPLATE_PAGE_SLUGS, `${rule.source} → ${rule.destination}`).toContain(template[1]);
+        continue;
+      }
       const tag = /^\/blog\/tag\/(.+)$/.exec(rule.destination);
       if (tag) {
         expect(getPostsByTag(tag[1]).length, rule.destination).toBeGreaterThan(0);
@@ -45,7 +51,7 @@ describe("redirects", () => {
         expect(publishedBlogSlugs[locale].has(slug), `${rule.source} → ${rule.destination}`).toBe(true);
         continue;
       }
-      const routePath = rule.destination.replace(/^\/en/, "");
+      const routePath = rule.destination.replace(/^\/en/, "").split(/[?#]/)[0];
       const routeId = resolveSlugToId(routePath.split("/").filter(Boolean));
       expect(routeId, `${rule.source} → ${rule.destination}`).toBeTruthy();
       expect(isRouteIndexable(routeId), rule.destination).toBe(true);

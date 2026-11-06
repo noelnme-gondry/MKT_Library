@@ -89,8 +89,10 @@ describe("Dashboard render smoke", () => {
     const { unmount } = render(<Dashboard />);
     // 제목 위 작은 영문 라벨은 두지 않는다(2026-09-24).
     expect(screen.queryByText("SAMPLE DATA")).toBeNull();
-    expect(screen.getByText("지금 보는 수치는 예시입니다")).toBeTruthy();
-    expect(screen.getByText("내 CSV로 바꾸기")).toBeTruthy();
+    // 예시라는 사실은 머리 줄이 말하고, 교체는 같은 줄의 편집 버튼이 맡는다(교체 안내 띠는 중복이라 뺐다).
+    expect(screen.getByText("예시 데이터")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "데이터·매핑 편집" })).toBeTruthy();
+    expect(screen.queryByText("내 CSV로 바꾸기")).toBeNull();
     unmount();
     cleanup();
 
@@ -102,8 +104,9 @@ describe("Dashboard render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-2");
     render(<Dashboard locale="en" />);
-    expect(screen.getByText("These numbers are an example")).toBeTruthy();
-    expect(screen.getByText("Use my CSV")).toBeTruthy();
+    expect(screen.getByText("Sample data")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit data and mappings" })).toBeTruthy();
+    expect(screen.queryByText("Use my CSV")).toBeNull();
   });
 
   it("shows the interactive charts before sample review and layout utilities", () => {

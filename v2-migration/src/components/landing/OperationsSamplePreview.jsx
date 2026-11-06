@@ -38,7 +38,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   const change = sample.current.cpr / sample.previous.cpr - 1;
   const budgetMax = Math.ceil(Math.max(1, ...sample.budgetMoves.map(row => Math.abs(row.delta))) / 10000) * 10000;
   const date = index => sample.dates.at(index).slice(5).replace("-", ".");
-  const pct = value => `${value > 0 ? "+" : ""}${fmtPct(value)}`;
+  const pct = value => `${value > 0 ? "+" : value < 0 ? "−" : ""}${fmtPct(Math.abs(value))}`;
   const tone = value => value > 0 ? "bad" : value < 0 ? "good" : "neutral";
   const showBudget = () => {
     setView("budget");
@@ -63,7 +63,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
       <div className="home-action-preview__queue">{[...new Set(sample.recommendations.map(item => item.kind))].map(kind => {
         const items = sample.recommendations.filter(item => item.kind === kind);
         return <section key={kind}><h4><span>{OPERATION_ACTION_KINDS[kind][en ? 1 : 0]}</span><b>{tr(`${items.length}건 제안`, `${items.length} proposed`)}</b></h4>
-          <p className="home-sample-context">{kind === "budget" ? tr("하루 예산 · 현재 → 제안", "Daily budget · current → proposed") : tr("성과·피로도 근거를 확인하고 액션 결정", "Review performance and fatigue evidence before acting")}</p>
+          <p className="home-sample-context">{kind === "budget" ? tr("실행할 하루 예산 설정 · 현재 → 제안", "Daily budget setting to execute · current → proposed") : tr("성과·피로도 근거를 확인하고 액션 결정", "Review performance and fatigue evidence before acting")}</p>
           <ul className="home-action-preview__proposals">{items.map(item => <li key={item.id}><strong>{item.name}</strong><span>{kind === "budget" ? <>{money(item.beforeBudget)} → <b>{money(item.afterBudget)}</b></> : item.creative}</span></li>)}</ul>
         </section>;
       })}
@@ -106,8 +106,8 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
       <h3 id="home-budget-title">{tr("같은 예산을 다르게 나누면", "A new plan, the same budget")}</h3>
       {sample.plan.ok ? <>
         <dl className="operations-sample-budget__metrics">
-          <div><dt>{tr("하루 총 예산", "Total daily budget")}</dt><dd>{money(sample.plan.totalBudget)}</dd></div>
-          <div><dt>{tr("예상 설치 / 일", "Modeled installs / day")}</dt><dd>{fmtNum(sample.plan.baselineResults, 0)} → {fmtNum(sample.plan.expectedResults, 0)} <b>{pct(sample.plan.improvementPct / 100)}</b></dd></div>
+          <div><dt>{tr(`다음 ${sample.planDays}일 예산`, `Next ${sample.planDays}-day budget`)}</dt><dd>{money(sample.plan.totalBudget * sample.planDays)}</dd></div>
+          <div><dt>{tr(`예상 설치 · ${sample.planDays}일`, `Modeled installs · ${sample.planDays} days`)}</dt><dd>{fmtNum(sample.plan.baselineResults * sample.planDays, 0)} → {fmtNum(sample.plan.expectedResults * sample.planDays, 0)} <b>{pct(sample.plan.improvementPct / 100)}</b></dd></div>
         </dl>
         <dl className="operations-sample-budget__moves">{sample.budgetMoves.map(row => <div key={row.id}><dt>{row.name}</dt><dd>{row.delta > 0 ? "+" : row.delta < 0 ? "−" : ""}{money(Math.abs(row.delta))}</dd>
           <dd className="home-budget-delta" aria-hidden="true"><i data-direction={row.delta < 0 ? "decrease" : "increase"} style={{ left: `${row.delta < 0 ? 50 - Math.abs(row.delta) / budgetMax * 50 : 50}%`, width: `${Math.abs(row.delta) / budgetMax * 50}%` }} /></dd>
@@ -131,7 +131,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
     <div className="operations-sample-preview__footer">
       <p className="operations-sample-preview__note">{viewNote[view]}</p>
       {view === "campaigns" ? <button type="button" className="home-preview-story__next" onClick={showBudget}>{tr("같은 예산으로 조정안 보기", "See this budget plan")} <span aria-hidden="true">→</span></button>
-        : <Link className="btn primary" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("이 예산안 직접 조정하기", "Adjust this budget plan")} →</Link>}
+        : <Link className="btn secondary" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("이 예산안 직접 조정하기", "Adjust this budget plan")} →</Link>}
     </div>
   </aside>;
 }

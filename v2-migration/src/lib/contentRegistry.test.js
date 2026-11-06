@@ -8,7 +8,10 @@ import {
   GLOSSARY_WITHOUT_TOOL,
 } from "./contentToolRegistry";
 import { EN_BLOG_SLUGS, EN_GLOSSARY_SLUGS, localizedHref } from "./localizedHref";
-import { isRoutePublished } from "./routeMap";
+import { isAbsorbedRoute, isRoutePublished } from "./routeMap";
+
+// 원고의 주 도구는 발행 도구이거나, 발행 도구의 보기로 흡수된 분석(5-22 → 5-3 증액 여력)이다. 링크는 그 보기로 간다.
+const isLiveAnalysis = (id) => isRoutePublished(id) || isAbsorbedRoute(id);
 import { publishedBlogSeoSlugs } from "./blogSeo";
 import { getBlogEditorial, publishedEditorialSlugs } from "./blogEditorial";
 import { AUTHOR } from "./authorProfile";
@@ -24,7 +27,7 @@ describe("editorial SEO registries", () => {
   it("maps every published KR article to one published analysis tool", () => {
     const slugs = getAllPosts("ko").map((post) => post.slug);
     expect(sorted(Object.keys(PUBLISHED_BLOG_TOOL_MAP))).toEqual(sorted(slugs));
-    expect(Object.values(PUBLISHED_BLOG_TOOL_MAP).every(isRoutePublished)).toBe(true);
+    expect(Object.values(PUBLISHED_BLOG_TOOL_MAP).every(isLiveAnalysis)).toBe(true);
   });
 
   it("connects every published article to existing glossary entries", () => {
@@ -42,7 +45,7 @@ describe("editorial SEO registries", () => {
     expect(excluded.every((slug) => slugs.includes(slug))).toBe(true);
     expect(excluded.filter((slug) => Object.hasOwn(PUBLISHED_GLOSSARY_TOOL_MAP, slug))).toEqual([]);
     expect(sorted([...Object.keys(PUBLISHED_GLOSSARY_TOOL_MAP), ...excluded])).toEqual(sorted(slugs));
-    expect(Object.values(PUBLISHED_GLOSSARY_TOOL_MAP).every(isRoutePublished)).toBe(true);
+    expect(Object.values(PUBLISHED_GLOSSARY_TOOL_MAP).every(isLiveAnalysis)).toBe(true);
   });
 
   it("keeps locale registries identical to the translated content on disk", () => {

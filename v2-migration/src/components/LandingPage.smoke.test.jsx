@@ -164,14 +164,16 @@ describe("LandingPage render smoke", () => {
     const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
     const metrics = [...document.querySelectorAll(".operations-sample-budget__metrics dd")];
     const recent = data.raw.filter(row => row.Date >= periods.current.start && row.Date <= periods.current.end);
-    expect(metrics[0].textContent).toBe(money(recent.reduce((total, row) => total + row.Cost, 0) / 7));
-    expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults, 0)} → ${fmtNum(plan.expectedResults, 0)}`);
+    // 홈 미리보기는 플래너 기본 적용 기간(다음 7일)과 같은 합계 단위로 보인다.
+    const days = 7;
+    expect(metrics[0].textContent).toBe(money(recent.reduce((total, row) => total + row.Cost, 0) / 7 * days));
+    expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults * days, 0)} → ${fmtNum(plan.expectedResults * days, 0)}`);
     expect(document.querySelectorAll(".operations-sample-budget__moves > div")).toHaveLength(4);
-    const axis = Math.ceil(Math.max(...plan.items.map(item => Math.abs(item.budget - item.current))) / 10000) * 10000;
+    const axis = Math.ceil(Math.max(...plan.items.map(item => Math.abs(item.budget - item.current) * days)) / 10000) * 10000;
     for (const item of plan.items) {
       const name = brief.campaigns.find(row => row.id === item.id).name;
       const node = [...document.querySelectorAll(".operations-sample-budget__moves > div")].find(row => row.querySelector("dt").textContent === name);
-      const delta = item.budget - item.current, bar = node.querySelector(".home-budget-delta i");
+      const delta = (item.budget - item.current) * days, bar = node.querySelector(".home-budget-delta i");
       expect(node.querySelector("dd").textContent).toBe(`${delta > 0 ? "+" : "−"}${money(Math.abs(delta))}`);
       expect(parseFloat(bar.style.width) / 50 * axis).toBeCloseTo(Math.abs(delta), 8);
       expect(parseFloat(bar.style.left) + (delta < 0 ? parseFloat(bar.style.width) : 0)).toBeCloseTo(50, 10);

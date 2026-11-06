@@ -39,7 +39,7 @@ v2-migration/
 │  ├─ workers/                      # dataPreparation·xlsxParse·dashboardVerdict·forecastSelection
 │  └─ components/
 │     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
-│     ├─ assistant/                  # 홈 전용 도치 데이터 접수·작업대 handoff UI (분석 엔진/원본 데이터 소유 안 함)
+│     ├─ assistant/                  # 결과 작업대 UI(구 도치 — 마스코트는 2026-11-06 제거) (분석 엔진/원본 데이터 소유 안 함)
 │     ├─ VideoTutorialHelp.jsx       # RootDocument 공용 영상 도움말 + CsvUploader/Sheets 인라인 진입. lib/videoTutorials.js → 문구·주제·자막 SSOT, scripts/tutorials/ → 실제 UI 시연·정적 영상 생성
 │     ├─ tools/                     # route별 도구 1 컴포넌트
 │     ├─ dashboard/                 # 5-2 운영 대시보드 + 필터바 + 커스텀차트
@@ -66,11 +66,11 @@ v2-migration/
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
 | `/` | home | LandingPage → 상황 고르기(`lib/finder` 7개 상황 → `/start?situation=`) + 파일 놓기(CsvUploader dochi 변형 → `/dochi-result`) + landing/OperationsSamplePreview + HomeReading(서버 발행 글) |
-| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsBrief · operationsDemo · operationsEvidence → OperationsMetricEvidence / OperationsObservedQueue (기존 지표·매핑·관측 검토 연결) |
+| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsIntervals · operationsScenario(추천안) · operationsSelection(사람이 고른 실행안·예측·저장 초안) · operationLoop(기록·검토·예측 대조) · actionContract(기록 계약) → OperationsPlanBoard · OperationsPlanSaveDialog · OperationsDecisionEvidence · OperationsActionLoop/Queue · OperationsForecastCheck · OperationsMetricEvidence |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
-| `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |
-| `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx |
+| `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx · `?view=headroom` → tools/MarketingEfficiency.jsx(증액 여력, 내부 id 5-22 — 옛 `/tools/campaign-saturation`은 301). 보기 판정 `routeMap.resolveBudgetView`, 흡수 판정 `absorbedToolIds`·`analysisToolIds`·`hostToolId` |
+| (운영 플래너 흐름) | — | `lib/operationsFlow`(단계↔상세 도구 표) · 상세 도구 제목 위 `ds/OperationsFlowNav`(PageClient KO/EN, 5-3 보기 고르기) · 플래너 단계의 `tools/OperationsDetailLinks`(9-6은 소재 그룹으로 넘기되 올린 소재 파일은 덮지 않음) · 분석 찾기 묶음 카드 `lib/finder/analysisFinder` `FINDER_CARD_GROUPS` |
 | `/tools/experiment-analysis` | 5-4 (+5-7·5-15 legacy) | tools/AbTestHoldout.jsx (A/B) |
 | `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (통제군·전후 on/off) |
 | `/tools/brand-campaign-incrementality` | 5-24 | tools/BrandCampaignIncrementality.jsx (ITS·AR(1)) |
@@ -155,8 +155,8 @@ v2-migration/
 - **타입**: DM Sans(body)+Space Grotesk(display)+JetBrains Mono(data), `next/font` 변수만.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만이고, 글자는 `toolIndex.toolDisplayTitle`(목록 이름, 검색어형 이름은 제목 밑 `.tool-instrument-header__alias`) — Dashboard(5-2)·PaidOrganicTrend도 같은 헬퍼(`e2e/tool-title-consistency.spec.js`).
-- **첫 방문자 인사 오버레이**: KR/EN 홈만 `assistant/DochiWelcomeOverlay`를 mount한다(상시 접수처 `DochiAssistant`와 별개, 둘 다 렌더됨). 도치가 2단계 대사(사이트 설명+데이터 처리 위치 → 데이터 요청)를 말하고 마지막 단계에서 `CsvUploader`(toolId `start-gate`)로 CSV·공개 Google Sheets를 바로 받아 `/dochi-result`로 넘긴다. 노출 판정 SSOT는 `lib/dochiWelcome.js` — 영구 옵트아웃은 localStorage, 같은 방문 안의 반복 노출 차단은 sessionStorage다. 저장된 작업이 있는 기존 사용자도 노출하되 IndexedDB 복원 뒤 마지막 단계에서 시작하며, 가져오기를 시작한 뒤 닫거나 건너뛰어도 완료 시 결과 화면으로 이동한다. 서버 스냅샷이 항상 닫힘이라 프리렌더 HTML에는 오버레이가 없다. 모바일(≤700px)에서는 전면 대신 하단 시트로 내려간다.
-- **홈 데이터 접수**: 랜딩 히어로의 "파일로 시작"과 첫 방문 `assistant/DochiWelcomeOverlay`가 같은 `CsvUploader entryVariant="dochi"`를 쓴다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤 `/dochi-result` 결과 작업대로 보낸다(`assistant/DochiAssistant`는 현재 마운트되는 곳이 없다). 포즈는 `public/assets/dochi/` PNG 세트를 `assistant/DochiSprite`가 고르며 `prefers-reduced-motion`에서 장거리 이동·wipe를 생략한다. 도구 화면에는 도치가 남지 않는다(도구별 보조는 `ToolAssistRail`).
+- **마스코트 없음**: 도치 인사 오버레이·접수처·분석 도크·매핑 말풍선·스프라이트는 2026-11-06 제거됐다(AGENTS §12.29b). 결과 작업대 `/dochi-result`와 `dochi-workspace` 클래스는 기능이라 유지.
+- **홈 데이터 접수**: 랜딩 히어로의 "파일로 시작"이 `CsvUploader entryVariant="dochi"`(이름만 남은 변형)를 쓴다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤 `/dochi-result` 결과 작업대로 보낸다.
 - **응답 패널 다섯 분석**: `5-18-trend`·`-paid-organic`·`-cannibal`·`-mmm`·`-forecast`가 각각 도구(모두 `MarketingResponse`를 `isolated`로 렌더). CSV·매핑은 `response` 그룹 하나를 공유하고, 목록에 없는 `5-18`(publication="subtool")이 업로드·매핑 허브다. 필드 계약은 `csvConstants`의 `RESPONSE_PANEL_TOOL_IDS`가 5-18에서 파생.
 - **유입 경로 서베이**: `assistant/SourceSurveyPopup`을 `GlobalModals`가 렌더하므로 어느 페이지로 처음 들어와도(홈·블로그·용어·가이드·도구) 같은 질문을 한 번 받는다. 주관식 한 칸이고 화면 가운데 뜨되 뒤를 덮는 백드롭이 없다(바깥은 계속 조작 가능). 판정·정규화 SSOT `lib/survey/sourceSurvey.js`(영구 차단 localStorage / 세션 반복 차단 sessionStorage), 다른 안내와의 겹침 방지 `lib/assistant/overlayPresence.js`. 저장은 `POST /api/survey/source` → `lib/survey/sourceSurveyServer.js` → `gop_source_survey`(답변·언어·분류된 진입면만, IP·계정·URL 없음). 스키마 `v2-migration/scripts/source-survey-schema.sql`은 앱 시작 마이그레이션에서 멱등 적용하며, 조회는 `v2-migration/scripts/source-survey-report.mjs`로 한다. 운영 DB 적용 여부는 배포 후 별도로 확인한다.
 - **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.

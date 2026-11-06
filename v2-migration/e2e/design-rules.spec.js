@@ -23,7 +23,7 @@ const STATIC_PAGES = [
 ];
 const KO_RESULT_PAGES = [
   "/tools/operations-planner?example=1",
-  "/dashboard", "/tools/campaign-variance", "/tools/campaign-saturation",
+  "/dashboard", "/tools/campaign-variance", "/tools/budget-allocation?view=headroom",
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
   "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality", "/tools/subscription-survival",

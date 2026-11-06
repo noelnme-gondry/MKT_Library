@@ -61,6 +61,15 @@
   .dashboard-card-board .dashboard-explorer__interpretation { margin: 0; padding: 0 20px 16px; font-size: var(--fs-xs); }
   .dashboard-card-board .dashboard-explorer__actions { margin: 0; padding: 12px 20px; border-top: 1px solid var(--border); }
   .dashboard-card-board .dashboard-supporting-charts .chart-grid { gap: 16px; align-items: stretch; }
+  /* 넓은 칸(시계열·퍼널)과 좁은 칸(막대 목록)을 섞는다. 사용자가 순서를 바꾸거나 숨겨도 dense가 빈칸을 메운다. */
+  .app .content .dashboard-card-board .dashboard-supporting-charts .chart-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-flow: row dense; }
+  .dashboard-card-board .dashboard-supporting-charts .chart-card[data-size="wide"] { grid-column: span 7; }
+  .dashboard-card-board .dashboard-supporting-charts .chart-card[data-size="narrow"] { grid-column: span 5; }
+  .dashboard-card-board .dashboard-supporting-charts .chart-card[data-size="half"] { grid-column: span 6; }
+  .dashboard-card-board .dashboard-supporting-charts .chart-card[data-size="full"] { grid-column: 1 / -1; }
+  @media (max-width: 1100px) {
+    .dashboard-card-board .dashboard-supporting-charts .chart-card:is([data-size="wide"], [data-size="narrow"]) { grid-column: span 6; }
+  }
   .dashboard-card-board .dashboard-supporting-charts .chart-card { display: flex; flex-direction: column; }
   .dashboard-card-board .dashboard-supporting-chart__head { flex: 1; }
   .dashboard-card-board .dashboard-board > .dashboard-workspace-toolbar { margin: 16px 0 0; padding: 16px 20px; border-radius: var(--radius-md); }
@@ -72,7 +81,8 @@
     .dashboard-card-board .kpi-grid--overview > div:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
     .dashboard-card-board .result-action-card__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dashboard-card-board .dashboard-filter-bar__command { flex-basis: 100%; }
-    .dashboard-card-board .dashboard-supporting-charts .chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .app .content .dashboard-card-board .dashboard-supporting-charts .chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-card-board .dashboard-supporting-charts .chart-card[data-size] { grid-column: 1 / -1; }
     .dashboard-card-board :is(.dashboard-explorer__head, .dashboard-supporting-chart__head) { padding: 16px; }
     .dashboard-card-board :is(.dashboard-explorer__canvas, .dashboard-supporting-chart__canvas) { height: 260px; margin: 16px 12px; padding: 0; }
   }

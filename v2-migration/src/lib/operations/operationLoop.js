@@ -52,12 +52,33 @@ export function reviewOperationRecord(record, rows, { metric, currency, today })
   const comparison = compareOperationsChange(rows, { date: action.executedDate, days: action.reviewDays, metric, target: action.target });
   const rollback = comparison.ok && comparison.cprChange >= HISTORY_RULES.changeThreshold && comparison.costChange > 0
     && action.kind === "budget" && action.beforeBudget != null && action.afterBudget > action.beforeBudget;
-  return { state: comparison.ok ? "ready" : comparison.reason, action, due, comparison,
+  return { state: comparison.ok ? "ready" : comparison.reason, action, due, comparison, forecastCheck: operationForecastCheck(action, comparison),
     followup: rollback ? { ...action, beforeBudget: action.afterBudget, afterBudget: action.beforeBudget } : null };
 }
 
+/**
+ * 저장한 예측과 실행 후 같은 기간의 실제. 예측 창은 실행일부터 forecast.days일이고, 이는 검토의 "실행 후" 창과 같다.
+ * 검토 일수를 바꿨으면 창이 달라 대조하지 않는다. 지출이 계획과 다르면 단가 차이의 일부는 실행 차이다.
+ */
+export function operationForecastCheck(action, comparison) {
+  const forecast = action?.forecast;
+  if (!forecast) return null;
+  if (action.reviewDays !== forecast.days) return { ok: false, reason: "window" };
+  if (!comparison?.ok) return { ok: false, reason: comparison?.reason || "coverage" };
+  const plannedSpend = forecast.dailySpend * forecast.days, expectedResults = forecast.dailyResults * forecast.days;
+  const expectedCpr = forecast.dailySpend / forecast.dailyResults;
+  const { cost: actualSpend, results: actualResults, cpr: actualCpr } = comparison.current;
+  return { ok: true, days: forecast.days, plannedSpend, actualSpend, expectedResults, actualResults, expectedCpr, actualCpr,
+    spendGap: actualSpend / plannedSpend - 1,
+    resultsGap: actualResults / expectedResults - 1,
+    cprGap: actualCpr != null ? actualCpr / expectedCpr - 1 : null };
+}
+
 export function createOperationRecord({ draft, locale = "ko", today, sourceThrough = "", parentDecisionId = "" }) {
-  const action = readOperationAction({ ...draft, version: 1 });
+  const read = readOperationAction({ ...draft, version: 1 });
+  // 예측은 저장 당시 금액에 대한 것이다. 금액을 바꾼 기록에는 예측을 남기지 않는다.
+  const keepsForecast = read?.forecast && read.afterBudget != null && Math.abs(read.afterBudget - read.forecast.dailySpend) <= Math.max(0.005, read.forecast.dailySpend * 1e-6);
+  const action = read && read.forecast && !keepsForecast ? (({ forecast, ...rest }) => rest)(read) : read;
   if (!action?.plannedDate || !action.metric || !action.currency) return null;
   if (action.state === "executed" && (!action.executedDate || action.executedDate > today)) return null;
   if (action.kind === "budget" && action.afterBudget == null) return null;
@@ -66,7 +87,8 @@ export function createOperationRecord({ draft, locale = "ko", today, sourceThrou
   const date = action.executedDate && action.state === "executed" ? action.executedDate : action.plannedDate;
   const label = OPERATION_ACTION_KINDS[action.kind][locale === "en" ? 1 : 0];
   const target = [action.target.country, action.target.platform, action.target.channel, action.target.campaign || action.target.campaignId].filter(Boolean).join(" · ");
-  const budget = action.kind === "budget" ? ` · ${action.beforeBudget ?? "?"} → ${action.afterBudget} ${action.currency}/${locale === "en" ? "day" : "일"}` : "";
+  const metricLabel = action.metric === "actions" ? "CPA" : "CPI";
+  const budget = action.kind === "budget" ? ` · ${action.beforeBudget ?? (action.forecast ? `${locale === "en" ? "observed " : "관측 "}${Math.round(action.forecast.currentDailySpend)}` : "?")} → ${Math.round(action.afterBudget * 100) / 100} ${action.currency}/${locale === "en" ? "day" : "일"}${action.forecast ? ` · ${locale === "en" ? "expected" : "예상"} ${metricLabel} ${Math.round(action.forecast.dailySpend / action.forecast.dailyResults * 100) / 100}` : ""}` : "";
   return { toolId: OPERATIONS_TOOL_ID, sourcePath: OPERATIONS_PATH, dataOrigin: "real", locale,
     action: `${label} · ${target}${action.creative ? ` · ${action.creative}${action.kind === "creative_replace" && action.replacementCreative ? ` → ${action.replacementCreative}` : ""}` : ""}${budget}${action.note ? ` — ${action.note}` : ""}`,
     actionTarget: target, actionKind: action.kind.startsWith("creative") ? "replace" : "investigate",

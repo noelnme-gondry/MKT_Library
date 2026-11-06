@@ -10,17 +10,18 @@
  * 아무것도 주지 않는다. 그 자리를 실제 설명으로 바꿨다.
  * ============================================================ */
 
+// icon은 lucide 아이콘 이름이다(한 세트·한 크기·한 선 굵기 — 글자 기호를 섞지 않는다). 그리는 쪽은 components/Sidebar.
 export const WORKSPACE_NAV = [
   {
     id: "home",
     group: "home",
     href: "/",
-    icon: "◎",
+    icon: "House",
     ko: { name: "홈", desc: "지금 볼 것과 다음 행동" },
     en: { name: "Home", desc: "What to check now" },
   },
   {
-    id: "operations", group: "work", href: "/tools/operations-planner", icon: "▦",
+    id: "operations", group: "work", href: "/tools/operations-planner", icon: "ListChecks",
     ko: { name: "운영 플래너", desc: "예산·소재 액션부터 실행과 다음 검토까지" },
     en: { name: "Operations planner", desc: "Budget and creative actions, execution and review" },
   },
@@ -28,33 +29,33 @@ export const WORKSPACE_NAV = [
     id: "start",
     group: "work",
     href: "/start",
-    icon: "⇧",
+    icon: "Compass",
     // "내 데이터로 시작"과 "분석 방법 둘러보기"는 같은 질문(무엇을 할 수 있나)에 따로 답했다 — 하나로 합쳤다(product-ssot §1.1c).
     ko: { name: "분석 찾기", desc: "상황이나 파일로 분석 고르기" },
     en: { name: "Find an analysis", desc: "Choose by situation or by file" },
   },
   {
-    id: "results", secondary: true, group: "work", href: "/dochi-result", icon: "▦",
+    id: "results", secondary: true, group: "work", href: "/dochi-result", icon: "LayoutGrid",
     ko: { name: "내 분석 결과", desc: "같은 CSV에서 확인한 통합 결과" },
     en: { name: "My analysis results", desc: "Connected results from the same CSV" },
   },
   {
-    id: "overview", secondary: true, group: "work", href: "/dashboard", icon: "▥",
+    id: "overview", secondary: true, group: "work", href: "/dashboard", icon: "ChartColumn",
     ko: { name: "성과 오버뷰", desc: "기간과 채널별 운영 성과 확인" },
     en: { name: "Performance overview", desc: "Review performance by period and channel" },
   },
   {
-    id: "blog", group: "learn", href: "/blog", icon: "▤",
+    id: "blog", group: "learn", href: "/blog", icon: "Newspaper",
     ko: { name: "블로그", desc: "마케팅 질문을 이해하는 실무 글" },
     en: { name: "Blog", desc: "Practical answers to marketing questions" },
   },
   {
-    id: "guide", group: "learn", href: "/guide", icon: "▧",
+    id: "guide", group: "learn", href: "/guide", icon: "BookOpen",
     ko: { name: "실무 가이드 · SOP", desc: "설정부터 분석까지 운영 기준" },
     en: { name: "Guides & SOPs", desc: "Operating standards from setup to analysis" },
   },
   {
-    id: "storage", group: "manage", href: "/storage", icon: "▣",
+    id: "storage", group: "manage", href: "/storage", icon: "HardDrive",
     ko: { name: "이 기기 데이터", desc: "이 기기의 CSV 복원과 저장 관리" },
     en: { name: "Data on this device", desc: "Restore and manage CSVs on this device" },
   },
@@ -62,7 +63,7 @@ export const WORKSPACE_NAV = [
     id: "review",
     group: "manage",
     href: "/weekly-review",
-    icon: "◷",
+    icon: "CalendarCheck",
     // 이 주소가 프로젝트 제품이다. "프로젝트 리뷰"·"새 리뷰"가 서로 겹쳐 읽혀
     // 이름을 하나로 줄였다 — 리뷰는 프로젝트 안에서 하는 일이지 별개 목적지가 아니다.
     ko: { name: "내 프로젝트", desc: "목표·결정·결과를 프로젝트별로" },
@@ -73,7 +74,7 @@ export const WORKSPACE_NAV = [
     secondary: true,
     group: "manage",
     href: "/projects",
-    icon: "▣",
+    icon: "FolderOpen",
     ko: { name: "내 프로젝트 관리", desc: "내 프로젝트의 저장·백업 관리" },
     en: { name: "Manage my projects", desc: "Storage and backups for My projects" },
   },
@@ -81,7 +82,7 @@ export const WORKSPACE_NAV = [
     id: "account",
     group: "manage",
     href: "/account",
-    icon: "◉",
+    icon: "UserRound",
     ko: { name: "마이페이지", desc: "계정·이용권·프로젝트와 내 컬럼 매핑" },
     en: { name: "My account", desc: "Account, pass, projects and my column mappings" },
   },
@@ -89,7 +90,7 @@ export const WORKSPACE_NAV = [
     id: "subscription",
     group: "manage",
     href: "/subscription",
-    icon: "▤",
+    icon: "CreditCard",
     ko: { name: "구독 및 서비스", desc: "무료 분석과 Pro 보고서 이용 안내" },
     en: { name: "Plans & service", desc: "Free analysis and Pro reporting" },
   },
@@ -97,7 +98,7 @@ export const WORKSPACE_NAV = [
     id: "diagnose",
     group: "learn",
     href: "/diagnose",
-    icon: "◇",
+    icon: "MessageCircleQuestion",
     ko: { name: "질문에서 시작", desc: "파일 없이 3문항으로" },
     en: { name: "Start with a question", desc: "Three questions, no file" },
   },

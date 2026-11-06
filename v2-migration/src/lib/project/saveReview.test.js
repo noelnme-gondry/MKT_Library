@@ -47,3 +47,13 @@ it("keeps expired-trial projects readable while rejecting new records and projec
   expect((await readProject("default")).decisions.map(item => item.action)).toEqual(["Hold budget"]);
   expect(await listProjects()).toHaveLength(1);
 });
+it("saves one plan's records together and none of them when one is invalid", async () => {
+  await saveProjectReview({ entitlement: activePro(), name: "Client A", record });
+  const plan = [{ ...record, toolId: "5-31", action: "Budget A" }, { ...record, toolId: "5-31", action: "Budget B" }];
+  const saved = await saveProjectReview({ entitlement: activePro(), projectId: "default", records: plan });
+  expect(saved.records.map(item => item.action)).toEqual(["Budget A", "Budget B"]);
+  expect(saved.record.action).toBe("Budget A");
+  expect((await readProject("default")).decisions.map(item => item.action)).toEqual(["Budget A", "Budget B", "Hold budget"]);
+  await expect(saveProjectReview({ entitlement: activePro(), projectId: "default", records: [{ ...record, action: "Budget C" }, { toolId: "5-31" }] })).rejects.toThrow("INVALID_REVIEW");
+  expect((await readProject("default")).decisions).toHaveLength(3);
+});

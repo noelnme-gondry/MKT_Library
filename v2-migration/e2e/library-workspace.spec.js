@@ -4,7 +4,7 @@ import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 import { toolIndexEntry, toolIndexByStage } from "../src/lib/toolIndex";
 import { toolResultSelector } from "./support/toolResult";
-import { idToSlug, publishedToolIds } from "../src/lib/routeMap";
+import { analysisToolIds, idToSlug } from "../src/lib/routeMap";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en";
@@ -105,20 +105,21 @@ for (const locale of ["ko", "en"]) {
     const readyNames = await page.locator(".tool-index__stage--ready .tool-index__q").allInnerTexts();
     expect(readyNames).toEqual(expect.arrayContaining(["5-2", "5-21", "5-3"].map((id) => toolIndexEntry(id, locale).name)));
     const blockedRows = page.locator(".tool-index__stage--blocked .tool-index__chip");
-    expect(await blockedRows.count()).toBe(publishedToolIds().length - readyNames.length);
+    // 작업대는 분석을 나열한다 — 다른 도구의 보기로 흡수된 분석(5-22 증액 여력)도 칩이다(product-ssot §4.2a).
+    expect(await blockedRows.count()).toBe(analysisToolIds().length - readyNames.length);
     for (const text of await blockedRows.allInnerTexts()) {
       expect(text).toMatch(/\S/);
       expect(text).not.toMatch(en ? /Example result/ : /예시 결과/);
     }
     await expect(page.locator(".tool-index__stage--blocked .tool-index__need")).toHaveCount(await blockedRows.count());
     const stuck = [];
-    for (const toolId of publishedToolIds()) {
+    for (const toolId of analysisToolIds()) {
       // 샘플은 메모리에만 있다 — 도구마다 홈에서 샘플을 새로 연다.
       await openDochiSample(page, locale);
       await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
       await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
       await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
-      await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId]}$`), { timeout: 30_000 });
+      await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), { timeout: 30_000 });
       const reached = await page.locator(toolResultSelector(toolId)).first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
       if (!reached || await page.getByRole("dialog").count()) stuck.push(toolId);
     }
