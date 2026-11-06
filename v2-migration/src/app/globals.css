@@ -13497,7 +13497,7 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
 .finder-card__members { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
 .finder-card__members > p { margin: 0; color: var(--text-muted); }
 .finder-card__members ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.finder-card__members li { display: grid; grid-template-columns: minmax(7.5em, max-content) minmax(0, 1fr); gap: 0 12px; align-items: baseline; }
+.finder-card__members li { display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr); gap: 0 12px; align-items: baseline; } /* 같은 첫 칸 폭 — 행마다 질문 시작선이 같아야 한다 */
 .finder-card__members a { display: inline-flex; align-items: center; min-height: 32px; color: var(--primary); font-weight: 600; }
 .finder-card__members small { color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.5; }
 @media (max-width: 720px) { .finder-card__members li { grid-template-columns: minmax(0, 1fr); } }

@@ -289,7 +289,11 @@
   .ops-detail-links > span { color: var(--text-muted); }
   .ops-detail-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
   .ops-detail-links small { flex-basis: 100%; color: var(--text-muted); font-size: var(--fs-xs); }
+  /* 결과 뒤 같은 줄: 기본은 숨김. 폰에서 결과가 나오면 위쪽 줄 대신 보인다 — 결론이 첫 화면 안에 있어야 한다(product-ssot §1.1c). */
+  .ops-flow-nav--end { display: none; }
   @media (max-width: 720px) {
+    .content:has(.result-action-card) .ops-flow-nav--top { display: none; }
+    .content:has(.result-action-card) .ops-flow-nav--end { display: flex; margin: 24px 0 0; padding: 12px 0 0; border-top: 1px solid var(--border); border-bottom: 0; }
     .ops-flow-nav__views { width: 100%; }
     .ops-flow-nav__views li { flex: 1 1 0; }
     .ops-flow-nav__views a { justify-content: center; width: 100%; min-height: 44px; }

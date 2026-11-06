@@ -168,6 +168,8 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             )}
             {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
                 결과와 같은 층위로 흐르지 않게(§12.30). */}
+            {/* 폰에서 결과가 나오면 위쪽 단계 줄 대신 이 줄이 보인다(결론을 첫 화면에 두기 위해). */}
+            <OperationsFlowNav toolId={routeId} view={budgetView || undefined} locale="ko" placement="end" />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={viewToolId} locale="ko" slot="actions" />}
             {/* 설정 저장·보관함은 결과 뒤에 둔다. 분석 전에 "설정 저장"을 물을
                 이유가 없고, 맨 위에 있으면 결론을 본 사용자에게는 화면 밖이다. */}

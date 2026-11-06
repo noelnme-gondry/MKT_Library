@@ -33,4 +33,17 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".result-action-card__headline").first()).toBeVisible();
     await expect(page.getByRole("navigation", { name: en ? "Operations planner step" : "운영 플래너 단계" })).toContainText(en ? "Performance changes detail" : "성과 변화 상세");
   });
+
+  test(`on phones the step line moves below a result so the conclusion stays in the first screen (${locale})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${prefix}/tools/budget-allocation?view=headroom&example=1`);
+    await expect(page.locator(".result-action-card__headline").first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".ops-flow-nav--top")).toBeHidden();
+    const end = page.locator(".ops-flow-nav--end");
+    await expect(end).toBeVisible();
+    await expect(end.getByRole("link", { name: en ? "Allocation" : "예산 배분" })).toBeVisible();
+    // 결론보다 아래에 있다.
+    const [headline, nav] = await Promise.all([page.locator(".result-action-card__headline").first().boundingBox(), end.boundingBox()]);
+    expect(nav.y).toBeGreaterThan(headline.y);
+  });
 }

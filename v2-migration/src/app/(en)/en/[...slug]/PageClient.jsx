@@ -140,6 +140,8 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               <SopContent routeId={routeId} locale="en" initialData={initialSopData} />
             </>}
             {/* KR과 동일한 하단 마감 계층(§12.30) */}
+            {/* 폰에서 결과가 나오면 위쪽 단계 줄 대신 이 줄이 보인다(결론을 첫 화면에 두기 위해). */}
+            <OperationsFlowNav toolId={routeId} view={budgetView || undefined} locale="en" placement="end" />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={viewToolId} locale="en" slot="actions" />}
             {/* 설정 저장·보관함은 결과 뒤에 둔다. 분석 전에 "설정 저장"을 물을
                 이유가 없고, 맨 위에 있으면 결론을 본 사용자에게는 화면 밖이다. */}
