@@ -4,6 +4,7 @@ import { fireEvent, render } from "@testing-library/react";
 import ToolIndex from "@/components/ds/ToolIndex";
 import { groupToolsByFile } from "@/lib/dataSources";
 import { allToolIndexEntries, PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
+import { absorbedToolIds } from "@/lib/routeMap";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 
 describe("ToolIndex", () => {
@@ -100,12 +101,13 @@ describe("ToolIndex", () => {
   });
 
   it("안 되는 분석 줄은 필요한 값 한 문장(또는 판정 못 한 사유)만 말하고 결과 요약은 싣지 않는다", () => {
-    const { container } = render(<ToolIndex density="grid" eligibleIds={["5-2"]}
+    // 결과 작업대처럼 분석을 나열할 때는 흡수된 보기(5-22 증액 여력)도 칩이 된다(product-ssot §4.2a).
+    const { container } = render(<ToolIndex density="grid" eligibleIds={["5-2"]} includeAbsorbed
       blockedInfo={{ "5-22": { reason: "관측 수가 부족해 판정하지 않았습니다." } }}
       blockedCta="예시로 열기"
       renderSummary={(id) => <span className="probe-summary">{`요약:${id}`}</span>} />);
     const blocked = [...container.querySelectorAll(".tool-index__stage--blocked .tool-index__chip")];
-    expect(blocked.length).toBe(PUBLISHED_TOOL_IDS.length - 1);
+    expect(blocked.length).toBe(PUBLISHED_TOOL_IDS.length + absorbedToolIds().length - 1);
     // 요약(결과 문장)은 되는 분석에만 — 안 되는 줄에 섞이면 이 파일의 결과로 읽힌다.
     expect(container.querySelectorAll(".tool-index__stage--blocked .probe-summary")).toHaveLength(0);
     expect(container.querySelectorAll(".tool-index__stage--ready .probe-summary")).toHaveLength(1);

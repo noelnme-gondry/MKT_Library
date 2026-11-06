@@ -68,8 +68,8 @@ v2-migration/
 | `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsIntervals · operationsScenario(추천안) · operationsSelection(사람이 고른 실행안·예측·저장 초안) · operationLoop(기록·검토·예측 대조) · actionContract(기록 계약) → OperationsPlanBoard · OperationsPlanSaveDialog · OperationsDecisionEvidence · OperationsActionLoop/Queue · OperationsForecastCheck · OperationsMetricEvidence |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
-| `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |
-| `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx |
+| `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx · `?view=headroom` → tools/MarketingEfficiency.jsx(증액 여력, 내부 id 5-22 — 옛 `/tools/campaign-saturation`은 301). 보기 판정 `routeMap.resolveBudgetView`, 흡수 판정 `absorbedToolIds`·`analysisToolIds`·`hostToolId` |
+| (운영 플래너 흐름) | — | `lib/operationsFlow`(단계↔상세 도구 표) · 상세 도구 제목 위 `ds/OperationsFlowNav`(PageClient KO/EN, 5-3 보기 고르기) · 플래너 단계의 `tools/OperationsDetailLinks`(9-6은 소재 그룹으로 넘기되 올린 소재 파일은 덮지 않음) · 분석 찾기 묶음 카드 `lib/finder/analysisFinder` `FINDER_CARD_GROUPS` |
 | `/tools/experiment-analysis` | 5-4 (+5-7·5-15 legacy) | tools/AbTestHoldout.jsx (A/B) |
 | `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (통제군·전후 on/off) |
 | `/tools/brand-campaign-incrementality` | 5-24 | tools/BrandCampaignIncrementality.jsx (ITS·AR(1)) |

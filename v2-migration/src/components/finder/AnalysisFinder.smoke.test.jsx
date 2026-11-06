@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import AnalysisFinder from "./AnalysisFinder";
-import { finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
+import { filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
 import { groupToolsByFile } from "@/lib/dataSources";
 
 // 분석 찾기 — 홈 목록·/start·분석 방법 둘러보기·/data-guide를 합친 화면(product-ssot §1.1c).
@@ -13,8 +13,15 @@ describe("analysis finder", () => {
     const en = locale === "en";
     const { container } = render(<AnalysisFinder locale={locale} />);
     const cards = finderCards(locale);
-    expect(container.querySelectorAll(".finder-card")).toHaveLength(cards.length);
+    // 묶은 카드는 묶인 분석이 속한 상황마다 보인다(상황으로 찾았는데 그 분석이 사라지지 않게).
+    const perSituation = finderSituations(locale).map((item) => filterFinderCards(cards, { situation: item.id }).length);
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(perSituation.reduce((sum, n) => sum + n, 0));
     expect(container.querySelectorAll(".analysis-finder__group")).toHaveLength(7);
+    // 같은 파일 도구는 대표 카드 안의 목록이다: 운영 플래너 카드에 상세 3개, 주간 패널 카드에 분석 4개.
+    const planner = container.querySelector('.finder-card[data-tool-id="5-31"]');
+    expect([...planner.querySelectorAll(".finder-card__members a")].map((link) => link.getAttribute("href"))).toEqual(["/dashboard", "/tools/campaign-variance", "/tools/budget-allocation"].map((href) => `${en ? "/en" : ""}${href}`));
+    expect(container.querySelectorAll('.finder-card[data-tool-id="5-21"], .finder-card[data-tool-id="5-22"]')).toHaveLength(0);
+    expect(container.querySelector('.finder-card[data-tool-id="5-18-trend"] .finder-card__members').querySelectorAll("li")).toHaveLength(5);
     const first = container.querySelector(`.finder-card[data-tool-id="${cards[0].id}"]`);
     expect(first.querySelector("h3").textContent).toBe(cards[0].name);
     expect(first.querySelector(".finder-card__data").textContent).toContain(cards[0].source.file);
@@ -40,10 +47,10 @@ describe("analysis finder", () => {
     const budget = finderSituations("ko").find((item) => item.id === "budget");
     fireEvent.click(screen.getByRole("button", { name: new RegExp(budget.title) }));
     expect(screen.getByRole("button", { name: new RegExp(budget.title) }).getAttribute("aria-pressed")).toBe("true");
-    expect(container.querySelectorAll(".finder-card")).toHaveLength(budget.count);
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(filterFinderCards(finderCards("ko"), { situation: "budget" }).length);
     expect(window.location.search).toContain("situation=budget");
     fireEvent.click(screen.getByRole("button", { name: /전체 보기/ }));
-    expect(container.querySelectorAll(".finder-card")).toHaveLength(finderCards("ko").length);
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(finderSituations("ko").reduce((sum, item) => sum + filterFinderCards(finderCards("ko"), { situation: item.id }).length, 0));
     expect(window.location.search).not.toContain("situation=");
   });
 
@@ -79,7 +86,7 @@ describe("analysis finder", () => {
     expect(screen.getByText(/맞는 분석이 없습니다/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "검색 지우기" }));
     expect(screen.getByRole("searchbox").value).toBe("");
-    expect(container.querySelectorAll(".finder-card")).toHaveLength(finderCards("ko").length);
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(finderSituations("ko").reduce((sum, item) => sum + filterFinderCards(finderCards("ko"), { situation: item.id }).length, 0));
   });
 
   it("reports storage failures without claiming success", () => {
@@ -128,7 +135,7 @@ describe("analysis finder", () => {
     fireEvent.click(screen.getByRole("button", { name: (name) => name.includes(budget.title) }));
     expect(button.getAttribute("aria-pressed")).toBe("false");
     expect(window.location.search).not.toContain("file=");
-    expect(container.querySelectorAll(".finder-card")).toHaveLength(budget.count);
+    expect(container.querySelectorAll(".finder-card")).toHaveLength(filterFinderCards(finderCards(locale), { situation: "budget" }).length);
   });
 
   it("opens on the file type given by the address", () => {

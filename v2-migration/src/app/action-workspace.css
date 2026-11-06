@@ -276,6 +276,24 @@
     .ops-plan-controls { grid-template-columns: minmax(0,1fr); }
     .ops-mode button { white-space: normal; }
   }
+  /* 운영 플래너 흐름: 상세 도구 제목 위 한 줄과 플래너 단계의 "자세히 보기"(product-ssot §5.1). 상자 없이 열린 줄로 둔다. */
+  .ops-flow-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0 0 16px; padding: 0 0 12px; border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+  .ops-flow-nav__trail { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; color: var(--text-secondary); }
+  .ops-flow-nav__trail a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
+  .ops-flow-nav__views { display: inline-flex; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .ops-flow-nav__views li + li { border-left: 1px solid var(--border); }
+  .ops-flow-nav__views a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; background: var(--surface-container-lowest); color: var(--text-secondary); font-weight: 600; white-space: nowrap; text-decoration: none; }
+  .ops-flow-nav__views a:hover { color: var(--text-primary); }
+  .ops-flow-nav__views a[aria-current="page"] { background: color-mix(in srgb, var(--primary) 14%, var(--surface-container-lowest)); color: var(--primary); }
+  .ops-detail-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 16px 0 0; font-size: var(--fs-sm); }
+  .ops-detail-links > span { color: var(--text-muted); }
+  .ops-detail-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
+  .ops-detail-links small { flex-basis: 100%; color: var(--text-muted); font-size: var(--fs-xs); }
+  @media (max-width: 720px) {
+    .ops-flow-nav__views { width: 100%; }
+    .ops-flow-nav__views li { flex: 1 1 0; }
+    .ops-flow-nav__views a { justify-content: center; width: 100%; min-height: 44px; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .ops-contribution-track i { transition: none; }
   }

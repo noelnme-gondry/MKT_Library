@@ -993,7 +993,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       {(!queue || queue.cancelled || queue.signature !== queueSignature) && !autoStart && <button type="button" className="btn primary" onClick={startNext}>{locale === "en" ? "Analyze data" : "분석하기"}</button>}
       {isPreparingHandoff && <p role="status">{C.preparingDetails}</p>}
       {!hasSheet && conclusion}
-      <ToolIndex locale={locale} density="grid"
+      <ToolIndex locale={locale} density="grid" includeAbsorbed
         blockedCta={sampleMode ? (locale === "en" ? "Open with example data" : "예시로 열기") : null}
         blockedInfo={Object.fromEntries(Object.entries(notComputable).map(([toolId, reason]) => [toolId, { reason }]))}
         // 내 파일이면 세 칸(바로 가능 · 조금만 더 · 다른 파일 필요). 예시 작업대는 "예시로 열기"가

@@ -13493,6 +13493,15 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
 .finder-card__tool,
 .finder-card__prep { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; border: 0; background: transparent; color: var(--primary); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-decoration: none; cursor: pointer; }
 .finder-card__prep { font-weight: 400; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+/* 묶은 카드의 상세·같은 파일 분석 목록(product-ssot §5.1 "묶기"). 링크마다 질문 한 줄로 무엇을 보는지 말한다. */
+.finder-card__members { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
+.finder-card__members > p { margin: 0; color: var(--text-muted); }
+.finder-card__members ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.finder-card__members li { display: grid; grid-template-columns: minmax(7.5em, max-content) minmax(0, 1fr); gap: 0 12px; align-items: baseline; }
+.finder-card__members a { display: inline-flex; align-items: center; min-height: 32px; color: var(--primary); font-weight: 600; }
+.finder-card__members small { color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.5; }
+@media (max-width: 720px) { .finder-card__members li { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px), (pointer: coarse) { .finder-card__members a { min-height: 44px; } }
 .finder-card__same { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.7; }
 .finder-card__same > span:first-child { margin-right: 8px; color: var(--text-muted); }
 .finder-card__same a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }

@@ -285,21 +285,23 @@ export const IA = [
           "Decompose a performance shift into volume, efficiency, and mix effects with zero residual (Bennet decomposition). Free, upload a CSV to run it instantly.",
       },
       {
+        // 예산 상세 설계(5-3)의 "증액 여력" 보기로 흡수(product-ssot §4.2a). 이름은 그 보기의 제목·기록 이름으로 남는다.
         id: "5-22",
         title: "증액 여력 진단",
         titleEn: "Headroom check",
+        hidden: true,
         seoTitleEn: "Is This Campaign Saturated? Free Marginal Efficiency Diagnosis",
         seoDescriptionEn:
           "Compares marginal vs. average CPA/ROAS to tell you whether a channel or campaign is saturated or still has room to scale. Free, CSV-based.",
       },
       {
         id: "5-3",
-        title: "예산 재배분",
-        seoTitle: "목표 CPI·CPA·ROAS에 맞는 예산은? 무료 배분 시뮬레이터",
+        title: "예산 상세 설계",
+        seoTitle: "목표 CPI·CPA·ROAS에 맞는 예산 배분과 증액 여력(포화도·한계 CPA) 시뮬레이터",
         seoDescription:
           "총 예산 또는 목표 CPI·CPA·ROAS를 슬라이드하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분안을 계산합니다. CSV 업로드만으로 바로 확인하세요.",
-        titleEn: "Budget Allocation Simulator",
-        seoTitleEn: "What Budget Meets Your CPI, CPA, or ROAS Goal? Free Simulator",
+        titleEn: "Budget detail",
+        seoTitleEn: "Budget allocation and headroom (saturation, marginal CPA) for your CPI, CPA, or ROAS goal",
         seoDescriptionEn:
           "Slide a total budget or target CPI, CPA, or ROAS to calculate a recommended total budget and automatic channel allocation without exceeding observed maximum spend. Free — just upload a CSV.",
       },

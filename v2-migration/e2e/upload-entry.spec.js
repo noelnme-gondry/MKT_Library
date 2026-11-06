@@ -29,7 +29,7 @@ for (const locale of ["ko", "en"]) {
     expect(errors).toEqual([]);
   });
 
-  for (const route of ["/tools/campaign-variance", "/tools/campaign-saturation", "/tools/budget-allocation", "/content/freshness"]) {
+  for (const route of ["/tools/campaign-variance", "/tools/budget-allocation?view=headroom", "/tools/budget-allocation", "/content/freshness"]) {
   test(`empty entry has one title and no pretend summary (${locale}, ${route})`, async ({ page }) => {
     await page.goto(`${prefix}${route}`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();

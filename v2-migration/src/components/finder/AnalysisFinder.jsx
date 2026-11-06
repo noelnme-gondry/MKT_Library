@@ -6,7 +6,7 @@ import { Bookmark } from "lucide-react";
 import ResultChange from "@/components/ds/ResultChange";
 import ModalDialog from "@/components/ds/ModalDialog";
 import AnalysisDataPrep from "@/components/finder/AnalysisDataPrep";
-import { filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
+import { countFinderAnalyses, filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
 import { groupToolsByFile } from "@/lib/dataSources";
 import { localizedHref } from "@/lib/localizedHref";
 import { trackProductEvent } from "@/lib/analytics";
@@ -128,7 +128,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
     : grouped
     ? situations
       .filter((item) => situation === "all" || item.id === situation)
-      .map((item) => ({ ...item, cards: visible.filter((card) => card.situation.id === item.id) }))
+      .map((item) => ({ ...item, cards: visible.filter((card) => card.situationIds.includes(item.id)) }))
       .filter((group) => group.cards.length > 0)
     : [{ id: "flat", cards: visible }];
   const prepCard = cards.find((card) => card.id === prepId) || null;
@@ -172,12 +172,12 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
             ))}
             <li className="analysis-finder__situation-extra">
               <button type="button" aria-pressed={situation === "all" && !family} aria-controls="finder-results" onClick={() => chooseSituation("all")}>
-                <strong>{T.all}</strong><small>{T.count(cards.length)}</small>
+                <strong>{T.all}</strong><small>{T.count(countFinderAnalyses(cards))}</small>
               </button>
             </li>
             <li className="analysis-finder__situation-extra">
               <button type="button" aria-pressed={situation === "saved"} aria-controls="finder-results" onClick={() => chooseSituation(situation === "saved" ? "all" : "saved")}>
-                <Bookmark size={16} aria-hidden="true" /><strong>{T.saved}</strong><small>{T.count(savedIds.filter((id) => cards.some((card) => card.id === id)).length)}</small>
+                <Bookmark size={16} aria-hidden="true" /><strong>{T.saved}</strong><small>{T.count(countFinderAnalyses(cards, "saved", savedIds))}</small>
               </button>
             </li>
           </ul>
@@ -206,7 +206,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           <input ref={searchInput} id="finder-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={T.searchPlaceholder} aria-controls="finder-results" />
           {searching && <button type="button" className="btn" onClick={() => { setQuery(""); searchInput.current?.focus(); }}>{T.clear}</button>}
         </div>
-        <ResultChange as="p" value={visible.length} role="status" className="analysis-finder__count">{T.results(visible.length)}</ResultChange>
+        <ResultChange as="p" value={visible.length} role="status" className="analysis-finder__count">{T.results(countFinderAnalyses(visible, situation, savedIds))}</ResultChange>
       </div>
 
       <div id="finder-results" className="analysis-finder__results">
@@ -228,7 +228,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
                 return (
                   <li key={card.id} className="finder-card" data-tool-id={card.id}>
                     <div className="finder-card__head">
-                      <h3 id={`finder-card-${card.id}`}>{card.name}</h3>
+                      <h3 id={`finder-card-${group.id}-${card.id}`}>{card.name}</h3>
                       <button type="button" className="finder-card__save" aria-label={`${T.save}: ${card.name}`} aria-pressed={saved} onClick={() => setSaveError(!toggleSavedTool(card.id))}>
                         <Bookmark size={16} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
                       </button>
@@ -239,6 +239,19 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
                         <span>{card.example ? T.example : T.answer}</span>
                         {card.example || (card.outputs.length ? card.outputs.join(" · ") : card.answer)}
                       </p>
+                    )}
+                    {card.members.length > 0 && (
+                      <div className="finder-card__members">
+                        <p>{card.membersLabel}</p>
+                        <ul>
+                          {card.members.map((member) => (
+                            <li key={member.id} data-tool-id={member.id}>
+                              <Link href={localizedHref(member.href, locale)} onClick={() => track("finder_tool_clicked", { ...card, id: member.id })}>{member.name}</Link>
+                              <small>{member.question}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                     {card.source && (
                       <div className="finder-card__data">

@@ -200,7 +200,7 @@ export const MARKETING_ANALYSIS_DOMAINS = [
       pair("추가 예산을 어디에 배분할까요?", "Where should incremental budget go?"),
       pair("채널·캠페인별 지출/성과 관측과 예산 제약", "Channel/campaign spend and outcomes plus budget constraints"),
       pair("평균 효율과 추가 지출 구간의 효율을 구분합니다. 관측 범위 밖의 곡선과 예측을 보장하지 않습니다.", "Separate average efficiency from returns on extra spend. Do not guarantee extrapolated curves or forecasts."),
-      ["marginal"], ["5-22", "5-3"], ["budget-marginal-efficiency"]),
+      ["marginal"], ["5-3"], ["budget-marginal-efficiency"]),
     method("operating-decision", pair("운영 우선순위·결정 검토", "Operating priorities and decision review"),
       pair("예산·캠페인·소재 중 무엇부터 확인할까요?", "What should you review first across budgets, campaigns and creatives?"),
       pair("충분한 캠페인 이력, 목표, 제약과 과거 결정", "Adequate campaign history, targets, constraints and prior decisions"),

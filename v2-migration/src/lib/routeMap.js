@@ -27,7 +27,6 @@ export const ROUTES = [
   { id: "5-2", slug: "/dashboard", component: "Dashboard" },
   { id: "5-3", slug: "/tools/budget-allocation", component: "BudgetAllocation" },
   { id: "5-21", slug: "/tools/campaign-variance", component: "CampaignPvm" },
-  { id: "5-22", slug: "/tools/campaign-saturation", component: "MarketingEfficiency" },
   // 5-6(소재 분석)은 9-6으로 통합됨(중복 제거). /tools/creative-analysis는
   // next.config.mjs redirects()로 /content/freshness(9-6)로 301 리다이렉트.
   { id: "5-4", slug: "/tools/experiment-analysis", component: "AbTestHoldout" },
@@ -93,11 +92,47 @@ export const ROUTES = [
   // ── Legacy id aliases (redirect-only; share 5-4's slug; excluded from sitemap) ──
   { id: "5-7", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
   { id: "5-15", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
+  // 5-22(증액 여력)는 예산 상세 설계(5-3)의 보기로 흡수됐다(2026-11-06, product-ssot §4.2a).
+  // 내부 id는 엔진·레시피·저장한 결정 기록이 계속 쓰므로 남기고, 주소는 5-3의 headroom 보기로 푼다.
+  // 옛 /tools/campaign-saturation은 next.config.mjs redirects()가 영구 이동시킨다.
+  { id: "5-22", slug: "/tools/budget-allocation", view: "headroom", component: "MarketingEfficiency", legacy: true },
 ];
 
 // id -> slug (used by nav <Link> + router.push). Legacy ids resolve to the
 // shared slug, which is fine for forward navigation.
-export const idToSlug = Object.fromEntries(ROUTES.map((r) => [r.id, r.slug]));
+export const idToSlug = Object.fromEntries(ROUTES.map((r) => [r.id, r.view ? `${r.slug}?view=${r.view}` : r.slug]));
+
+// 다른 도구의 보기로 흡수된 도구(product-ssot §4.2a). 목록·도구 수에는 없지만 내부 id·저장한 기록·연결 이름이 남는다.
+export function absorbedToolIds() {
+  return ROUTES.filter((route) => route.legacy && route.view).map((route) => route.id);
+}
+
+/** 그 분석을 담은 페이지의 도구 id. 흡수된 보기는 담은 페이지(5-22 → 5-3), 나머지는 자신. */
+export function hostToolId(id) {
+  const route = ROUTES.find((item) => item.id === id && item.legacy && item.view);
+  return route ? slugToId[route.slug.replace(/^\//, "")] : id;
+}
+
+/** 흡수된 보기인가(5-22 → 5-3?view=headroom). 그 화면·엔진·기록은 살아 있다. */
+export function isAbsorbedRoute(routeOrId) {
+  const route = typeof routeOrId === "string" ? ROUTES.find((item) => item.id === routeOrId && item.legacy && item.view) : routeOrId;
+  return Boolean(route && route.legacy && route.view);
+}
+
+/**
+ * 실행·기록할 수 있는 분석 id = 발행 도구 + 다른 도구의 보기로 흡수된 분석.
+ * 목록·도구 수·사이트맵은 publishedToolIds()를 쓰고, 분석 엔진·결과 작업대·레시피·결정 목표처럼
+ * "이 분석을 돌리거나 그 기록을 읽는가"를 묻는 곳은 이 함수를 쓴다.
+ */
+export function analysisToolIds() {
+  return [...publishedToolIds(), ...absorbedToolIds()];
+}
+
+// 예산 상세 설계(5-3)의 보기. 주소의 ?view=를 읽어 화면을 고른다(PageClient KO·EN 공용).
+export const BUDGET_VIEWS = ["allocation", "headroom"];
+export function resolveBudgetView(value) {
+  return value === "headroom" ? "headroom" : "allocation";
+}
 
 // slug path (no leading slash) -> id. Built from PRIMARY entries only so a
 // slug always resolves back to its canonical/primary id (5-4, never 5-7/5-15).
@@ -162,7 +197,7 @@ export function isRouteIndexable(routeOrId) {
 export const EN_READY_TOOL_IDS = new Set([
   ...ADVANCED_IDS,
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
-  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-30", "5-31",
+  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-30", "5-31",
   // 구 5-18 안에 있던 다섯 분석. 각각 독립 도구다.
   "5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast",
 ]);
@@ -184,6 +219,9 @@ export const EN_READY_GUIDE_IDS = new Set([
 ]);
 
 export function hasEnVersion(id) {
+  // 흡수된 보기는 그 보기를 담은 페이지의 EN 여부를 따른다(5-22 → 5-3).
+  const absorbed = ROUTES.find((route) => route.id === id && route.legacy && route.view);
+  if (absorbed) return hasEnVersion(slugToId[absorbed.slug.replace(/^\//, "")]);
   // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 EN_READY_GUIDE_IDS로 게이트.
   return id === "home" || id === "guide-index" || id === "start-gate" || id === "storage" || id === "account" || id === "projects" || id === "subscription" || id === "dochi-result" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
 }

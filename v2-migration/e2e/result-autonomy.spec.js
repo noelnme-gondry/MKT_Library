@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 for (const locale of ["ko", "en"]) {
-  for (const tool of ["campaign-variance", "campaign-saturation"]) {
+  for (const tool of ["campaign-variance", "budget-allocation?view=headroom"]) {
     test(`recipe header inner alignment ${tool} (${locale})`, async ({ page }) => {
-      await page.goto(`${locale === "en" ? "/en" : ""}/tools/${tool}?example=1`);
+      await page.goto(`${locale === "en" ? "/en" : ""}/tools/${tool}${tool.includes("?") ? "&" : "?"}example=1`);
       const header = page.locator(".tool-instrument-header");
       await expect(header.getByRole("combobox")).toBeVisible();
       const measure = () => header.evaluate(element => {
@@ -74,10 +74,10 @@ test.describe("direct periods in light mode", () => {
     await page.addInitScript(() => localStorage.setItem("mkt-library-theme", "light"));
   });
   for (const locale of ["ko", "en"]) {
-    for (const tool of ["campaign-variance", "campaign-saturation"]) {
+    for (const tool of ["campaign-variance", "budget-allocation?view=headroom"]) {
       test(`${tool} date dialog contrast and apply (${locale})`, async ({ page }) => {
         const en = locale === "en";
-        await page.goto(`${en ? "/en" : ""}/tools/${tool}?example=1`);
+        await page.goto(`${en ? "/en" : ""}/tools/${tool}${tool.includes("?") ? "&" : "?"}example=1`);
         await expect(page.locator("body")).toHaveClass(/light-mode/);
         await expect(page.locator(".result-action-card").first()).toBeVisible();
         // 결과가 나오면 기간은 맥락 한 줄 + 조건 바꾸기 창 안에 있다(product-ssot §1.1c 결정 4).
@@ -95,7 +95,7 @@ test.describe("direct periods in light mode", () => {
         await dialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
         await expect(trigger.locator("time").first()).toHaveAttribute("datetime", nextDay);
         await expect(page.locator(".result-action-card").first()).toBeVisible();
-        if (tool === "campaign-saturation") {
+        if (tool.startsWith("budget-allocation")) {
           await expect(page.locator("#s-scale-map")).toBeVisible();
           await expect(page.locator("#s-sat-curve canvas")).toBeVisible();
           await expect(page.getByRole("button", { name: en ? /^Comparison period/ : /^비교 기간/ })).toHaveCount(0);
@@ -189,7 +189,7 @@ for (const locale of ["ko", "en"]) {
     const entitlement = { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 };
     await page.route("**/api/account/session", (route) => route.fulfill({ json: { enabled: true, account: { id: "recipe-owner", email: "recipe@example.com" }, entitlement } }));
     await page.route("**/api/payments/access", (route) => route.fulfill({ json: { entitlement } }));
-    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    await page.goto(`${en ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
     const result = page.locator("#s-sat-summary .result-action-card");
     await expect(result).toBeVisible();
     const input = page.getByRole("combobox", { name: en ? "Analysis setup" : "분석 설정" });
@@ -297,7 +297,7 @@ for (const locale of ["ko", "en"]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 
     // 나머지 도구의 모달·키보드 복귀 계약도 계속 검증한다.
-    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    await page.goto(`${en ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
     const trigger = page.locator(".tool-next-step-panel").getByRole("button", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
@@ -317,7 +317,7 @@ for (const locale of ["ko", "en"]) {
 for (const locale of ["ko", "en"]) {
   test(`saturation evidence order and curve selection (${locale})`, async ({ page }) => {
     const en = locale === "en";
-    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    await page.goto(`${en ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
     await expect(page.locator("#s-sat-summary .result-action-card")).toBeVisible();
     await expect(page.locator(".analysis-setup__context")).toHaveCount(0);
     // 결과가 나오면 파일·매핑 요약은 맥락 줄이 말하고, 바꾸는 곳은 조건 바꾸기 창이다(product-ssot §1.1c).
@@ -357,7 +357,7 @@ test.describe("analysis surfaces in light mode", () => {
   });
   for (const locale of ["ko", "en"]) {
     test(`saturation content surfaces are white against the page (${locale})`, async ({ page }) => {
-      await page.goto(`${locale === "en" ? "/en" : ""}/tools/campaign-saturation?example=1`);
+      await page.goto(`${locale === "en" ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
       await expect(page.locator("#s-sat-summary .result-action-card")).toBeVisible();
       const surfaces = page.locator(".saturation-surface, .saturation-data, .analysis-setup--actions, .tool-next-step-panel");
       // User contract: a white content surface groups heading, evidence and actions;
@@ -381,7 +381,7 @@ test.describe("analysis surfaces in light mode", () => {
 for (const locale of ["ko", "en"]) {
   test(`saturation point labels follow markers and retain bottom axes (${locale})`, async ({ page }) => {
     const en = locale === "en";
-    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    await page.goto(`${en ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
     const rows = page.locator(".marginal-gap__row");
     await expect(rows).toHaveCount(4);
     for (const metric of ["cpi", "roas"]) {
@@ -451,7 +451,7 @@ for (const locale of ["ko", "en"]) {
         return fillText.call(this, text, x, y, ...args);
       };
     });
-    await page.goto(`${locale === "en" ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    await page.goto(`${locale === "en" ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
     const canvas = page.locator(".scale-decision-map__canvas canvas");
     await expect(canvas).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.__mapText.filter(t => t.text.startsWith("₩")).length)).toBeGreaterThan(1);

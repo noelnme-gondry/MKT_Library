@@ -1,5 +1,5 @@
 import { getToolTemplateFields, hasToolTemplate, ROLE_MAPPING_TEMPLATE_FIELD_META, ROLE_MAPPING_TEMPLATE_REQUIRED, ROLE_MAPPING_TEMPLATE_ONE_OF, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
-import { idToSlug, isRoutePublished, ROUTES } from "@/lib/routeMap";
+import { hostToolId, idToSlug, isRoutePublished, ROUTES } from "@/lib/routeMap";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 
 // 도구별 템플릿 상세 페이지(`/templates/<slug>`)의 SSOT.
@@ -31,6 +31,11 @@ export const TEMPLATE_PAGES = ROUTES
   .filter((page) => page.slug);
 
 export const TEMPLATE_PAGE_SLUGS = TEMPLATE_PAGES.map((page) => page.slug);
+
+/** 도구의 템플릿 페이지. 흡수된 보기(5-22)는 담은 페이지(5-3)와 같은 파일이라 그 템플릿을 쓴다. */
+export function templatePageForTool(toolId) {
+  return TEMPLATE_PAGES.find((page) => page.toolId === toolId) || TEMPLATE_PAGES.find((page) => page.toolId === hostToolId(toolId)) || null;
+}
 
 export function getTemplatePage(slug, locale = "ko") {
   const page = TEMPLATE_PAGES.find((item) => item.slug === slug);

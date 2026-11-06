@@ -11,6 +11,7 @@ import ResultChange from "@/components/ds/ResultChange";
 import { fmtNum } from "@/utils/format";
 import { periodDays } from "@/lib/analysisPeriod";
 import { operationsPlanRange } from "@/lib/operations/operationsScenario";
+import OperationsDetailLinks from "./OperationsDetailLinks";
 
 export default function OperationsPlanBoard({ brief, plan, options, onChange, money, pct, outcomeName, metricName, locale, holdMessages, selected, onSelect, busy, metric, currency, isDemo, signals = [], today, sourceThrough }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
@@ -96,5 +97,6 @@ export default function OperationsPlanBoard({ brief, plan, options, onChange, mo
         {saving && <OperationsPlanSaveDialog {...{ brief, plan, forecast, metric, currency, locale, isDemo, today, sourceThrough, money }} names={new Map(rows.map(row => [row.id, row.name]))} onClose={() => setSaving(false)} />}
       </section>
     </>}
+    <OperationsDetailLinks step="budget" locale={locale} />
   </section>;
 }

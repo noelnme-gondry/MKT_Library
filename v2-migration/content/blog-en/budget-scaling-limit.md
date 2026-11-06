@@ -54,7 +54,7 @@ Saturation index = marginal CPA ÷ average CPA
 
 Lower marginal ROAS relative to average ROAS signals saturation. The tool defines its ROAS saturation index as **average ROAS ÷ marginal ROAS**, keeping the same direction as the CPA index: higher means more saturated.
 
-[Campaign saturation analysis](/tools/campaign-saturation) computes this index per channel from a CSV with date, channel, cost, and outcome.
+[Headroom check](/tools/budget-allocation?view=headroom) computes this index per channel from a CSV with date, channel, cost, and outcome.
 
 <!-- CONTENT_ACTION -->
 

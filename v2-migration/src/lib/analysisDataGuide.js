@@ -4,7 +4,7 @@ import { csvBody } from "@/utils/download";
 import { toolIndexByStage } from "@/lib/toolIndex";
 import { dataSourceForTool } from "@/lib/dataSources";
 import { getToolGuide } from "@/utils/toolGuide";
-import { getTemplatePage, TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { getTemplatePage, TEMPLATE_PAGES, templatePageForTool } from "@/lib/templateCatalog";
 
 export const INCREMENTALITY_METHODS = [
   { id: "suppression", ko: "광고 노출군과 차단군 비교", en: "Exposed vs holdout groups" },
@@ -34,7 +34,7 @@ export function analysisDataDetail(toolId, locale = "ko", method = "suppression"
   const guideId = isIncrementality ? `${toolId}:${safeMethod}` : toolId === "9-6" ? "5-6" : toolId;
   const guide = getToolGuide(guideId, locale);
   if (!guide) return null;
-  const template = TEMPLATE_PAGES.find(item => item.toolId === toolId);
+  const template = templatePageForTool(toolId);
   const templatePage = template ? getTemplatePage(template.slug, locale) : null;
   const parsed = guide.example ? Papa.parse(guide.example.trim(), { header: true, skipEmptyLines: true }) : null;
   const headers = parsed?.meta.fields || [];

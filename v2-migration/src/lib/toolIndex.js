@@ -1,4 +1,4 @@
-import { idToPath, publishedToolIds } from "@/lib/routeMap";
+import { absorbedToolIds, analysisToolIds, hostToolId, idToPath, publishedToolIds } from "@/lib/routeMap";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { TOOL_REQUIRED_FIELDS, STANDARD_FIELDS } from "@/utils/csvConstants";
@@ -25,6 +25,8 @@ import { finderPlainCopy } from "@/lib/finder/finderPlainCopy";
  * ============================================================ */
 
 const PUBLISHED_TOOL_IDS = publishedToolIds();
+// 흡수된 보기(5-22 → 5-3 증액 여력)도 항목은 만든다 — 그 화면 제목·기록 이름·링크가 읽는다. 목록은 TOOL_JOURNEY에서 오므로 늘지 않는다.
+const ANALYSIS_TOOL_IDS = analysisToolIds();
 
 // 필요한 컬럼을 사람이 읽는 라벨로. oneOf는 "둘 중 하나"라 슬래시로 잇는다.
 const MAX_NEEDS = 4;
@@ -72,7 +74,7 @@ function requiredLabels(toolId, locale = "ko") {
 
 /** 도구 하나의 인덱스 항목. 없는 도구는 null(빈 항목을 만들지 않는다). */
 export function toolIndexEntry(toolId, locale = "ko") {
-  if (!PUBLISHED_TOOL_IDS.includes(toolId)) return null;
+  if (!ANALYSIS_TOOL_IDS.includes(toolId)) return null;
   const meta = findMeta(toolId);
   const content = getToolSearchContent(toolId, locale) || {};
   const plain = finderPlainCopy(toolId, locale);
@@ -113,8 +115,13 @@ export function toolDisplayTitle(toolId, locale = "ko", searchName = "") {
   return { name, alias };
 }
 
-/** 상황(TOOL_JOURNEY)별로 묶은 전체 인덱스. */
-export function toolIndexByStage(locale = "ko") {
+/**
+ * 상황(TOOL_JOURNEY)별로 묶은 전체 인덱스.
+ * includeAbsorbed: 결과 작업대처럼 "이 파일로 되는 분석"을 보여 줄 때는 다른 도구의 보기로 흡수된 분석(5-22 증액 여력)도
+ * 그 도구 바로 뒤에 둔다 — 도구 목록이 아니라 분석 목록이기 때문이다(product-ssot §4.2a). 도구 목록·홈은 기본값(제외)을 쓴다.
+ */
+export function toolIndexByStage(locale = "ko", { includeAbsorbed = false } = {}) {
+  const withAbsorbed = (ids) => includeAbsorbed ? ids.flatMap((id) => [id, ...absorbedToolIds().filter((absorbed) => hostToolId(absorbed) === id)]) : ids;
   return TOOL_JOURNEY.map((stage) => ({
     id: stage.id,
     homeQuestion: stage.homeQuestion?.[locale] || stage.title[locale],
@@ -122,7 +129,7 @@ export function toolIndexByStage(locale = "ko") {
     label: stage.label?.[locale] || stage.label?.ko || "",
     title: stage.title[locale] || stage.title.ko,
     description: stage.description[locale] || stage.description.ko,
-    tools: stage.tools.map((toolId) => toolIndexEntry(toolId, locale)).filter(Boolean),
+    tools: withAbsorbed(stage.tools).map((toolId) => toolIndexEntry(toolId, locale)).filter(Boolean),
   })).filter((stage) => stage.tools.length > 0);
 }
 

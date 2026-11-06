@@ -57,7 +57,7 @@
 | 한국어 표기 | **Growth Opt Playbook**(원문 유지) | "그로스 최적화 플레이북"은 **설명 문구로만** 사용. 제품명 자리에 쓰지 않는다 |
 | 공식 도메인 | `https://growthoptplaybook.com` | `routeMap.js` `SITE_URL` |
 | 제품 범주 | 앱·웹 퍼포먼스 마케팅용 **브라우저 기반 분석·의사결정 지원 도구** | — |
-| 도구 수 표기 | **"34개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-32~5-43 고객·실험·영업·상품 분석이 추가됐다. 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
+| 도구 수 표기 | **"33개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-32~5-43 고객·실험·영업·상품 분석이 추가됐다. 증액 여력(5-22)은 예산 상세 설계(5-3)의 보기로 흡수돼 세지 않는다(§4.2a). 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
 
 **도구 수를 손으로 세지 말 것.** 화면 카피는 `PUBLISHED_TOOL_IDS`(`lib/toolIndex.js`)에서 파생한다(현재 `LandingPage.jsx`의 `T.questionDeck(PUBLISHED_TOOL_IDS.length)`). `brandFacts.getPublishedToolCount()`는 같은 수를 계산하는 두 번째 경로이므로 이제 그것을 재노출한다 — 세는 곳은 하나다. 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
@@ -250,7 +250,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 **PR #696으로 관계가 뒤집혔다.** 이전에는 5-18(마케팅 반응 분석)이 정식 도구이고 그 아래 다섯 분석이 subtool이었다. 지금은 다섯 분석이 각각 정식 도구이고 **5-18 허브가 subtool**이다 — 사용자가 찾는 단위가 "마케팅 반응 분석"이 아니라 "잠식 진단"·"MMM 기여도"이기 때문이다. 내부 id(`5-18-*`)는 §4.1 규칙대로 불변이다.
 
-### 4.2 공개 분석 도구 34개
+### 4.2 공개 분석 도구 33개
 
 멀티터치 맵은 설치 raw의 관측된 클릭 contributor와 귀속 매체의 중복을 보여준다. 앱×AppsFlyer ID의 파일 내 가장 이른 설치를 기준으로 하며, 누락·제한된 contributor는 접촉이 없었다는 증거가 아니다. 최대 3개 contributor의 경로이며 전체 접촉이나 인과 기여율을 복원하지 않는다. CTIT는 유효한 귀속 클릭 시각에서 설치까지, probabilistic 비교는 같은 설치 분모의 contributor 포함 범위만 바꾼다. / The multi-touch map describes observed click contributors and the attributed install source. It uses the earliest installation per app × AppsFlyer ID in the file. Missing or restricted contributors are not evidence of no contact. Up to three contributors do not reconstruct a complete journey or causal credit. CTIT uses valid attributed-click timestamps; probabilistic comparisons retain the same installation denominator.
 
@@ -259,9 +259,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | ID | 도구 | URL |
 |---|---|---|
 | 5-2 | 마케팅 운영 대시보드 | `/dashboard` |
-| 5-3 | 예산 배분 시뮬레이터 | `/tools/budget-allocation` |
+| 5-3 | 예산 상세 설계 (배분 설계·증액 여력) | `/tools/budget-allocation` |
 | 5-21 | 캠페인 성과 변동 분석 | `/tools/campaign-variance` |
-| 5-22 | 캠페인 포화도 진단 | `/tools/campaign-saturation` |
 | 5-4 | A/B 테스트 분석 | `/tools/experiment-analysis` |
 | 5-18-paid-organic | Paid·Organic 변화맵 | `/tools/paid-organic-trend` |
 | 5-18-trend | 마케팅 추세 분석 | `/tools/marketing-trend` |
@@ -292,6 +291,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 5-43 | 트래픽 품질 | `/tools/traffic-quality` |
 | 9-1 | 콘텐츠 요소 분석 | `/content/element-analysis` |
 | 9-6 | 광고 소재 피로도 분석 | `/content/freshness` |
+
+### 4.2a 다른 도구의 보기로 흡수한 도구 (5-22, 2026-11-06)
+
+| ID | 옛 주소 | 지금 |
+|---|---|---|
+| 5-22 | `/tools/campaign-saturation` | 예산 상세 설계(5-3)의 **증액 여력 / Headroom** 보기(`/tools/budget-allocation?view=headroom`). 옛 주소는 KO·EN 모두 영구 이동(301)한다. 같은 효율 CSV·같은 곡선 엔진을 쓰는 예산 결정의 일부라 별도 도구로 두지 않는다(2026-11-06 사용자 결정 "한 번에 진행"). 내부 id `5-22`는 §4.1대로 불변이며 분석 엔진·레시피·저장한 결정 기록·결과 작업대 분석 이름이 계속 쓴다 — 옛 기록은 그대로 읽힌다. 도구 목록·사이트맵·도구 수에서는 빠진다. / Headroom is now a view of Budget detail (5-3). The old URL permanently redirects in KO and EN. The internal id stays for engines, recipes, saved records and workbench analyses; it leaves lists, the sitemap and tool counts. |
 
 ### 4.3 목록에서 내린 허브 (5-18)
 
@@ -332,6 +337,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 분석 전에는 데이터 준비를 펼친다. 결과가 있으면 적용 기간·파일/가상 예시·원본 행 수·지표·원본 통화·대상을 요약하고 업로드·매핑·필터·기간 설정은 기본 접힌 `분석 조건 / Analysis settings`에서 바꾼다. 결과는 `지금 할 일 / Actions & reviews`, `전체 변화 이력 / Full change history`, `근거 살펴보기 / Explore evidence`로 묶는다. 첫 화면은 액션과 다음 검토이며 차트·전체 표·단계별 지표는 근거 보기에서 보존한다. 저장 설정 적용·검토 알림과 실제 분석 게이트는 유지한다. / Keep data preparation open before analysis. With results, summarize periods, file/sample origin, source rows, metric, source currency and scope; edit data, mappings, filters and periods in collapsed Analysis settings. Organize results into Actions & reviews, Full change history and Explore evidence. Prioritize actions and next reviews; retain charts, complete tables and stage metrics in the evidence view. Retain saved-setup notices and the real analysis gate.
 
 - `/tools/operations-planner`의 **운영 플래너 / Operations planner**는 독립 도구다. 홈 첫 화면의 내 데이터·예시 버튼에서 직접 연결하며 `/start`의 분석 목록에도 포함한다. 공용 셸·효율 CSV·기간·필터·지표·통화를 재사용한다. 전체 이력의 변화 확인 → 예산·소재 액션 결정 → 실제 실행 기록 → 전후 관측 → 후속 액션으로 이어진다. 동일 예산의 배분·장기 실측 추세·캠페인별 단가·단계/소재 분해·소재별 비용/성과와 상세 표는 근거 보기에 보존한다. / Operations planner is a standalone tool linked from the homepage’s data and example actions and listed in Start. Reuse the shared shell, efficiency data, periods, filters, metric and source currency. Connect full-history changes to budget/creative decisions, actual execution, before/after observations and follow-up actions. Retain same-budget allocation, observed trends, campaign costs, decompositions, creative outcomes and detailed tables in the evidence view.
+- **운영 플래너는 광고 운영의 출발점이다**(2026-11-06 사용자 결정). 같은 광고 성과 파일을 쓰는 도구는 플래너 단계의 상세다: ① 무엇이 바뀌었나 → 성과 대시보드(주간 성과 점검 5-2)·성과 변동 원인(5-21) ② 예산 → 예산 상세 설계(5-3: 배분 설계·증액 여력) ③ 소재 → 소재 피로도(9-6, 별도 소재 파일). 플래너의 각 단계는 해당 상세 도구로 가는 `자세히 보기` 링크를 가지며, 같은 효율 CSV·공용 필터를 그대로 쓴다(9-6은 같은 파일을 소재 분석용으로 넘기고, 이미 올린 소재 파일이 있으면 덮지 않는다). 상세 도구는 제목 위 한 줄로 `운영 플래너 › 단계 상세`를 말하고 플래너로 돌아가는 링크를 둔다(예산 상세 설계는 같은 줄에서 `예산 배분 / 증액 여력` 보기를 고른다). 프로젝트 저장(Pro)은 이 줄에 따로 적지 않는다 — 조건은 각 결과의 저장 행동 옆에 있다. 플래너의 예산 상세 링크 옆에는 예산 상세 설계가 국가·OS 계층과 요일까지 반영해 금액이 다를 수 있다고 적는다. 링크 이름은 도구 목록·화면 제목과 같은 레지스트리 이름이다. 검토 화면은 지금처럼 플래너 실행·검토 목록과 결정 검토함으로 따로 둔다. 분석 찾기는 같은 파일을 쓰는 도구를 한 카드로 묶는다: 광고 성과 파일 → 운영 플래너 카드(상세 3개), 주간 채널 패널 → 한 카드(분석 5개). / The operations planner is the starting point. Tools sharing the same ad-performance file are step details: changes → performance dashboard (5-2) and change drivers (5-21); budget → budget detail (5-3, allocation and headroom); creatives → creative fatigue (9-6, separate creative file). Each step links to its detail tool with the same efficiency data and filters (9-6 receives the same file prepared for creative analysis without overwriting an existing creative upload). Detail tools show a one-line planner context with a link back (Budget detail also switches between its Allocation and Headroom views there); the Pro save condition stays beside each result's save action. The planner's budget link notes that Budget detail also models country/OS levels and weekdays, so amounts can differ. Link names match the registry names used in lists and page titles. Review surfaces stay separate. The finder groups tools that share a file into one card.
 - 예산·캠페인·소재의 검토 후보는 운영 액션 입력으로 연결한다. 계획과 실제 실행을 구분하고 확인한 예산·소재·실행일·검토 조건을 기존 결정 저장 경로에 보존한다. 모형 예측을 기준 실적이나 설정 예산으로 저장하지 않는다. 새 구조화 기록은 운영 플래너에서 저장한 대상·통화·성과 기준·실행일의 완전한 전후 관측을 대조한다. 소재 액션의 관측도 소속 캠페인 범위이며 소재의 인과효과가 아니다. 대상 조건 없는 이전 기록은 자동 대조하지 않는다. 주간 리뷰의 원본 도구 링크는 운영 플래너로 이어진다. 예시는 미리보기만 제공하며 저장 권한·세션/기기 보관은 기존 제품 계약을 따른다. / Review candidates open the operating action editor. Separate planned and executed states and persist confirmed budgets, creatives, execution dates and review criteria through the existing decision-saving flow. Do not save model forecasts as observed baselines or configured budgets. The planner compares complete before/after observations for the saved scope, currency, outcome and execution date. Creative actions also use their campaign scope; this is not a causal creative effect. Older records without scope are not automatically matched. Weekly review links back to the planner. Samples provide previews only; existing save permissions and retention contracts apply.
 - 개선치는 같은 이력 모형으로 계산한 유지안과 조정안의 조건부 예측 차이다. 최근 관측 단가와 모형 예측 단가를 구분하고, 모든 집행 대상에 대해 일별 관측·적합도·관측/안전 지출 범위가 확인될 때만 전체 개선치를 표시한다. 주간 집계·결측·성과 0·국가 혼합·낮은 적합도는 사유와 함께 보류한다. / Improvements compare conditional maintenance and revised predictions from the same historical models. Separate observed and predicted unit costs; show portfolio predictions only when daily coverage, model fit and safe observed spend ranges are verified for every active entity. Withhold weekly/incomplete data, zero outcomes, mixed countries and insufficient fit with reasons.
 - 운영 플래너의 `지표와 입력 근거 / Metrics and input evidence`는 현재 분석 기간·공용 필터·설치/가입 기준을 사용한다. 비용·성과·노출·클릭으로 계산 가능한 기존 지표만 연결하며, 지표를 선택하면 실제 원본 컬럼·합계·결측/음수/매핑 충돌·분모 0 사유를 확인한다. 누락을 0으로 대체하거나 매출·마진·소재 이미지를 생성하지 않는다. 매핑 수정은 기존 분석 조건으로 연결하며 결과 게이트를 유지한다. / Metrics and input evidence uses the current period, shared filters and outcome basis. Connect existing metrics from spend, outcomes, impressions and clicks; selecting a metric reveals source columns, totals and unavailable reasons, including missing/negative values, mapping conflicts and zero denominators. Never fill missing data with zero or invent revenue, margins or media. Mapping edits use existing analysis settings and retain the analysis gate.

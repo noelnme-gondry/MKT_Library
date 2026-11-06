@@ -72,7 +72,7 @@ The following table helps choose an analysis for step four. Then use the [market
 |---|---|---|---|
 | Daily spend and conversions | Where is performance moving? | [Operations dashboard](/dashboard) | Narrow the channel and period |
 | Campaign results before and after | Why did CPA or ROAS change? | [Performance variance](/tools/campaign-variance) | Separate volume, efficiency, and mix |
-| Daily channel spend at several levels | How far can we scale? | [Saturation diagnosis](/tools/campaign-saturation) | [Budget allocation](/tools/budget-allocation) |
+| Daily channel spend at several levels | How far can we scale? | [Headroom check](/tools/budget-allocation?view=headroom) | [Budget allocation](/tools/budget-allocation) |
 | Control and test aggregates | Which variant won? | [A/B experiment analysis](/tools/experiment-analysis) | Apply and measure again |
 | Holdout market, period, or control | Did ads create net lift? | [Incrementality analysis](/tools/incrementality) | Budget from incremental value |
 | 52+ weekly observations by channel | What are the long-run responses? | [VIF diagnosis](/tools/vif-multicollinearity) | MMM after collinearity checks |

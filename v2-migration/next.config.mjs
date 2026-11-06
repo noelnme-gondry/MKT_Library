@@ -70,6 +70,20 @@ const nextConfig = {
         destination: "/en/content/freshness",
         permanent: true,
       },
+      // 증액 여력(5-22)은 예산 상세 설계(5-3)의 보기로 흡수됐다(product-ssot §4.2a).
+      {
+        source: "/tools/campaign-saturation",
+        destination: "/tools/budget-allocation?view=headroom",
+        permanent: true,
+      },
+      {
+        source: "/en/tools/campaign-saturation",
+        destination: "/en/tools/budget-allocation?view=headroom",
+        permanent: true,
+      },
+      // 같은 광고 성과 파일이라 템플릿도 예산 상세 설계(5-3)의 것 하나다.
+      { source: "/templates/campaign-saturation", destination: "/templates/budget-allocation", permanent: true },
+      { source: "/en/templates/campaign-saturation", destination: "/en/templates/budget-allocation", permanent: true },
       ...budgetRedirects,
       ...diagnosisRedirects,
       ...pillarRedirects,

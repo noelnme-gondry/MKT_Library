@@ -99,12 +99,12 @@ export const ROUTE_SEO = {
   },
   "5-3": {
     ko: {
-      title: "예산 배분 시뮬레이터 | 목표 CPI·CPA·ROAS",
-      description: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분을 계산합니다.",
+      title: "예산 배분·증액 여력 시뮬레이터 | 목표 CPI·CPA·ROAS",
+      description: "목표 CPI·CPA·ROAS나 총예산으로 관측 지출 안의 배분을 계산하고, 한계 CPA로 더 늘릴 수 있는 채널을 확인합니다.",
     },
     en: {
-      title: "Budget Allocation for CPI, CPA & ROAS",
-      description: "Set a total budget or target CPI, CPA, or ROAS to calculate a recommended budget and automatic channel allocation without exceeding observed maximum spend.",
+      title: "Budget Allocation & Headroom for CPI, CPA & ROAS",
+      description: "Set a total budget or target CPI, CPA, or ROAS to allocate within observed spend, and compare marginal with average CPA to see which channels can still scale.",
     },
   },
   "5-4": {
