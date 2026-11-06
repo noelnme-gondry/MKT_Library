@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
-import { finderCards, finderSituations } from "../src/lib/finder/analysisFinder";
+import { filterFinderCards, finderCards, finderSituations } from "../src/lib/finder/analysisFinder";
 import { measureDesignRules } from "./support/designRules";
 
 // 분석 찾기(/start) — 홈 목록·내 데이터로 시작·분석 방법 둘러보기·/data-guide를 합친 화면(product-ssot §1.1c).
@@ -9,7 +9,8 @@ import { measureDesignRules } from "./support/designRules";
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
   const budget = finderSituations(locale).find((item) => item.id === "budget");
-  const allocation = finderCards(locale).find((card) => card.id === "5-3");
+  // 예산 상세 설계(5-3)는 같은 광고 성과 파일을 쓰는 운영 플래너 카드의 상세로 묶였다(product-ssot §5.1).
+  const allocation = finderCards(locale).find((card) => card.members.some((member) => member.id === "5-3"));
 
   test(`home situation to preparation, CSV and analysis (${locale})`, async ({ page }) => {
     const events = [];
@@ -30,18 +31,19 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(`${prefix}/start?situation=budget#finder`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "Find an analysis" : "분석 찾기");
     // 그 상황의 분석만, 결론 예시·필요한 파일과 함께.
-    await expect(page.locator(".finder-card")).toHaveCount(budget.count);
+    await expect(page.locator(".finder-card")).toHaveCount(filterFinderCards(finderCards(locale), { situation: "budget" }).length);
     await expect(page.getByRole("button", { name: new RegExp(budget.title) })).toHaveAttribute("aria-pressed", "true");
     // 상황 고르기로 왔으면 카드가 첫 화면 안에서 시작한다.
     const finderTop = await page.locator("#finder").evaluate((node) => node.getBoundingClientRect().top);
     expect(finderTop).toBeLessThan(200);
-    const card = page.locator('.finder-card[data-tool-id="5-3"]');
+    const card = page.locator(`.finder-card[data-tool-id="${allocation.id}"]`);
     await expect(card.locator("h3")).toHaveText(allocation.name);
+    await expect(card.locator('.finder-card__members [data-tool-id="5-3"] a')).toHaveAttribute("href", `${prefix}/tools/budget-allocation`);
     await expect(card.locator(".finder-card__data")).toContainText(allocation.source.file);
     await card.getByRole("button", { name: en ? "How to prepare" : "준비 방법" }).click();
     const dialog = page.getByRole("dialog", { name: en ? `How to prepare · ${allocation.name}` : `준비 방법 · ${allocation.name}` });
-    await expect(dialog.locator(".analysis-data-guide__preparation")).toContainText(en ? "day" : "하루");
-    await expect(dialog.locator(".analysis-data-guide__checks")).toContainText(en ? /Spend needs to vary/ : "지출 변동");
+    await expect(dialog.locator(".analysis-data-guide__preparation")).toContainText(en ? "date" : "날짜");
+    await expect(dialog.locator(".analysis-data-guide__checks")).toContainText(en ? "daily history" : "일별 이력");
     const pending = page.waitForEvent("download");
     await dialog.getByRole("button", { name: en ? "Download blank CSV" : "빈 CSV 양식 받기" }).click();
     const csv = await readFile(await (await pending).path(), "utf8");
@@ -49,11 +51,11 @@ for (const locale of ["ko", "en"]) {
     expect(csv).toContain("cost");
     expect(csv).toContain("installs");
     expect(csv.trim().split(/\r?\n/)).toHaveLength(1);
-    await expect(dialog.locator(`a[href="${prefix}/templates/budget-allocation"]`)).toBeVisible();
+    await expect(dialog.locator(`a[href="${prefix}/templates/operations-planner"]`)).toBeVisible();
     for (const name of ["landing_situation_clicked", "finder_prep_opened", "data_guide_template_downloaded"]) await expect.poll(() => events.some((row) => row[1] === name), { message: name }).toBe(true);
     expect(JSON.stringify(events)).not.toMatch(/file_name|raw_value|fileName/);
     await dialog.getByRole("link", { name: en ? "Use my file" : "내 파일로 하기", exact: true }).click();
-    await expect(page).toHaveURL(`${prefix}/tools/budget-allocation`);
+    await expect(page).toHaveURL(`${prefix}/tools/operations-planner`);
   });
 
   test(`finder layout, themes and accessibility (${locale})`, async ({ page }, testInfo) => {
