@@ -13235,6 +13235,8 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
 @layer app {
   .advanced-analysis { display: grid; gap: 20px; min-width: 0; }
   .advanced-settings summary { cursor: pointer; font-weight: 600; padding-block: 8px; }
+  .advanced-example { min-width: 0; }
+  .advanced-example h2.section-title { display: block; white-space: normal; overflow-wrap: anywhere; }
   .advanced-settings__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-block: 16px; }
   .advanced-setting { display: grid; align-content: start; gap: 8px; color: var(--text-main); font-size: var(--fs-sm); }
   .advanced-setting input:not([type="checkbox"]), .advanced-setting select, .advanced-setting textarea {

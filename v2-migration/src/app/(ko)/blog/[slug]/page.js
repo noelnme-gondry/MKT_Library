@@ -1,3 +1,4 @@
+import AdSenseScript from "@/components/AdSenseScript";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
@@ -145,6 +146,7 @@ export default async function BlogPostPage({ params }) {
 
   return (
     <BlogJourneyProvider><div className="content-article blog-article" data-design-exempt="nested: 블로그 읽기 면 안의 표·실습·저자 정보는 각각 기능이 있는 구역이다">
+      <AdSenseScript />
       <BlogReadTracker slug={post.slug} />
       <script
         type="application/ld+json"

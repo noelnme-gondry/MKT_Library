@@ -33,4 +33,12 @@ describe("templateCatalog", () => {
     expect(getTemplatePage("nope")).toBeNull();
     expect(getTemplatePage(undefined)).toBeNull();
   });
+
+  it.each(["ko", "en"])("explains exact event times and required user IDs (%s)", (locale) => {
+    for (const slug of ["user-funnel-retention", "b2b-pipeline"]) expect(getTemplatePage(slug, locale).exactTime).toBe(true);
+    expect(getTemplatePage("dashboard", locale).exactTime).toBe(false);
+    const user = getTemplatePage("user-funnel-retention", locale).fields.find((field) => field.key === "user_id");
+    expect(user.required).toBe(true);
+    expect(user.label).not.toMatch(/선택|optional/i);
+  });
 });
