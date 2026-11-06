@@ -1,9 +1,8 @@
 import { getToolGuide } from "@/utils/toolGuide";
 
-// 검색에서 바로 내려받는 두 템플릿에 기존 업로드 안내의 집계 단위를 보여준다.
+// 모든 템플릿에 기존 업로드 안내의 집계 단위를 보여준다.
 // 컬럼 계약·예제를 다시 작성하지 않고 도구 안내 SSOT를 재사용한다.
 export default function TemplatePreparationNotes({ toolId, locale = "ko" }) {
-  if (!["5-28", "5-29"].includes(toolId)) return null;
   const guide = getToolGuide(toolId, locale);
   if (!guide) return null;
   return <section aria-labelledby="template-preparation-heading">
@@ -11,5 +10,7 @@ export default function TemplatePreparationNotes({ toolId, locale = "ko" }) {
     <p>{guide.when}</p>
     <p>{guide.grain}</p>
     <ul className="template-detail__rules">{guide.prep.map(tip => <li key={tip}>{tip}</li>)}</ul>
+    {guide.example && <><h3>{locale === "en" ? "Input example (first rows, not a complete study)" : "입력 예시 (일부 행 · 전체 분석 표본 아님)"}</h3>
+      <div className="table-scroll" role="region" tabIndex={0} aria-label={locale === "en" ? "CSV input example" : "CSV 입력 예시"}><pre>{guide.example}</pre></div></>}
   </section>;
 }

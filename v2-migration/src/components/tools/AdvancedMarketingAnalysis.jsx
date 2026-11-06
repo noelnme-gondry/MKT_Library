@@ -15,6 +15,8 @@ import { ADVANCED_FIELDS } from "@/lib/advanced-marketing/fields";
 import { fmtNum, fmtPct, fmtCurrency } from "@/utils/format";
 import { csvBody, downloadCsv } from "@/utils/download";
 import AdvancedFigure from "./advanced-marketing/AdvancedFigure";
+import WORKED_EXAMPLES from "@/lib/advanced-marketing/workedExamples.json";
+import { ADVANCED_READING } from "@/lib/advanced-marketing/reading";
 
 export function formatAdvanced(value, type, currency, locale) {
   if (type === "text") return String(localized(value, locale) ?? "");
@@ -75,8 +77,26 @@ export default function AdvancedMarketingAnalysis({ toolId, locale = "ko" }) {
     const value = row[column.key];
     return column.type === "text" ? t(value) : Number.isFinite(value) ? value : "";
   }))), `${spec.key}-${data.id}`);
-  return <ToolPageShell toolId={toolId} locale={locale} title={t(spec.name)} summary={<p>{t(spec.answer)}</p>}>
+  const example = WORKED_EXAMPLES[toolId], reading = ADVANCED_READING[toolId];
+  return <ToolPageShell toolId={toolId} locale={locale} title={t(spec.name)}>
     <div className="advanced-analysis" data-tool-id={toolId}>
+      {!analyzed && <section className="block advanced-example" aria-labelledby={`${uid}-example`} data-worked-example={toolId}>
+        <h2 id={`${uid}-example`} className="section-title">{en ? "A worked example before you upload" : "업로드 전에 보는 계산 예시"}</h2>
+        <p>{en ? `Synthetic example data · ${fmtNum(example.rowCount)} rows · not your business results.` : `합성 예시 데이터 ${fmtNum(example.rowCount)}행으로 계산했습니다. 내 사업의 성과가 아닙니다.`}</p>
+        <p>{t(reading.method)}</p>
+        <DataTable ariaLabel={en ? "Example results" : "예시 계산 결과"}
+          columns={[{ key: "label", label: en ? "Metric" : "지표", fmt: t }, { key: "value", label: en ? "Computed result" : "계산 결과", align: "right" }, { key: "interval", label: en ? "95% interval (where estimated)" : "95% 구간 (추정된 지표)", align: "right" }]}
+          rows={example.metrics.map((metric) => ({ label: metric.label, value: formatAdvanced(metric.value, metric.type, example.currency, locale), interval: Number.isFinite(metric.low) && Number.isFinite(metric.high) ? `${formatAdvanced(metric.low, metric.type, example.currency, locale)} ~ ${formatAdvanced(metric.high, metric.type, example.currency, locale)}` : "—" }))} />
+        <p>{t(reading.check)}</p>
+        <p className="text-muted">{t(spec.limit)}</p>
+        <details><summary>{en ? "Inspect example inputs, settings and calculation notes" : "예시 입력·설정·계산 근거 확인"}</summary>
+          <p>{t(spec.grain)} · {en ? "Only the first three input rows are shown below; all rows above were used for calculation." : "아래에는 입력 앞 3행만 표시합니다. 계산에는 위에 표시한 전체 행을 사용했습니다."}</p>
+          <DataTable ariaLabel={en ? "Example input rows" : "예시 입력 행"} columns={spec.required.map((key) => ({ key, label: key }))} rows={example.input} />
+          <ul>{spec.options.map((option) => <li key={option.key}>{t(option.label)}: {typeof example.settings[option.key] === "boolean" ? (example.settings[option.key] ? (en ? "Confirmed" : "확인함") : (en ? "Not confirmed" : "확인 안 함")) : String(example.settings[option.key])}</li>)}</ul>
+          <p>{t(example.method)}</p>
+          {example.warnings.length > 0 && <ul>{example.warnings.map((warning, index) => <li key={index}>{t(warning)}</li>)}</ul>}
+        </details>
+      </section>}
       {report && <div data-advanced-result="ready"><ResultActionCard toolId={toolId} locale={locale} analysisType={spec.key}
         analysisKey={`advanced-${config.epoch}`} resultState="ready" headline={t(report.headline)} tone="neutral"
         points={[{ text: t(report.action) }, { text: t(report.method) }]}

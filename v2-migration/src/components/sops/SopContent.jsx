@@ -2084,102 +2084,39 @@ function findMeta(id) {
             function page_3_2() {
               const meta = findMeta("3-2");
               return pageShell(meta, {
-                deck: "매체별 소재 규격을 위반한 광고는 게재되지 않거나 자동 크롭되어 핵심 메시지가 잘린다. 사양 일람 + 플레이어블 5MB 제약 + 영상 세이프존을 표준화.",
-                chips: `
-            <span class="chip"><span class="dot"></span>대상 · 디자이너/마케터</span>
-            <span class="chip ok"><span class="dot"></span>5개 매체 대응</span>`,
-                summary:
-                  "각 매체별 소재 규격은 매년 변경된다. 본 가이드는 2026년 5월 기준이며, 분기 1회 재검증 필요. 플레이어블은 IAB Mobile RB Standard(5MB) 강제, 영상은 매체별 세이프존(상하 15%) 내에 핵심 텍스트 배치.",
-                toc: [
-                  { id: "s-matrix", title: "사이즈 매트릭스" },
-                  { id: "s-playable", title: "플레이어블 가이드" },
-                  { id: "s-safe", title: "영상 세이프존" },
-                  { id: "s-trouble", title: "트러블슈팅" },
-                ],
+                deck: "매체·게재 위치별 제출 조건을 확인하고, 플레이어블 용량과 영상 UI 가림을 검수하는 순서입니다.",
+                summary: "규격은 매체·게재 위치·제출 방식에 따라 다릅니다. 모든 플레이어블에 5MB나 1.5초를 적용하는 공통 규칙은 사용하지 않습니다. 아래는 제출 전 확인표이며, 최신 수치가 검증된 규격표가 아닙니다. 집행 시 공식 문서와 업로드 화면의 조건을 확인하고 확인일을 남기세요.",
+                toc: [{ id: "s-matrix", title: "제출 조건 확인표" }, { id: "s-playable", title: "플레이어블 검수" }, { id: "s-safe", title: "영상 세이프존 확인" }, { id: "s-trouble", title: "반려 원인 확인" }],
                 body: `
             <section class="block" id="s-matrix">
-              <h2 class="section-title"><span class="ix">§1</span>매체별 사이즈 매트릭스</h2>
-              ${dataTable(
-                [
-                  { label: "매체", type: "string" },
-                  { label: "포맷", type: "string" },
-                  { label: "비율", type: "string" },
-                  { label: "최소 해상도", type: "string" },
-                  { label: "용량 제한", type: "string" },
-                ],
-                [
-                  ["Meta", "Feed 이미지", "1:1", "1080×1080", "30MB"],
-                  ["Meta", "Story 영상", "9:16", "1080×1920", "4GB / 15초~60초"],
-                  ["Meta", "Reels 영상", "9:16", "1080×1920", "4GB / 최대 90초"],
-                  ["TikTok", "In-Feed 영상", "9:16", "720×1280", "500MB / 9~60초"],
-                  ["TikTok", "Spark Ads", "9:16", "720×1280", "500MB"],
-                  [
-                    "Google",
-                    "App Install 영상",
-                    "16:9 / 9:16 / 1:1",
-                    "480p+",
-                    "1GB / 10초~30초",
-                  ],
-                  [
-                    "Google",
-                    "App Install 이미지",
-                    "1.91:1 / 1:1 / 4:5",
-                    "600px+",
-                    "5MB",
-                  ],
-                  ["Snap", "Snap Ads", "9:16", "1080×1920", "1GB / 3~180초"],
-                  ["AppLovin", "Playable", "9:16 / 1:1", "640×1136", "5MB (IAB)"],
-                ],
-              )}
+              <h2 class="section-title"><span class="ix">§1</span>매체별 제출 조건 확인표</h2>
+              ${dataTable([{ label: "매체", type: "string" }, { label: "제출 전 확인", type: "string" }, { label: "검수 방법", type: "string" }], [
+                ["Meta", "Feed·Story·Reels의 비율, 영상 길이, 파일 크기를 각각 확인", "선택한 게재 위치의 광고 가이드와 미리보기 대조"],
+                ["TikTok", "In-Feed·Spark의 제출 방식, 자막·CTA 영역 확인", "실제 문구·프로필·CTA를 포함한 미리보기 확인"],
+                ["Google", "앱 캠페인 에셋 유형별 이미지·영상 조건 확인", "Google Ads의 에셋 진단과 도움말 대조"],
+                ["Snap", "선택한 포맷의 비율·길이·가림 영역 확인", "업로드 화면과 포맷별 공식 가이드 확인"],
+                ["AppLovin", "플레이어블 파일 구성·용량·SDK/CTA 연결 확인", "제출 패키지를 해당 매체 검증 도구로 실행"],
+              ])}
+              <p><a href="https://www.facebook.com/business/ads-guide/" target="_blank" rel="noopener noreferrer">Meta 광고 가이드</a> · <a href="https://support.google.com/google-ads/" target="_blank" rel="noopener noreferrer">Google Ads 도움말</a>. 매체 이름만으로 제한을 정하지 말고 포맷·게재 위치·문서 확인일을 작업 명세에 함께 적으세요.</p>
             </section>
-
             <section class="block" id="s-playable">
-              <h2 class="section-title"><span class="ix">§2</span>플레이어블 가이드</h2>
+              <h2 class="section-title"><span class="ix">§2</span>플레이어블 검수</h2>
               <ul>
-                <li><strong>용량 5MB 강제</strong>: HTML5 + JS + 이미지 합산. WebP/AVIF 사용, 폰트는 시스템 폰트로 fallback</li>
-                <li><strong>로딩 시간 1.5초 이내</strong>: 첫 인터랙션까지 대기 시간이 길면 매체사 reject</li>
-                <li><strong>3가지 필수 요소</strong>: (1) 시작 1초 내 명확한 액션 안내, (2) 핵심 게임플레이/기능 시뮬레이션, (3) 종료 시 CTA (앱 설치 버튼)</li>
-                <li><strong>iframe 격리</strong>: 매체 SDK는 iframe 내에서 실행하므로 외부 도메인 호출 불가. 모든 리소스 base64 인라인</li>
+                <li><strong>용량</strong>: 제출처가 지정한 상한과 압축 전후 측정 기준을 확인하세요. 5MB를 모든 매체의 공통 상한이나 IAB 공통 의무로 취급하지 않습니다.</li>
+                <li><strong>로딩</strong>: 실제 제출 패키지를 대상 기기와 느린 네트워크에서 실행해 첫 화면·첫 조작까지 시간을 측정하세요. 1.5초를 공통 반려 기준으로 단정하지 않습니다.</li>
+                <li><strong>리소스·SDK</strong>: 외부 요청 허용 여부, 리소스 포함 방식, 설치 CTA 연결은 매체별 문서로 확인하세요. 모든 환경에 base64 인라인을 강제하지 않습니다.</li>
+                <li><strong>사용자 동작</strong>: 조작 안내와 종료 CTA를 구분하고 자동 클릭·자동 이동 여부를 검수하세요. 제출 전 해당 매체의 정책도 확인하세요.</li>
               </ul>
             </section>
-
             <section class="block" id="s-safe">
-              <h2 class="section-title"><span class="ix">§3</span>영상 세이프존</h2>
-              <p>9:16 세로 영상은 매체별 UI 오버레이(좋아요 버튼, 사용자명, CTA 등)에 가려진다. 핵심 텍스트는 세이프존 내부에 배치.</p>
-              ${dataTable(
-                [
-                  { label: "매체", type: "string" },
-                  { label: "상단 마진", type: "string" },
-                  { label: "하단 마진", type: "string" },
-                  { label: "좌우 마진", type: "string" },
-                ],
-                [
-                  ["TikTok", "상 14%", "하 35% (CTA + 사용자명)", "좌우 10%"],
-                  ["Meta Reels", "상 12%", "하 30%", "좌 10% / 우 25% (액션 버튼)"],
-                  ["YouTube Shorts", "상 10%", "하 25%", "좌우 8%"],
-                  ["Snapchat", "상 18%", "하 20%", "좌우 8%"],
-                ],
-              )}
+              <h2 class="section-title"><span class="ix">§3</span>영상 세이프존 확인</h2>
+              <p>상하 15% 같은 고정 비율을 모든 지면에 적용하지 않습니다. 선택한 게재 위치의 최신 템플릿 또는 실제 광고 미리보기에 프로필·자막·CTA를 넣고 제목·가격·법적 고지가 가려지는지 확인하세요.</p>
+              <p>기기 화면비와 언어별 문구 길이를 바꿔 확인하고, 검수한 게재 위치와 템플릿 버전을 작업 파일에 남기세요. 미리보기가 없는 지면은 소규모 집행에서 실제 표시 상태를 확인하세요.</p>
             </section>
-
             <section class="block" id="s-trouble">
-              <h2 class="section-title"><span class="ix">§4</span>트러블슈팅</h2>
-              <div class="callout danger">
-                <div class="ico">!</div>
-                <div class="body">
-                  <strong>플레이어블이 매체 검수 reject</strong>
-                  <p>1) 5MB 초과(GZIP 해제 기준 측정). 2) 외부 도메인 호출(api.example.com 등) — 모두 인라인 처리. 3) 자동 redirect 또는 자동 클릭 — 반드시 명시적 사용자 액션 후 CTA.</p>
-                </div>
-              </div>
-              <div class="callout warn">
-                <div class="ico">!</div>
-                <div class="body">
-                  <strong>영상 중요 정보가 가려짐 (TikTok)</strong>
-                  <p>하단 35% 세이프존 미준수. 자막/가격 정보/CTA 텍스트는 영상 중앙 또는 상단 절반에 배치. 다국가 운영 시 가장 텍스트가 긴 언어 기준으로 세이프존 잡기.</p>
-                </div>
-              </div>
-            </section>
-          `,
+              <h2 class="section-title"><span class="ix">§4</span>반려 원인 확인 순서</h2>
+              <ol><li>업로드 오류·반려 사유 원문과 제출 파일 버전을 보존합니다.</li><li>용량·압축 기준, 포맷·길이, 외부 요청·SDK 연결을 해당 매체 조건과 대조합니다.</li><li>가림 문제는 실제 게재 위치와 언어별 미리보기로 재현합니다.</li><li>확인된 원인만 수정한 뒤 같은 검증 도구에서 다시 검사합니다.</li></ol>
+            </section>`,
               });
             }
             PAGE_RENDERERS["3-2"] = page_3_2;

@@ -1,3 +1,4 @@
+import AdSenseScript from "@/components/AdSenseScript";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
@@ -142,6 +143,7 @@ export default async function EnBlogPostPage({ params }) {
 
   return (
     <BlogJourneyProvider><div className="content-article blog-article" data-design-exempt="nested: Tables, practice tools and author information keep their own purpose within the article surface">
+      <AdSenseScript />
       <BlogReadTracker slug={post.slug} locale="en" />
       <script
         type="application/ld+json"

@@ -295,11 +295,11 @@ export const ROUTE_SEO = {
   "3-2": {
     ko: {
       title: "매체별 광고 소재 규격 | 사이즈·세이프존",
-      description: "매체별 소재 사이즈 매트릭스, 플레이어블 5MB 제약, 영상 세이프존을 정리한 규격 문서입니다.",
+      description: "매체·게재 위치별 제출 조건, 플레이어블 용량·로딩 검수, 영상 세이프존 확인 순서를 정리했습니다.",
     },
     en: {
       title: "Ad Creative Specs by Network",
-      description: "The size matrix, 5MB playable constraint, and video safe zones per network, so creatives never get rejected or auto-cropped mid-message.",
+      description: "Check submission requirements by network and placement, validate playable size and loading, and inspect video safe zones before delivery.",
     },
   },
   "3-3": {
