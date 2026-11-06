@@ -31,6 +31,8 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
   const [name, setName] = useState('');
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [reportBusy, setReportBusy] = useState(false);
+  // 보고서 열기 링크는 담은 직후 알림 안에만 둔다 — 늘 떠 있는 "모은 보고서 보기"는 결과 카드의 보고서 버튼과 겹쳤다.
+  const [reportNotice, setReportNotice] = useState('');
   const reportRoot = useRef(null);
   const [message, setMessage] = useState('');
   const [liveControls, setLiveControls] = useState(() => saved.tabs?.[tab]?.controls || {});
@@ -104,7 +106,9 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
       const state=useAppStore.getState();
       const blocks=await captureBoardReport(reportRoot.current,{tab,config,common:state.dashboardFilter,inputSignature:computeAnalyzeSig(state.csvData),locale,demo:isDemoData(state.csvData)});
       blocks.forEach(block=>state.addReportBlock(block));
-      setMessage(t(`현재 탭 ${blocks.length}개 구역을 보고서에 담았습니다.`, `Added ${blocks.length} blocks from this tab to the report.`));
+      const notice = t(`현재 탭 ${blocks.length}개 구역을 보고서에 담았습니다.`, `Added ${blocks.length} blocks from this tab to the report.`);
+      setReportNotice(notice);
+      setMessage(notice);
     } catch { setMessage(t('보고서에 담지 못했습니다. 분석 결과나 화면 크기를 확인하세요.', 'Could not collect the report. Check the results or board size.')); }
     finally { setReportBusy(false); }
   };
@@ -117,7 +121,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
       <div className="dashboard-workspace-toolbar">
         <div><strong>{editing ? t('대시보드 편집', 'Edit dashboard') : t('내 대시보드 구성', 'Your dashboard layout')}</strong><span>{editing ? t('구역을 선택해 조건과 배치를 바꾸세요. 저장 전까지 미리보기입니다.', 'Select a block to change scope and layout. Changes are a preview until saved.') : t('기본 분석을 유지하며 나만의 점검 화면을 구성하세요.', 'Arrange the analysis around your review workflow.')}</span></div>
         <div className="dashboard-workspace-actions">
-          <button className="ab-pill" disabled={!paid || editing || reportBusy} onClick={collectReport}>{t("현재 탭을 보고서에 담기 · Pro", "Add this tab to report · Pro")}</button><Link className="ab-pill" href={en ? "/en/weekly-report" : "/weekly-report"}>{t("모은 보고서 보기", "View collected report")}</Link>
+          <button className="ab-pill" disabled={!paid || editing || reportBusy} onClick={collectReport}>{t("현재 탭을 보고서에 담기 · Pro", "Add this tab to report · Pro")}</button>
           <button className="ab-pill" onClick={() => setLibraryOpen(true)}>{t("보드 동기화·팀 공유", "Board sync / team sharing")}</button>
           {!editing && Object.keys(saved.tabs || {}).length > 0 && <button className="ab-pill" onClick={() => setDefaultView(!defaultView)}>{defaultView ? t("저장된 배치 보기", "View saved layout") : t("기본 배치 보기", "View default layout")}</button>}
           {editing ? <><button className="ab-pill" disabled={!history.length} onClick={() => { setDraft(history.at(-1)); setHistory(history.slice(0, -1)); }}>{t('되돌리기', 'Undo')}</button><button className="ab-pill" onClick={() => { setDraft(null); setSelected(null); setHistory([]); }}>{t('취소', 'Cancel')}</button><button className="btn primary" onClick={save}>{t('편집 저장', 'Save edits')}</button></> : <button className="ab-pill" onClick={() => paid ? (startEditing()) : setMessage(t('기본 분석은 무료입니다. 배치·차트별 조건 편집과 보드 저장은 Pro에서 사용할 수 있습니다.', 'Basic analysis is free. Layout editing, per-chart scope and saved boards require Pro.'))}>{t('대시보드 편집 · Pro', 'Edit dashboard · Pro')}</button>}
@@ -128,7 +132,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
   return <DashboardWorkspaceContext.Provider value={value}>
     <div className="dashboard-workspace dashboard-board" data-editing={editing || undefined}>
       {editing && toolbar}
-      {message && <p className="dashboard-workspace-notice" role="status">{message}{!paid && <> <a href={en ? '/en/subscription' : '/subscription'}>{t('Pro 안내', 'About Pro')}</a></>}</p>}
+      {message && <p className="dashboard-workspace-notice" role="status">{message}{message === reportNotice && <> <Link href={en ? "/en/weekly-report" : "/weekly-report"}>{t("모은 보고서 보기", "View collected report")}</Link></>}{!paid && <> <a href={en ? '/en/subscription' : '/subscription'}>{t('Pro 안내', 'About Pro')}</a></>}</p>}
       {draft && !paid && <p className="dashboard-workspace-notice" role="status">{t('Pro 이용 기간이 종료되어 저장된 화면을 읽기 전용으로 표시합니다. 미저장 편집은 적용되지 않았습니다.', 'Pro has expired. The saved layout is read-only; unsaved edits have not been applied.')}</p>}
       <div className="dashboard-workspace-body">
         <div className="dashboard-workspace-content" key={mountKey} ref={reportRoot}>{children}</div>

@@ -19,5 +19,9 @@ describe("DashboardRecommendedViews", () => {
     fireEvent.click(screen.getByRole("button", { name: /퍼널 진단/ }));
     expect(onSelect).toHaveBeenCalledWith(recommendations[0]);
     expect(screen.getByText("나머지 탭도 직접 보기")).toBeTruthy();
+    // 순서가 곧 우선순위다 — 번호 배지는 없고, 신뢰도는 낮을 때만 글자로 말한다.
+    expect(document.body.textContent).not.toMatch(/우선\s*0\d/);
+    expect(screen.queryByText("신뢰도 높음")).toBeNull();
+    expect(screen.getAllByText("신뢰도 보통")).toHaveLength(2);
   });
 });

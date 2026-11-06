@@ -5985,8 +5985,6 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 /* 보조 진입점이지만 "결과가 어떻게 생겼나"를 볼 유일한 경로라 다른 텍스트 링크보다
    한 단계 눈에 띄게 한다. 버튼으로 올리지는 않는다 — 목적 CTA와 위계가 섞인다. */
 .dc-text-link--lead { font-size: var(--fs-base); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-.dashboard-briefing__next-tab { padding: 0; border: 0; background: transparent; color: var(--primary); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
-.dashboard-briefing__next-tab:hover { text-decoration: underline; }
 .mapping-filter { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
 .mapping-filter .ab-pill { min-height: 32px; font-size: var(--fs-xs); }
 .result-action-card__utilities { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 12px 0 0 47px; padding-top: 9px; border-top: 1px solid var(--border-subtle); }
@@ -6017,6 +6015,8 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 .result-action-card__points li.good::before { background: var(--success); }
 .result-action-card__points li.bad .result-action-card__point-label { color: var(--danger); }
 .result-action-card__points li.good .result-action-card__point-label { color: var(--success); }
+/* 구조형 줄의 라벨은 분류 이름이다(지출 최대 변동 등) — 좋고 나쁨은 값이 말하고 라벨은 빨갛게 칠하지 않는다. */
+.result-action-card__points li.is-structured .result-action-card__point-label { color: var(--text-muted); }
 .result-action-card__points li.muted { color: var(--text-muted); }
 .result-action-card__stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(132px,1fr)); gap: 0; margin: 14px 0 0 47px; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
 .result-action-card__stats > div { min-width: 0; padding: 10px 12px 9px; color: var(--text-muted); font: 600 var(--fs-xs) var(--font-sans); letter-spacing: .045em; }
@@ -8499,14 +8499,12 @@ body.light-mode .app:not(.is-home) .main {
 .dashboard-recommendations__heading h2 { margin:3px 0 0;color:var(--text-primary);font-size: var(--fs-base);letter-spacing: 0; }
 .dashboard-recommendations__heading p { max-width:380px;margin:0;color:var(--text-muted);font-size: var(--fs-xs);line-height:1.45;text-align:right; }
 .dashboard-recommendations__grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px; }
-.dashboard-recommendation { display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:9px;min-width:0;padding:10px;border:1px solid var(--border-subtle);border-radius: var(--radius-md);background:var(--surface-container-lowest);color:var(--text-secondary);text-align:left;cursor:pointer;transition:border-color .16s ease,transform .16s ease,background .16s ease; }
+.dashboard-recommendation { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:9px;min-width:0;padding:10px;border:1px solid var(--border-subtle);border-radius: var(--radius-md);background:var(--surface-container-lowest);color:var(--text-secondary);text-align:left;cursor:pointer;transition:border-color .16s ease,transform .16s ease,background .16s ease; }
 .dashboard-recommendation:hover,.dashboard-recommendation:focus-visible { border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--surface-container-lowest)); }
-.dashboard-recommendation__rank { color:var(--primary);font: 700 var(--fs-xs) var(--font-sans);line-height:1.45; }
 .dashboard-recommendation__content { min-width:0; }
-.dashboard-recommendation__topline { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 6px;min-width:0; }
-.dashboard-recommendation strong { color:var(--text-primary);font-size: var(--fs-xs); }
-.dashboard-recommendation em { flex:none;padding:2px 4px;border-radius: var(--radius-sm);background:color-mix(in srgb,var(--primary) 11%,transparent);color:var(--primary);font-size: var(--fs-xs);font-style:normal;font-weight:700; }
-.dashboard-recommendation__content > span:last-child { display:block;margin-top:5px;color:var(--text-muted);font-size: var(--fs-xs);line-height:1.48; }
+.dashboard-recommendation strong { display:block;color:var(--text-primary);font-size: var(--fs-xs); }
+.dashboard-recommendation__confidence { display:block;margin-top:5px;color:var(--text-muted);font-size: var(--fs-xs); }
+.dashboard-recommendation__content > span { display:block;margin-top:5px;color:var(--text-muted);font-size: var(--fs-xs);line-height:1.48; }
 .dashboard-recommendation > svg { margin-top:2px;color:var(--primary); }
 .dashboard-recommendations__more { margin-top:9px; }
 .dashboard-recommendations__more > summary { display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);font-size: var(--fs-xs);cursor:pointer; }
@@ -8530,14 +8528,10 @@ body.light-mode .app:not(.is-home) .main {
 .dashboard-top-stat b { color:var(--text-primary);font: 700 var(--fs-xs) var(--font-sans);letter-spacing:-.04em; }
 .dashboard-top-stat em { color:var(--primary);font: 700 var(--fs-xs) var(--font-sans);font-style:normal; }
 @media (max-width:1000px) { .dashboard-top-stat { display:none; } }
-.dashboard-demo-source,.dashboard-decision-strip { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--border);border-radius: var(--radius-lg);background:var(--surface-container-lowest); }
-.dashboard-demo-source { border-left:3px solid var(--warning);background:color-mix(in srgb,var(--warning) 7%,var(--surface-container-lowest)); }
+.dashboard-decision-strip { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--border);border-radius: var(--radius-lg);background:var(--surface-container-lowest); }
 .dashboard-decision-strip { padding:10px 0;border-width:1px 0;border-radius:0;background:transparent; }
-.dashboard-demo-source > div > span,.dashboard-decision-strip > div:first-child > span { display:block;color:var(--primary);font: 700 var(--fs-xs) var(--font-sans);letter-spacing:.1em; }
-.dashboard-demo-source strong,.dashboard-decision-strip strong { display:block;margin-top:3px;color:var(--text-primary);font-size: var(--fs-sm); }
-.dashboard-demo-source p { margin:3px 0 0;color:var(--text-muted);font-size: var(--fs-xs); }
-.dashboard-demo-source > button { display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:6px;border:0;border-radius: var(--radius-md);padding:8px 10px;background:var(--primary);color:var(--on-primary);font-size: var(--fs-xs);font-weight:700;line-height:1;white-space:nowrap;cursor:pointer; }
-.dashboard-demo-source > button > span { display:inline;color:currentColor;font:inherit;letter-spacing:0;line-height:1; }
+.dashboard-decision-strip > div:first-child > span { display:block;color:var(--primary);font: 700 var(--fs-xs) var(--font-sans);letter-spacing:.1em; }
+.dashboard-decision-strip strong { display:block;margin-top:3px;color:var(--text-primary);font-size: var(--fs-sm); }
 .dashboard-decision-strip__actions { display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end; }
 .dashboard-decision-strip__actions > button { border:0;border-bottom:1px solid transparent;padding:3px 0;background:transparent;color:var(--text-muted);font-size: var(--fs-xs);font-weight:700;cursor:pointer; }
 .dashboard-decision-strip__actions > button:hover { border-bottom-color:currentColor;color:var(--primary); }
@@ -8561,7 +8555,7 @@ body.light-mode .app:not(.is-home) .main {
   .result-action-card__head:has(> .result-action-card__evidence) { grid-template-columns: 30px minmax(0,1fr) auto; }
   .result-action-card__head > .result-action-card__evidence { padding-left: 0; border-left: 0; }
 }
-@media (max-width:720px) { .dashboard-demo-source,.dashboard-decision-strip { align-items:flex-start;flex-direction:column; }.dashboard-decision-strip__actions { justify-content:flex-start; }.dashboard-recommendations__heading { align-items:flex-start;flex-direction:column;gap:6px; }.dashboard-recommendations__heading p { text-align:left; }.dashboard-recommendations__grid { grid-template-columns:1fr; } }
+@media (max-width:720px) { .dashboard-decision-strip { align-items:flex-start;flex-direction:column; }.dashboard-decision-strip__actions { justify-content:flex-start; }.dashboard-recommendations__heading { align-items:flex-start;flex-direction:column;gap:6px; }.dashboard-recommendations__heading p { text-align:left; }.dashboard-recommendations__grid { grid-template-columns:1fr; } }
 /* AGENTS.md §12.30이 "인접한 보조 박스도 마감 영역과 같은 재질(--operator-line /
    --work-surface)을 쓴다"고 정해 뒀는데 실제로는 결론 카드와 똑같은
    --border/--surface-container-lowest였다. 같은 재질이면 보조 도구가 결론과 같은
@@ -9778,8 +9772,6 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .dashboard-next-actions .dashboard-recommendations__grid { gap:8px; border:0; }
 .dashboard-next-actions .dashboard-recommendation { min-height:104px; padding:11px; border:1px solid var(--operator-line); border-radius: var(--radius-md); background:var(--surface-container-lowest); }
 .dashboard-next-actions .dashboard-recommendation:hover,.dashboard-next-actions .dashboard-recommendation:focus-visible { border-color:var(--primary); background:color-mix(in srgb,var(--primary) 5%,var(--surface-container-lowest)); }
-.dashboard-recommendation__rank { display:grid; align-content:start; gap:2px; min-width:24px; }
-.dashboard-recommendation__rank small { color:var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); letter-spacing:.05em; }
 .dashboard-recommendation__open { display:inline-flex; align-items:center; align-self:end; gap:2px; color:var(--primary); font: 700 var(--fs-xs) var(--font-sans); }
 .dashboard-next-actions .dashboard-recommendations__more { margin-top:10px; padding-top:10px; border-top:1px solid var(--operator-line); }
 
@@ -11542,7 +11534,7 @@ b, strong { font-weight: 700; }
 /* 12) 왼쪽 굵은 색 막대 + 바탕 상자는 쓰지 않는다(AI 안내 상자의 전형). 테두리가 있는 상자는
    네 변이 같은 얇은 선, 테두리가 없던 것은 상자를 벗고 글자로 둔다. 결론 카드의 좋음·나쁨은
    왼쪽 막대가 아니라 신호 아이콘과 문장이 말한다. e2e/design-rules가 막대를 다시 찾는다. */
-.app .content :is(.result-action-card, .library-plan-link, .callout, .dashboard-demo-source, .required-banner, .tool-brief, .trend-chart-explainer, .decision-review, .csv-evidence-ledger, .csv-uploader > .analysis-basis-bar) {
+.app .content :is(.result-action-card, .library-plan-link, .callout, .required-banner, .tool-brief, .trend-chart-explainer, .decision-review, .csv-evidence-ledger, .csv-uploader > .analysis-basis-bar) {
   border: 1px solid var(--border-subtle);
 }
 .app .content :is(.guide-answer, .prism-driver__status) { border-left: 0; padding-inline: 0; background: none; }
