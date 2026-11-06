@@ -11,7 +11,6 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
-import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import LandingPage from "@/components/LandingPage";
@@ -44,6 +43,8 @@ const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse
 const PaidOrganicTrend = dyn(() => import("@/components/tools/PaidOrganicTrend"));
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
+// SOP 본문(15편, 압축 약 40KB)은 SOP 화면에서만 받는다 — 정적 import면 홈·도구 첫 JS에 실려 예산을 넘는다(EN과 같은 방식).
+const SopContent = dyn(() => import("@/components/sops/SopContent"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
 const BrandCampaignIncrementality = dyn(() => import("@/components/tools/BrandCampaignIncrementality"));
 const MulticollinearityChecker = dyn(() => import("@/components/tools/MulticollinearityChecker"));
