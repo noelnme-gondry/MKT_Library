@@ -2,12 +2,12 @@ import DochiSprite from "@/components/assistant/DochiSprite";
 
 const COPY = {
   ko: {
-    title: "컬럼을 확인해 주세요!",
+    title: "찾은 컬럼을 확인해 주세요",
     body: "위 토글에서 제가 찾은 컬럼 역할을 확인할 수 있어요. 필요할 때 열어 수정해 주세요.",
     action: "확인",
   },
   en: {
-    title: "Please check the columns!",
+    title: "Check the columns I found",
     body: "The toggle above contains the column roles I found. Open and edit it whenever you need to.",
     action: "Got it",
   },

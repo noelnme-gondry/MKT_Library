@@ -5,6 +5,7 @@ import Link from "next/link";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { VIDEO_TUTORIALS, TUTORIAL_STEP_SECONDS, tutorialIdsForPath, tutorialMedia } from "@/lib/videoTutorials";
 import { trackProductEvent } from "@/lib/analytics";
+import { CircleHelp } from "lucide-react";
 
 const OPEN_EVENT = "gop:video-tutorial";
 let pendingOpen = null;
@@ -32,7 +33,7 @@ export function TutorialHeaderButton({ locale = "ko" }) {
   return <button type="button" disabled={!ready} className="btn ghost tutorial-launcher no-print" aria-label={en ? "Tutorial" : "튜토리얼"} aria-haspopup="dialog" onClick={event => {
     pendingOpen = { trigger: event.currentTarget, pathname: window.location.pathname };
     window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: pendingOpen }));
-  }}><span className="tutorial-launcher__icon" aria-hidden="true">?</span><span className="tutorial-launcher__label">{en ? "Tutorial" : "튜토리얼"}</span></button>;
+  }}><CircleHelp className="tutorial-launcher__icon" aria-hidden="true" size={16} strokeWidth={1.5} /><span className="tutorial-launcher__label">{en ? "Tutorial" : "튜토리얼"}</span></button>;
 }
 
 function TutorialLauncher({ pathname, locale }) {

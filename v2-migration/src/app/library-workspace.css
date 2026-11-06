@@ -146,7 +146,7 @@
   .app .library-nav-item strong, .library-nav-dialog .library-nav-item strong {
     font-size: 13px; line-height: 1.65; font-weight: 600;
   }
-  .library-nav-item__icon { width: 19px; flex: 0 0 19px; font-size: 17px; text-align: center; }
+  .library-nav-item__icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; flex: 0 0 20px; color: currentColor; }
   .app .library-nav .library-nav-item:hover, .app .library-nav .library-nav-item.active,
   .library-nav-dialog .library-nav-item:hover, .library-nav-dialog .library-nav-item.active {
     background: var(--library-accent-surface); color: var(--library-accent); border: 0; box-shadow: none;
@@ -172,7 +172,13 @@
   .app .sidebar-search > span, .app .sidebar-search kbd { color: var(--library-muted); }
   .app .sidebar-library-disclosure { border-color: var(--library-border); margin-top: 5px; }
   .app .sidebar-library-disclosure > summary { display: flex; font-size: 12px; letter-spacing: 0; padding: 12px 10px; color: var(--library-muted); }
-  .app .sidebar.library-sidebar .sidebar-library-link { color: var(--library-muted); background: transparent; }
+  /* 자료실 링크도 위 내비와 같은 줄이다 — 홈에서만 58px 테두리 상자가 되던 것을 모든 화면에서 같은 높이·간격으로(unslop: 같은 것은 같은 크기). */
+  .app .sidebar.library-sidebar .sidebar-library { gap: 2px; }
+  /* 자료실 제목은 위 그룹 제목(.library-nav-group__label)과 같은 글자·들여쓰기, 항목 글자는 내비 글자와 같은 열에서 시작한다. */
+  .app .sidebar.library-sidebar .sidebar-resource-label { margin: 12px 0 0; padding: 5px 11px 6px; color: var(--library-muted); font-size: 11px; font-weight: 400; letter-spacing: 0; opacity: 1; }
+  .app .sidebar.library-sidebar .sidebar-resource-label > span { font: inherit; letter-spacing: 0; }
+  .app .sidebar.library-sidebar .sidebar-library-link { min-height: 44px; padding: 10px 11px 10px 41px; border: 0; border-radius: 7px; color: var(--library-muted); background: transparent; }
+  .app .sidebar.library-sidebar .sidebar-library-link strong { font-size: var(--fs-sm); font-weight: 600; }
   .app .sidebar.library-sidebar .sidebar-library-link strong,
   .library-nav-dialog .sidebar-library-link strong { color: inherit; }
   .app .sidebar.library-sidebar .sidebar-library-link:is(:hover, [aria-current="page"]) { color: var(--library-accent); background: var(--library-accent-surface); }
