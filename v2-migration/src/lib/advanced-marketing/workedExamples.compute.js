@@ -3,6 +3,14 @@ import { ADVANCED_TOOLS } from "./registry";
 import { buildAdvancedDemo, advancedDemoOptions } from "./demo";
 import { projectAdvancedRows } from "./input";
 import { executeAdvanced } from "./execute";
+import { ADVANCED_READING } from "./reading";
+
+export function computeAdvancedGuideSummaries() {
+  const firstSentence = (text) => text.includes(". ") ? text.slice(0, text.indexOf(". ") + 1) : text;
+  return Object.fromEntries(Object.entries(ADVANCED_READING).map(([id, reading]) => [id,
+    Object.fromEntries(Object.entries(reading).filter(([key]) => key !== "prep").map(([key, value]) => [key,
+      Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, firstSentence(text)]))]))]));
+}
 
 export function computeAdvancedExamples() {
   return Object.fromEntries(ADVANCED_TOOLS.map((tool) => {

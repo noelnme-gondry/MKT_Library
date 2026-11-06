@@ -91,6 +91,7 @@ export default function AdvancedMarketingAnalysis({ toolId, locale = "ko" }) {
         <p className="text-muted">{t(spec.limit)}</p>
         <details><summary>{en ? "Inspect example inputs, settings and calculation notes" : "예시 입력·설정·계산 근거 확인"}</summary>
           <p>{t(spec.grain)} · {en ? "Only the first three input rows are shown below; all rows above were used for calculation." : "아래에는 입력 앞 3행만 표시합니다. 계산에는 위에 표시한 전체 행을 사용했습니다."}</p>
+          <p>{t(reading.prep)}</p>
           <DataTable ariaLabel={en ? "Example input rows" : "예시 입력 행"} columns={spec.required.map((key) => ({ key, label: key }))} rows={example.input} />
           <ul>{spec.options.map((option) => <li key={option.key}>{t(option.label)}: {typeof example.settings[option.key] === "boolean" ? (example.settings[option.key] ? (en ? "Confirmed" : "확인함") : (en ? "Not confirmed" : "확인 안 함")) : String(example.settings[option.key])}</li>)}</ul>
           <p>{t(example.method)}</p>
