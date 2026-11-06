@@ -14,7 +14,8 @@ import { parseFinderFamily, parseFinderSituation } from "@/lib/finder/analysisFi
 import { blockerFieldLabels, blockersText } from "@/lib/assistant/blockerText";
 import JourneyProgress from "@/components/ds/JourneyProgress";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
-import { DOCHI_HANDOFF_KEY } from "@/components/assistant/DochiHandoffMotion";
+// 예전 결과 전달 연출이 남긴 세션 표식(키 이름은 그대로) — 남아 있으면 지운다.
+const DOCHI_HANDOFF_KEY = "dochi_analysis_handoff";
 import DecisionDataUpdateGuide from "@/components/ds/DecisionDataUpdateGuide";
 import { buildDatasetContinuitySnapshot, classifyDatasetContinuity, readDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { groupForRoute } from "@/lib/toolGroups";

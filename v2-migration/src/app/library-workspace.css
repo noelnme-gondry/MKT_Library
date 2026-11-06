@@ -414,7 +414,6 @@
   .dc-intake__close:hover { background: var(--library-accent-surface); border-color: var(--library-accent); }
   .dc-intake__close:focus-visible { outline: 2px solid var(--library-accent); outline-offset: 3px; }
   .dc-intake:not([hidden]) { margin-block: 22px; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); }
-  .dochi-help-trigger { border: 0; background: transparent; color: var(--library-accent); min-height: 44px; cursor: pointer; font-size: 12px; }
   .app .content { max-width: 1480px; }
   /* 예전에는 여기서 흐림을 통째로 취소했다. 사유는 "자격은 카드가 설명하니 링크를
      흐리게 하면 설명까지 안 읽힌다"였는데, 카드의 `필요 데이터` 줄은 올린 CSV와
