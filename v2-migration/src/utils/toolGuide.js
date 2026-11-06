@@ -305,6 +305,18 @@ export const TOOL_GUIDE = {
   // 5-24는 오래도록 TOOL_GUIDE 키가 없어 CsvGuide를 쓸 수 없었고, 업로드 안내가
   // 도구 안에 따로 적혀 있었다(§12.21 ④ 이탈). 계약을 여기로 올려 다른 도구와
   // 같은 안내·템플릿 경로를 쓰게 한다.
+  "5-23": {
+    when: "광고 노출군과 통제군의 전환율 차이로 증분 성과를 추정합니다.",
+    grain: "1행 = 날짜 × 실험 그룹(exposed 또는 holdout)의 집계",
+    needs: [
+      { col: "date", label: "날짜", why: "같은 비교 기간 확인", required: true },
+      { col: "holdout_group", label: "실험 그룹", why: "노출군과 통제군 구분", required: true },
+      { col: "numerator", label: "전환 수", why: "전환율 분자", required: true },
+      { col: "denominator", label: "비교 분모", why: "전환율 분모", required: true },
+    ],
+    prep: ["exposed와 holdout을 모두 포함하고 집계 기간과 전환 정의를 통일하세요.", "전환 수는 0 이상·분모 이하여야 하고 분모는 0보다 커야 합니다. 무작위 배정 여부와 그룹 간 오염을 별도로 확인하세요.", "이 템플릿은 통제군 방식입니다. 켜기·종료 방식은 도구에서 설계와 전환일을 먼저 지정하세요."],
+    example: "date,holdout_group,numerator,denominator\n2026-01-01,exposed,80,1000\n2026-01-01,holdout,60,1000",
+  },
   "5-24": {
     when: "브랜드 캠페인을 켠 전후로 브랜드 검색·직접 유입·가입이 실제로 늘었는지 사전 추세 기준선(ITS)과 비교합니다.",
     grain: "1행 = 하루(또는 한 주·한 달)",
@@ -668,6 +680,18 @@ export const TOOL_GUIDE_EN = {
       "With 2+ weeks of data, the scorecard (WoW) and anomaly detection work meaningfully.",
     ],
     example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,Organic search,126000,58000,2600,1740,104\n2024-01-08,Social,216000,74000,2200,1020,31\n2024-01-15,Newsletter,99000,41000,2870,1980,218",
+  },
+  "5-23": {
+    when: "Estimate incremental outcomes from the conversion-rate difference between exposed and holdout groups.",
+    grain: "One row per date and experiment group (exposed or holdout)",
+    needs: [
+      { col: "date", label: "Date", why: "Aligns the comparison period", required: true },
+      { col: "holdout_group", label: "Experiment group", why: "Distinguishes exposed and holdout", required: true },
+      { col: "numerator", label: "Conversions", why: "Conversion-rate numerator", required: true },
+      { col: "denominator", label: "Population", why: "Conversion-rate denominator", required: true },
+    ],
+    prep: ["Include both exposed and holdout groups with the same period and conversion definition.", "Conversions must be nonnegative and no greater than the positive denominator. Check random assignment and contamination separately.", "This template is for holdout analysis. For switch-on or switch-off designs, declare the design and cutoff in the tool first."],
+    example: "date,holdout_group,numerator,denominator\n2026-01-01,exposed,80,1000\n2026-01-01,holdout,60,1000",
   },
   "5-24": {
     when: "Check whether brand search, direct traffic, or signups actually rose after a brand campaign started, against a pre-period trend baseline (ITS).",

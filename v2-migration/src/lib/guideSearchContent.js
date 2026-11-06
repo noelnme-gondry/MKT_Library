@@ -219,7 +219,7 @@ const CONTENT = {
       question: "매체별 광고 소재 규격은 왜 맞춰야 하나요?",
       answer: "규격을 벗어난 소재는 노출되지 않거나 자동 크롭돼 핵심 메시지가 잘립니다.",
       faq: [
-        { q: "플레이어블 광고에 용량 제한이 있나요?", a: "5MB 제약이 일반적입니다. 넘으면 검수에서 반려되거나 로딩 중 이탈이 커집니다." },
+        { q: "플레이어블 광고에 용량 제한이 있나요?", a: "제출처·포맷별로 상한과 압축 전후 측정 기준을 확인해야 합니다. 5MB를 모든 매체의 공통 제한으로 적용하지 마세요. 실제 제출 패키지의 용량과 로딩을 매체 검증 도구에서 확인하세요." },
         { q: "영상 세이프존은 무엇인가요?", a: "매체 UI가 덮는 가장자리 영역입니다. 자막과 로고를 세이프존 안에 넣어야 잘리지 않습니다." },
       ],
     },
@@ -227,7 +227,7 @@ const CONTENT = {
       question: "Why do ad creative specs matter per network?",
       answer: "Off-spec creatives fail to serve or get auto-cropped, cutting off the message.",
       faq: [
-        { q: "Is there a size limit for playable ads?", a: "5MB is the common ceiling. Above it, creatives get rejected in review or lose users during loading." },
+        { q: "Is there a size limit for playable ads?", a: "Check the destination and format-specific limit, including how compressed size is measured. Do not apply 5MB as a universal ceiling. Validate size and loading on the actual submission package using the network's validator." },
         { q: "What is a video safe zone?", a: "The edge area the network's own UI covers. Captions and logos have to sit inside it or they get clipped." },
       ],
     },

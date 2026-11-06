@@ -42,9 +42,10 @@ export function getTemplatePage(slug, locale = "ko") {
   ];
   const fields = getToolTemplateFields(page.toolId).map((key) => {
     const field = ROLE_MAPPING_TEMPLATE_FIELD_META[key] || STANDARD_FIELDS[key] || {};
+    const label = (locale === "en" ? field.labelEn : field.label) || field.label || "";
     return {
       key: CANON_HEADER(key),
-      label: (locale === "en" ? field.labelEn : field.label) || field.label || "",
+      label: required.has(key) ? label.replace(/\s*\((?:선택|optional)\)/gi, "") : label,
       type: field.type || "text",
       group: field.group || "",
       required: required.has(key),
@@ -53,6 +54,7 @@ export function getTemplatePage(slug, locale = "ko") {
   });
   return {
     ...page,
+    exactTime: fields.some((field) => field.key === "event_time"),
     fields,
     requiredCount: required.size + alternatives.length,
     alternatives: alternatives.map(group => group.map(CANON_HEADER)),

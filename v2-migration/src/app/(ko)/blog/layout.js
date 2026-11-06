@@ -5,12 +5,10 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
-import AdSenseScript from "@/components/AdSenseScript";
 
 export default function BlogLayout({ children }) {
   return (
     <>
-      <AdSenseScript />
       <div className="app">
         <Sidebar />
         <div className="main">

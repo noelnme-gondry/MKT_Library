@@ -1,0 +1,122 @@
+{
+ "5-32": {
+  "method": {
+   "ko": "구매와 환불을 거래 ID로 구분한 뒤 고객별 최근 구매일·주문 횟수·순매출을 집계합니다.",
+   "en": "Separate purchases and refunds by transaction ID, then aggregate recency, order frequency and net revenue per customer."
+  },
+  "check": {
+   "ko": "RFM 순위와 회수 여부를 함께 읽으세요.",
+   "en": "Read RFM alongside cost recovery."
+  }
+ },
+ "5-33": {
+  "method": {
+   "ko": "사용자 안에서 시각을 정렬하고 설정한 순서와 관측 창을 모두 충족한 경우에만 퍼널을 완료로 셉니다.",
+   "en": "Order events within each user and count funnel completion only when both the declared order and window are satisfied."
+  },
+  "check": {
+   "ko": "단계별 사용자 수와 관측 완료 분모를 먼저 확인하세요.",
+   "en": "Inspect step-level user counts and mature denominators first."
+  }
+ },
+ "5-34": {
+  "method": {
+   "ko": "동일한 배정 단위에서 원시 평균 차이와 사전 지표를 보정한 ANCOVA2 차이를 비교합니다.",
+   "en": "Compare the raw difference with pre-treatment ANCOVA2 adjustment on the same assigned units."
+  },
+  "check": {
+   "ko": "원시·보정 구간을 나란히 읽고 배정 비율 이상을 먼저 점검하세요.",
+   "en": "Read raw and adjusted intervals together and check allocation imbalance first."
+  }
+ },
+ "5-35": {
+  "method": {
+   "ko": "학습 종료일에서 거래를 나누어 BG/NBD로 구매 횟수, Gamma–Gamma로 양수 주문금액을 추정합니다.",
+   "en": "Split the ledger at calibration end, estimate purchase frequency with BG/NBD and positive order value with Gamma–Gamma, then compare forecasts with later purchases excluded from fitting."
+  },
+  "check": {
+   "ko": "고객 순위보다 홀드아웃 오차와 적합 상태를 먼저 보세요.",
+   "en": "Check holdout error and fit status before customer rankings."
+  }
+ },
+ "5-36": {
+  "method": {
+   "ko": "처치 이전 기간에서 대조 지역의 가중치를 맞추고 사전 검증 구간에서 적합을 확인합니다.",
+   "en": "Fit donor weights before treatment and check fit on a pre-treatment validation window."
+  },
+  "check": {
+   "ko": "사전 적합 오차와 위약 순위를 먼저 읽으세요.",
+   "en": "Inspect pre-treatment error and placebo rank first."
+  }
+ },
+ "5-37": {
+  "method": {
+   "ko": "학습 표본에서 처치 전 세그먼트별 증분 반응을 추정해 타깃 순서를 정합니다.",
+   "en": "Learn segment-level incremental response and targeting order on training data."
+  },
+  "check": {
+   "ko": "평가 표본의 정책가치·구간과 비용 가정을 확인하세요.",
+   "en": "Read evaluation-sample policy value, uncertainty and cost assumptions."
+  }
+ },
+ "5-38": {
+  "method": {
+   "ko": "딜별 단계 변경을 시간순으로 이어 붙여 최초 유입 코호트의 기간 내 첫 수주율을 계산합니다.",
+   "en": "Reconstruct each deal’s stage history to calculate first-win rates within the declared acquisition-cohort horizon."
+  },
+  "check": {
+   "ko": "현재 수주 건수와 관측 완료 코호트의 수주율을 구분하세요.",
+   "en": "Separate current won counts from mature-cohort win rates."
+  }
+ },
+ "5-39": {
+  "method": {
+   "ko": "선택 과제 안의 대안들을 조건부 로짓으로 비교해 가격·속성 계수를 적합합니다.",
+   "en": "Fit price and attribute coefficients using conditional logit within choice tasks."
+  },
+  "check": {
+   "ko": "가격 계수의 부호·불확실성과 홀드아웃 성능을 먼저 보세요.",
+   "en": "Check price-coefficient sign, uncertainty and held-out performance first."
+  }
+ },
+ "5-40": {
+  "method": {
+   "ko": "독립 배정 단위별 순매출에서 변동비를 빼고 처치·대조군의 평균 공헌이익 차이를 계산합니다.",
+   "en": "Subtract variable cost from net revenue for each independent assignment unit, then compare mean contribution between treatment and control."
+  },
+  "check": {
+   "ko": "매출 차이와 공헌이익 차이를 함께 읽으세요.",
+   "en": "Read revenue and contribution differences together: discounts can raise sales while reducing profit."
+  }
+ },
+ "5-41": {
+  "method": {
+   "ko": "같은 주문의 상품을 묶고 상품쌍의 동시 구매 빈도로 지지도·신뢰도·향상도를 계산합니다.",
+   "en": "Group products by order and compute pair support, confidence and lift from co-purchases."
+  },
+  "check": {
+   "ko": "향상도가 높은 규칙도 주문 수와 지지도를 먼저 보세요.",
+   "en": "Check order counts and support even for high-lift rules."
+  }
+ },
+ "5-42": {
+  "method": {
+   "ko": "채널·기간별 빈도 구간의 audience_count를 합쳐 도달과 노출, 평균 빈도를 구합니다.",
+   "en": "Sum frequency-bin audience_count within each channel and period to derive reach, impressions and mean frequency."
+  },
+  "check": {
+   "ko": "채널 내부의 빈도 분포와 과다 노출 구간부터 확인하세요.",
+   "en": "Inspect within-channel frequency and high-exposure bins first."
+  }
+ },
+ "5-43": {
+  "method": {
+   "ko": "날짜·채널별로 무효 클릭 비율과 전환율을 계산하고 과거 분포에 비해 특이한 날짜를 표시합니다.",
+   "en": "Calculate invalid-click rates and conversion rates by date and channel, flagging dates unusual relative to historical distribution."
+  },
+  "check": {
+   "ko": "이상 날짜의 클릭 수·무효 클릭·전환을 원천 로그와 대조하세요.",
+   "en": "Compare flagged dates’ clicks, invalid clicks and conversions with source logs."
+  }
+ }
+}

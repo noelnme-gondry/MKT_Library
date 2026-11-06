@@ -7,6 +7,7 @@
 ## 고객·실험·커머스 확장 (2026-10-21)
 
 - `lib/advanced-marketing/registry.js`: 5-32~5-43 도구·라우트·그룹·입력·설정 정본. `fields.js` 입력/의미 역할, `catalog.js` 검색·가이드·여정, `demo.js` 합성 예시.
+- `lib/advanced-marketing/reading.js`: 도구별 방법·해석·입력 설명. `workedExamples.compute.js` → `workedExamples.json`·`guideSummaries.json`: 기존 데모·엔진의 계산 예제와 공용 안내용 첫 문장. `workedExamples.test.js`에서 재계산 일치 검증(UPDATE_ADVANCED_EXAMPLES=1로 갱신). 전체 해설은 해당 도구·서버 템플릿에서 읽는다.
 - `components/tools/AdvancedMarketingAnalysis.jsx`: 공용 업로더 → 명시 분석 → 취소 가능한 worker → 결과 카드·상세표·다운로드. `advanced-marketing/AdvancedFigure.jsx` 결과 표에서 파생한 SVG.
 - `lib/advanced-marketing/{input,execute,analysis.worker,errors}.js`: 원본 셀 보존, 엔진 디스패치, 작업 격리, KO/EN 오류. 기존 수학 엔진은 사용 경로를 변경하지 않음.
 - `utils/advanced-marketing/`: 거래·RFM(`transactionMath`), 순서 퍼널(`eventMath`), CUPED/프로모션/CRM(`experimentMath`), BG/NBD·Gamma–Gamma(`clvMath`), 지역 합성 대조(`geoMath`), B2B(`pipelineMath`), 조건부 로짓(`conjointMath`), 장바구니/도달/품질(`commerceMath`). `commonMath`는 새 엔진 전용 엄격 파서·추정 도구.
