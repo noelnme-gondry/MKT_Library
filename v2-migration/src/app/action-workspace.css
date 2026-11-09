@@ -26,7 +26,7 @@
   @media (min-width: 769px) { body .app .content .result-action-card > .result-next-action { margin-left: 47px; } }
   body .app .content #subscription-survival-result .result-action-card > .result-next-action { margin-left: 0; }
   .result-next-action > div { min-width: 0; }
-  .result-next-action__label, .ops-section-label { color: var(--primary); font-size: var(--fs-sm); font-weight: 700; }
+  .result-next-action__label, .ops-section-label { color: var(--primary); font-size: var(--fs-sm); font-weight: 600; }
   body .result-next-action h3 { font-size: var(--fs-lg); line-height: 1.45; margin: .35rem 0; }
   .result-next-action p { margin: .5rem 0 0; color: var(--text-secondary); line-height: 1.6; }
   .result-next-action__sample { color: var(--text-muted); font-size: var(--fs-sm); flex-shrink: 0; }
@@ -60,7 +60,7 @@
   .ops-mode { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .45rem; }
   .ops-mode button { flex: 1; min-height: 44px; padding: .5rem; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; white-space: nowrap; color: var(--text-secondary); }
   /* A pressed segment states the current mode; filled blue is reserved for the page's primary action. */
-  .ops-mode button[aria-pressed="true"] { background: color-mix(in srgb, var(--primary) 9%, var(--surface-container-lowest)); border-color: var(--primary); color: var(--text-primary); font-weight: 700; }
+  .ops-mode button[aria-pressed="true"] { background: color-mix(in srgb, var(--primary) 9%, var(--surface-container-lowest)); border-color: var(--primary); color: var(--text-primary); font-weight: 600; }
   .ops-plan-summary { display: grid; grid-template-columns: 1.2fr 1fr; border: 1px solid var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface-container-lowest); overflow: hidden; }
   .ops-plan-proposal, .ops-plan-outcome { padding: 1.5rem; min-width: 0; }
   .ops-plan-proposal h3 { font-size: var(--fs-2xl); line-height: 1.4; margin: .7rem 0; letter-spacing: -.03em; }
@@ -163,7 +163,7 @@
   .ops-observed-lead b { margin-left: auto; }
   .ops-observed-facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin: 1.25rem 0; }
   .ops-observed-facts dt, .ops-observed-facts small { font-size: var(--fs-sm); color: var(--text-muted); }
-  .ops-observed-facts dd { margin: .35rem 0; font-weight: 700; font-size: var(--fs-lg); }
+  .ops-observed-facts dd { margin: .35rem 0; font-weight: 600; font-size: var(--fs-lg); }
   .ops-observed-facts dd small { display: block; font-weight: 400; margin-top: .35rem; }
   .ops-decomposition header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; border-top: 1px solid var(--border); padding-top: .5rem; }
   .ops-decomposition header h4 { margin: 0; }
@@ -196,7 +196,7 @@
   .wr-tablewrap table.data :is(th,td) + :is(th,td) { border-left: 1px solid var(--border-subtle); }
   .account-page__card > h2 { padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
   .account-page__facts dd { font-weight: 600; }
-  .analysis-finder__count { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--primary); }
+  .analysis-finder__count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--primary); }
   .operations-sample-preview__budget > .btn { width: 100%; margin-top: 1rem; }
   .ops-creatives { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-container-lowest); padding: 1.5rem; }
   .ops-creative-workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.15fr); gap: 1.5rem; }
@@ -216,7 +216,7 @@
   .ops-creative-detail dd { margin: 0; }
   .ops-creative-metric { display: flex; gap: .5rem; align-items: baseline; padding: 1rem 0; }
   .ops-creative-metric strong { font-size: var(--fs-3xl); letter-spacing: -.035em; }
-  body .operations-queue__group > h3 { padding: .7rem 0; background: transparent; border-bottom: 1px solid var(--border); font-weight: 700; margin-top: 1rem; }
+  body .operations-queue__group > h3 { padding: .7rem 0; background: transparent; border-bottom: 1px solid var(--border); font-weight: 600; margin-top: 1rem; }
   .operations-queue--empty { padding: 0 0 1rem; }
   .operations-queue--empty .operations-queue__empty { padding: 0; font-size: var(--fs-sm); }
   body .operations-planner__context { display: block; padding: 1rem 0; }

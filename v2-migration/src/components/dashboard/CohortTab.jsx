@@ -290,7 +290,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
   const renderSegmentChart = (sk, label) => {
     return (
       <div key={sk} style={{ marginBottom: "20px" }}>
-        <div style={{ fontSize: "var(--fs-xs)", fontWeight: "700", color: "var(--text-muted)", marginBottom: "8px" }}>
+        <div style={{ fontSize: "var(--fs-xs)", fontWeight: "600", color: "var(--text-muted)", marginBottom: "8px" }}>
           {label}
         </div>
         <FigureHead exportTitle={`${label} · ${locale === "en" ? "Retention" : "리텐션"}`} target={() => segmentChartRefs.current[sk]} fileName={`retention_segment_${String(sk).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}`} locale={locale} />

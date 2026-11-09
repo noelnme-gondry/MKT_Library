@@ -43,7 +43,7 @@ const SCORE_COPY = {
     dailyDetailTitle: (w, label, n) => `일별 상세 — ${label} (최근 ${n}일)`,
     legendHint: (w) => `비교주(직전 ${w}일) / 목표주(최근 ${w}일) · 카드 재클릭 시 닫힘`,
     insufficientData: (n) => `⚠ 데이터가 충분하지 않습니다 (${n}일). 있는 만큼 표시합니다.`,
-    pngBtn: "⬇ PNG",
+    pngBtn: "PNG",
     noData: "데이터 없음",
   },
   en: {
@@ -66,7 +66,7 @@ const SCORE_COPY = {
     dailyDetailTitle: (w, label, n) => `Daily detail — ${label} (last ${n} days)`,
     legendHint: (w) => `Comparison week (prior ${w}d) / Target week (last ${w}d) · click card again to close`,
     insufficientData: (n) => `⚠ Not enough data (${n} days). Showing what's available.`,
-    pngBtn: "⬇ PNG",
+    pngBtn: "PNG",
     noData: "No data",
   },
 };
@@ -362,7 +362,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           {editMode ? (
             <>
               <button className="ab-pill" onClick={() => resetViewConfig(SCORECARD_SCOPE)} title={T.resetTitle}>{T.reset}</button>
-              <button className="ab-pill active" onClick={() => setEditMode(false)} style={{ fontWeight: 700 }}>{T.editDone}</button>
+              <button className="ab-pill active" onClick={() => setEditMode(false)} style={{ fontWeight: 600 }}>{T.editDone}</button>
             </>
           ) : (
             <button className="ab-pill dashboard-legacy-edit" onClick={() => setEditMode(true)} title={T.editTitle}>

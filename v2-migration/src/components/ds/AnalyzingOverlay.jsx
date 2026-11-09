@@ -30,7 +30,7 @@ export default function AnalyzingOverlay({ show, title = "분석 중…", sub })
           animation: "aha-spin 0.8s linear infinite",
         }}
       />
-      <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)" }}>{title}</div>
+      <div style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{title}</div>
       {sub ? <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{sub}</div> : null}
       <style>{"@keyframes aha-spin{to{transform:rotate(360deg)}}"}</style>
     </div>

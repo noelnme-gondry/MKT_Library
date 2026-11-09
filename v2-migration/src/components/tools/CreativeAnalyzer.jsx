@@ -1258,7 +1258,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             id="creative-export-metrics"
             onClick={() => requirePaidExport({ locale }) && exportCreativeMetricsCSV(metrics, snapshotHash, CREATIVE_CONFIG.version, locale)}
           >
-            {tr("⬇ 지표 CSV 다운로드", "⬇ Download metrics CSV")}
+            {tr("지표 CSV 다운로드", "Download metrics CSV")}
           </button>
         </div>
       </section>

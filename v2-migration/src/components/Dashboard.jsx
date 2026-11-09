@@ -319,7 +319,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             (게이트는 CsvUploader가 setGroupAnalyzed로 확정). */}
         {hasData && !analyzed && (
           <div className="card" style={{ marginTop: "1rem", textAlign: "center", padding: "2.5rem 1rem" }}>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "var(--fs-md)", fontWeight: "700" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
+            <h3 style={{ margin: "0 0 0.5rem", fontSize: "var(--fs-md)", fontWeight: "600" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: 0, lineHeight: 1.6 }}>
               {tr("위에서 컬럼 매핑이 올바른지 확인한 뒤 ", "After confirming the column mapping above, ")}
               {tr(<><strong>&quot;데이터 분석하기&quot;</strong>를 눌러 대시보드를 생성하세요. </>, <>click <strong>&quot;Analyze Data&quot;</strong> to generate the dashboard. </>)}

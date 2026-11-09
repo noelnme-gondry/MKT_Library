@@ -147,7 +147,7 @@ export default function MetricConfigPanel({
       panelStyle={{ width: "min(460px, 93vw)", maxHeight: "84vh", display: "flex", flexDirection: "column", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 2px" }}>
-          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)" }}>{panelTitle}</h3>
+          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--text-primary)" }}>{panelTitle}</h3>
           <button type="button" className="ab-pill" onClick={onClose} aria-label={`${panelTitle}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
         <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 18px 10px" }}>
@@ -207,7 +207,7 @@ export default function MetricConfigPanel({
           <button className="ab-pill" onClick={resetDraft}>{T.reset}</button>
           <span className="muted" style={{ fontSize: "var(--fs-xs)", flex: 1, lineHeight: 1.3 }}>{T.saved}</span>
           <button className="ab-pill" onClick={onClose}>{T.cancel}</button>
-          <button className="ab-pill active" onClick={apply} style={{ fontWeight: 700 }}>{T.apply}</button>
+          <button className="ab-pill active" onClick={apply} style={{ fontWeight: 600 }}>{T.apply}</button>
         </div>
     </ModalDialog>
   );

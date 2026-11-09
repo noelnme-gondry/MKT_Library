@@ -1,6 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
 import { DropdownMenu } from "radix-ui";
+import { ChevronDown, Download } from "lucide-react";
 import { trackProductEvent } from "@/lib/analytics";
 import { downloadFile, downloadJson, downloadXlsx } from "@/utils/download";
 import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
@@ -106,9 +107,11 @@ export default function DownloadHub({
           className={`ab-pill ${className}`.trim()}
           aria-label={label}
           disabled={isExporting}
-          style={{ fontWeight: 600, ...buttonStyle }}
+          style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, ...buttonStyle }}
         >
-          ⬇ {isExporting ? (locale === "en" ? "Building report…" : "보고서 생성 중…") : label} ▾
+          <Download size={16} strokeWidth={1.5} aria-hidden="true" />
+          {isExporting ? (locale === "en" ? "Building report…" : "보고서 생성 중…") : label}
+          <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -157,7 +160,7 @@ export default function DownloadHub({
               onBlur={(event) => { event.currentTarget.style.background = "transparent"; }}
             >
               <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                {item.icon ? `${item.icon} ` : ""}{item.label}
+                {item.label}
               </span>
               {item.desc && (
                 <span style={{ display: "block", fontSize: "var(--fs-sm)", color: "var(--text-muted)", marginTop: "4px" }}>

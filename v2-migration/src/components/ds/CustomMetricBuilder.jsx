@@ -138,7 +138,7 @@ export default function CustomMetricBuilder({
       panelStyle={{ boxSizing: "border-box", width: "min(520px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
+          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--text-primary)" }}>{T.title}</h3>
           <button type="button" className="ab-pill" onClick={onClose} aria-label={`${T.title}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
         <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 14px" }}>
@@ -184,8 +184,8 @@ export default function CustomMetricBuilder({
             <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
               <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.chartShape}</span>
               <div style={{ display: "flex", gap: "6px" }}>
-                <button type="button" onClick={() => setChartType("bar")} className={`ab-pill ${chartType === "bar" ? "active" : ""}`} style={{ fontWeight: chartType === "bar" ? 700 : 400 }}>{T.bar}</button>
-                <button type="button" onClick={() => setChartType("line")} className={`ab-pill ${chartType === "line" ? "active" : ""}`} style={{ fontWeight: chartType === "line" ? 700 : 400 }}>{T.line}</button>
+                <button type="button" onClick={() => setChartType("bar")} className={`ab-pill ${chartType === "bar" ? "active" : ""}`} style={{ fontWeight: chartType === "bar" ? 600 : 400 }}>{T.bar}</button>
+                <button type="button" onClick={() => setChartType("line")} className={`ab-pill ${chartType === "line" ? "active" : ""}`} style={{ fontWeight: chartType === "line" ? 600 : 400 }}>{T.line}</button>
               </div>
             </div>
 
@@ -202,7 +202,7 @@ export default function CustomMetricBuilder({
               {editingId && <span className="muted" style={{ fontSize: "var(--fs-xs)", marginRight: "auto" }}>{T.editing}</span>}
               {editingId && <button className="ab-pill" onClick={resetForm}>{T.cancel}</button>}
               {!editingId && <button className="ab-pill" onClick={onClose}>{T.close}</button>}
-              <button className={`ab-pill ${valid ? "active" : ""}`} onClick={submit} disabled={!valid} style={{ fontWeight: 700, opacity: valid ? 1 : 0.5 }}>
+              <button className={`ab-pill ${valid ? "active" : ""}`} onClick={submit} disabled={!valid} style={{ fontWeight: 600, opacity: valid ? 1 : 0.5 }}>
                 {editingId ? T.save : T.add}
               </button>
             </div>

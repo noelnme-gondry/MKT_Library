@@ -53,7 +53,7 @@ export default function EnglishTemplatesPage() {
   return (
     <EditorialLayout locale="en"><main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Marketing report samples and CSV templates</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 600, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Marketing report samples and CSV templates</h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
           Each analysis tool expects slightly different columns. Download a blank header-only CSV, fill it in, and upload it without rebuilding the mapping. Downloads are generated in your browser and never sent to a server.
         </p>
@@ -62,7 +62,7 @@ export default function EnglishTemplatesPage() {
       <SourceExportGuide locale="en" />
       {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>{group.heading}</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.35rem" }}>{group.heading}</h2>
           {group.note && <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: "0.9rem" }}>{group.note}</p>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0.9rem" }}>
             {group.items.map(([toolId, title, desc, href]) => <TemplateDownloadCard

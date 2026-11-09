@@ -167,7 +167,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       return {
         k: `cvr:${s.key}`,
         label: `→${s.label} CVR${isSel ? " ◆" : ""}`,
-        cellStyle: isSel ? { background: "rgba(122,162,247,0.08)", fontWeight: 700 } : undefined,
+        cellStyle: isSel ? { background: "rgba(122,162,247,0.08)", fontWeight: 600 } : undefined,
         render: (r) => {
           const step = r.steps[si];
           return (
@@ -358,7 +358,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
             <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
               <thead><tr><th>{fieldLabel(c.segRank.field) || c.segRank.field}</th><th>{selLbl} CVR</th><th>{tr("평균 대비", "vs average")}</th><th>{tr("분모 볼륨", "Denom. volume")}</th></tr></thead>
               <tbody>
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--success)", fontSize: "var(--fs-xs)", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 600, color: "var(--success)", fontSize: "var(--fs-xs)", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.best.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
@@ -370,7 +370,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
                     </tr>
                   );
                 })}
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--danger)", fontSize: "var(--fs-xs)", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 600, color: "var(--danger)", fontSize: "var(--fs-xs)", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.worst.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
