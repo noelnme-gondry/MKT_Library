@@ -79,7 +79,7 @@ export default function CustomChartBuilder({
       panelStyle={{ boxSizing: "border-box", width: "min(500px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
+          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--text-primary)" }}>{T.title}</h3>
           <button type="button" className="ab-pill" onClick={onClose} aria-label={`${T.title}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
 
@@ -99,7 +99,7 @@ export default function CustomChartBuilder({
                   key={t.id}
                   onClick={() => setType(t.id)}
                   className={`ab-pill ${type === t.id ? "active" : ""}`}
-                  style={{ display: "flex", alignItems: "center", gap: "5px", fontWeight: type === t.id ? 700 : 400 }}
+                  style={{ display: "flex", alignItems: "center", gap: "5px", fontWeight: type === t.id ? 600 : 400 }}
                 >
                   <span aria-hidden>{t.icon}</span> {chartTypeLabel(t.id)}
                 </button>
@@ -132,7 +132,7 @@ export default function CustomChartBuilder({
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button className="ab-pill" onClick={onClose}>{T.cancel}</button>
-              <button className={`ab-pill ${valid ? "active" : ""}`} onClick={create} disabled={!valid} style={{ fontWeight: 700, opacity: valid ? 1 : 0.5 }}>{T.create}</button>
+              <button className={`ab-pill ${valid ? "active" : ""}`} onClick={create} disabled={!valid} style={{ fontWeight: 600, opacity: valid ? 1 : 0.5 }}>{T.create}</button>
             </div>
           </>
         )}

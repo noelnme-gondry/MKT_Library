@@ -164,7 +164,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `${count}개의 데이터 시트를 찾았습니다. 한 번에 하나의 시트만 불러와 데이터가 섞이지 않도록 합니다.`,
     workbookSelectLabel: "시트",
     workbookImportBtn: "선택한 시트 불러오기",
-    starterTemplateBtn: "⬇ 기본 CSV 템플릿 받기",
+    starterTemplateBtn: "기본 CSV 템플릿 받기",
   },
   en: {
     emptyCsv: "This file is empty or invalid.",
@@ -253,7 +253,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `Found ${count} data worksheets. Import one at a time so data from different sheets never gets mixed.`,
     workbookSelectLabel: "Worksheet",
     workbookImportBtn: "Import selected worksheet",
-    starterTemplateBtn: "⬇ Download starter CSV template",
+    starterTemplateBtn: "Download starter CSV template",
   },
 };
 

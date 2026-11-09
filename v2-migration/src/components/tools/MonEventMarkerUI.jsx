@@ -57,7 +57,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
       <div
         style={{
           fontSize: "var(--fs-sm)",
-          fontWeight: 700,
+          fontWeight: 600,
           color: "var(--text-1)",
           marginBottom: "8px",
         }}

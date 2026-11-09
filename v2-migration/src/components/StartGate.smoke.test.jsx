@@ -79,7 +79,7 @@ describe("StartGate render smoke", () => {
     // 페이지 설명문이 하는 말을 업로드 안내가 다시 하지 않는다 — 문장·단계 표시 모두 한 번만(2026-09-29).
     expect(screen.queryByText(/도구별 데이터 조건/)).toBeNull();
     expect(document.querySelector(".csv-guide-outcomes")).toBeNull();
-    expect(screen.getByRole("button", { name: "⬇ 기본 CSV 템플릿 받기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "기본 CSV 템플릿 받기" })).toBeTruthy();
     expect(document.querySelector(".start-direct-actions")).toBeNull();
     expect(document.querySelector(".start-presets")).toBeNull();
   });
@@ -123,7 +123,7 @@ describe("StartGate render smoke", () => {
     render(<StartGate locale="en" />);
     expect(screen.getByRole("heading", { name: "Find an analysis", level: 1 })).toBeTruthy();
     expect(screen.queryByText(/check each tool’s data requirements/)).toBeNull();
-    expect(screen.getByRole("button", { name: "⬇ Download starter CSV template" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Download starter CSV template" })).toBeTruthy();
     expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
     expect(screen.getByRole("button", { name: /Run the example and see results/ })).toBeTruthy();
     expect(document.querySelector('a[href="/en/calculator"]')).toBeTruthy();

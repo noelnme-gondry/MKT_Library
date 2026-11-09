@@ -811,7 +811,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       ) : (
         <div style={{ marginTop: "12px", background: "transparent", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{T.readyMsg} <strong>{T.readyStrong}</strong></div>
-          <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
+          <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 600, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
         </div>
       )}
     </>

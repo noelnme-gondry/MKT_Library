@@ -1578,7 +1578,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       onClick={() => ok && setObjective(k)}
                       style={{ flexDirection: "column", alignItems: "flex-start", opacity: ok ? 1 : 0.4, cursor: ok ? "pointer" : "not-allowed", textAlign: "left" }}
                     >
-                      <span style={{ fontSize: "var(--fs-sm)", fontWeight: 700 }}>{o.short} {o.arrow}{isBasisDefault ? tr(" ·기본", " ·default") : ""}</span>
+                      <span style={{ fontSize: "var(--fs-sm)", fontWeight: 600 }}>{o.short} {o.arrow}{isBasisDefault ? tr(" ·기본", " ·default") : ""}</span>
                       <span style={{ fontSize: "var(--fs-xs)", fontWeight: 400, opacity: 0.85 }}>{o.label}</span>
                     </button>
                   );
@@ -1889,7 +1889,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                           flexDirection: "column",
                           gap: "4px",
                           background: isSelected ? "rgba(122,162,247,0.12)" : "transparent",
-                          fontWeight: isSelected ? 700 : 400,
+                          fontWeight: isSelected ? 600 : 400,
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -2161,7 +2161,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong><small className="alloc-prev">{g.prevShare > 0 ? `${tr("이전", "Prior")} ${g.prevShare.toFixed(1)}%` : ""}</small></td>
                     </tr>
                   ))}
-                  <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
+                  <tr style={{ background: "var(--bg-2)", fontWeight: "600", borderTop: "2px solid var(--border)" }}>
                     <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
                     <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}<small className="alloc-prev">{prevTotalDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(Math.round(prevTotalDaily), currency)}` : ""}</small></td>
                     <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
@@ -2236,7 +2236,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                         </tr>
                       );
                     })}
-                    <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
+                    <tr style={{ background: "var(--bg-2)", fontWeight: "600", borderTop: "2px solid var(--border)" }}>
                       <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
                       <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}<small className="alloc-prev">{prevTotalDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(prevTotalDaily, currency)}` : ""}</small></td>
                       <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
