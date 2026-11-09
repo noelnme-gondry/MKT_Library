@@ -42,7 +42,6 @@
   .dashboard-card-board .kpi-card .label { letter-spacing: 0; font-weight: 400; }
   .dashboard-card-board .kpi-card .value { font-size: var(--fs-xl); letter-spacing: -.025em; }
   .dashboard-card-board .kpi-card__select-state { letter-spacing: 0; }
-  .dashboard-card-board .kpi-sparkline { height: 36px; margin-block: 10px; }
   .dashboard-card-board .kpi-card__note { white-space: normal; line-height: 1.5; }
   .app .content .dashboard-card-board .dashboard-viz-workbench > .dashboard-explorer,
   .app .content .dashboard-card-board .dashboard-supporting-charts .chart-card {

@@ -139,7 +139,8 @@ test("report layouts keep the page within 320, 980 and 1440 pixels", async ({ pa
       await page.goto(path + "?example=1");
       await expect(page.locator(".result-action-card")).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${path} at ${width}px`).toBe(true);
-      expect(await page.locator(".report-panel").first().evaluate(node => getComputedStyle(node).backgroundColor)).toBe("rgb(255, 255, 255)");
+      // 2026-11 Paper & Ink: 보고서 칸도 흰 상자가 아니라 위쪽 선의 열린 구획이다.
+      expect(await page.locator(".report-panel").first().evaluate(node => getComputedStyle(node).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
       if (path.includes("multitouch")) {
         for (const name of ["채널 겹침", "접촉 경로", "전환 시간"]) {
           await page.getByRole("radio", { name, exact: true }).click();

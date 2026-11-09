@@ -1,5 +1,6 @@
 import { JetBrains_Mono } from "next/font/google";
 import "@/app/korean-fonts.css";
+import "@/app/serif-fonts.css";
 import Footer from "@/components/Footer";
 import AnalyticsScripts from "@/components/AnalyticsScripts";
 import ConsentBanner from "@/components/ConsentBanner";

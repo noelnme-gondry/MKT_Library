@@ -146,7 +146,6 @@
   .app .library-nav-item strong, .library-nav-dialog .library-nav-item strong {
     font-size: 13px; line-height: 1.65; font-weight: 600;
   }
-  .library-nav-item__icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; flex: 0 0 20px; color: currentColor; }
   .app .library-nav .library-nav-item:hover, .app .library-nav .library-nav-item.active,
   .library-nav-dialog .library-nav-item:hover, .library-nav-dialog .library-nav-item.active {
     background: var(--library-accent-surface); color: var(--library-accent); border: 0; box-shadow: none;
@@ -1466,33 +1465,12 @@
   position: relative; isolation: isolate; display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
   padding: clamp(20px, 3cqi, 56px) 0 32px;
 }
-.brand-hero__art {
-  --hero-light: color-mix(in srgb, var(--library-accent) 16%, transparent);
-  --hero-edge: color-mix(in srgb, var(--library-accent) 22%, transparent);
-  position: absolute; inset: 0 calc(-1 * var(--hero-gutter)); z-index: -1; overflow: hidden;
-  pointer-events: none; user-select: none;
-  background: radial-gradient(ellipse at 84% 85%, var(--hero-light), transparent 58%);
-  mask-image: linear-gradient(90deg, transparent, black 18%, black 72%, transparent), linear-gradient(0deg, transparent, black 28%, black 72%, transparent);
-  mask-composite: intersect;
-}
-.brand-hero__curve {
-  position: absolute; width: 100%; height: 200%; right: -16%; top: -134%;
-  border-radius: 50%; transform: rotate(-24deg);
-  background: radial-gradient(ellipse, transparent 57%, var(--hero-light) 63%, var(--hero-edge) 66%, transparent 73%);
-  filter: blur(8px);
-}
-.brand-hero__curve--echo {
-  width: 120%; height: 210%; right: -42%; top: -87%; transform: rotate(-36deg);
-  opacity: .6; filter: blur(16px);
-  background: radial-gradient(ellipse, transparent 56%, color-mix(in srgb, var(--library-accent) 8%, transparent) 63%, color-mix(in srgb, var(--success) 18%, transparent) 67%, transparent 75%);
-}
-body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--library-accent) 9%, transparent); --hero-edge: color-mix(in srgb, var(--library-accent) 16%, transparent); }
 .home-approved .dc-hero.brand-hero { gap: 0; padding-top: 0; }
 .home-approved .dc-hero.brand-hero .dc-hero__intro,
 .brand-hero .analysis-hub-intro { min-width: 0; width: 100%; padding: clamp(8px, 1.4cqi, 24px) 0; margin: 0; max-width: 48rem; }
 .home-approved .dc-hero.brand-hero .dc-hero__intro { gap: clamp(20px, 2cqi, 32px); align-content: center; }
 .home-approved .dc-hero.brand-hero h1,
-.brand-hero .analysis-hub-intro h1 { max-width: 22ch; margin: 0; font-size: clamp(1.75rem, 1.5rem + 1.8cqi, 3.5rem); font-weight: 600; line-height: 1.3; letter-spacing: -.045em; }
+.brand-hero .analysis-hub-intro h1 { max-width: 22ch; margin: 0; font-size: clamp(1.75rem, 1.5rem + 1.8cqi, 3.5rem); font-weight: 600; line-height: 1.45; letter-spacing: -.03em; }
 .home-approved .dc-hero.brand-hero .dc-hero__deck,
 .brand-hero .analysis-hub-intro .compare-page__lead { max-width: 34em; margin: clamp(18px, 1.8cqi, 28px) 0 0; font-size: clamp(.875rem, .8rem + .25cqi, 1.125rem); line-height: 1.8; }
 .home-approved .dc-hero.brand-hero .dc-hero__deck p { font-size: inherit; line-height: inherit; }
@@ -1547,11 +1525,6 @@ body:not(.light-mode) .brand-hero__art { --hero-light: color-mix(in srgb, var(--
 }
 @container marketing-landing (max-width: 720px) {
   .brand-hero .brand-hero__stage { padding-bottom: 28px; }
-  /* Anchor decoration to the title, not the height of the stacked actions. */
-  .brand-hero__heading { position: relative; }
-  .brand-hero__art {
-    inset-block: -28px -12px; opacity: .65;
-  }
   .home-approved .dc-hero.brand-hero .dc-hero__intro,
   .brand-hero .analysis-hub-intro { padding: 8px 0 20px; }
 }

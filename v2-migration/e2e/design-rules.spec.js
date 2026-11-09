@@ -71,7 +71,7 @@ function expectClean(result) {
   expect(result.horizontalOverflow, "page scrolls sideways").toBeLessThanOrEqual(1);
   expect(result.emoji, "pictographic emoji (status marks like ✓ ⚠ are fine)").toEqual([]);
   expect(result.caps, "all-caps labels").toEqual([]);
-  expect(result.monoNumbers, "numbers in a monospace font").toEqual([]);
+  expect(result.monoWords, "Korean words set in a monospace font").toEqual([]);
   // A1~A4(2026-09-24): 그림자는 떠 있는 것에만, 그라데이션 바탕 없음, 알약은 누를 수 있는 것에만,
   // 글자색은 토큰에서만(하드코딩 색은 화면마다 새 색을 만든다).
   expect(result.shadows, "drop shadow on a static surface").toEqual([]);
@@ -112,7 +112,7 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
     </div>
     <p style="font-size:12px;margin:0">EYEBROW</p><h2 style="font-size:24px;margin:0">Heading</h2>
     <h3 style="font-size:12px">tiny heading</h3>
-    <p>🎯 emoji label</p><p style="text-transform:uppercase;letter-spacing:2px">start here</p><p style="font-family:monospace">1,234</p>
+    <p>🎯 emoji label</p><p style="text-transform:uppercase;letter-spacing:2px">start here</p><p style="font-family:monospace">설치당 비용 1,234</p>
     <p style="font-weight:800">heavy</p>
     <div style="border-left:4px solid blue;background:#eef;height:40px">accent</div>
     <section style="border-top:1px solid #999;height:60px;margin:0 20px 0 0">a</section><section style="border-top:1px solid #999;height:60px">b</section>
@@ -135,7 +135,7 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
   expect(result.smallHeadings.length).toBeGreaterThan(0);
   expect(result.emoji.length).toBeGreaterThan(0);
   expect(result.caps.length).toBeGreaterThan(0);
-  expect(result.monoNumbers.length).toBeGreaterThan(0);
+  expect(result.monoWords.length).toBeGreaterThan(0);
   expect(result.shadows.length).toBeGreaterThan(0);
   expect(result.gradients.length).toBeGreaterThan(0);
   expect(result.pills.length).toBeGreaterThan(0);

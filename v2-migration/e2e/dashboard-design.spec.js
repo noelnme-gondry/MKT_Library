@@ -11,14 +11,16 @@ for (const locale of ['ko', 'en']) {
     await expect(page.locator('#s-kpi')).toBeVisible();
     const header = page.locator('.dashboard-workspace__header');
     expect(await header.evaluate(el => getComputedStyle(el).position)).toBe('static');
-    expect(await header.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
+    // 2026-11 재설계: 흰 상자 대신 종이 위 열린 면 — 바탕은 투명하다.
+    expect(await header.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
     await expect(header.locator('details')).toHaveCount(0);
-    // The board is only a layout; each independently titled chart owns its white surface.
+    // The board is only a layout; charts are open sections divided by a hairline, not white boxes.
     expect(await page.locator('#s-custom-charts').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
     const chartCards = page.locator('#s-custom-charts .chart-card');
     await expect(chartCards).toHaveCount(5);
     for (const card of await chartCards.all()) {
-      expect(await card.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
+      expect(await card.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+      expect(await card.evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('1px');
     }
     expect(await page.locator('.dashboard-next-actions').evaluate(el => el.compareDocumentPosition(document.querySelector('#s-charts')) & Node.DOCUMENT_POSITION_PRECEDING)).toBeTruthy();
     // 결론이 있으면 비교 기간은 맥락 한 줄 + 조건 바꾸기 창이다(product-ssot §1.1c).

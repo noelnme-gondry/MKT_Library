@@ -873,34 +873,17 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyAgg, byChannel, totals, dailyMarkerEvents, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale, dataCurrency]);
 
-  // KPI 카드는 빠른 스캔용 미니 차트이자 아래 탐색 차트의 지표 선택기다. PVM 결과를
-  // 여기서 재계산하지 않으므로 원인 대신 관찰 가능한 추세만 보여준다.
+  // KPI 카드는 아래 탐색 차트의 지표 선택기다. PVM 결과를 여기서 재계산하지 않으므로
+  // 원인 대신 관찰 가능한 추세 문장만 보여준다. 카드 안 미니 차트는 2026-11-09 재설계에서
+  // 뺐다 — 추세 모양은 바로 아래 큰 탐색 차트가 축과 함께 보여 준다.
   const explorerCard = (key, label, value, { unavailable = false } = {}) => {
     const trend = metricTrend(key);
-    // 카드 안에서는 최근 28개 시점의 "모양"을 읽는다. 절대값/max 방식은 값이
-    // 1,300→1,360처럼 움직일 때 선이 위쪽에 눌려 거의 평평해 보이므로, 카드별
-    // min-max로 세로 범위를 정규화한다. 정확한 값·축 비교는 아래 큰 차트가 담당한다.
-    const sparkValues = dailyKpis.map((d) => metricValue(key, d.kpi)).filter((v) => Number.isFinite(v)).slice(-28);
-    const min = sparkValues.length ? Math.min(...sparkValues) : 0;
-    const max = sparkValues.length ? Math.max(...sparkValues) : 0;
-    const range = max - min;
-    const sparkY = (v) => range ? 25 - ((v - min) / range) * 19 : 15;
-    const points = sparkValues.length > 1
-      ? sparkValues.map((v, index) => `${(index / (sparkValues.length - 1)) * 100},${sparkY(v)}`).join(" ")
-      : "0,15 100,15";
-    const lastY = sparkValues.length ? sparkY(sparkValues[sparkValues.length - 1]) : 15;
     const isSelected = activeMetric === key;
-    const tone = unavailable ? "neutral" : trend.statusKey === "warning" ? "warning" : trend.statusKey === "improving" ? "improving" : "stable";
     return (
       <button key={key} type="button" className={`kpi-card kpi-card--explorer${isSelected ? " is-selected" : ""}`} aria-pressed={isSelected} onClick={() => setSelectedMetric(key)}>
         <span className="kpi-card__select-state">{isSelected ? (locale === "en" ? "Selected" : "선택됨") : ""}</span>
         <span className="label">{label}</span>
         <strong className="value tnum">{unavailable ? (locale === "en" ? "Data needed" : "리텐션 데이터 필요") : value}</strong>
-        <svg className={`kpi-sparkline is-${tone}`} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
-          <polygon points={`0,30 ${points} 100,30`} />
-          <polyline points={points} />
-          <circle cx="100" cy={lastY} r="2.5" />
-        </svg>
         <span className={`delta ${trend.statusKey === "warning" ? "down" : ""}`}>{unavailable ? (locale === "en" ? "— Data needed" : "— 데이터 필요") : trend.status}</span>
         <span className="kpi-card__note">{unavailable ? (locale === "en" ? "Map a ret_dN column" : "ret_dN 컬럼을 매핑하세요") : trend.note}</span>
       </button>
