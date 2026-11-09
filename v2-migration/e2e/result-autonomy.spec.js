@@ -356,21 +356,22 @@ test.describe("analysis surfaces in light mode", () => {
     await page.addInitScript(() => localStorage.setItem("mkt-library-theme", "light"));
   });
   for (const locale of ["ko", "en"]) {
-    test(`saturation content surfaces are white against the page (${locale})`, async ({ page }) => {
+    test(`saturation content surfaces are open sections on the page (${locale})`, async ({ page }) => {
       await page.goto(`${locale === "en" ? "/en" : ""}/tools/budget-allocation?view=headroom&example=1`);
       await expect(page.locator("#s-sat-summary .result-action-card")).toBeVisible();
       const surfaces = page.locator(".saturation-surface, .saturation-data, .analysis-setup--actions, .tool-next-step-panel");
-      // User contract: a white content surface groups heading, evidence and actions;
-      // a gray/transparent box with only a border does not satisfy it.
+      // 2026-11 Paper & Ink: heading, evidence and actions share an open section on the
+      // paper — transparent, opened by a top hairline and aligned to the body edge.
       const paint = await surfaces.evaluateAll(nodes => nodes.map(node => {
         const style = getComputedStyle(node);
-        return { background: style.backgroundColor, padding: parseFloat(style.paddingLeft) };
+        return { background: style.backgroundColor, top: parseFloat(style.borderTopWidth), padding: parseFloat(style.paddingLeft) };
       }));
-      // 데이터 상자는 결과 뒤에는 조건 바꾸기 창 안으로 간다(§1.1c) — 페이지 위 흰 면은 일곱이다.
+      // 데이터 상자는 결과 뒤에는 조건 바꾸기 창 안으로 간다(§1.1c) — 페이지 위 구획은 일곱이다.
       expect(paint).toHaveLength(7);
       paint.forEach(surface => {
-        expect(surface.background).toBe("rgb(255, 255, 255)");
-        expect(surface.padding).toBeGreaterThanOrEqual(16);
+        expect(surface.background).toBe("rgba(0, 0, 0, 0)");
+        expect(surface.top).toBeGreaterThanOrEqual(1);
+        expect(surface.padding).toBe(0);
       });
       expect(await page.locator("body").evaluate(node => getComputedStyle(node).backgroundColor)).not.toBe("rgb(255, 255, 255)");
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);

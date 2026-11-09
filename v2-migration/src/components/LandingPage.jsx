@@ -231,7 +231,6 @@ export default function LandingPage({ locale = "ko", reading }) {
                       <span className="home-entry__no" aria-hidden="true">{item.label}</span>
                       <strong>{item.title}</strong>
                       <small>{T.situationCount(item.count)}</small>
-                      {item.question && <span className="home-entry__q">{item.question}</span>}
                     </Link>
                   </li>
                 ))}

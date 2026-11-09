@@ -143,11 +143,13 @@ test('allocation content surfaces and alignment in light mode', async ({ page })
   await expect(page.locator('#s-controls')).toBeVisible();
   // 실행안이 있으면 데이터 칸은 조건 창 안으로 접힌다 — 본문 표면은 조건 한 줄과 결론 카드다.
   await expect(page.locator('#tab-alloc .allocation-data')).toHaveCount(0);
-  const surfaces = await page.locator('#s-controls, .result-action-card').evaluateAll(els => els.map(el => ({ bg: getComputedStyle(el).backgroundColor, padding: parseFloat(getComputedStyle(el).paddingLeft) })));
+  // 2026-11 Paper & Ink: 흰 상자 대신 종이 위 열린 구획 — 바탕 투명, 위쪽 선 하나, 본문 기준선(좌우 여백 0).
+  const surfaces = await page.locator('#s-controls, .result-action-card').evaluateAll(els => els.map(el => ({ bg: getComputedStyle(el).backgroundColor, top: parseFloat(getComputedStyle(el).borderTopWidth), padding: parseFloat(getComputedStyle(el).paddingLeft) })));
   expect(surfaces).toHaveLength(2);
   for (const surface of surfaces) {
-    expect(surface.bg).toBe('rgb(255, 255, 255)');
-    expect(surface.padding).toBeGreaterThanOrEqual(16);
+    expect(surface.bg).toBe('rgba(0, 0, 0, 0)');
+    expect(surface.top).toBeGreaterThanOrEqual(1);
+    expect(surface.padding).toBe(0);
   }
 });
 

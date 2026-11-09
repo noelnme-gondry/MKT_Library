@@ -15,11 +15,11 @@ for (const locale of ['ko','en']) {
     for (const id of tabs) {
       await chooseDashboardView(page,id);
       await expect(page.locator('.dashboard-block-grid')).toBeVisible();
-      // Visualization groups own no extra background: KPI and plot cards are the reading surfaces.
+      // 2026-11 Paper & Ink: KPI·차트 구획은 흰 상자가 아니라 종이 위 열린 구획(투명 바탕 + 위쪽 선)이다.
       const surfaces=page.locator('.dashboard-layout-block > .block:not(.dashboard-supporting-charts), .dashboard-viz-workbench .kpi-card, .dashboard-explorer, .dashboard-supporting-charts .chart-card');
       expect(await surfaces.count()).toBeGreaterThan(0);
       for(let i=0;i<await surfaces.count();i++) {
-        if(await surfaces.nth(i).isVisible()) expect(await surfaces.nth(i).evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
+        if(await surfaces.nth(i).isVisible()) expect(await surfaces.nth(i).evaluate(el=>[getComputedStyle(el).backgroundColor, parseFloat(getComputedStyle(el).borderTopWidth) >= 1])).toEqual(['rgba(0, 0, 0, 0)', true]);
       }
       expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
     }

@@ -13394,12 +13394,25 @@ body, body.light-mode { background: var(--paper); }
 .app #content :is(.dashboard-supporting-charts .chart-card, .dashboard-explorer) :is(.dashboard-supporting-chart__head, .dashboard-explorer__head) { padding-left: 0; padding-right: 0; border-bottom: 0; min-height: 0; }
 .app #content :is(.dashboard-supporting-chart__canvas, .dashboard-explorer__canvas) { margin-left: 0; margin-right: 0; }
 .app #content .dashboard-explorer__interpretation, .app #content .dashboard-explorer__actions { padding-left: 0; padding-right: 0; }
+/* 2026-09-30의 흰 면 규칙은 `@layer app` 안의 !important라 레이어 밖 규칙으로는 못 이긴다
+   (!important는 레이어가 앞일수록 이긴다). 같은 레이어 안에서 ID 특이도로 열린 구획으로 되돌린다. */
+@layer app {
+  .app #content :is(
+    .tool-autonomy .block:not(.mmm-stage-nav), .tool-instrument-header--surface, .analysis-setup--actions,
+    .dashboard-layout-block > :is(.block, .dashboard-viz-workbench, .budget-health-card),
+    .dashboard-workspace :is(.dashboard-comparison-period, .dashboard-next-actions, .dashboard-utilities, .dashboard-supporting-charts),
+    .tool-autonomy .page-sticky-bar.mmm-controls-panel
+  ) {
+    background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule-2) !important;
+    border-radius: 0 !important; box-shadow: none !important; padding-left: 0 !important; padding-right: 0 !important;
+  }
+}
 /* 고정폭 숫자는 같은 크기에서 더 넓다 — 세 칸짜리 큰 수치는 한 단계 작게 둬 줄바꿈되지 않게. */
 .app #content .allocation-workspace .result-action-card__stats strong { font-size: var(--fs-xl); }
 /* 홈 상황 칸 — 상자 목록이 아니라 머리카락 선으로 나눈 색인. 번호·제목·질문을 위에서 아래로 읽는다. */
 .app .home-entry__situations ul { gap: 0; border-top: 1px solid var(--ink); }
 .app .home-entry__situations li a {
-  grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: baseline;
+  grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline;
   min-height: 0; padding: 11px 4px 11px 0; row-gap: 2px; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: transparent;
 }
 .app .home-entry__situations li:nth-child(even) a { padding-left: 16px; border-left: 1px solid var(--rule); }
@@ -13407,7 +13420,6 @@ body, body.light-mode { background: var(--paper); }
 .app .home-entry__situations li a:hover strong { text-decoration: underline; text-underline-offset: 3px; }
 .app .home-entry__situations strong { font-family: var(--font-serif); font-size: var(--fs-md); font-weight: 600; letter-spacing: -.01em; }
 .app .home-entry__no { font-variant-numeric: tabular-nums; }
-.home-entry__q { grid-column: 2 / -1; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
 .app .home-entry__situations .home-entry__all-tile a { background: var(--ink); color: var(--paper); padding-left: 16px; border-bottom: 0; }
 .app .home-entry__situations .home-entry__all-tile a :is(strong, .home-entry__no) { color: var(--paper); }
 .app .home-entry__situations li { display: flex; }
