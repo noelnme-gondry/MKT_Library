@@ -6,10 +6,6 @@ import { usePathname } from "next/navigation";
 import { useAppStore } from "@/store/useDataStore";
 import { localizedHref } from "@/lib/localizedHref";
 import { WORKSPACE_NAV_GROUPS, workspaceNavItems } from "@/lib/workspaceNav";
-import { BookOpen, CalendarCheck, ChartColumn, Compass, CreditCard, FolderOpen, HardDrive, House, LayoutGrid, ListChecks, MessageCircleQuestion, Newspaper, UserRound } from "lucide-react";
-
-// 내비 아이콘은 한 세트(lucide)·한 크기·한 선 굵기다 — 글자 기호(◎ ▤ ◇)는 글꼴마다 굵기와 크기가 달라 열이 흔들렸다.
-const NAV_ICONS = { BookOpen, CalendarCheck, ChartColumn, Compass, CreditCard, FolderOpen, HardDrive, House, LayoutGrid, ListChecks, MessageCircleQuestion, Newspaper, UserRound };
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
@@ -112,7 +108,7 @@ function SidebarContents({ locale = "ko", onNavigate }) {
                 if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                 if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale });
               }}>
-              <span className="library-nav-item__icon" aria-hidden="true">{(() => { const Icon = NAV_ICONS[item.icon]; return Icon ? <Icon size={16} strokeWidth={1.5} /> : null; })()}</span>
+              {/* 메뉴는 글자만 둔다(2026-11-09 재설계) — 현재 위치는 굵기와 바탕이 말한다. */}
               <strong>{item.name}</strong>
               {isReview && dueDecisionCount > 0 && <b className="library-nav-item__count">{dueDecisionCount}</b>}
             </Link>;

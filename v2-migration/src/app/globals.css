@@ -5238,12 +5238,13 @@ body:not(.light-mode) .moon-icon {
   --danger: #ff8178;
   --warning: #f2b84b;
   --info: #82aaff;
-  --radius-default: 6px;
+  /* 2026-11-09 재설계: 모서리는 거의 직각에 가깝게(종이·잉크) — 둥근 알약 대신 반듯한 칸. */
+  --radius-default: 4px;
   --radius: var(--radius-default);
   --radius-sm: var(--radius-default);
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 16px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   /* 이름이 값과 다르면 다음 사람이 속는다. pill은 pill이라고 부르고,
      예전 이름(`--radius-full`)은 같은 값을 가리키는 별칭으로만 남긴다. */
   --radius-pill: 999px;
@@ -5561,13 +5562,6 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .kpi-grid--overview .kpi-card--explorer.is-selected { background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-lowest)); box-shadow: inset 0 -2px 0 var(--primary); }
 .kpi-card__select-state { min-height: 14px; color: var(--primary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .08em; }
 .kpi-card--explorer .value { margin-top: 3px; font-size: clamp(var(--fs-md), 1.45vw, var(--fs-xl)); }
-.kpi-sparkline { display: block; width: 100%; height: 38px; margin: 5px 0 3px; overflow: visible; color: var(--primary); }
-.kpi-sparkline polygon { fill: color-mix(in srgb, currentColor 13%, transparent); stroke: none; }
-.kpi-sparkline polyline { fill: none; stroke: currentColor; stroke-width: 2.8; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
-.kpi-sparkline circle { fill: var(--surface-container-lowest); stroke: currentColor; stroke-width: 2.2; vector-effect: non-scaling-stroke; }
-.kpi-sparkline.is-warning { color: var(--danger); }
-.kpi-sparkline.is-improving { color: var(--secondary); }
-.kpi-sparkline.is-neutral { color: var(--text-muted); }
 .kpi-grid--overview .kpi-card--explorer .delta { display: block; margin-top: 0; font-weight: 700; }
 .kpi-card__note { display: block; margin-top: 3px; overflow: hidden; color: var(--text-muted); font: var(--fs-xs)/1.35 var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-explorer { padding: 18px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-container-lowest); }
@@ -12231,9 +12225,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .dashboard-view-sheet__group { margin-top: 16px; }
 .dashboard-view-sheet__group h3 { margin: 0 0 4px; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 600; }
 .dashboard-view-sheet__group ul { margin: 0; padding: 0; list-style: none; }
-.dashboard-view-sheet__group button { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 12px; row-gap: 2px; width: 100%; min-height: 56px; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.dashboard-view-sheet__group button { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 12px; row-gap: 2px; width: 100%; min-height: 56px; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
 .dashboard-view-sheet__group button:hover { background: var(--surface-container-low); }
-.dashboard-view-sheet__icon { grid-row: span 2; align-self: center; color: var(--text-muted); }
 .dashboard-view-sheet__group button strong { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-base); font-weight: 600; }
 .dashboard-view-sheet__group button small { color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
 .dashboard-view-sheet__group button[aria-current="true"] strong { color: var(--primary); }
@@ -13261,3 +13254,161 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
     .advanced-figure { padding: 10px; }
   }
 }
+
+/* ======================================================================
+   2026-11 Paper & Ink — 사이트 전체 재설계(사용자 결정 2026-11-09)
+   종이·잉크·머리카락 선 + 강조색 하나. 결론 문장은 명조, 숫자는 고정폭.
+   이 블록은 파일 맨 끝, 레이어 밖에 있어 앞의 토큰 층(@layer app 포함)을 모두 덮는다.
+   색을 바꿀 때는 이 블록만 고친다 — 앞 층의 같은 이름을 다시 고치지 말 것.
+   ====================================================================== */
+:root {
+  --font-serif: "GOP Serif", var(--font-sans);
+  --chart-category-1-light: #2456c4;
+  --chart-category-1-dark: #6a9cf0;
+  --chart-comparison-light: #8f8b81;
+  --chart-comparison-dark: #8f8c84;
+  /* 상단 잉크 막대 — 두 테마에서 같은 검정이다. */
+  --ink-bar: #16171a;
+  --ink-bar-raised: #222327;
+  --ink-bar-text: #ecebe6;
+  --ink-bar-muted: #a3a29c;
+  --ink-bar-line: #34363b;
+}
+body {
+  --paper: #0f1012; --sheet: #17181b; --sunk: #1d1e22;
+  --ink: #ecebe6; --ink-2: #b9b8b2; --ink-3: #9a9993;
+  --rule: #2a2b2f; --rule-2: #3d3e43;
+  --background: var(--paper); --bg-1: var(--paper); --bg-2: var(--sheet);
+  --surface-base: var(--sheet); --surface-raised: var(--sheet); --surface-overlay: var(--sheet);
+  --surface-container-lowest: var(--sheet); --surface-container-low: var(--paper);
+  --surface-container: var(--sunk); --surface-container-high: #26272b; --surface-container-highest: #303135;
+  --bg-3: var(--surface-container); --bg-4: var(--surface-container-high); --surface-hover: var(--surface-container);
+  --text-primary: var(--ink); --text-1: var(--ink); --text-secondary: var(--ink-2); --text-2: var(--ink-2); --text-muted: var(--ink-3);
+  --border: var(--rule); --border-subtle: var(--rule); --border-stronger: var(--rule-2); --border-strong: var(--rule-2);
+  --primary: #6a9cf0; --primary-container: #1f2a40; --on-primary: #0f1012; --on-warning: #0f1012;
+  --interactive: var(--primary); --selected-bg: color-mix(in srgb, var(--primary) 13%, transparent);
+  --sidebar-primary-bg: var(--primary); --sidebar-primary-ink: var(--on-primary);
+  --success: #5cc488; --danger: #ef7067; --warning: #e3a64a; --info: var(--primary);
+  --topbar-bg: var(--ink-bar); --page-sticky-bg: var(--paper);
+  --work-surface: var(--sheet); --operator-line: var(--rule); --operator-line-strong: var(--rule-2);
+  --operator-rail: var(--paper); --operator-rail-raised: var(--sheet); --operator-rail-line: var(--rule); --operator-rail-text: var(--ink); --operator-rail-muted: var(--ink-3);
+  --library-background: var(--paper); --library-surface: var(--sheet); --library-text: var(--ink); --library-muted: var(--ink-2); --library-border: var(--rule);
+  --library-accent: var(--primary); --library-accent-surface: var(--primary-container); --library-action: var(--primary); --library-action-hover: #86b0f4; --library-on-action: var(--on-primary);
+  --chart-grid: var(--rule); --chart-primary: var(--chart-category-1);
+  --shadow-sm: none; --shadow-float: 0 12px 40px rgba(0,0,0,.35);
+  background: var(--paper);
+  background-image: none;
+}
+body.light-mode {
+  --paper: #f3f1eb; --sheet: #fdfcf9; --sunk: #ebe8e0;
+  --ink: #16171a; --ink-2: #44474d; --ink-3: #5f6268;
+  --rule: #e0ddd5; --rule-2: #c7c3b9;
+  --surface-container-high: #e2dfd6; --surface-container-highest: #d6d2c8;
+  --primary: #2456c4; --primary-container: #dfe7f7; --on-primary: #ffffff; --on-warning: #ffffff;
+  --selected-bg: color-mix(in srgb, var(--primary) 9%, transparent);
+  --success: #1a6b3a; --danger: #b8332c; --warning: #8f5b00;
+  --library-action-hover: #1c4aa8;
+  --shadow-float: 0 12px 40px rgba(40,36,26,.14);
+}
+body, body.light-mode { background: var(--paper); }
+
+/* 결론 문장·큰 제목은 명조, 숫자는 고정폭 — 같은 화면에서 "말"과 "값"이 구별된다. */
+.result-action-card__headline,
+.content-article__header h1,
+.content-index__hero h1,
+.dc-hero h1,
+.dc-section-head h2,
+.home-entry__situations > h2,
+.home-entry__file > h2,
+.ops-plan-proposal h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.result-action-card__headline { line-height: 1.42; }
+/* 명조(Noto Serif KR)는 글자 상자가 1.4em을 넘는다 — 고딕용 1.3 행간이면 두 줄의 글자 상자가 겹친다. */
+.app :is(.dc-hero h1, .content-article__header h1, .content-index__hero h1, .dc-section-head h2, .ops-plan-proposal h3) { line-height: 1.45; letter-spacing: -.03em; }
+:where(.kpi-card .value, .result-action-card__stats strong, .metric-value-atom) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+/* 상단은 잉크 막대 하나 — 안쪽 요소는 토큰만 바꿔 같은 부품을 그대로 쓴다. */
+.app .topbar.operator-header {
+  --dc-text: var(--ink-bar-text); --dc-text-soft: var(--ink-bar-muted); --dc-text-dim: var(--ink-bar-muted); --dc-line: var(--ink-bar-line); --dc-line-strong: var(--ink-bar-line); --dc-panel: var(--ink-bar-raised); --dc-ink: var(--ink-bar);
+  --text-primary: var(--ink-bar-text); --text-1: var(--ink-bar-text);
+  --text-secondary: var(--ink-bar-muted); --text-2: var(--ink-bar-muted); --text-muted: var(--ink-bar-muted);
+  --border: var(--ink-bar-line); --border-subtle: var(--ink-bar-line); --border-stronger: var(--ink-bar-line);
+  --bg-2: var(--ink-bar-raised); --surface-container: var(--ink-bar-raised); --surface-hover: var(--ink-bar-raised);
+  --library-text: var(--ink-bar-text); --library-muted: var(--ink-bar-muted); --library-border: var(--ink-bar-line); --library-surface: var(--ink-bar-raised);
+  --primary: #8db4f5; --on-primary: #16171a;
+  background: var(--ink-bar);
+  color: var(--ink-bar-text);
+  border-bottom: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* 사이드바 로고 칸은 상단 잉크 막대와 같은 높이·같은 검정 — 화면 위쪽이 한 줄로 이어진다. */
+.app .sidebar.library-sidebar .brand {
+  display: flex; align-items: center;
+  height: 68px; min-height: 68px;
+  margin: -23px -15px 16px; padding: 0 26px;
+  background: var(--ink-bar); border: 0;
+}
+.app .sidebar.library-sidebar .brand-name,
+.app .sidebar.library-sidebar .brand-sub { color: var(--ink-bar-text); }
+.app .sidebar.library-sidebar .brand-sub { color: var(--ink-bar-muted); font-weight: 400; }
+/* 메뉴 선택은 색 칠한 알약이 아니라 종이 한 칸 + 굵은 잉크 글자. */
+.app .library-nav .library-nav-item,
+.library-nav-dialog .library-nav-item { border-radius: var(--radius-md); }
+.app .library-nav .library-nav-item:hover,
+.library-nav-dialog .library-nav-item:hover { background: var(--sunk); color: var(--ink); }
+.app .library-nav .library-nav-item.active,
+.library-nav-dialog .library-nav-item.active { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule-2); }
+/* 상자를 걷고 선으로 나눈다 — 구역은 위쪽 머리카락 선과 여백이 가른다(재설계 2026-11-09).
+   진짜 한 묶음인 것(분석 카드·버튼·입력·끌어놓기 칸·대화상자)은 대상이 아니다. */
+.app #content :is(
+  .page-sticky-bar, .block, .analysis-setup, .tool-next-step-panel, .decision-review-preview,
+  .result-action-card, .result-next-action, .dashboard-workspace-toolbar, .dashboard-next-actions,
+  .dashboard-utilities, .ops-plan-summary, .ops-allocation, .ops-creatives, .ops-evidence-surface,
+  .pvm-efficiency-bridge, .tool-recipe-controls, .creative-control-room, .tool-connection-card,
+  .dashboard-supporting-charts .chart-card, .dashboard-explorer, .kpi-grid--overview .kpi-card
+) {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--rule-2);
+  border-radius: 0;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.app #content .result-action-card { border-top-color: var(--ink); }
+.app #content :is(.result-action-card__head, .result-action-card__stats, .result-next-action) {
+  background: transparent; border-left: 0; border-right: 0; border-radius: 0; padding-left: 0; padding-right: 0;
+}
+.app #content .kpi-grid--overview { gap: 0; }
+.app #content .kpi-grid--overview .kpi-card { padding: 14px 16px 14px 0; }
+.app #content .kpi-grid--overview .kpi-card + .kpi-card { padding-left: 16px; border-left: 1px solid var(--rule); }
+.app #content .kpi-grid--overview .kpi-card.is-selected { border-top-color: var(--primary); box-shadow: inset 0 2px 0 var(--primary); }
+.app #content :is(.dashboard-supporting-charts .chart-card, .dashboard-explorer) :is(.dashboard-supporting-chart__head, .dashboard-explorer__head) { padding-left: 0; padding-right: 0; border-bottom: 0; min-height: 0; }
+.app #content :is(.dashboard-supporting-chart__canvas, .dashboard-explorer__canvas) { margin-left: 0; margin-right: 0; }
+.app #content .dashboard-explorer__interpretation, .app #content .dashboard-explorer__actions { padding-left: 0; padding-right: 0; }
+/* 고정폭 숫자는 같은 크기에서 더 넓다 — 세 칸짜리 큰 수치는 한 단계 작게 둬 줄바꿈되지 않게. */
+.app #content .allocation-workspace .result-action-card__stats strong { font-size: var(--fs-xl); }
+/* 홈 상황 칸 — 상자 목록이 아니라 머리카락 선으로 나눈 색인. 번호·제목·질문을 위에서 아래로 읽는다. */
+.app .home-entry__situations ul { gap: 0; border-top: 1px solid var(--ink); }
+.app .home-entry__situations li a {
+  grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: baseline;
+  min-height: 0; padding: 11px 4px 11px 0; row-gap: 2px; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: transparent;
+}
+.app .home-entry__situations li:nth-child(even) a { padding-left: 16px; border-left: 1px solid var(--rule); }
+.app .home-entry__situations li a:hover { background: transparent; }
+.app .home-entry__situations li a:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.app .home-entry__situations strong { font-family: var(--font-serif); font-size: var(--fs-md); font-weight: 600; letter-spacing: -.01em; }
+.app .home-entry__no { font-variant-numeric: tabular-nums; }
+.home-entry__q { grid-column: 2 / -1; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
+.app .home-entry__situations .home-entry__all-tile a { background: var(--ink); color: var(--paper); padding-left: 16px; border-bottom: 0; }
+.app .home-entry__situations .home-entry__all-tile a :is(strong, .home-entry__no) { color: var(--paper); }
+.app .home-entry__situations li { display: flex; }
+.app .home-entry__situations li > a { flex: 1; }

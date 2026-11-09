@@ -3,7 +3,6 @@ import { MARKETING_ANALYSIS_TASKS, marketingAnalysisCopy } from "@/lib/marketing
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import { SITE_URL } from "@/lib/routeMap";
 import MarketingAnalysisPreview from "@/components/MarketingAnalysisPreview";
-import HeroArtwork from "@/components/landing/HeroArtwork";
 import blogExamples from "@/lib/blogExamples/data.json";
 
 export default function MarketingAnalysisHub({ locale = "ko" }) {
@@ -20,7 +19,6 @@ export default function MarketingAnalysisHub({ locale = "ko" }) {
     <div className="analysis-hub-intro">
     <div className="brand-hero__heading">
     <h1 id="analysis-hub-title">{copy.title}</h1>
-    <HeroArtwork />
     </div>
     <p className="compare-page__lead">{copy.intro}</p>
     <div className="analysis-hub-entry">

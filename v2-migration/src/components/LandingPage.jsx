@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
 import OperationsHomeActions from "@/components/landing/OperationsHomeActions";
 import { readOperationAction } from "@/lib/operations/actionContract";
-import HeroArtwork from "@/components/landing/HeroArtwork";
 import { OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
 import { exampleHref } from "@/lib/exampleLink";
 import CsvUploader from "@/components/CsvUploader";
@@ -210,7 +209,6 @@ export default function LandingPage({ locale = "ko", reading }) {
             <span>{T.title}</span>{" "}
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
-          <HeroArtwork />
           </div>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
           <div className="home-planner-entry">
@@ -233,6 +231,7 @@ export default function LandingPage({ locale = "ko", reading }) {
                       <span className="home-entry__no" aria-hidden="true">{item.label}</span>
                       <strong>{item.title}</strong>
                       <small>{T.situationCount(item.count)}</small>
+                      {item.question && <span className="home-entry__q">{item.question}</span>}
                     </Link>
                   </li>
                 ))}
