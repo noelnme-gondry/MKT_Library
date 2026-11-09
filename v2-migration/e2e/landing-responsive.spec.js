@@ -11,7 +11,8 @@ async function heroLayout(page) {
       viewport: innerWidth,
       overflow: document.documentElement.scrollWidth - innerWidth,
       main: box("#main-content"),
-      art: box(".brand-hero__art"),
+      // 2026-11 Paper & Ink: 히어로 장식 곡면은 뺐다 — 다시 생기면 실패한다.
+      artCount: document.querySelectorAll(".brand-hero__art").length,
       title: box(".brand-hero h1"),
       description: box(".dc-hero__deck, .analysis-hub-intro .compare-page__lead"),
       entry: box(".home-entry, .analysis-hub-entry"),
@@ -25,9 +26,7 @@ async function heroLayout(page) {
 
 function expectReadableHero(layout) {
   expect(layout.overflow).toBeLessThanOrEqual(1);
-  // Decoration spans the available page, including the responsive side gutters.
-  expect(Math.abs(layout.art.left - layout.main.left)).toBeLessThanOrEqual(1);
-  expect(Math.abs(layout.art.right - layout.main.right)).toBeLessThanOrEqual(1);
+  expect(layout.artCount).toBe(0);
   expect(layout.title.bottom).toBeLessThanOrEqual(layout.description.top);
   expect(layout.description.bottom).toBeLessThanOrEqual(layout.entry.top);
   expect(layout.description.font).toBeGreaterThanOrEqual(14);
@@ -35,10 +34,6 @@ function expectReadableHero(layout) {
     expect(action.left).toBeGreaterThanOrEqual(layout.main.left);
     expect(action.right).toBeLessThanOrEqual(layout.main.right);
     expect(action.height).toBeGreaterThanOrEqual(44);
-  }
-  if (layout.main.width <= 720) {
-    // Narrow layouts must not stretch the artwork through the stacked actions.
-    expect(layout.art.bottom).toBeLessThanOrEqual(layout.description.top);
   }
 }
 
