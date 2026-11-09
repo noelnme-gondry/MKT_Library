@@ -152,8 +152,8 @@ v2-migration/
 ## 5. 글로벌 스타일 (CSS/테마)
 - **`src/app/globals.css`** — 전 디자인 시스템, 단일 파일. **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).
 - **토큰**: `:root{--bg-1·--text-muted·--border·--primary…}`, 다크/라이트는 **`body.light-mode` 오버라이드**. `layout.js` 초기 스크립트가 첫 페인트 전 테마 반영, `refreshMountedChartThemes()`가 마운트된 canvas 갱신.
-- **타입**: 자체 호스팅 — 본문 Wanted Sans·제목 Pretendard(`app/korean-fonts.css`), 결론·대표 제목 명조 GOP Serif(`app/serif-fonts.css` → `public/fonts/serif/`, Noto Serif KR 600), 결과 숫자 JetBrains Mono. 계약은 `app/typographyFontContract.test.js`.
-- **Paper & Ink 재설계**(2026-11-09): `globals.css` 맨 끝(레이어 밖) "2026-11 Paper & Ink" 블록이 종이/잉크 토큰·잉크 상단 띠·열린 구획(`.app #content :is(...)`)·명조/고정폭 규칙을 소유한다.
+- **타입**: 자체 호스팅 — 본문 Wanted Sans·제목 Pretendard(`app/korean-fonts.css`), 코드만 JetBrains Mono. 계약은 `app/typographyFontContract.test.js`.
+- **Paper & Ink 재설계**(2026-11-09): `globals.css` 맨 끝(레이어 밖) "2026-11 Paper & Ink" 블록이 종이/잉크 토큰·잉크 상단 띠·열린 구획(`.app #content :is(...)`)을 소유한다. 옛 흰 면 `!important` 규칙은 원 자리에서 열린 구획 값으로 바뀌었다.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만이고, 글자는 `toolIndex.toolDisplayTitle`(목록 이름, 검색어형 이름은 제목 밑 `.tool-instrument-header__alias`) — Dashboard(5-2)·PaidOrganicTrend도 같은 헬퍼(`e2e/tool-title-consistency.spec.js`).
 - **마스코트 없음**: 도치 인사 오버레이·접수처·분석 도크·매핑 말풍선·스프라이트는 2026-11-06 제거됐다(AGENTS §12.29b). 결과 작업대 `/dochi-result`와 `dochi-workspace` 클래스는 기능이라 유지.

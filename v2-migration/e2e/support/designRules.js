@@ -216,7 +216,7 @@ export async function measureDesignRules(page) {
     // 장식일 뿐이라 금지. 대문자는 CSS로 바꾼 것(text-transform)과 간격을 벌린 대문자 라벨을 잰다.
     const PICTO = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B50}]/u;
     const ALLOWED_SYMBOLS = new Set([..."✓✔⚠❌★↗↘↻↺→←↑↓▲▼●◆◇○✕✦☰"]);
-    const emoji = [], caps = [], monoWords = [];
+    const emoji = [], caps = [], monoNumbers = [];
     for (const t of texts) {
       if (t.dialog || t.el.closest("code, pre, kbd, samp, .mono, header.topbar, .sidebar, footer") || exempt(t.el, "glyph")) continue;
       const full = t.el.textContent;
@@ -225,14 +225,9 @@ export async function measureDesignRules(page) {
       if (st.textTransform === "uppercase" && /[a-z]/i.test(t.text)) caps.push(`uppercase "${t.text}"`);
       // ROAS·CPA 같은 약어는 원래 대문자다 — 여러 단어로 된 대문자 라벨(START HERE 등)만 잡는다.
       else if (/^[A-Z][A-Z0-9·&/-]*( [A-Z0-9·&/-]+)+$/.test(t.text) && parseFloat(st.letterSpacing) > 0.5) caps.push(`spaced caps "${t.text}"`);
-      // 2026-11-09 재설계: 결과 수치는 고정폭으로 자릿수를 맞춘다. 대신 한글 문장이 고정폭에 실리면
-      // 글자 사이가 벌어져 읽기 어렵다 — 고정폭은 숫자·기호에만 써야 한다.
-      // 고정폭 글꼴에 한글 글리프가 없으면 한글은 목록의 다음 고딕으로 그려진다 — 그 고딕이 없을 때만 위반이다.
-      if (/[가-힣]{2,}/.test(t.text)) {
-        const stack = st.fontFamily.split(",").map(f => f.trim().replace(/["']/g, ""));
-        const hangulFace = stack.find(f => !/mono|monospace|menlo|consolas|courier/i.test(f));
-        if (/mono/i.test(stack[0]) && !hangulFace) monoWords.push(`"${t.text}"`);
-      }
+      // 2026-11-09 재설계 후 되돌림: 명조·고정폭을 일부에만 입히자 한 화면에 글꼴 셋이 섞여 누더기가 됐다(사용자 지적).
+      // 숫자는 본문 고딕 + tabular-nums로 자릿수만 맞춘다.
+      if (/\d/.test(t.text) && /mono/i.test(st.fontFamily.split(",")[0])) monoNumbers.push(`"${t.text}"`);
     }
 
     // 11) 생성형 UI 티(2026-09-24, A1~A5): 그림자는 떠 있는 것(대화상자·팝오버·메뉴)에만, 그라데이션
@@ -324,7 +319,7 @@ export async function measureDesignRules(page) {
       surfaceColors: [...surfaceColors],
       emoji: [...new Set(emoji)].slice(0, 20),
       caps: [...new Set(caps)].slice(0, 20),
-      monoWords: [...new Set(monoWords)].slice(0, 10),
+      monoNumbers: [...new Set(monoNumbers)].slice(0, 10),
       horizontalOverflow,
       smallHeadings: [...new Set(smallHeadings)],
       accents: [...new Set(accents)],

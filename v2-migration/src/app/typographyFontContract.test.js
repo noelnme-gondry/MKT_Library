@@ -31,30 +31,14 @@ describe("Korean typography contract", () => {
     expect(css).not.toMatch(/var\(--font-display\)/);
   });
 
-  // 2026-11-09 재설계(사용자 결정): 결과의 큰 수치만 고정폭으로 자릿수를 세로로 맞추고, 본문·표의
-  // 숫자는 여전히 본문 글꼴 + tabular-nums다. 고정폭이 번지면 결과 화면이 터미널처럼 보이므로(2026-09-24)
-  // 허용 대상은 선택자 한 줄로만 선언한다 — 새 자리에 고정폭이 필요하면 그 줄에 더할 것.
-  it("limits mono to code and the headline result numbers; other numbers use tabular figures", () => {
+  // 숫자까지 고정폭이면 결과 화면이 터미널처럼 보인다(2026-09-24). 고정폭은 코드에만, 숫자는
+  // 본문 글꼴 + tabular-nums로 자릿수를 맞춘다.
+  it("keeps mono limited to code; numbers use tabular figures in the body font", () => {
+    expect(css.match(/var\(--font-mono\)/g)).toHaveLength(1);
     expect(css).toMatch(/:where\(pre, code, kbd, samp, \.mono\) \{\s*font-family: var\(--font-mono\);/);
     expect(css).toMatch(/:where\(\.tnum, \.kpi-card \.value\) \{\s*font-variant-numeric: tabular-nums;/);
-    expect(css).toMatch(/:where\(\.kpi-card \.value, \.result-action-card__stats strong, \.metric-value-atom\) \{\s*font-family: var\(--font-mono\);/);
-    expect(css.match(/var\(--font-mono\)/g)).toHaveLength(2);
     // 고정폭 글꼴은 --font-mono 정의 한 곳에서만 불린다.
     expect(css.match(/var\(--font-jetbrains-mono\)/g)).toHaveLength(1);
-  });
-
-  // 결론 문장·큰 제목은 명조 한 벌(Noto Serif KR 600, 자체 호스팅 분할본)이다. 굵기는 하나뿐이고,
-  // 분할 파일은 public/fonts/serif에 실재해야 한다(외부 글꼴 서버에 배포를 걸지 않는다).
-  it("loads the self-hosted serif once and uses it only through --font-serif", () => {
-    expect(rootDocument).toContain('import "@/app/serif-fonts.css"');
-    const serif = readFileSync(path.join(ROOT, "src/app/serif-fonts.css"), "utf8");
-    const files = [...serif.matchAll(/url\("(.*?)"\)/g)].map(match => match[1]);
-    expect(files.length).toBeGreaterThan(50);
-    expect(files.every(file => file.startsWith("/fonts/serif/") && existsSync(path.join(ROOT, "public", file)))).toBe(true);
-    expect(serif.match(/font-weight:600/g)).toHaveLength(files.length);
-    expect(readFileSync(path.join(ROOT, "public/fonts/NotoSerifKR-OFL.txt"), "utf8")).toContain("SIL Open Font License");
-    expect(css).toMatch(/--font-serif:\s*"GOP Serif"/);
-    expect(css.match(/"GOP Serif"/g)).toHaveLength(1);
   });
 
   // 이 검사는 오래 리터럴 px를 그대로 적고 있었다(`--type-body: 14px` ·

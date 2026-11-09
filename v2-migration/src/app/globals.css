@@ -12195,8 +12195,9 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .app .content .dashboard-workspace .dashboard-next-actions,
 .app .content .dashboard-workspace .dashboard-utilities,
 .app .content .dashboard-workspace .dashboard-supporting-charts {
-  padding: 24px !important; margin: 0 0 24px;
-  background: var(--surface-container-lowest) !important; border: 1px solid var(--border) !important; border-radius: var(--radius-md) !important;
+  /* 2026-11 Paper & Ink: 흰 상자가 아니라 위쪽 선의 열린 구획 — 좌우 여백 0으로 본문 기준선에 맞춘다. */
+  padding: 24px 0 !important; margin: 0 0 24px;
+  background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule-2) !important; border-radius: 0 !important;
 }
 .dashboard-comparison-period__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .dashboard-period-presets { display: flex; gap: 4px; }
@@ -12241,7 +12242,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 }
 @media (max-width: 640px) {
   .app .content .dashboard-workspace .dashboard-workspace__header,
-  .app .content .dashboard-workspace :is(.dashboard-comparison-period, .dashboard-next-actions, .dashboard-utilities, .dashboard-supporting-charts) { padding: 16px !important; }
+  .app .content .dashboard-workspace :is(.dashboard-comparison-period, .dashboard-next-actions, .dashboard-utilities, .dashboard-supporting-charts) { padding: 16px 0 !important; }
   .dashboard-workspace .dashboard-tabs { margin-right: 0; padding-right: 0; }
   .dashboard-workspace .dashboard-tabs__group { flex: 1 1 100%; }
   .dashboard-workspace .dashboard-tabs__label { width: 100%; margin-left: 0; }
@@ -12268,8 +12269,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .dashboard-layout-block > .block,
   .dashboard-layout-block > .dashboard-viz-workbench,
   .dashboard-layout-block > .budget-health-card {
-    margin: 0 !important; padding: 24px !important; background: var(--surface-container-lowest) !important;
-    border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; min-width: 0;
+    margin: 0 !important; padding: 24px 0 !important; min-width: 0;
+    background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule-2) !important; border-radius: 0 !important;
   }
   .dashboard-layout-block .section-title { border: 0 !important; padding: 0 !important; margin: 0 0 16px !important; line-height: 1.4; }
   .dashboard-layout-block .section-head, .dashboard-layout-block .dashboard-section-head { align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -12324,7 +12325,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   @media (max-width: 1100px) { .dashboard-workspace[data-editing] .dashboard-workspace-body { grid-template-columns: minmax(0, 1fr); } .dashboard-editor { position: relative; top: auto; max-height: none; grid-row: 1; } }
   @media (max-width: 720px) {
     .dashboard-layout-block[data-width] { grid-column: 1 / -1; }
-    .dashboard-layout-block > .block, .dashboard-layout-block > .dashboard-viz-workbench, .dashboard-layout-block > .budget-health-card { padding: 16px !important; }
+    .dashboard-layout-block > .block, .dashboard-layout-block > .dashboard-viz-workbench, .dashboard-layout-block > .budget-health-card { padding: 16px 0 !important; }
     .dashboard-workspace-toolbar { padding: 16px; }
     .dashboard-block-grid { gap: 16px; }
     .dashboard-analysis-controls { padding: 12px; }
@@ -12360,14 +12361,14 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .app .content .tool-autonomy .block :is(.callout, .analysis-local-controls, .ab-stat, .required-banner, .period-compare, .event-log__form, .trend-chart-explainer, .trend-change-ledger, .creative-model-router__profile, .creative-model-router__explanation, .aha-scatter-toolbar, .analysis-design-check) { border-width: 1px 0 0; border-style: solid; border-color: var(--border); border-radius: 0; background: transparent; box-shadow: none; }
 @layer app {
   .tool-autonomy { min-width: 0; }
-  .tool-autonomy .block:not(.mmm-stage-nav) { background: var(--surface-container-lowest) !important; padding: 24px !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; margin-block: 20px !important; min-width: 0; }
-  .tool-autonomy .block .block { padding: 16px !important; margin-block: 16px !important; }
+  .tool-autonomy .block:not(.mmm-stage-nav) { padding: 24px 0 !important; background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule-2) !important; border-radius: 0 !important; margin-block: 20px !important; min-width: 0; }
+  .tool-autonomy .block .block { padding: 16px 0 !important; margin-block: 16px !important; }
   .tool-autonomy #s-prep:has(.csv-dropzone) { background: transparent !important; border: 0 !important; border-radius: 0 !important; padding-inline: 0 !important; }
   .tool-autonomy .section-title { line-height: 1.4; }
   .tool-autonomy .section-head { align-items: center; gap: 12px; flex-wrap: wrap; }
   .tool-autonomy .chart-container { min-width: 0; }
   .tool-autonomy [hidden] { display: none !important; }
-  .tool-instrument-header--surface { background: var(--surface-container-lowest) !important; padding: 24px !important; border: 1px solid var(--border) !important; border-radius: var(--radius-xl) !important; margin-bottom: 20px; }
+  .tool-instrument-header--surface { padding: 24px 0 !important; background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule-2) !important; border-radius: 0 !important; margin-bottom: 20px; }
   .tool-recipe-controls { position: relative; z-index: 11; padding: 14px 20px; margin-block: 12px; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-xl); }
   .tool-recipe-controls__hint { margin: 10px 0 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.6; }
   /* 저장 위치 설명은 설정을 고칠 때만 필요하다 — 결론을 밀어내지 않게 입력 중에만 펼친다(§1.1c 4단계). */
@@ -12380,10 +12381,10 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .comparison-condition-grid > label { display: grid; align-content: space-between; gap: 12px; margin: 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: var(--fs-sm); line-height: 1.5; }
   .comparison-condition-grid select { width: 100%; min-width: 0; }
   .analysis-design-check--comparison > [role=status] { border-top: 1px solid var(--border); padding-top: 16px; margin-bottom: 0; color: var(--text-muted); font-size: var(--fs-sm); }
-  .analysis-setup--actions[data-tool-id] { background: var(--surface-container-lowest) !important; }
+  .analysis-setup--actions[data-tool-id] { background: transparent !important; }
   @media (max-width: 768px) {
     .comparison-condition-grid { grid-template-columns: 1fr; }
-    .tool-autonomy .block:not(.mmm-stage-nav), .tool-instrument-header--surface { padding: 16px !important; }
+    .tool-autonomy .block:not(.mmm-stage-nav), .tool-instrument-header--surface { padding: 16px 0 !important; }
     .tool-recipe-controls, .tool-autonomy .analysis-design-check, .tool-autonomy .page-sticky-bar { padding: 16px; }
     .tool-autonomy .mapping-grid { grid-template-columns: 1fr !important; }
     .tool-autonomy .paid-organic-chart-card > header { align-items: start; flex-direction: column; gap: 8px; }
@@ -12413,7 +12414,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 @layer app { .tool-autonomy .mon-filter-item { min-width: 0; max-width: 100%; } .tool-autonomy .mon-filter-select { max-width: 100%; min-width: 0; } }
 @layer app {
   .mmm-controls { display: grid; width: 100%; gap: 14px; }
-  .tool-autonomy .page-sticky-bar.mmm-controls-panel { background: var(--surface-container-lowest) !important; }
+  .tool-autonomy .page-sticky-bar.mmm-controls-panel { background: transparent !important; }
   .mmm-controls > .analysis-local-controls__label { font-weight: 400; color: var(--text-muted); }
   .mmm-controls > .analysis-local-controls__label strong { font-weight: 600; }
   .mmm-controls__scope { align-items: end !important; }
@@ -13262,7 +13263,6 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
    색을 바꿀 때는 이 블록만 고친다 — 앞 층의 같은 이름을 다시 고치지 말 것.
    ====================================================================== */
 :root {
-  --font-serif: "GOP Serif", var(--font-sans);
   --chart-category-1-light: #2456c4;
   --chart-category-1-dark: #6a9cf0;
   --chart-comparison-light: #8f8b81;
@@ -13312,27 +13312,9 @@ body.light-mode {
 }
 body, body.light-mode { background: var(--paper); }
 
-/* 결론 문장·큰 제목은 명조, 숫자는 고정폭 — 같은 화면에서 "말"과 "값"이 구별된다. */
-.result-action-card__headline,
-.content-article__header h1,
-.content-index__hero h1,
-.dc-hero h1,
-.dc-section-head h2,
-.home-entry__situations > h2,
-.home-entry__file > h2,
-.ops-plan-proposal h3 {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  letter-spacing: -.02em;
-}
-.result-action-card__headline { line-height: 1.42; }
-/* 명조(Noto Serif KR)는 글자 상자가 1.4em을 넘는다 — 고딕용 1.3 행간이면 두 줄의 글자 상자가 겹친다. */
-.app :is(.dc-hero h1, .content-article__header h1, .content-index__hero h1, .dc-section-head h2, .ops-plan-proposal h3) { line-height: 1.45; letter-spacing: -.03em; }
-:where(.kpi-card .value, .result-action-card__stats strong, .metric-value-atom) {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -.02em;
-}
+/* 글꼴은 고딕 하나 — 명조·고정폭을 일부에만 입히자 한 화면에 셋이 섞여 누더기가 됐다(2026-11-09 사용자 지적).
+   숫자는 tabular-nums로 자릿수만 맞춘다. */
+:where(.kpi-card .value, .result-action-card__stats strong, .metric-value-atom) { font-variant-numeric: tabular-nums; }
 
 /* 상단은 잉크 막대 하나 — 안쪽 요소는 토큰만 바꿔 같은 부품을 그대로 쓴다. */
 .app .topbar.operator-header {
@@ -13343,6 +13325,7 @@ body, body.light-mode { background: var(--paper); }
   --bg-2: var(--ink-bar-raised); --surface-container: var(--ink-bar-raised); --surface-hover: var(--ink-bar-raised);
   --library-text: var(--ink-bar-text); --library-muted: var(--ink-bar-muted); --library-border: var(--ink-bar-line); --library-surface: var(--ink-bar-raised);
   --primary: #8db4f5; --on-primary: #16171a;
+  --operator-line: var(--ink-bar-line); --rule: var(--ink-bar-line); --rule-2: var(--ink-bar-line);
   background: var(--ink-bar);
   color: var(--ink-bar-text);
   border-bottom: 0;
@@ -13394,22 +13377,13 @@ body, body.light-mode { background: var(--paper); }
 .app #content :is(.dashboard-supporting-charts .chart-card, .dashboard-explorer) :is(.dashboard-supporting-chart__head, .dashboard-explorer__head) { padding-left: 0; padding-right: 0; border-bottom: 0; min-height: 0; }
 .app #content :is(.dashboard-supporting-chart__canvas, .dashboard-explorer__canvas) { margin-left: 0; margin-right: 0; }
 .app #content .dashboard-explorer__interpretation, .app #content .dashboard-explorer__actions { padding-left: 0; padding-right: 0; }
-/* 2026-09-30의 흰 면 규칙은 `@layer app` 안의 !important라 레이어 밖 규칙으로는 못 이긴다
-   (!important는 레이어가 앞일수록 이긴다). 같은 레이어 안에서 ID 특이도로 열린 구획으로 되돌린다. */
-@layer app {
-  .app #content :is(
-    .tool-autonomy .block:not(.mmm-stage-nav), .tool-instrument-header--surface, .analysis-setup--actions,
-    .dashboard-layout-block > :is(.block, .dashboard-viz-workbench, .budget-health-card),
-    .dashboard-workspace :is(.dashboard-comparison-period, .dashboard-next-actions, .dashboard-utilities, .dashboard-supporting-charts),
-    .tool-autonomy .page-sticky-bar.mmm-controls-panel
-  ) {
-    background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule-2) !important;
-    border-radius: 0 !important; box-shadow: none !important; padding-left: 0 !important; padding-right: 0 !important;
-  }
+/* 홈 히어로: 넓은 화면에서 소개 칸을 미리보기 높이만큼 늘리고 내용을 세로 가운데에 둔다 —
+   위에 붙여 두면 미리보기 옆 왼쪽 아래가 통째로 비었다. 두 칸의 윗변은 그대로 맞춘다. */
+@media (min-width: 1101px) {
+  .app .home-approved .home-planner-intro { align-items: stretch; }
+  .app .home-approved .home-planner-intro > .dc-hero__intro { align-content: center; }
 }
-/* 고정폭 숫자는 같은 크기에서 더 넓다 — 세 칸짜리 큰 수치는 한 단계 작게 둬 줄바꿈되지 않게. */
-.app #content .allocation-workspace .result-action-card__stats strong { font-size: var(--fs-xl); }
-/* 홈 상황 칸 — 상자 목록이 아니라 머리카락 선으로 나눈 색인. 번호·제목·질문을 위에서 아래로 읽는다. */
+/* 홈 상황 칸 — 상자 목록이 아니라 머리카락 선으로 나눈 색인. */
 .app .home-entry__situations ul { gap: 0; border-top: 1px solid var(--ink); }
 .app .home-entry__situations li a {
   grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline;
@@ -13418,7 +13392,7 @@ body, body.light-mode { background: var(--paper); }
 .app .home-entry__situations li:nth-child(even) a { padding-left: 16px; border-left: 1px solid var(--rule); }
 .app .home-entry__situations li a:hover { background: transparent; }
 .app .home-entry__situations li a:hover strong { text-decoration: underline; text-underline-offset: 3px; }
-.app .home-entry__situations strong { font-family: var(--font-serif); font-size: var(--fs-md); font-weight: 600; letter-spacing: -.01em; }
+.app .home-entry__situations strong { font-size: var(--fs-md); font-weight: 600; }
 .app .home-entry__no { font-variant-numeric: tabular-nums; }
 .app .home-entry__situations .home-entry__all-tile a { background: var(--ink); color: var(--paper); padding-left: 16px; border-bottom: 0; }
 .app .home-entry__situations .home-entry__all-tile a :is(strong, .home-entry__no) { color: var(--paper); }

@@ -23,11 +23,8 @@ for (const locale of ["ko", "en"]) {
         const heading = page.locator("h1").first();
         await expect(heading).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
-        // 큰 제목은 고딕(GOP Heading) 또는 명조(GOP Serif) — 둘 다 자체 호스팅이라 실제로 로드돼야 한다.
-        const family = await heading.evaluate(el => getComputedStyle(el).fontFamily);
-        const face = /GOP Serif/i.test(family) ? /GOP Serif/i : /GOP Heading/i;
-        expect(family, route).toMatch(/GOP (Heading|Serif)/i);
-        expect(await page.evaluate((src) => [...document.fonts].some((font) => new RegExp(src, "i").test(font.family) && font.status === "loaded"), face.source), route).toBe(true);
+        await expect(heading).toHaveCSS("font-family", /GOP Heading/i);
+        expect(await page.evaluate(() => [...document.fonts].some((font) => /GOP Heading/i.test(font.family) && font.status === "loaded")), route).toBe(true);
         // Long SOP code tokens must wrap without making the entire page scroll.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
       } finally {
