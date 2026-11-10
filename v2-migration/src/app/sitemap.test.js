@@ -29,6 +29,7 @@ describe("sitemap", () => {
 
     expect(entries.find((entry) => entry.url === `${SITE_URL}/privacy`)).not.toHaveProperty("lastModified");
     expect(entries.find((entry) => entry.url.includes("/blog/")).lastModified).toBeInstanceOf(Date);
+    expect(entries.find((entry) => entry.url === SITE_URL).lastModified.toISOString().slice(0, 10)).toBe("2026-11-10");
   });
 
   it("contains both localized tool routes", () => {
