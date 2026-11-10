@@ -271,6 +271,7 @@ export default function CsvUploader({
   toolId,
   refreshRef = null,
   onAnalyzed = null,
+  scrollToTopAfterAnalysis = true,
   onLoadDemo = null,
   analyticsToolId = toolId,
   showToolGuide = true,
@@ -982,7 +983,7 @@ export default function CsvUploader({
           setGroupAnalyzed(toolId);
           setIsStartingAnalysis(false);
           onAnalyzed?.();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (scrollToTopAfterAnalysis) window.scrollTo({ top: 0, behavior: "smooth" });
         });
       });
     });

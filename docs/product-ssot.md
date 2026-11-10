@@ -393,6 +393,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 
 
+분석 찾기가 한 열로 배치되는 화면에서는 ‘파일로 찾기’ 바로가기와 도구명·지표명 검색을 첫 화면에 둔다. 입력 중에는 검색 결과가 입력창 바로 아래에 나온다. / In the single-column finder, place the file shortcut and tool or metric search in the first viewport. Show matches directly under the input while searching.
+
 **목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 상황 분류(§1.1c)와 공개 도구를 처음부터 모두 보여주고, 도구마다 필요한 파일 이름을 함께 표시한다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
 히어로에는 도구와 같은 가상 운영 이력의 기간별 CPI 비교와 변화율, 가상 데이터·기간·범위를 표시한다. 도구 다음에는 기록·재검토, 실제 발행 글·가이드, 이용 조건 순으로 배치한다. 기록 저장은 Pro 체험 포함, 보고서 다운로드는 구매 이용권 전용임을 구분한다. / Follow tool discovery with review, published reading and service terms; trial storage and purchased-pass downloads remain distinct.

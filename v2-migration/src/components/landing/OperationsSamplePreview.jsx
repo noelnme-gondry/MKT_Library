@@ -1,8 +1,6 @@
 "use client";
 import { useId, useMemo, useRef, useState } from "react";
 import { buildOperationsHomePreview } from "@/lib/operations/operationsHomePreview";
-import Link from "next/link";
-import { OPERATIONS_PATH } from "@/lib/operations/operationsDemo";
 import { OPERATION_ACTION_KINDS } from "@/lib/operations/actionContract";
 import OperationsHomeTrend from "./OperationsHomeTrend";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
@@ -130,8 +128,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
     </div>
     <div className="operations-sample-preview__footer">
       <p className="operations-sample-preview__note">{viewNote[view]}</p>
-      {view === "campaigns" ? <button type="button" className="home-preview-story__next" onClick={showBudget}>{tr("같은 예산으로 조정안 보기", "See this budget plan")} <span aria-hidden="true">→</span></button>
-        : <Link className="btn secondary" href={`${en ? "/en" : ""}${OPERATIONS_PATH}?example=1`}>{tr("이 예산안 직접 조정하기", "Adjust this budget plan")} →</Link>}
+      {view === "campaigns" && <button type="button" className="home-preview-story__next" onClick={showBudget}>{tr("같은 예산으로 조정안 보기", "See this budget plan")} <span aria-hidden="true">→</span></button>}
     </div>
   </aside>;
 }
