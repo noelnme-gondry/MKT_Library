@@ -7,6 +7,17 @@ import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
 
+  test(`home reading stays aligned and the primary example opens results (${locale})`, async ({ page }) => {
+    await page.goto(prefix || "/");
+    const reading = page.locator(".home-reading-list");
+    await expect(reading.getByRole("heading", { level: 2 })).toBeVisible();
+    await expect.poll(() => reading.evaluate(section => Math.abs(section.getBoundingClientRect().left - section.querySelector("h2").getBoundingClientRect().left))).toBeLessThan(1);
+    await expect(page.locator('meta[name="keywords"]')).toHaveCount(0);
+    await page.locator(`.home-planner-entry a[href="${prefix}/tools/operations-planner?example=1"]`).click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/tools/operations-planner(?:\\?|$)`));
+    await expect(page.locator("#ops-plan-title")).toBeVisible();
+  });
+
   test(`old headroom address opens the budget detail headroom view and switches views (${locale})`, async ({ page }) => {
     await page.goto(`${prefix}/tools/campaign-saturation`);
     await expect(page).toHaveURL(new RegExp(`${prefix}/tools/budget-allocation\\?view=headroom$`));

@@ -10,5 +10,6 @@ describe("localized root metadata", () => {
     expect(metadata.title.default).toContain(titleWord);
     expect(metadata.openGraph).toMatchObject({ siteName: "Growth Opt Playbook", locale: ogLocale });
     expect(metadata.metadataBase.toString()).toBe("https://growthoptplaybook.com/");
+    expect(metadata).not.toHaveProperty("keywords");
   });
 });

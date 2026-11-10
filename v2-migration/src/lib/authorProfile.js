@@ -19,9 +19,8 @@ import { TOPIC_CLUSTERS } from "@/lib/topicClusters";
  * ============================================================ */
 
 export const AUTHOR = {
-  // 현재 사이트·네이버에서 실제로 쓰는 공개 바이라인. 실명 공개를 원하시면 여기만 바꾸면
-  // JSON-LD·바이라인·프로필 링크가 한 번에 따라온다.
-  name: BRAND.name,
+  // 저작 신원은 발행사나 판매자 정보가 변경되어도 유지한다.
+  name: "신기훈",
   ko: {
     role: "퍼포먼스 마케팅 5년 · 데이터 분석 3년",
     bio: "앱 퍼포먼스 마케팅 5년, 데이터 분석 3년. 실무에서 쓰던 분석을 도구로 만들어 무료로 공개하고 있습니다.",
@@ -97,7 +96,7 @@ export function profilePageNode(locale = "ko") {
     "@type": "ProfilePage",
     "@id": `${SITE_URL}${path}#profile`,
     url: `${SITE_URL}${path}`,
-    name: lang === "en" ? `About the operator of ${AUTHOR.name}` : `${AUTHOR.name} 운영자 소개`,
+    name: lang === "en" ? `About ${AUTHOR.name}` : `${AUTHOR.name} 소개`,
     inLanguage: lang === "en" ? "en" : "ko-KR",
     // ProfilePage는 DateTime을 요구한다 — 날짜만 쓰면 Search Console이 잘못된 값으로 본다.
     dateModified: "2026-09-02T00:00:00+09:00",

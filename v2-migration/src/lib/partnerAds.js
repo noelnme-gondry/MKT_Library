@@ -70,9 +70,10 @@ export function partnerAdInlineLayout({ contentLeft, contentWidth, safeLeft, saf
 }
 
 export function partnerAdRailFormat(pathname, availableWidth) {
-  if (!Number.isFinite(availableWidth)) return null;
+  const placement = pageAdPlacement(pathname);
+  if (!placement || !Number.isFinite(availableWidth)) return null;
   if (availableWidth >= PARTNER_AD_RAIL_MIN_WIDTH) return "rail";
-  return pageAdPlacement(pathname) === "analysis-bottom" && availableWidth >= PARTNER_AD_FORMATS.compact.width ? "compact" : null;
+  return placement === "analysis-bottom" && availableWidth >= PARTNER_AD_FORMATS.compact.width ? "compact" : null;
 }
 
 export function isAnalysisAdRoute(routeId) {
@@ -81,6 +82,7 @@ export function isAnalysisAdRoute(routeId) {
 
 export function pageAdPlacement(pathname) {
   const path = (pathname || "/").replace(/^\/en(?=\/|$)/, "").replace(/\/$/, "") || "/";
+  if (path === "/subscription" || path === "/tools" || path.startsWith("/tools/")) return null;
   if (path === "/") return "home-intro";
   if (/^\/blog\/[^/]+$/.test(path)) return "blog-byline";
   if (isAnalysisAdRoute(resolvePathToId(path))) return "analysis-bottom";
