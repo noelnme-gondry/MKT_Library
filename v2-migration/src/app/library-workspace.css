@@ -1226,8 +1226,7 @@
 .home-creative-delta::before { content: ""; position: absolute; top: -3px; bottom: -3px; left: 50%; width: 1px; background: var(--library-border); }
 .home-creative-delta i { position: absolute; height: 8px; background: currentColor; }
 .home-approved .operations-sample-preview .home-sample-context { font-size: var(--fs-sm); }
-.operations-sample-preview__footer { display: grid; grid-template-rows: minmax(2.6em, auto) 44px; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--library-border); }
-.operations-sample-preview__footer > .btn { width: 100%; min-height: 44px; text-decoration: none; }
+.operations-sample-preview__footer { display: grid; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--library-border); }
 .operations-sample-preview__note { margin: 0; color: var(--library-muted); font-size: var(--fs-sm); line-height: 1.6; }
 /* Reveal calculated results in place; motion never changes values or the card's height. */
 @keyframes home-preview-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

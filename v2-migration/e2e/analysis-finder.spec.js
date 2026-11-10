@@ -12,6 +12,46 @@ for (const locale of ["ko", "en"]) {
   // 예산 상세 설계(5-3)는 같은 광고 성과 파일을 쓰는 운영 플래너 카드의 상세로 묶였다(product-ssot §5.1).
   const allocation = finderCards(locale).find((card) => card.members.some((member) => member.id === "5-3"));
 
+  test(`mobile finder searches tool names and metrics by keyboard (${locale})`, { tag: "@mobile-only" }, async ({ page, browserName }) => {
+    if (en) await page.addInitScript(() => localStorage.setItem("mkt-library-theme", "light"));
+    await page.goto(`${prefix}/start`);
+    const fileShortcut = page.getByRole("link", { name: en ? "Find by file" : "파일로 찾기", exact: true });
+    const input = page.getByRole("searchbox", { name: en ? "Search analyses" : "분석 검색", exact: true });
+    const clear = page.getByRole("button", { name: en ? "Clear search" : "검색 지우기", exact: true });
+    const cards = page.locator(".finder-card");
+    const tab = browserName === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab";
+    const tool = finderCards(locale).find((card) => card.id === "5-26");
+    await expect(fileShortcut).toBeInViewport({ ratio: 1 });
+    await expect(input).toBeInViewport({ ratio: 1 });
+    await expect(input).toBeEnabled();
+
+    await fileShortcut.focus();
+    await page.keyboard.press(tab);
+    await expect(input).toBeFocused();
+    await page.keyboard.insertText(tool.name);
+    const toolResult = page.getByRole("heading", { name: tool.name, exact: true });
+    await expect(toolResult).toBeInViewport({ ratio: 1 });
+    await expect(input).toBeFocused();
+
+    await page.keyboard.press(tab);
+    await expect(clear).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("");
+    await page.keyboard.insertText("ROAS");
+    const metricMatches = filterFinderCards(finderCards(locale), { query: "ROAS" });
+    expect(metricMatches.length).toBeGreaterThan(0);
+    await expect(cards).toHaveCount(metricMatches.length);
+    await expect(cards.first().getByRole("heading")).toBeInViewport({ ratio: 1 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+
+    await fileShortcut.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#start-file-title")).toBeFocused();
+    await expect(page.locator(".start-upload-panel .csv-dropzone")).toBeInViewport({ ratio: 1 });
+    await expect(input).toHaveValue("ROAS");
+  });
+
   test(`home situation to preparation, CSV and analysis (${locale})`, async ({ page }) => {
     const events = [];
     await page.exposeFunction("collectFinderEvent", (args) => events.push(args));
@@ -108,16 +148,34 @@ for (const locale of ["ko", "en"]) {
   });
 
   // 3단계 데이터 준비: 파일을 놓으면 "바로 가능 · 조금만 더 · 다른 파일 필요"로 나눠 말한다(product-ssot §1.1c).
-  test(`dropped file splits analyses into ready, almost and other files (${locale})`, async ({ page }) => {
+  test(`dropped file splits analyses into ready, almost and other files (${locale})`, async ({ page, browserName }) => {
     await page.addInitScript(() => localStorage.setItem("mkt-library-source-survey-answered", "1"));
     await page.goto(`${prefix}/start`);
-    const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
+    const uploadHeading = page.locator("#start-file-title");
+    const uploader = page.locator('.start-upload-panel .csv-uploader[data-hydrated="true"]');
+    await expect(uploader).toBeVisible();
+    const uploadShortcut = page.locator('a[href="#start-file-title"]');
+    if (page.viewportSize().width <= 1000) {
+      await expect(uploadShortcut).toBeInViewport({ ratio: 1 });
+      await uploadShortcut.press("Enter");
+      await expect(uploadHeading).toBeFocused();
+      await expect(uploadHeading).toBeInViewport({ ratio: 1 });
+    } else {
+      await expect(uploadShortcut).toBeHidden();
+    }
     await uploader.locator('input[type="file"]').first().setInputFiles("public/examples/weekly-report-three-weeks.csv");
-    await uploader.locator(".csv-analysis-action").click();
+    await uploader.locator(".csv-analysis-action").press("Enter");
     // 올린 파일 한 줄: 행 수와 실제 기간.
     const summary = page.locator(".workspace-input-summary");
     await expect(summary).toContainText("weekly-report-three-weeks.csv");
     await expect(summary).toContainText(en ? "42 rows · 2026-08-31 – 2026-09-20" : "42행 · 2026-08-31 – 2026-09-20");
+    await expect(summary).toBeFocused();
+    await expect(summary).toBeInViewport({ ratio: 1 });
+    // macOS WebKit의 기본 키보드 탐색에서 링크까지 이동하려면 Option을 함께 누른다.
+    await page.keyboard.press(browserName === "webkit" && process.platform === "darwin" ? "Alt+Shift+Tab" : "Shift+Tab");
+    const reviewLink = page.locator(".journey-progress").getByRole("link");
+    await expect(reviewLink).toBeFocused();
+    expect(await reviewLink.evaluate(link => link.getBoundingClientRect().top >= document.querySelector(".topbar").getBoundingClientRect().bottom)).toBe(true);
     const workspace = page.locator(".dochi-workspace");
     await expect(workspace).toHaveAttribute("data-queue-settled", "true", { timeout: 30000 });
     await expect(workspace.locator(".tool-index__stage--ready .tool-index__chip").first()).toBeVisible();
@@ -133,6 +191,14 @@ for (const locale of ["ko", "en"]) {
     const rules = await measureDesignRules(page);
     expect(rules.horizontalOverflow).toBeLessThanOrEqual(1);
     expect(rules.overlaps).toEqual([]);
+
+    await summary.getByRole("button", { name: en ? "Edit input" : "입력·매핑 수정", exact: true }).press("Enter");
+    await expect(uploadHeading).toBeFocused();
+    await expect(uploadHeading).toBeInViewport({ ratio: 1 });
+    await expect(uploader.locator(".file-state")).toContainText("weekly-report-three-weeks.csv");
+    await expect(uploader.locator(".csv-mapping-block select").first()).toBeVisible();
+    await uploader.locator(".csv-analysis-action").press("Enter");
+    await expect(summary).toBeFocused();
   });
 
   test(`file type entry groups analyses by the file they read (${locale})`, async ({ page }) => {
