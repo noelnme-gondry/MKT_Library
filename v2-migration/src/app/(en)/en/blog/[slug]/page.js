@@ -189,7 +189,7 @@ export default async function EnBlogPostPage({ params }) {
 
       <BlogSituationCheck slug={post.slug} toolId={post.primaryTool} locale="en" />
 
-      <EditorialTrust compact locale="en" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
+      <EditorialTrust compact locale="en" reviewedAt={post.reviewedAt} sources={post.sources} />
 
       <BlogReadingBar sample={Boolean(inline)} slug={post.slug} locale="en" targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} />
 

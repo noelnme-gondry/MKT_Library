@@ -196,7 +196,7 @@ export default async function BlogPostPage({ params }) {
 
       <BlogSituationCheck slug={post.slug} toolId={post.primaryTool} />
 
-      <EditorialTrust compact locale="ko" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
+      <EditorialTrust compact locale="ko" reviewedAt={post.reviewedAt} sources={post.sources} />
 
       <BlogReadingBar sample={Boolean(inline)} slug={post.slug} targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} />
 

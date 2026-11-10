@@ -85,6 +85,13 @@ for (const locale of ["ko", "en"]) {
       await page.goto(`${virtualOrigin}${pathname}?file=private.csv#secret`);
       await reachSlot(page, "site-rail", pathname, locale);
       await reachSlot(page, pageAdPlacement(pathname), pathname, locale);
+      if (route.startsWith("/blog/")) {
+        await expect(page.locator(".partner-ad-disclosure")).toHaveText(PARTNER_AD_DISCLOSURE[locale]);
+        await expect(page.locator(".author-card__name")).toHaveText("신기훈");
+        const review = page.locator(".editorial-trust--compact");
+        await expect(review.locator("time")).toHaveAttribute("datetime", "2026-09-09");
+        await expect(review).not.toContainText("신기훈");
+      }
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.locator(`[data-ad-slot="${pageAdPlacement(pathname)}"] iframe`).scrollIntoViewIfNeeded();
       expect((await adEvents(page)).filter(event => event.page_path === pathname)).toHaveLength(2);
@@ -115,13 +122,25 @@ for (const locale of ["ko", "en"]) {
     await reachSlot(page, "page-bottom", pathname, locale);
     await page.getByRole("button", { name: locale === "en" ? "Turn measurement off" : "측정 끄기", exact: true }).click();
     await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
-    await page.goto(`${virtualOrigin}${prefix}/tools/budget-allocation`);
+    await page.goto(`${virtualOrigin}${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
     await expect(page.locator("[data-ad-slot]")).toHaveCount(0);
     expect(await adEvents(page)).toEqual([]);
   });
 
-  for (const failedTransport of [false, true]) test(`CSV → analysis → result → PNG, ads blocked, transport ${failedTransport ? "throws" : "queues"} (${locale})`, async ({ page }, testInfo) => {
+  test(`Pro and tools make no Coupang requests (${locale})`, async ({ page }) => {
+    const requests = await mockCreatives(page);
+    for (const route of ["/subscription", "/tools/operations-planner?example=1"]) {
+      await page.goto(`${virtualOrigin}${prefix}${route}`);
+      await expect(page.locator(route === "/subscription" ? "main h1" : "#ops-plan-title")).toBeVisible();
+      await page.locator("footer").scrollIntoViewIfNeeded();
+      await expect(page.locator("[data-ad-slot], .partner-ad-disclosure, .partner-ad-anchor")).toHaveCount(0);
+      expect(requests).toEqual([]);
+      expect(await adEvents(page)).toEqual([]);
+    }
+  });
+
+  test(`CSV → analysis → result → PNG without ads on tools (${locale})`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     const viewportWidth = testInfo.project.name === "mobile-320" ? 390 : 1600;
     await page.setViewportSize({ width: viewportWidth, height: 1000 });
@@ -134,17 +153,6 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${virtualOrigin}${pathname}?file=private.csv#secret`);
     const uploader = page.locator('.csv-uploader[data-hydrated="true"]');
     await expect(uploader).toBeVisible();
-    if (failedTransport) await page.evaluate(() => {
-      const original = window.gtag;
-      window.__failedAdAttempts = 0;
-      window.gtag = function (...args) {
-        if (args[0] === "event" && args[1] === "ad_slot_view") {
-          window.__failedAdAttempts++;
-          throw new Error("ad transport unavailable");
-        }
-        return original.apply(this, args);
-      };
-    });
     await uploader.locator('input[type="file"][accept*="csv"]').setInputFiles(path.join(process.cwd(), "e2e/fixtures/efficiency.csv"));
     await expect(uploader.locator(".file-state")).toBeVisible();
     await uploader.locator('[data-currency-scope="declare"]').getByRole("button", { name: /^(원 ₩|KRW ₩)$/ }).click();
@@ -155,15 +163,8 @@ for (const locale of ["ko", "en"]) {
     const figure = page.locator(".tool-core-figure").first();
     await expect(figure).toBeVisible();
     expect(await page.evaluate(() => innerWidth)).toBe(viewportWidth);
-    if (failedTransport) {
-      await page.locator('[data-ad-slot="analysis-bottom"] iframe').scrollIntoViewIfNeeded();
-      await expect.poll(() => page.evaluate(() => window.__failedAdAttempts)).toBeGreaterThan(0);
-      expect((await adEvents(page)).filter(event => event.ad_slot === "analysis-bottom")).toEqual([]);
-    } else {
-      await reachSlot(page, "analysis-bottom", pathname, locale);
-      await reachSlot(page, "site-rail", pathname, locale);
-      await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveAttribute("data-ad-format", viewportWidth < 1180 ? "compact" : "rail");
-    }
+    await expect(page.locator("[data-ad-slot], .partner-ad-disclosure")).toHaveCount(0);
+    expect(await adEvents(page)).toEqual([]);
     const downloadPromise = page.waitForEvent("download");
     await figure.getByRole("button", { name: locale === "en" ? "Download PNG" : "PNG 받기" }).click();
     const download = await downloadPromise;
@@ -213,7 +214,7 @@ test("language and theme switches preserve provider disclosures", async ({ page 
   await page.locator(".header-locale").click();
   await expect(page).toHaveURL(`${virtualOrigin}/en`);
   await reachSlot(page, "home-intro", "/en", "en");
-  await expect(page.locator(".partner-ad-disclosure")).toHaveText(PARTNER_AD_DISCLOSURE.en);
+  await expect(page.locator(".partner-ad-disclosure")).toHaveCount(0);
   await page.locator(".header-utility-menu__trigger").click();
   await page.locator(".header-theme").click();
   await expect(page.locator("body")).toHaveClass(/light-mode/);
@@ -254,7 +255,7 @@ test("mobile home uses safe width after the entry area @mobile-only", async ({ p
 
 test("mobile analysis has one compact Coupang site-rail alongside analysis-bottom @mobile-only", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
-  await page.goto(`${virtualOrigin}/tools/budget-allocation`);
+  await page.goto(`${virtualOrigin}/dashboard`);
   expect(await page.evaluate(() => innerWidth)).toBe(360);
   await expect(page.locator('[data-ad-slot="site-rail"] iframe')).toHaveAttribute('data-ad-format', 'compact');
   await expect(page.locator('[data-ad-slot="analysis-bottom"] iframe')).toHaveAttribute('data-ad-provider', 'coupang');
@@ -293,11 +294,10 @@ for (const locale of ['ko', 'en']) test(`mobile CSS geometry and orientation, fo
   const requests = await mockCreatives(page);
   const evidence = [];
   const prefix = locale === 'en' ? '/en' : '';
-  for (const path of ['', '/blog/correlation-vs-causation', '/guide', '/tools/budget-allocation?example=1']) {
+  for (const path of ['', '/blog/correlation-vs-causation', '/guide', '/dashboard']) {
     const pathname = `${prefix}${path.split('?')[0]}` || '/';
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto(`${virtualOrigin}${prefix}${path}`);
-    if (path.includes('budget-allocation')) await expect(page.locator('.result-action-card').first()).toBeVisible();
     for (const width of [320, 360, 375, 390, 412, 768, 980, 1440, 1600, 390]) {
       await page.setViewportSize({ width, height: 1000 });
       const placement = pageAdPlacement(pathname);
@@ -349,7 +349,7 @@ for (const locale of ['ko', 'en']) test(`mobile CSS geometry and orientation, fo
 
 test('rail boundary, same-format requests and mobile SPA revisit @mobile-only', async ({ page }, testInfo) => {
   const requests = await mockCreatives(page);
-  const pathname = '/tools/budget-allocation';
+  const pathname = '/dashboard';
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto(`${virtualOrigin}${pathname}`);
   await reachSlot(page, 'site-rail', pathname, 'ko');
@@ -388,7 +388,7 @@ test('rail boundary, same-format requests and mobile SPA revisit @mobile-only', 
 
 test('safe-area and constrained main width never shrink or clip a banner @mobile-only', async ({ page }, testInfo) => {
   const evidence = [];
-  for (const path of ['/', '/blog/correlation-vs-causation', '/guide', '/tools/budget-allocation']) {
+  for (const path of ['/', '/blog/correlation-vs-causation', '/guide', '/dashboard']) {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto(`${virtualOrigin}${path}`);
     const placement = pageAdPlacement(path);
@@ -420,16 +420,14 @@ test('safe-area and constrained main width never shrink or clip a banner @mobile
 
 test.describe('mobile user agent', () => {
   test.use({ isMobile: true, hasTouch: true, userAgent: devices['Pixel 7'].userAgent });
-  test('mobile UA preserves viewport and real result slots @mobile-only', async ({ page }, testInfo) => {
+  test('mobile UA preserves viewport and shows tool results without ads @mobile-only', async ({ page }, testInfo) => {
     await mockCreatives(page);
     const evidence = [];
     for (const prefix of ['', '/en']) {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`${virtualOrigin}${prefix}/tools/budget-allocation?example=1`);
       await expect(page.locator('.result-action-card').first()).toBeVisible();
-      for (const slot of ['site-rail', 'analysis-bottom']) {
-        await expect(page.locator(`[data-ad-slot="${slot}"] iframe`)).toHaveAttribute('data-ad-format', 'compact');
-      }
+      await expect(page.locator('[data-ad-slot], .partner-ad-disclosure')).toHaveCount(0);
       const geometry = await slotGeometry(page);
       expect(geometry.viewport).toBe(390);
       expect(geometry.scrollWidth).toBe(390);

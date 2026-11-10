@@ -28,7 +28,7 @@ describe("partner ad sizing and placement", () => {
   });
   it("uses compact only as the analysis rail replacement and admits its actual measurement format", () => {
     for (const prefix of ["", "/en"]) {
-      for (const path of ["/dashboard", "/tools/budget-allocation", "/dochi-result"]) {
+      for (const path of ["/dashboard", "/dochi-result"]) {
         expect(partnerAdRailFormat(`${prefix}${path}`, 319)).toBeNull();
         expect(partnerAdRailFormat(`${prefix}${path}`, 320)).toBe("compact");
         expect(partnerAdRailFormat(`${prefix}${path}`, 1179)).toBe("compact");
@@ -51,13 +51,21 @@ describe("partner ad sizing and placement", () => {
     const locations = {
       "/": "home-intro", "/blog/marketing-analysis-example": "blog-byline",
       "/blog": "page-bottom", "/blog/tag/measurement": "page-bottom", "/compare": "page-bottom",
-      "/dashboard": "analysis-bottom", "/tools/operations-planner": "analysis-bottom",
+      "/dashboard": "analysis-bottom",
       "/content/freshness": "analysis-bottom", "/dochi-result": "analysis-bottom",
       "/weekly-review": "page-bottom", "/guide/kpi-analysis": "page-bottom",
     };
     for (const [path, placement] of Object.entries(locations)) {
       expect(pageAdPlacement(path), path).toBe(placement);
       expect(pageAdPlacement(`/en${path}`), `/en${path}`).toBe(placement);
+    }
+  });
+  it("excludes the Pro page and tool paths at every width in both locales", () => {
+    for (const prefix of ["", "/en"]) {
+      for (const path of ["/subscription", "/subscription/", "/tools", "/tools/operations-planner", "/tools/budget-allocation/"]) {
+        expect(pageAdPlacement(`${prefix}${path}`)).toBeNull();
+        for (const width of [320, 1180, 1600]) expect(partnerAdRailFormat(`${prefix}${path}`, width)).toBeNull();
+      }
     }
   });
 });
