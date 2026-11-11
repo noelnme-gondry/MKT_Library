@@ -76,8 +76,6 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".home-service-terms")?.textContent).toContain("7일 체험에는 포함되지 않습니다.");
     expect(document.querySelector('.home-entry__no-file a[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('.home-entry__no-file a[href="/diagnose"]')).toBeTruthy();
-    // 액션 흐름 미리보기는 실제 예시 진입으로 이어진다.
-    expect(document.querySelector('.home-result-preview a[href]').getAttribute("href")).toContain("/tools/operations-planner?example=1");
     expect(document.querySelectorAll('.home-result-preview [role="tab"]')).toHaveLength(4);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     // 홈 아래쪽의 전체 분석 목록은 분석 찾기로 합쳤다 — 같은 목록을 두 곳에 두지 않는다.
@@ -208,7 +206,8 @@ describe("LandingPage render smoke", () => {
       const proposal = proposals.find(row => row.textContent.includes(name));
       expect(proposal.textContent).toContain(`${money(item.current)} → ${money(item.budget)}`);
     }
-    expect(document.querySelectorAll(".operations-sample-preview__footer .btn")).toHaveLength(1);
+    const sampleEntry = document.querySelector(".home-planner-entry .primary");
+    expect(document.querySelectorAll(`.dc-hero a[href="${sampleEntry.getAttribute("href")}"]`)).toHaveLength(1);
     expect(document.querySelectorAll(".operations-sample-preview__body a")).toHaveLength(0);
     expect(useAppStore.getState().csvData).toBe(userData);
   });

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Bookmark } from "lucide-react";
-import ResultChange from "@/components/ds/ResultChange";
 import ModalDialog from "@/components/ds/ModalDialog";
 import AnalysisDataPrep from "@/components/finder/AnalysisDataPrep";
 import { countFinderAnalyses, filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
@@ -11,6 +10,7 @@ import { groupToolsByFile } from "@/lib/dataSources";
 import { localizedHref } from "@/lib/localizedHref";
 import { trackProductEvent } from "@/lib/analytics";
 import { parseSavedTools, readSavedTools, savedToolsServerSnapshot, subscribeSavedTools, toggleSavedTool } from "@/lib/savedTools";
+import { useClientReady } from "@/lib/useClientReady";
 
 /**
  * 분석 찾기 — 앱 안의 입구를 하나로 모은 화면(product-ssot §1.1c 결정 1).
@@ -31,7 +31,7 @@ const COPY = {
     saved: "저장한 분석",
     count: (n) => `${n}개`,
     search: "분석 검색",
-    searchPlaceholder: "질문·지표·파일 이름으로 검색 · 예: ROAS, 스토어",
+    searchPlaceholder: "도구명 또는 지표명 (예: ROAS)",
     clear: "검색 지우기",
     results: (n) => `분석 ${n}개`,
     example: "예시 결론",
@@ -61,7 +61,7 @@ const COPY = {
     saved: "Saved analyses",
     count: (n) => `${n}`,
     search: "Search analyses",
-    searchPlaceholder: "Search a question, metric or file · e.g. ROAS, store",
+    searchPlaceholder: "Tool or metric, e.g. ROAS",
     clear: "Clear search",
     results: (n) => `${n} analyses`,
     example: "Example conclusion",
@@ -86,6 +86,16 @@ const COPY = {
 };
 
 const SAME_FILE_SHOWN = 3;
+// globals.css에서 상황과 파일 입력이 한 열이 되는 폭.
+const STACKED_FINDER_QUERY = "(max-width: 1000px)";
+const desktopFinderSnapshot = () => false;
+const stackedFinderSnapshot = () => window.matchMedia?.(STACKED_FINDER_QUERY).matches ?? false;
+
+function subscribeFinderLayout(onChange) {
+  const media = window.matchMedia?.(STACKED_FINDER_QUERY);
+  media?.addEventListener?.("change", onChange);
+  return () => media?.removeEventListener?.("change", onChange);
+}
 
 function writeFilterToUrl(situation, family) {
   try {
@@ -113,6 +123,8 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
   const prepTrigger = useRef(null);
   const rootRef = useRef(null);
   const savedIds = parseSavedTools(useSyncExternalStore(subscribeSavedTools, readSavedTools, savedToolsServerSnapshot));
+  const stacked = useSyncExternalStore(subscribeFinderLayout, stackedFinderSnapshot, desktopFinderSnapshot);
+  const ready = useClientReady();
   const visible = filterFinderCards(cards, { situation, family, query, savedIds });
   const searching = query.trim().length > 0;
   // 전체 보기는 상황별로 묶어 읽게 한다. 검색·저장 목록은 상황이 섞이므로 평평하게 두고 카드에 상황을 적는다.
@@ -155,15 +167,14 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
   };
   const track = (name, card) => trackProductEvent(name, { locale, source: "analysis_finder", tool_id: card.id, section_id: card.situation.id });
 
-  return (
-    <section className="analysis-finder" id="finder" ref={rootRef} aria-label={en ? "Find an analysis" : "분석 찾기"}>
-      <div className={`analysis-finder__entry${aside ? " has-aside" : ""}`}>
+  const entry = (
+      <div key="entry" className={`analysis-finder__entry${aside ? " has-aside" : ""}`}>
         <nav className="analysis-finder__situations" aria-labelledby="finder-situation-title">
           <h2 id="finder-situation-title">{T.situationTitle}</h2>
           <ul>
             {situations.map((item) => (
               <li key={item.id}>
-                <button type="button" aria-pressed={situation === item.id} aria-controls="finder-results" onClick={() => chooseSituation(situation === item.id ? "all" : item.id)}>
+                <button type="button" disabled={!ready} aria-pressed={situation === item.id} aria-controls="finder-results" onClick={() => chooseSituation(situation === item.id ? "all" : item.id)}>
                   <span className="analysis-finder__no" aria-hidden="true">{item.label}</span>
                   <strong>{item.title}</strong>
                   <small>{T.count(item.count)}</small>
@@ -171,12 +182,12 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
               </li>
             ))}
             <li className="analysis-finder__situation-extra">
-              <button type="button" aria-pressed={situation === "all" && !family} aria-controls="finder-results" onClick={() => chooseSituation("all")}>
+              <button type="button" disabled={!ready} aria-pressed={situation === "all" && !family} aria-controls="finder-results" onClick={() => chooseSituation("all")}>
                 <strong>{T.all}</strong><small>{T.count(countFinderAnalyses(cards))}</small>
               </button>
             </li>
             <li className="analysis-finder__situation-extra">
-              <button type="button" aria-pressed={situation === "saved"} aria-controls="finder-results" onClick={() => chooseSituation(situation === "saved" ? "all" : "saved")}>
+              <button type="button" disabled={!ready} aria-pressed={situation === "saved"} aria-controls="finder-results" onClick={() => chooseSituation(situation === "saved" ? "all" : "saved")}>
                 <Bookmark size={16} aria-hidden="true" /><strong>{T.saved}</strong><small>{T.count(countFinderAnalyses(cards, "saved", savedIds))}</small>
               </button>
             </li>
@@ -189,7 +200,7 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           <ul>
             {families.map((item) => (
               <li key={item.id}>
-                <button type="button" aria-pressed={family === item.id} aria-controls="finder-results" onClick={() => chooseFamily(family === item.id ? null : item.id)}>
+                <button type="button" disabled={!ready} aria-pressed={family === item.id} aria-controls="finder-results" onClick={() => chooseFamily(family === item.id ? null : item.id)}>
                   <strong>{item.name}</strong>
                   <small>{item.where}</small>
                   <span className="analysis-finder__family-count">{T.count(item.count)}</span>
@@ -199,17 +210,21 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           </ul>
         </nav>
       </div>
+  );
 
-      <div className="analysis-finder__toolbar">
+  const toolbar = (
+      <div key="search" className="analysis-finder__toolbar">
         <label htmlFor="finder-search">{T.search}</label>
         <div className="analysis-finder__search">
-          <input ref={searchInput} id="finder-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={T.searchPlaceholder} aria-controls="finder-results" />
+          <input ref={searchInput} id="finder-search" type="search" disabled={!ready} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={T.searchPlaceholder} aria-controls="finder-results" />
           {searching && <button type="button" className="btn" onClick={() => { setQuery(""); searchInput.current?.focus(); }}>{T.clear}</button>}
         </div>
-        <ResultChange as="p" value={visible.length} role="status" className="analysis-finder__count">{T.results(countFinderAnalyses(visible, situation, savedIds))}</ResultChange>
+        <p role="status" className="analysis-finder__count">{T.results(countFinderAnalyses(visible, situation, savedIds))}</p>
       </div>
+  );
 
-      <div id="finder-results" className="analysis-finder__results">
+  const results = (
+      <div key="results" id="finder-results" className="analysis-finder__results">
         {situation === "saved" && !searching && <p className="analysis-finder__note">{T.savedHint}</p>}
         {saveError && <p role="alert" className="analysis-finder__note">{T.saveError}</p>}
         {visible.length === 0 && <p className="analysis-finder__note">{situation === "saved" && !searching ? T.noSaved : T.noMatch}</p>}
@@ -282,7 +297,16 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
           </section>
         ))}
       </div>
+  );
 
+  // 보이는 순서와 탭 순서를 맞추면서 입력창과 업로더를 같은 인스턴스로 유지한다.
+  const sections = stacked
+    ? [toolbar, ...(searching ? [results, entry] : [entry, results])]
+    : [entry, toolbar, results];
+
+  return (
+    <section className="analysis-finder" id="finder" ref={rootRef} aria-label={en ? "Find an analysis" : "분석 찾기"}>
+      {sections}
       <ModalDialog open={Boolean(prepCard)} onClose={() => setPrepId(null)} returnFocusRef={prepTrigger} ariaLabel={prepCard ? T.prepTitle(prepCard.name) : T.prep} overlayClassName="tutorial-overlay" panelClassName="tool-reference-panel finder-prep-dialog">
         {prepCard && <>
           <header className="tool-reference-panel__head">

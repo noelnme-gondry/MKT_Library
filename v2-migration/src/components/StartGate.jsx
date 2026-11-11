@@ -48,6 +48,9 @@ function StartGateContent({ locale = "ko" }) {
   const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
   const [eligibilitySnapshot, setEligibilitySnapshot] = useState(null);
   const workspaceRef = useRef(null);
+  const uploadHeadingRef = useRef(null);
+  const fileSummaryRef = useRef(null);
+  const nextFocusRef = useRef(null);
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
   useEffect(() => {
@@ -60,7 +63,23 @@ function StartGateContent({ locale = "ko" }) {
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
   const hasSubmitted = hasPreparedData && submittedInput?.raw === csvData.raw && submittedInput?.mapping === csvData.mapping;
-  const analyze = () => { setSubmittedInput({ raw: csvData.raw, mapping: csvData.mapping }); };
+  const analyze = () => {
+    nextFocusRef.current = fileSummaryRef;
+    setSubmittedInput({ raw: csvData.raw, mapping: csvData.mapping });
+  };
+  const editInput = () => {
+    nextFocusRef.current = uploadHeadingRef;
+    setSubmittedInput(null);
+  };
+  useEffect(() => {
+    // 제출 버튼과 편집 버튼은 전환 후 사라진다. 새 영역이 렌더된 뒤 포커스를 옮긴다.
+    const targetRef = hasSubmitted ? fileSummaryRef : uploadHeadingRef;
+    if (nextFocusRef.current !== targetRef) return;
+    nextFocusRef.current = null;
+    const target = targetRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView?.({ block: "start" });
+  }, [hasSubmitted]);
   // 사용자가 비교 방식이나 데이터 상태를 다시 판정할 필요 없도록, 같은 데이터
   // 그룹에서 가장 최근에 저장한 판단 하나를 현재 업로드와 먼저 대조한다. 원본 행은
   // 결정 기록에 남지 않으며, 이 비교도 날짜 범위와 비가역 지문만 사용한다.
@@ -119,19 +138,20 @@ function StartGateContent({ locale = "ko" }) {
   // 파일로 찾기 — 이 화면의 주 행동. 매핑 확인 → 분석하기를 누르면 아래 작업대로 넘어간다.
   const uploader = (
     <section className="start-upload-panel" aria-labelledby="start-file-title">
-      <h2 id="start-file-title">{C.fileTitle}</h2>
+      <h2 id="start-file-title" ref={uploadHeadingRef} tabIndex={-1}>{C.fileTitle}</h2>
       <p>{C.fileDeck}</p>
-      <CsvUploader toolId="start-gate" locale={locale} showMappingReview collapseMappingReview onAnalyzed={analyze} />
+      <CsvUploader toolId="start-gate" locale={locale} showMappingReview onAnalyzed={analyze} scrollToTopAfterAnalysis={false} />
     </section>
   );
 
   return (
     <>
       <StartGateIntroduction locale={locale} />
+      {!hasSubmitted && <a className="btn start-upload-shortcut" href="#start-file-title">{C.fileTitle}</a>}
       {hasSubmitted && <JourneyProgress stage={eligibleIds?.length ? "analyze" : "prepare"} completed={eligibleIds?.length ? ["prepare"] : []} locale={locale} placement="start" />}
-      {hasSubmitted && uploadSummary && <section className="block workspace-input-summary" aria-label={locale === "en" ? "Your file" : "올린 파일"}>
+      {hasSubmitted && uploadSummary && <section className="block workspace-input-summary" ref={fileSummaryRef} tabIndex={-1} aria-label={locale === "en" ? "Your file" : "올린 파일"}>
         <div><strong>{uploadSummary.fileName}</strong><span>{[uploadSummary.rows, uploadSummary.period, uploadSummary.format].filter(Boolean).join(" · ")}</span></div>
-        <button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button>
+        <button type="button" className="btn" onClick={editInput}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button>
       </section>}
       {/* 파일을 제출하기 전에는 분석 찾기 전체(상황·파일·카드). 업로더 상태를 잃지 않도록 감추기만 한다. */}
       <div className="start-finder" hidden={hasSubmitted}>
@@ -146,7 +166,7 @@ function StartGateContent({ locale = "ko" }) {
         {isEligibilityCurrent && eligibleIds.length === 0 && <section role="status" className="callout warn">
           <div><h2>{locale === "en" ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다"}</h2>
           <p>{locale === "en" ? "The file was read, but the required columns are not connected. Review the mapping or choose a template for your analysis below." : "파일은 읽었지만 분석에 필요한 컬럼이 연결되지 않았습니다. 매핑을 수정하거나 분석 목적에 맞는 템플릿을 선택하세요."}</p>
-          <button className="btn primary" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Fix column mapping" : "컬럼 매핑 수정"}</button>
+          <button type="button" className="btn primary" onClick={editInput}>{locale === "en" ? "Fix column mapping" : "컬럼 매핑 수정"}</button>
           <Link className="btn" href={locale === "en" ? "/en/templates" : "/templates"}>{locale === "en" ? "Choose a data template" : "데이터 템플릿 선택"}</Link></div>
         </section>}
         <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
