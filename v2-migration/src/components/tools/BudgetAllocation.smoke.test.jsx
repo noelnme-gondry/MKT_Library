@@ -223,7 +223,7 @@ describe("BudgetAllocation comparison basis", () => {
     expect(stats).toBeTruthy();
     const cpi = stats.children[0];
     const [current, next] = cpi.querySelector("strong").textContent.split("→").map(value => Number(value.replace(/[^\d.]/g, "")));
-    const displayedChange = Number(cpi.querySelector("small").textContent.replace("−", "-").replace("%", ""));
+    const displayedChange = Number(cpi.querySelector("small").textContent.replaceAll("−", "-").replaceAll("%", ""));
     expect(Math.abs((next / current - 1) * 100 - displayedChange)).toBeLessThan(0.15);
     expect(cpi.textContent).toContain(locale === "en" ? "Modeled CPI" : "모형 예상 CPI");
     expect(stats.children[1].textContent).toContain(locale === "en" ? "Modeled" : "모형 예상");
