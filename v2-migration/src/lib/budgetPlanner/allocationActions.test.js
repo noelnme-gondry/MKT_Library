@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocationHeadline, allocationIssues, allocationMoves, moveGroups } from "./allocationActions";
+import { allocationHeadline, allocationIssues, allocationMoves, allocationPredictionComparison, moveGroups } from "./allocationActions";
 import { addDays } from "./plannerStats";
 
 const unit = (name, channel, diagnosis = null) => ({ unit: name, path: { channel }, diagnosis });
@@ -35,9 +35,11 @@ describe("지금 할 일 — 대상별 행동", () => {
     expect(byUnit["KR · Google · iOS"].code).toBe("keep");
   });
 
-  it("최근 일평균이 있으면 같은 행에 현재·예상 CPR을 싣는다(결과 0이면 정의하지 않는다)", () => {
-    const history = { "KR · TikTok · iOS": { totalCost: 2000, totalResults: 20 }, "KR · Meta · iOS": { totalCost: 1000, totalResults: 0 } };
-    const moves = allocationMoves(items.map((item) => ({ ...item, results: item.channel === "KR · TikTok · iOS" ? 14 : 0 })), units, { history });
+  it("결론과 같은 모형 비교를 싣고 없는 곡선은 관측값으로 대체하지 않는다", () => {
+    const planned = items.map((item) => ({ ...item, results: item.channel === "KR · TikTok · iOS" ? 14 : 0 }));
+    const models = new Map([["KR · TikTok · iOS", { model: { type: "Linear", predict: () => 100 } }]]);
+    const comparison = allocationPredictionComparison(planned, models);
+    const moves = allocationMoves(planned, units, { comparison });
     const byUnit = Object.fromEntries(moves.map((move) => [move.unit, move]));
     expect(byUnit["KR · TikTok · iOS"].currentCpr).toBe(100);
     expect(byUnit["KR · TikTok · iOS"].plannedCpr).toBe(100);

@@ -43,7 +43,7 @@ import { allocationCadence, prepareAllocationObservations, allocationHistory } f
 import { allocationOutlierOptions as getOutlierOpts, allocationPointMap, fitAllocationChannel, allocationModelMap, ALLOCATION_MODEL_TYPES as TREND_TYPE_LABEL, ALLOCATION_PREDICTION_METRICS } from "@/utils/allocationModels";
 import { allocationAt, deltaAllocationAt, plannerEvidence, plannerFrontier, plannerScenarios, prepareAllocationPlanner } from "@/lib/budgetPlanner/allocationAdapter";
 import { createAllocationPlanSnapshot, findAllocationPlanMatches, plannerDowngradeUnits, planReviewText } from "@/lib/budgetPlanner/planReview";
-import { allocationHeadline, allocationIssues, allocationMoves, allocationPredictionChange, moveGroups } from "@/lib/budgetPlanner/allocationActions";
+import { allocationHeadline, allocationIssues, allocationMoves, allocationPredictionComparison, moveGroups } from "@/lib/budgetPlanner/allocationActions";
 import { addDays as plannerAddDays } from "@/lib/budgetPlanner/plannerStats";
 import { appendDecisionEpisode, toLocalDecisionDate } from "@/lib/decisionReview";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -1046,6 +1046,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     });
   }, [allocation.items, effectiveMetric, historyByCh, recentDays]);
 
+  const predictionComparison = useMemo(
+    () => allocationPredictionComparison(allocation.items, modelsMap, isRoasMetric(effectiveMetric)),
+    [allocation.items, modelsMap, effectiveMetric],
+  );
+
   const visibleAllocationItems = useMemo(() => allocation.items.filter(item => lowerChartEntities.has(item.channel)), [allocation.items, lowerChartEntities]);
 
   // §6 반응 곡선(PRISM P4): 선택 채널 없거나 사라지면 계획 지출 최대 채널로 폴백.
@@ -2001,13 +2006,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const metricLabel = getCostMetricLabel(effectiveMetric);
   const roas = isRoasMetric(effectiveMetric);
   const totalCost = allocation.totalAllocated || 0;
-  const totalResults = items.reduce((s, it) => s + it.results, 0);
-  const avgCpr = totalResults > 0 ? totalCost / totalResults : 0;
+  const totalResults = predictionComparison.next.results;
+  const avgCpr = predictionComparison.next.cpr;
   const showTable = plannedDailyBudget > 0;
 
   // 결론 카드: 무엇을 얼마나 옮기고(행동) 그러면 효율이 어떻게 되는지(결과) 한 문장. 근거는 "자세히 보기".
   // 조기 반환 뒤라 훅을 쓰지 않는다 — 대상 수만큼 도는 가벼운 계산이다.
-  const actionMoves = planner.ok ? allocationMoves(allocation.items, planner.units, { isRoas: isRoasMetric(effectiveMetric), history: historyByCh }) : [];
+  const actionMoves = planner.ok ? allocationMoves(allocation.items, planner.units, { isRoas: roas, comparison: predictionComparison }) : [];
   const actionIssues = planner.ok ? allocationIssues({
     creatives: planner.creatives,
     toUnit: planner.toUnit,
@@ -2020,11 +2025,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   }) : [];
   const verdict = (() => {
     if (!summary || !items.length) return null;
-    const S = summary;
+    const S = { prev: predictionComparison.current, next: predictionComparison.next, prevAvgCPR: predictionComparison.current.cpr, nextAvgCPR: predictionComparison.next.cpr };
     const groups = moveGroups(actionMoves);
     // 결론은 한 줄 — 무엇을 얼마나 옮기는지와 그 결과(지표 변화율)만. 화면은 방향별로 줄을 나누고
     // 이름·금액 덩어리 안에서는 끊지 않는다(allocationHeadline). 수치 근거는 아래 표가 말한다.
-    const change = allocationPredictionChange(items, modelsMap, roas);
+    const change = predictionComparison.change;
     const { tone, lines, text } = allocationHeadline({
       groups,
       change,
@@ -2055,8 +2060,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         {canStorePlan ? <ToolCoreFigure embedded
             figure={budgetShiftFigure({
               metric: effectiveMetric,
+              baseline: "modeled",
               unitField,
-              rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost, currentOutcomes: historyByCh[item.channel]?.totalResults ?? null, expectedOutcomes: item.results })),
+              rows: allocation.items.map((item) => ({ entity: item.channel, current: item.current, budget: item.cost, currentOutcomes: predictionComparison.byChannel.get(item.channel)?.current.results ?? null, expectedOutcomes: predictionComparison.byChannel.get(item.channel)?.next.results ?? null })),
               locale,
             })}
             locale={locale}
@@ -2067,14 +2073,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <div hidden={activeAllocationView !== "table"}>
       {!showTable && noPlanNote}
       {showTable && (() => {
-        // #3 이전(과거) 평균 컬럼 — 최근 N일 평균 일예산/결과/CPR + 전체 비중
+        // 결론과 같은 현재안 모형값. 관측 성과는 별도 라벨로 보존한다.
         const prevByCh = {};
         let prevTotalDaily = 0;
         items.forEach((it) => {
           const h = historyByCh[it.channel];
           const daily = h?.totalCost ?? 0;
-          const resDaily = h?.totalResults ?? 0;
-          prevByCh[it.channel] = { daily, resDaily, cpr: h ? h.avgCPR : null };
+          const modeled = predictionComparison.byChannel.get(it.channel)?.current;
+          prevByCh[it.channel] = { daily, resDaily: modeled?.results ?? null, cpr: modeled?.cpr ?? null, observedResults: h?.totalResults ?? null, observedCpr: h?.avgCPR ?? null };
           prevTotalDaily += daily;
         });
 
@@ -2097,11 +2103,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           const m = new Map();
           items.forEach((it) => {
             const k = rollupKeyOf(it.channel);
-            if (!m.has(k)) m.set(k, { channel: k, cost: 0, results: 0, prevDaily: 0, prevRes: 0 });
+            if (!m.has(k)) m.set(k, { channel: k, cost: 0, results: 0, prevDaily: 0, prevRes: 0, observedRes: 0 });
             const g = m.get(k);
-            g.cost += it.cost; g.results += it.results;
+            g.cost += it.cost;
+            const nextResults = predictionComparison.byChannel.get(it.channel)?.next.results;
+            g.results = g.results != null && nextResults != null ? g.results + nextResults : null;
             const p = prevByCh[it.channel] || { daily: 0, resDaily: 0 };
-            g.prevDaily += p.daily; g.prevRes += p.resDaily;
+            g.prevDaily += p.daily;
+            g.prevRes = g.prevRes != null && p.resDaily != null ? g.prevRes + p.resDaily : null;
+            g.observedRes = g.observedRes != null && p.observedResults != null ? g.observedRes + p.observedResults : null;
           });
           const arr = [...m.values()];
           arr.forEach((g) => {
@@ -2131,12 +2141,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 0.5rem" }}>
             {rollupLevel === "detail"
               ? tr(
-                  <>각 행은 <strong>권장 배분 비용</strong>과 그에 따른 <strong>예상 {unitLabel}·효율</strong>입니다(읽기 전용). 칸 아래 작은 숫자는 이전 기간 하루 평균입니다. 조정은 위의 전역 예산 또는 목표 슬라이더에서 합니다.</>,
-                  <>Each row is a read-only result: the <strong>recommended allocated cost</strong> and its <strong>projected {unitLabel}s · efficiency</strong>. Small figures under each value are the prior-period daily average. Adjust the global budget or target slider above, not a channel row.</>
+                  <>각 행은 <strong>변경안의 모형 예상</strong>입니다. 아래의 현재안도 같은 곡선으로 계산합니다. 관측값과 모형값의 차이는 예산 조정 효과가 아닙니다. 조정은 위의 전역 예산 또는 목표 슬라이더에서 합니다.</>,
+                  <>Each row shows the <strong>modeled plan</strong>, with the current plan evaluated on the same curve below it. Observed-to-modeled gaps are not allocation effects. Adjust the global budget or target slider above.</>
                 )
               : tr(
-                  <>최소 단위 분배 결과를 <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> 기준으로 합쳐 봅니다(읽기 전용). 효율은 합계에서 재계산합니다(Σ비용÷Σ{unitLabel}).</>,
-                  <>This groups the finest-grain allocation results by <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> (read-only). Efficiency is recalculated from the totals (Σcost ÷ Σ{unitLabel}s).</>
+                  <>최소 단위 분배 결과를 <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> 기준으로 합칩니다. 현재안과 변경안은 같은 모형 비교이며, 효율은 합계에서 재계산합니다. 관측값은 별도 표시합니다.</>,
+                  <>This groups allocations by <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong>. Both plans use the same models; efficiency is recalculated from totals. Observations are labeled separately.</>
                 )}
           </p>
           {rollupLevel !== "detail" && rollupRows ? (
@@ -2156,16 +2166,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                     <tr key={g.channel}>
                       <td>{g.channel}</td>
                       <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(Math.round(g.cost), currency)}<small className="alloc-prev">{g.prevDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(Math.round(g.prevDaily), currency)}` : ""}</small></td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}<small className="alloc-prev">{g.prevRes > 0 ? `${tr("이전", "Prior")} ${formatNumberK(g.prevRes, 0)}` : ""}</small></td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}<small className="alloc-prev">{g.prevCpr != null ? `${tr("이전", "Prior")} ${fmtCostMetric(g.prevCpr, effectiveMetric, currency)}` : ""}</small></td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}<small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {g.prevRes != null ? formatNumberK(g.prevRes, 0) : tr("추정 불가", "Unavailable")}</small><small className="alloc-prev">{tr("관측", "Observed")} {g.observedRes != null ? formatNumberK(g.observedRes, 0) : "—"}</small></td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}<small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {g.prevCpr != null ? fmtCostMetric(g.prevCpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}</small><small className="alloc-prev">{tr("관측", "Observed")} {g.observedRes > 0 ? fmtCostMetric(g.prevDaily / g.observedRes, effectiveMetric, currency) : "—"}</small></td>
                       <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong><small className="alloc-prev">{g.prevShare > 0 ? `${tr("이전", "Prior")} ${g.prevShare.toFixed(1)}%` : ""}</small></td>
                     </tr>
                   ))}
                   <tr style={{ background: "var(--bg-2)", fontWeight: "600", borderTop: "2px solid var(--border)" }}>
                     <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
                     <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}<small className="alloc-prev">{prevTotalDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(Math.round(prevTotalDaily), currency)}` : ""}</small></td>
-                    <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
-                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{totalResults != null ? formatNumberK(totalResults, 0) : tr("추정 불가", "Unavailable")}<small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {predictionComparison.current.results != null ? formatNumberK(predictionComparison.current.results, 0) : tr("추정 불가", "Unavailable")}</small><small className="alloc-prev">{tr("관측", "Observed")} {formatNumberK(summary?.prev.results, 0)}</small></td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{avgCpr != null ? fmtCostMetric(avgCpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}<small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {predictionComparison.current.cpr != null ? fmtCostMetric(predictionComparison.current.cpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}</small></td>
                     <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
                   </tr>
                 </tbody>
@@ -2203,6 +2213,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       const isZero = it.cost === 0;
                       const prev = prevByCh[it.channel] || { daily: 0, resDaily: 0, cpr: null };
                       const prevShare = prevTotalDaily > 0 ? (prev.daily / prevTotalDaily) * 100 : 0;
+                      const next = predictionComparison.byChannel.get(it.channel)?.next;
                       const wrap = modelsMap.get(it.channel);
                       const mCpr = allocMarginalCpr(wrap, it.cost);
                       const conf = allocConfidence(wrap);
@@ -2222,12 +2233,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                           </td>
                           <td className="tnum" style={{ textAlign: "right" }}><strong>{fmtCurrency(it.cost, currency)}</strong><small className="alloc-prev">{prev.daily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(prev.daily, currency)}` : ""}</small></td>
                           <td className="tnum" style={{ textAlign: "right" }}>
-                            {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : formatNumberK(it.results, 0)}
-                            <small className="alloc-prev">{prev.resDaily > 0 ? `${tr("이전", "Prior")} ${formatNumberK(prev.resDaily, 0)}` : ""}</small>
+                            {next?.results != null ? formatNumberK(next.results, 0) : tr("추정 불가", "Unavailable")}
+                            <small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {prev.resDaily != null ? formatNumberK(prev.resDaily, 0) : tr("추정 불가", "Unavailable")}</small>
+                            <small className="alloc-prev">{tr("관측", "Observed")} {prev.observedResults != null ? formatNumberK(prev.observedResults, 0) : "—"}</small>
                           </td>
                           <td className="tnum" style={{ textAlign: "right" }}>
-                            {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : fmtCostMetric(it.cpr, effectiveMetric, currency)}
-                            <small className="alloc-prev">{prev.cpr != null ? `${tr("이전", "Prior")} ${fmtCostMetric(prev.cpr, effectiveMetric, currency)}` : ""}</small>
+                            {next?.cpr != null ? fmtCostMetric(next.cpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}
+                            <small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {prev.cpr != null ? fmtCostMetric(prev.cpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}</small>
+                            <small className="alloc-prev">{tr("관측", "Observed")} {prev.observedCpr != null ? fmtCostMetric(prev.observedCpr, effectiveMetric, currency) : "—"}</small>
                           </td>
                           <td className="tnum" style={{ textAlign: "right" }}>
                             {isZero || mCpr == null ? <span style={{ color: "var(--text-muted)" }}>—</span> : !isFinite(mCpr) ? <span style={{ color: "var(--text-muted)" }} title={tr("한계효용 ≤ 0 — 더 투입해도 효율↑ 없음", "marginal utility ≤ 0 — no gain from more spend")}>∞</span> : fmtCostMetric(mCpr, effectiveMetric, currency)}
@@ -2239,8 +2252,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                     <tr style={{ background: "var(--bg-2)", fontWeight: "600", borderTop: "2px solid var(--border)" }}>
                       <td style={{ textAlign: "right", paddingRight: "16px" }}>{tr("합계", "Total")}</td>
                       <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}<small className="alloc-prev">{prevTotalDaily > 0 ? `${tr("이전", "Prior")} ${fmtCurrency(prevTotalDaily, currency)}` : ""}</small></td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
-                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{totalResults != null ? formatNumberK(totalResults, 0) : tr("추정 불가", "Unavailable")}<small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {predictionComparison.current.results != null ? formatNumberK(predictionComparison.current.results, 0) : tr("추정 불가", "Unavailable")}</small><small className="alloc-prev">{tr("관측", "Observed")} {formatNumberK(summary?.prev.results, 0)}</small></td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{avgCpr != null ? fmtCostMetric(avgCpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}<small className="alloc-prev">{tr("현재안(모형)", "Current (modeled)")} {predictionComparison.current.cpr != null ? fmtCostMetric(predictionComparison.current.cpr, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}</small></td>
                       <td></td>
                       <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
                     </tr>
@@ -2987,15 +3000,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               ? tr(`전역 입력을 보수적으로 조정하면 예상 평균 ${metricLabel} 악화를 피할 수 있을 것이다`, `A more conservative global input should avoid the projected deterioration in average ${metricLabel}`)
               : verdict.tone === "good"
                 ? tr(
-                  `추천안을 제한적으로 적용하면 평균 ${metricLabel}가 ${fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency)}에서 ${fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency)} 방향으로 움직일 것이다`,
-                  `A limited rollout of the recommendation should move average ${metricLabel} from ${fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency)} toward ${fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency)}`,
+                  `같은 모형에서 현재안 ${metricLabel} ${fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency)} 대비 변경안 ${fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency)}를 예상한다. 제한 적용 뒤 실제 성과를 별도로 검토한다`,
+                  `The same model projects ${metricLabel} of ${fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency)} for the plan versus ${fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency)} at current spend. Review actual performance separately after a limited rollout`,
                 )
                 : tr(
                   `채널 운영 변수 하나를 개선하면 재배분만 할 때보다 평균 ${metricLabel}가 더 나아질 것이다`,
                   `Improving one channel operating variable should move average ${metricLabel} more than reallocation alone`,
                 ),
             metric: metricLabel,
-            baseline: fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency),
+            baseline: summary?.prevAvgCPR != null ? fmtCostMetric(summary.prevAvgCPR, effectiveMetric, currency) : "",
             sourcePeriod: tr(`최근 ${summary?.recentDays || recentDays}일`, `Recent ${summary?.recentDays || recentDays} days`),
             ...(planSnapshot || {}),
             reviewQuestion: verdict.tone === "good"
@@ -3015,14 +3028,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           }}
           stats={[
             {
-              label: tr(`예상 ${metricLabel}`, `Projected ${metricLabel}`),
+              label: tr(`모형 예상 ${metricLabel} · 현재안 → 변경안`, `Modeled ${metricLabel} · current → plan`),
               emphasis: "primary",
-              value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}`,
+              value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : tr("추정 불가", "Unavailable")} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : tr("추정 불가", "Unavailable")}`,
               detail: verdict.change != null && Math.abs(verdict.change) >= 0.0005 ? `${verdict.change > 0 ? "+" : "−"}${Math.abs(verdict.change * 100).toFixed(1)}%` : undefined,
             },
             {
-              label: tr(`하루 ${unitLabel}`, `${unitLabel}s per day`),
-              value: `${formatNumberK(verdict.S.prev.results)} → ${formatNumberK(verdict.S.next.results)}`,
+              label: tr(`모형 예상 하루 ${unitLabel} · 현재안 → 변경안`, `Modeled ${unitLabel}s per day · current → plan`),
+              value: `${verdict.S.prev.results != null ? fmtActionResult(verdict.S.prev.results) : tr("추정 불가", "Unavailable")} → ${verdict.S.next.results != null ? fmtActionResult(verdict.S.next.results) : tr("추정 불가", "Unavailable")}`,
             },
             {
               label: tr(planBudgetPeriod === "monthly" ? "총 월예산" : "총 일예산", planBudgetPeriod === "monthly" ? "Total monthly budget" : "Total daily budget"),
@@ -3036,26 +3049,28 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               calculationTables: [{
                 name: "BUDGET_PLAN",
                 title: tr("채널별 현재·추천 예산", "Current and recommended budget by channel"),
-                note: tr("추천 비용·성과는 곡선 적합과 제약 배분 엔진 출력이고, 효율·증감·비중은 수식", "Recommended spend and results are curve-fit and constrained-allocation engine outputs; efficiency, deltas, and shares are formulas"),
+                note: tr("현재안·변경안은 같은 곡선의 모형 비교입니다. 비용·성과는 엔진 출력이고, 효율·증감·비중은 수식입니다. 관측 성과·단가는 별도 열이며 모형과의 차이는 조정 효과가 아닙니다.", "Current and planned outcomes are compared on the same curve. Spend and outcomes are engine outputs; efficiencies, deltas and shares are formulas. Separate observed columns are not the allocation-effect baseline."),
                 rows: [
-                  ["channel", "current_daily_cost_input", "current_daily_results_input", "recommended_daily_cost_engine", "recommended_daily_results_engine", "current_cost_per_result", "recommended_cost_per_result", "cost_delta", "result_delta", "recommended_spend_share", "observed_min_daily_cost", "observed_max_daily_cost", "constraint_max_daily_cost", "retained_observations", "low_confidence_hold"],
+                  ["channel", "current_daily_cost_input", "current_daily_results_engine", "recommended_daily_cost_engine", "recommended_daily_results_engine", "current_modeled_cost_per_result", "recommended_cost_per_result", "cost_delta", "modeled_result_delta", "recommended_spend_share", "observed_min_daily_cost", "observed_max_daily_cost", "constraint_max_daily_cost", "retained_observations", "low_confidence_hold", "observed_daily_results", "observed_cost_per_result"],
                   ...items.map((item, index) => {
                     const row = index + 2;
                     const history = historyByCh[item.channel] || {};
+                    const comparison = predictionComparison.byChannel.get(item.channel);
                     return [
                       item.channel,
                       history.totalCost || 0,
-                      history.totalResults || 0,
+                      comparison?.current.results ?? "",
                       item.cost || 0,
-                      item.results || 0,
-                      { formula: `=IFERROR(B${row}/C${row},0)` },
-                      { formula: `=IFERROR(D${row}/E${row},0)` },
+                      comparison?.next.results ?? "",
+                      { formula: `=IF(AND(ISNUMBER(C${row}),C${row}>0),B${row}/C${row},"")` },
+                      { formula: `=IF(AND(ISNUMBER(E${row}),E${row}>0),D${row}/E${row},"")` },
                       { formula: `=D${row}-B${row}` },
-                      { formula: `=E${row}-C${row}` },
+                      { formula: `=IF(AND(ISNUMBER(C${row}),ISNUMBER(E${row})),E${row}-C${row},"")` },
                       { formula: `=IFERROR(D${row}/SUM($D$2:$D$${lastRow}),0)`, numberFormat: "0.0%" },
                       modelsMap.get(item.channel)?.xMin ?? "", modelsMap.get(item.channel)?.xMax ?? "",
                       evidenceLimits.maxSpends[item.channel] ?? "", modelsMap.get(item.channel)?.kept?.length ?? 0,
                       Object.hasOwn(lowConfidenceHolds, item.channel),
+                      history.totalResults ?? "", history.avgCPR ?? "",
                     ];
                   }),
                 ],
