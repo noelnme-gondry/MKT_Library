@@ -192,3 +192,42 @@ describe("BudgetAllocation render smoke", () => {
     expect(document.querySelector(".result-action-card").compareDocumentPosition(figure) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 });
+
+describe("BudgetAllocation comparison basis", () => {
+  beforeEach(() => useAppStore.setState(useAppStore.getInitialState()));
+
+  it("withholds modeled totals when a target has only a recent-average fallback", () => {
+    seedWithData();
+    const store = useAppStore.getState();
+    const csv = store.csvData;
+    store.setCsvData({ ...csv, raw: [...csv.raw, { ...csv.raw.at(-1), Channel: "Sparse", Installs: 1 }] });
+    store.setGroupAnalyzed("5-3");
+    expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
+    render(<BudgetAllocation />);
+    const stats = document.querySelector(".result-action-card__stats");
+    expect(stats).toBeTruthy();
+    expect(stats.children[0].querySelector("strong").textContent).toBe("추정 불가 → 추정 불가");
+    expect(stats.children[1].querySelector("strong").textContent).toBe("추정 불가 → 추정 불가");
+    expect(stats.children[0].querySelector("small")).toBeNull();
+  });
+
+  for (const locale of ["ko", "en"]) it(`aligns the headline percentage with the displayed modeled CPI (${locale})`, () => {
+    const store = useAppStore.getState();
+    store.setCurrentRouteId("5-3");
+    store.setCsvData(buildSampleJourney(locale));
+    store.setGroupAnalyzed("5-3");
+    expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
+    render(<BudgetAllocation locale={locale} />);
+
+    const stats = document.querySelector(".result-action-card__stats");
+    expect(stats).toBeTruthy();
+    const cpi = stats.children[0];
+    const [current, next] = cpi.querySelector("strong").textContent.split("→").map(value => Number(value.replace(/[^\d.]/g, "")));
+    const displayedChange = Number(cpi.querySelector("small").textContent.replaceAll("−", "-").replaceAll("%", ""));
+    expect(Math.abs((next / current - 1) * 100 - displayedChange)).toBeLessThan(0.15);
+    expect(cpi.textContent).toContain(locale === "en" ? "Modeled CPI" : "모형 예상 CPI");
+    expect(stats.children[1].textContent).toContain(locale === "en" ? "Modeled" : "모형 예상");
+    expect(document.querySelector(".result-shift__basis").textContent).toContain(locale === "en" ? "both plans" : "두 배분안");
+    expect(document.querySelector(".alloc-plan__table thead").textContent).toContain(locale === "en" ? "Modeled" : "모형");
+  });
+});

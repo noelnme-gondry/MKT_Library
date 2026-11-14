@@ -485,6 +485,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ### 5.5 결과 카드 계약
 
+- 예산 상세 설계(5-3)의 결론 변화율·핵심 수치·대상별 효율·핵심 그림은 같은 곡선에서 현재 지출과 변경 지출을 평가한 **현재안(모형) → 변경안(모형)** 비교다. 실제 관측 성과는 `관측`으로 별도 표시하며 관측→예측 차이를 조정 효과로 부르지 않는다. 모형 비교가 불가능한 대상이 있으면 전체 비교 수치·변화율은 `추정 불가`로 둔다. / Budget detail design compares current and proposed spend on the same curve across the headline, key figures, target efficiencies and core visual. Label observations separately; observed-to-predicted gaps are not allocation effects. Withhold aggregate modeled outcomes and changes when any target lacks a model comparison.
+
 | 층위 | 필수 요소 | 작성 규칙 |
 |---|---|---|
 | 1층 | 평어 결론 한 문장 | 원인·효과를 과장하지 않고 판단 상태를 반영 |
