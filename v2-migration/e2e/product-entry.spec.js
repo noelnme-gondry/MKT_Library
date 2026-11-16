@@ -191,6 +191,17 @@ for (const variant of [
     await page.goto(prefix || "/");
     await expect(page.locator(".home-hero-capabilities li")).toHaveCount(3);
     await page.evaluate(() => document.fonts.ready);
+    // 금액 중간 줄바꿈은 가로 넘침 검사만으로 잡히지 않는다.
+    expect(await page.locator(".operations-sample-budget__metrics dd").first().evaluate(node => {
+      const range = document.createRange(); range.selectNodeContents(node);
+      return range.getClientRects().length;
+    }), "the total budget must remain one complete number").toBe(1);
+    // Full-page capture alone does not bring lazy editorial images into the viewport.
+    for (const image of await page.locator(".home-reading-list__figure img").all()) {
+      await image.scrollIntoViewIfNeeded();
+      await expect.poll(() => image.evaluate(node => node.complete && node.naturalWidth > 0)).toBe(true);
+    }
+    await page.evaluate(() => scrollTo(0, 0));
     // Railway PR 호스트는 운영으로 301 이동한다. CI 빌드의 변경 화면을 직접 검토할 증거다.
     await page.screenshot({ path: testInfo.outputPath("entry-review-home.png"), fullPage: true, animations: "disabled" });
     await page.goto(`${prefix}/start`);
