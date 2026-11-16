@@ -73,6 +73,18 @@
 .finder-preview__budget-bars { display: grid; gap: 4px; }
 .finder-preview__budget-bars i { display: block; height: 6px; background: var(--text-muted); }
 .finder-preview__budget-bars i:last-child { background: var(--primary); }
+@media (min-width: 861px) {
+  /* 홀수로 끝나는 묶음은 설명과 그림을 나란히 둬 빈 반쪽을 남기지 않는다. */
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto auto auto minmax(44px, 1fr); gap: 12px 28px; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > :not(.finder-card__visual) { grid-column: 1; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > .finder-card__head { grid-row: 1; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > .finder-card__question { grid-row: 2; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > .finder-card__visual { grid-column: 2; grid-row: 1 / 6; align-self: start; margin: 0; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > .finder-card__members { grid-row: 3; align-self: start; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > .finder-card__data { grid-row: 4; align-self: start; }
+  .analysis-finder__cards > .finder-card:last-child:nth-child(odd):has(> .finder-card__visual) > .finder-card__actions { grid-row: 5; align-self: end; }
+}
 @media (max-width: 720px) {
   .finder-card { padding: 16px 0; }
   .finder-preview { padding: 14px 12px; }
