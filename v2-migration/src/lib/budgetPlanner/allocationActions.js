@@ -5,21 +5,30 @@
 import { ALLOC_MATH } from "@/utils/allocationMath";
 
 // 관측 평균과 예측의 차이는 조정 효과가 아니다. 같은 곡선에서 두 예산을 평가한다.
+export function allocationPredictionComparison(items, modelsMap, isRoas = false) {
+  const byChannel = new Map(items.map(item => {
+    const modeled = Boolean(modelsMap.get(item.channel)?.model) && item.resultsBasis !== "recent_average" && item.resultsBasis !== "unknown";
+    const costKnown = Number.isFinite(item.current) && item.current >= 0;
+    const cpr = modeled && costKnown ? ALLOC_MATH.predictSafeCpr(modelsMap.get(item.channel), item.current) : null;
+    const current = { cost: costKnown ? item.current : null, results: cpr > 0 ? item.current / cpr : null, cpr: item.current > 0 ? cpr : null };
+    const nextKnown = modeled && Number.isFinite(item.cost) && item.cost >= 0 && Number.isFinite(item.results) && item.results >= 0;
+    const next = { cost: Number.isFinite(item.cost) && item.cost >= 0 ? item.cost : null, results: nextKnown ? item.results : null, cpr: nextKnown && item.results > 0 ? item.cost / item.results : null };
+    return [item.channel, { current, next }];
+  }));
+  const total = key => {
+    const values = [...byChannel.values()].map(row => row[key]);
+    const cost = values.length && values.every(row => row.cost != null) ? values.reduce((sum, row) => sum + row.cost, 0) : null;
+    const results = values.length && values.every(row => row.results != null) ? values.reduce((sum, row) => sum + row.results, 0) : null;
+    return { cost, results, cpr: cost != null && results > 0 ? cost / results : null };
+  };
+  const current = total("current");
+  const next = total("next");
+  const ratio = current.cpr > 0 && next.cpr > 0 ? next.cpr / current.cpr : null;
+  return { byChannel, current, next, change: ratio == null ? null : isRoas ? 1 / ratio - 1 : ratio - 1 };
+}
+
 export function allocationPredictionChange(items, modelsMap, isRoas = false) {
-  let currentCost = 0, currentResults = 0, nextCost = 0, nextResults = 0;
-  for (const item of items) {
-    const model = modelsMap.get(item.channel);
-    if (!model || item.resultsBasis === "recent_average" || item.resultsBasis === "unknown") return null;
-    const cpr = ALLOC_MATH.predictSafeCpr(model, item.current);
-    if (!(cpr > 0) || !(item.results >= 0)) return null;
-    currentCost += item.current;
-    currentResults += item.current / cpr;
-    nextCost += item.cost;
-    nextResults += item.results;
-  }
-  if (!(currentCost > 0 && currentResults > 0 && nextCost > 0 && nextResults > 0)) return null;
-  const ratio = (nextCost / nextResults) / (currentCost / currentResults);
-  return isRoas ? 1 / ratio - 1 : ratio - 1;
+  return allocationPredictionComparison(items, modelsMap, isRoas).change;
 }
 
 const WORSE_VERDICTS = new Set(["AUCTION_COST", "CREATIVE", "FUNNEL_POST_CLICK", "MARKET", "BUDGET_CURVE", "MIXED", "NEW_CREATIVE_LEARNING"]);
@@ -54,11 +63,11 @@ function reasonOf(item, unit, direction, isRoas) {
  * 대상별 행동. 변화가 큰 순서(절대 금액)로 정렬한다.
  * @param {object[]} items 5-3 배분 항목(channel·cost·current·binding·state·cpr)
  * @param {object[]} units 플래너 대상(unit·path·diagnosis·state)
- * @param {{isRoas?:boolean, minShare?:number, history?:Object<string,{totalCost:number,totalResults:number}>}} opts
+ * @param {{isRoas?:boolean, minShare?:number, comparison?:ReturnType<typeof allocationPredictionComparison>}} opts
  *   minShare: 현재 지출 대비 이 비율 미만의 변화는 "유지"
- *   history: 대상별 최근 일평균 — 있으면 현재·예상 CPR을 함께 싣는다(예산 변화와 효율 변화를 같은 행에서 읽게)
+ *   comparison: 결론과 같은 모형 비교 — 관측 평균을 조정 효과의 기준으로 쓰지 않는다.
  */
-export function allocationMoves(items = [], units = [], { isRoas = false, minShare = 0.01, history = null } = {}) {
+export function allocationMoves(items = [], units = [], { isRoas = false, minShare = 0.01, comparison = null } = {}) {
   const unitOf = new Map(units.map((unit) => [unit.unit, unit]));
   return items.map((item) => {
     const current = Number(item.current) || 0;
@@ -68,8 +77,7 @@ export function allocationMoves(items = [], units = [], { isRoas = false, minSha
     const small = current > 0 ? Math.abs(delta) < current * minShare : Math.abs(delta) < 1e-6;
     const direction = small ? "keep" : delta > 0 ? "up" : "down";
     const unit = unitOf.get(item.channel);
-    const past = history?.[item.channel];
-    const results = Number(item.results);
+    const modeled = comparison?.byChannel.get(item.channel);
     return {
       unit: item.channel,
       channel: unit?.path?.channel || item.channel,
@@ -78,8 +86,8 @@ export function allocationMoves(items = [], units = [], { isRoas = false, minSha
       delta,
       changePct,
       direction,
-      currentCpr: past && past.totalResults > 0 ? past.totalCost / past.totalResults : null,
-      plannedCpr: results > 0 ? proposed / results : null,
+      currentCpr: modeled?.current.cpr ?? null,
+      plannedCpr: modeled?.next.cpr ?? null,
       reason: reasonOf(item, unit, direction, isRoas),
     };
   }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || a.unit.localeCompare(b.unit));

@@ -17,6 +17,8 @@ describe("저자·발행자 신원", () => {
     const publisher = publisherNode("ko");
     expect(author["@type"]).toBe("Person");
     expect(publisher["@type"]).toBe("Organization");
+    expect(author.name).toBe("신기훈");
+    expect(publisher.name).toBe("Growth Opt Playbook");
     expect(author["@id"]).not.toBe(publisher["@id"]);
   });
 

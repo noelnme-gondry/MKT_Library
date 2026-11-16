@@ -8,14 +8,18 @@ import {
   getNextTools,
   localizedTool,
 } from "@/lib/toolConnections";
-import { EN_READY_TOOL_IDS, ROUTES, idToSlug, isRoutePublished } from "@/lib/routeMap";
+import { EN_READY_TOOL_IDS, ROUTES, absorbedToolIds, idToSlug, isRoutePublished } from "@/lib/routeMap";
 import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
 import { isNumberedDocItem } from "@/store/useDataStore";
 import { advancedMap } from "@/lib/advanced-marketing/registry";
 
 describe("connected tool workflow", () => {
   it("covers every published tool exactly once in the landing journey", () => {
-    const toolIds = Object.keys(CONNECTED_TOOLS);
+    // 흡수된 도구(5-22 → 5-3의 보기)는 여정·목록에 없고, 저장한 기록의 이름·링크를 위해서만 연결 표에 남는다.
+    const absorbed = absorbedToolIds();
+    expect(absorbed).toContain("5-22");
+    expect(absorbed.every((id) => CONNECTED_TOOLS[id] && !TOOL_JOURNEY.some((stage) => stage.tools.includes(id)))).toBe(true);
+    const toolIds = Object.keys(CONNECTED_TOOLS).filter((id) => !absorbed.includes(id));
     const journeyIds = TOOL_JOURNEY.flatMap((stage) => stage.tools);
     const publishedToolIds = ROUTES
       .filter((route) => /^(5|9)-/.test(route.id) && !route.legacy && isRoutePublished(route))
@@ -74,7 +78,8 @@ describe("connected tool workflow", () => {
     expect(dashboardNext.every((tool) => tool.isSameData)).toBe(true);
     const saturationNext = getNextTools("5-22", "ko");
     expect(saturationNext.find((tool) => tool.id === "5-31").isSameData).toBe(true);
-    expect(getNextTools("5-31", "ko").map(tool => tool.id)).not.toContain("5-3");
+    // 운영 플래너가 출발점이고 예산 상세 설계(5-3)는 그 예산 단계의 상세다(2026-11-06 사용자 결정, lib/operationsFlow).
+    expect(getNextTools("5-31", "ko").map(tool => tool.id)).toContain("5-3");
     expect(saturationNext.find((tool) => tool.id === "9-6").isSameData).toBe(false);
   });
 
@@ -93,7 +98,8 @@ describe("connected tool workflow", () => {
           }
         }
       }
-      expect([...seen].sort()).toEqual([...toolIds].sort());
+      // 흡수된 도구는 다른 도구의 보기라 다음 단계로 가리키지 않는다 — 발행 도구 전부에 닿으면 된다.
+      expect([...seen].filter((id) => !absorbedToolIds().includes(id)).sort()).toEqual(toolIds.filter((id) => !absorbedToolIds().includes(id)).sort());
     }
   });
 
@@ -105,7 +111,7 @@ describe("connected tool workflow", () => {
     expect(variance.alternatives.map((tool) => tool.id)).not.toContain("5-21");
     expect(variance.alternatives.every((tool) => variance.stage.tools.includes(tool.id))).toBe(true);
     // 효율 CSV 하나로 되는 예산 분석은 다른 상황이지만 같은 파일로 이어진다.
-    expect(variance.sameFile.map((tool) => tool.id)).toEqual(expect.arrayContaining(["5-22", "5-3"]));
+    expect(variance.sameFile.map((tool) => tool.id)).toEqual(expect.arrayContaining(["5-31", "5-3"]));
     for (const toolId of TOOL_JOURNEY.flatMap((stage) => stage.tools)) {
       const context = getJourneyContext(toolId, "en");
       expect(context, toolId).toBeTruthy();

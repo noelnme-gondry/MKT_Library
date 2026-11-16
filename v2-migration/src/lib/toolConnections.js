@@ -16,15 +16,17 @@ export const CONNECTED_TOOLS = {
     question: { ko: "변화를 물량·효율·믹스로 나누면 원인은 뭘까?", en: "Was the change driven by volume, efficiency, or mix?" },
     keywords: { ko: "CPA CPI ROAS 왜 올랐나 왜 떨어졌나 원인 비용 물량 효율 믹스 변동", en: "CPA CPI ROAS why increase decrease cause volume efficiency mix variance" },
   },
+  // 5-3의 증액 여력 보기(product-ssot §4.2a). 목록에는 없지만 저장한 기록의 이름·링크와 그 보기의 다음 단계가 읽는다.
   "5-22": {
-    title: { ko: "캠페인 포화도 탐지", en: "Campaign saturation" },
+    title: { ko: "증액 여력 진단", en: "Headroom check" },
     question: { ko: "효율을 해치지 않고 더 늘릴 수 있을까?", en: "Can we scale further without hurting efficiency?" },
     keywords: { ko: "예산 늘렸더니 ROAS 떨어짐 떨어졌어요 CPA 상승 포화 한계효율 증액 과소진 성과 안좋음", en: "ROAS dropped falling after scaling raised budget CPA rose saturation marginal efficiency increase overspend poor performance" },
   },
   "5-3": {
-    title: { ko: "예산 배분", en: "Budget allocation" },
-    question: { ko: "줄인 예산을 어디로 옮기는 게 좋을까?", en: "Where should the pulled-back budget move next?" },
-    keywords: { ko: "예산 어디로 이동 증액 감액 배분 재배분 시뮬레이션", en: "move budget increase decrease allocation reallocation simulation" },
+    title: { ko: "예산 상세 설계", en: "Budget detail" },
+    question: { ko: "예산을 어디로 옮기고, 어디를 더 늘릴 수 있을까?", en: "Where should budget move, and where can it still scale?" },
+    // 증액 여력(5-22)이 이 도구의 보기로 들어왔다(product-ssot §4.2a) — 그 질문으로도 찾히게 검색어를 함께 둔다.
+    keywords: { ko: "예산 어디로 이동 증액 감액 배분 재배분 시뮬레이션 증액 여력 포화 한계효율 예산 늘렸더니 ROAS 떨어짐 CPA 상승", en: "move budget increase decrease allocation reallocation simulation headroom saturation marginal efficiency ROAS dropped after scaling CPA rose" },
   },
   "9-6": {
     title: { ko: "소재 분석", en: "Creative analysis" },
@@ -129,7 +131,7 @@ export const TOOL_JOURNEY = [
     title: { ko: "예산을 어디에 얼마나", en: "Where the budget should go" },
     homeQuestion: { ko: "더 쓸 곳과 줄일 곳은 어디일까?", en: "Where should I scale, and where should I cut?" },
     description: { ko: "증액 여력, 재배분, 채널 기여와 다음 기간 예측을 봅니다.", en: "Check headroom, reallocation, channel contribution and next-period forecasts." },
-    tools: ["5-31", "5-22", "5-3", "5-18-mmm", "5-18-forecast", "5-42"],
+    tools: ["5-31", "5-3", "5-18-mmm", "5-18-forecast", "5-42"],
   },
   {
     id: "proof",
@@ -177,17 +179,20 @@ export const TOOL_JOURNEY = [
 export const NEXT_TOOL_IDS = {
   ...advancedMap((tool) => tool.next),
   "5-30": ["5-18-cannibal", "5-23", "5-18-mmm"],
-  "5-31": ["5-21", "9-6", "5-22"],
-  "5-2": ["5-31", "5-21", "5-22"],
-  "5-21": ["5-29", "5-22", "5-31"],
-  "5-22": ["5-31", "5-26", "9-6"],
-  "5-3": ["5-22", "5-18-mmm", "5-4"],
+  // 운영 플래너의 상세 도구(lib/operationsFlow) — 플래너가 출발점이고 상세끼리는 플래너로 돌아간다.
+  "5-31": ["5-3", "5-21", "9-6"],
+  "5-2": ["5-31", "5-21", "5-3"],
+  "5-21": ["5-29", "5-3", "5-31"],
+  // 5-22는 5-3의 증액 여력 보기다(목록에는 없고 그 보기의 마감 영역이 읽는다).
+  "5-22": ["5-31", "9-6", "5-3"],
+  // 5-26(ASA 키워드)는 예전에 5-22에서만 들어왔다 — 증액 여력이 5-3의 보기가 됐으므로 5-3이 잇는다.
+  "5-3": ["5-31", "5-18-mmm", "5-26"],
   "9-6": ["5-4", "9-1", "5-2"],
   "5-4": ["5-23", "5-18-cannibal", "5-34"],
   "5-23": ["5-4", "5-24", "5-2"],
   "5-24": ["5-23", "5-4", "5-2"],
   "5-25": ["5-18-mmm", "5-4", "5-23"],
-  "5-26": ["5-22", "5-3", "5-27"],
+  "5-26": ["5-3", "5-27", "5-4"],
   "5-27": ["5-26", "5-2", "5-23"],
   "5-28": ["5-20", "5-4", "5-23"],
   // 구성이 움직인 것을 확인했으면 성과 단가 변동(5-21)과 증분 검증(5-23)으로 넘어간다.

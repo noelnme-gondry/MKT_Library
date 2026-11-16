@@ -1,13 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { toolResultEntrySelector } from "./support/toolResult";
-import { publishedToolIds, idToSlug } from "../src/lib/routeMap";
+import { analysisToolIds, idToSlug } from "../src/lib/routeMap";
 import { ALWAYS_OWN_INPUT_LINE_TOOL_IDS, SETUP_BAR_INPUT_TOOL_IDS } from "../src/lib/report/reportContextTools";
 
 // 결과 보고서 틀(product-ssot §1.1c): 예시 결과를 열면 결론 문장이 첫 화면 안에 있어야 한다.
 // 가드는 "지금 값"이 아니라 근거를 고정한다 — 결론 칸의 아래 끝이 뷰포트 높이 안인가.
 // 아직 충족하지 못한 조합은 빼지 않고 사유와 함께 적는다(빠진 것과 뺀 것을 구분, AGENTS §7).
 // 발행 도구 전체에서 파생한다 — 손으로 고른 목록은 빠진 도구를 가린다(AGENTS §7 메타 1).
-const TOOLS = publishedToolIds().map((id) => ({ id, path: idToSlug[id] }));
+// 다른 도구의 보기로 흡수된 분석(5-22 → 5-3?view=headroom)도 결과 화면이므로 함께 잰다.
+const TOOLS = analysisToolIds().map((id) => ({ id, path: idToSlug[id] }));
+const exampleUrl = (path) => `${path}${path.includes("?") ? "&" : "?"}example=1`;
 const VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 980, height: 900 },
@@ -28,7 +30,7 @@ for (const locale of ["ko", "en"]) {
         test.skip(testInfo.project.name !== "desktop-1440", "viewport is set by this spec");
         test.skip(Boolean(gap), gap);
         await page.setViewportSize(viewport);
-        await page.goto(`${locale === "en" ? "/en" : ""}${tool.path}?example=1`);
+        await page.goto(`${locale === "en" ? "/en" : ""}${exampleUrl(tool.path)}`);
         // 무거운 엔진(MMM 등)은 CI에서 예시 결과까지 10초를 넘긴다. 숨은 결론 칸은 세지 않는다.
         const headline = page.locator(toolResultEntrySelector(tool.id)).filter({ visible: true }).first();
         await expect(headline).toBeVisible({ timeout: 30000 });
@@ -52,7 +54,7 @@ const OWN_INPUT_LINES = ".csv-uploader--collapsed, .report-context, .file-state,
 for (const tool of TOOLS) {
   test(`input is stated once after the result: ${tool.id}`, async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop-1440", "one width is enough for presence");
-    await page.goto(`${tool.path}?example=1`);
+    await page.goto(exampleUrl(tool.path));
     // 무거운 엔진(MMM 등)은 예시 결과까지 10초를 넘길 수 있다.
     await expect(page.locator(toolResultEntrySelector(tool.id)).filter({ visible: true }).first()).toBeVisible({ timeout: 30000 });
     const visible = async (selector) => page.locator(selector).evaluateAll((nodes) => nodes.some((node) => node.checkVisibility()));

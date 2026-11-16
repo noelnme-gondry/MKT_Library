@@ -691,7 +691,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                                 사용자가 둘을 화해시켜야 하는데, 그건 우리가 할 일이다(§12.14). */}
                             <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{decisionP.toFixed(4)} <PvBadge p={decisionP} locale={locale} /></div></div>
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("절대 차이 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(freq.ciLow95 * 100).toFixed(2)}% , {(freq.ciHigh95 * 100).toFixed(2)}% ]</div></div>
-                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(decisionP, liftPositive), fontWeight: 700 }}>{srm.status === "mismatch" ? tr("배정 비율 이상 — 효과 판정 보류", "Allocation mismatch — effect verdict held") : decisionP < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
+                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(decisionP, liftPositive), fontWeight: 600 }}>{srm.status === "mismatch" ? tr("배정 비율 이상 — 효과 판정 보류", "Allocation mismatch — effect verdict held") : decisionP < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
                           </div>
                           {/* 계산 방법은 접기 한 줄. 근거를 결론과 같은 층에 펴지 않는다(§12.14).
                               문구는 쉬운 말 먼저, 용어는 뒤에(§12.17). */}
@@ -767,7 +767,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                               <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{r.pValue.toFixed(4)} <PvBadge p={r.pValue} locale={locale} /></div></div>
                               <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("평균차 95% CI", "Mean difference 95% CI")}</div><div className="ab-stat-value tnum">[ {fmtCurrency(r.ciLow95, currency)} , {fmtCurrency(r.ciHigh95, currency)} ]</div></div>
                               <div className="ab-stat"><div className="ab-stat-label">Welch-Satterthwaite df</div><div className="ab-stat-value tnum">{r.df.toFixed(1)}</div></div>
-                              <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(r.pValue, liftPositive), fontWeight: 700 }}>{r.pValue < 0.05 ? (liftPositive ? tr("유의미한 개선", "Significant improvement") : tr("유의미한 악화", "Significant decline")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
+                              <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(r.pValue, liftPositive), fontWeight: 600 }}>{r.pValue < 0.05 ? (liftPositive ? tr("유의미한 개선", "Significant improvement") : tr("유의미한 악화", "Significant decline")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
                             </div>
                           </div>
                         </div>
@@ -897,7 +897,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                     <>One row per arm. <strong>Required</strong>: control flag (is_control) · conversions (numerator) · arm size (denominator). <strong>Optional</strong>: with a variant column (arm_id), run mass tests across Variant A/B/C…</>,
                   )}</p>
                   <div style={{ margin: "6px 0 4px" }}>
-                    <button className="ab-pill" onClick={downloadAbTemplate}>{tr("⬇ A/B 템플릿 CSV (예시 포함)", "⬇ A/B template CSV (with examples)")}</button>
+                    <button className="ab-pill" onClick={downloadAbTemplate}>{tr("A/B 템플릿 CSV (예시 포함)", "A/B template CSV (with examples)")}</button>
                   </div>
                   <ToolTemplateAction
                     toolId="5-4"

@@ -3463,8 +3463,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 borderRadius: "12px", padding: "11px 14px", cursor: "pointer", transition: "all .15s",
               }}
             >
-              <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: ".04em", color: on ? "#adc6ff" : "var(--text-2)" }}>{d.no}</div>
-              <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)", marginTop: "1px" }}>{d.icon} {d.title}</div>
+              <div style={{ fontSize: "var(--fs-xs)", fontWeight: 600, letterSpacing: ".04em", color: on ? "#adc6ff" : "var(--text-2)" }}>{d.no}</div>
+              <div style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)", marginTop: "1px" }}>{d.icon} {d.title}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-2)", marginTop: "2px", lineHeight: 1.35 }}>{d.desc}</div>
             </button>
           );
@@ -3868,7 +3868,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           ? tx("✓ 저장됨", "✓ Saved")
           : packageDownloadStatus === "error"
             ? tx("다시 시도", "Try again")
-            : tx("⬇ 분석 패키지", "⬇ Analysis package")}
+            : tx("분석 패키지", "Analysis package")}
       </button>
       <span className="sr-only" role="status" aria-live="polite">
         {packageDownloadStatus === "done" ? tx("분석 패키지 저장이 시작되었습니다.", "The analysis package download has started.") : packageDownloadStatus === "error" ? tx("분석 패키지를 저장하지 못했습니다.", "The analysis package could not be saved.") : ""}
@@ -4549,7 +4549,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   const c = BADGE_TONE[tone];
                   return (
                     <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
-                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
+                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                       {list.length ? list.map((r) => (
                         <button type="button" key={r.key} onClick={() => setCannibChannel(r.key)} aria-pressed={r.key === activeCannibCh}
                           className="analysis-choice-card"
@@ -4626,7 +4626,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   return (
                     <button onClick={() => setCannibQuestion(key)} style={{ background: cannibQuestion === key ? "rgba(122,162,247,0.10)" : "var(--bg-2)", border: `1px solid ${cannibQuestion === key ? "rgba(122,162,247,0.65)" : "var(--border)"}`, borderRadius: "10px", padding: "12px 14px", textAlign: "left", color: "inherit", cursor: "pointer", minHeight: "142px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{num} {q}</div>
-                      <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: vv.c, margin: "8px 0 4px" }}>{vv.t}</div>
+                      <div style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: vv.c, margin: "8px 0 4px" }}>{vv.t}</div>
                       <div style={{ fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>{help}</div>
                       <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tx("통계 원값(전문가용)", "Raw statistics (for specialists)")}>{tech}</div>
                     </button>
@@ -4672,7 +4672,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       {signal("lag", "④", tx("광고비가 몇 주 뒤 성과를 끌어내리나?", "Does spend pull outcome down weeks later?"), tx("광고 충격 뒤의 주별·누적 반응을 봅니다.", "Shows weekly and cumulative response after a spend shock."), cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN", g ? tx(`1~${g.spend_to_organic.lag}주 시차 함께 검정 · p=${g.spend_to_organic.p}`, `Lags 1–${g.spend_to_organic.lag}wk tested jointly · p=${g.spend_to_organic.p}`) : tx("데이터 부족", "Insufficient data"))}
                     </div>
                     <div style={{ marginTop: "12px" }}>
-                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)", marginBottom: "3px" }}>
+                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", marginBottom: "3px" }}>
                         {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
                       </div>
                       <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? (activeIrf?.cumLo
@@ -4700,11 +4700,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
                     <button className="ab-pill" title={tx("채널 × 3-state 투표 + 게이트·탄력성·커버리지·그랜저 → CSV", "Channel × 3-state vote + gate/elasticity/coverage/Granger → CSV")}
                       onClick={() => requirePaidExport({ locale }) && cannib && csvDownload(`mmm_cannib_${mmm.target}_${_today()}.csv`, buildCannibCsv(cannib, mmm.effects, mmm.target))}>
-                      {tx("⬇ 채널별 카니발 CSV", "⬇ Per-channel cannibalization CSV")}
+                      {tx("채널별 카니발 CSV", "Per-channel cannibalization CSV")}
                     </button>
                     <button className="ab-pill" title={tx("주별 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분 원자료", "Weekly target/channel ln(1+spend), detrended residuals, first-difference raw data")}
                       onClick={() => requirePaidExport({ locale }) && csvDownload(`mmm_cannib_series_${mmm.target}_${_today()}.csv`, buildCannibSeriesCsv(mmm.panel, mmm.target))}>
-                      {tx("⬇ 검정 원자료 CSV", "⬇ Test raw-data CSV")}
+                      {tx("검정 원자료 CSV", "Test raw-data CSV")}
                     </button>
                   </div>
 
@@ -5363,8 +5363,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {decisionCandidates.map((s, i) => (
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: !isRankingAmbiguous && i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: !isRankingAmbiguous && i === 0 ? "var(--primary)" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
-                        <span style={{ flex: 1, fontSize: "var(--fs-base)", fontWeight: !isRankingAmbiguous && i === 0 ? 700 : 400 }}>{s.label}</span>
+                        <span style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: !isRankingAmbiguous && i === 0 ? "var(--primary)" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
+                        <span style={{ flex: 1, fontSize: "var(--fs-base)", fontWeight: !isRankingAmbiguous && i === 0 ? 600 : 400 }}>{s.label}</span>
                         <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--success)" }}>{targetValueLabel(s.curMarg, { sign: true })} <small style={{ color: MUTED, fontWeight: 400 }}>[{targetValueLabel(s.marginalCi[0])} ~ {targetValueLabel(s.marginalCi[1])}]</small></span>
                         <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{spendReferenceLabel} {spendLabel(s.recentMean || 0)}/주</span>
                       </div>
@@ -5509,7 +5509,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "var(--surface-container-lowest)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                         <div>
-                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tx("집행 시점 비교", "Spend timing overlap")}</div>
+                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{tx("집행 시점 비교", "Spend timing overlap")}</div>
                           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0", lineHeight: 1.45 }}>{tx(
                             "같이 켜진 브랜드·퍼포먼스 채널을 찾습니다. 채널별 절대 규모 대신 각자의 최대 집행 대비 강도를 맞춰 비교합니다.",
                             "Find channels that were active together. Compare intensity relative to each channel's own peak, not absolute scale.",
@@ -5529,7 +5529,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <Card style={{ marginTop: "10px", borderColor: "rgba(245,158,11,.45)", background: "rgba(245,158,11,.045)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                         <div>
-                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>⚠ {tx("함께 움직이는 채널 입력값", "Channel inputs moving together")}</div>
+                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>⚠ {tx("함께 움직이는 채널 입력값", "Channel inputs moving together")}</div>
                           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0", lineHeight: 1.5 }}>
                             {tx(`${selectedCollinearPair.series[0].label} · ${selectedCollinearPair.series[1].label}의 상관은 ${selectedCollinearPair.corr.toFixed(2)}입니다. 두 값을 따로 나눠 기여를 정하기 어려울 수 있습니다.`, `${selectedCollinearPair.series[0].label} · ${selectedCollinearPair.series[1].label} have correlation ${selectedCollinearPair.corr.toFixed(2)}. Separating their contributions can be difficult.`)}
                           </p>
@@ -5573,7 +5573,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             } }).catch(() => {});
                           }}
                         >
-                          {tx("⬇ 차트 데이터 CSV", "⬇ Chart data CSV")}
+                          {tx("차트 데이터 CSV", "Chart data CSV")}
                         </button>
                       </div>
                       <p className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "6px", lineHeight: 1.5 }}>
@@ -5676,7 +5676,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={s.week}>
                                       <td>
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                                          {noteNum > 0 && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", borderRadius: "50%", background: "var(--warning)", color: "var(--on-warning)", fontSize: "var(--fs-xs)", fontWeight: 700, flexShrink: 0 }}>{noteNum}</span>}
+                                          {noteNum > 0 && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", borderRadius: "50%", background: "var(--warning)", color: "var(--on-warning)", fontSize: "var(--fs-xs)", fontWeight: 600, flexShrink: 0 }}>{noteNum}</span>}
                                           <b style={{ fontSize: "var(--fs-xs)" }}>{lbl != null ? String(lbl) : tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</b>
                                         </span>
                                         {lbl != null && <span style={{ fontSize: "var(--fs-xs)", color: MUTED, display: "block" }}>{tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</span>}
@@ -6038,7 +6038,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             <thead><tr><th>{tx("학습 기간", "Training window")}</th><th>{tx("검증 선택 경로", "Validated route")}</th><th>{tx("선택용 과거 OOS", "Selection-history OOS")}</th><th>{tx("전체 라이브 OOS", "Full live OOS")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th></tr></thead>
                             <tbody>
                               {(forecast.structuralLookbackCandidates || []).map((candidate) => (
-                                <tr key={candidate.trainingWindow} style={candidate.trainingWindow === forecast.structuralSelectedSpec?.trainingWindow ? { fontWeight: 700 } : undefined}>
+                                <tr key={candidate.trainingWindow} style={candidate.trainingWindow === forecast.structuralSelectedSpec?.trainingWindow ? { fontWeight: 600 } : undefined}>
                                   <td>{candidate.trainingWindow}{tx("주", " weeks")}</td>
                                   <td>{candidate.available ? candidate.route === "direct-total" ? "Direct Total" : "Android + iOS" : tx("근거 부족", "Insufficient evidence")}</td>
                                   <td className="tnum">{candidate.available ? forecastPct(candidate.developmentPooledWmape) : "—"}</td>
@@ -6180,7 +6180,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={`${metric.platform}-${metric.component}`}>
                                       <td>{metric.platform}</td>
                                       <td>{{ organic: "Organic", paid: "Paid", total: "Total" }[metric.component]}</td>
-                                      <td className="tnum" style={metric.passed ? { color: "var(--success)" } : { color: "var(--danger)", fontWeight: 700 }}>
+                                      <td className="tnum" style={metric.passed ? { color: "var(--success)" } : { color: "var(--danger)", fontWeight: 600 }}>
                                         {forecastPct(metric.wmape, 1)} · {metric.passed ? tx("통과", "Pass") : tx("미달", "Fail")}
                                       </td>
                                     </tr>
@@ -6487,7 +6487,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             <p className="muted" style={{ margin: "0 0 8px", fontSize: "var(--fs-xs)" }}>{tx("최소 이력·독립 검증 조건을 지키면서 전체 이력보다 충분히 나은 기간은 찾지 못했습니다. 임의로 과거를 버리지는 않습니다.", "No shorter period improved enough while meeting minimum-history and independent-validation rules. Earlier history will not be removed arbitrarily.")}</p>
                           )}
                           {!regimeWindowScan.calculationFailed && <div className="table-wrap"><table className="data" style={{ fontSize: "var(--fs-xs)" }}><thead><tr><th>{tx("학습 시작", "Training starts")}</th><th>{tx("학습 기간", "Training period")}</th><th>{tx("선택용 OOS", "Development OOS")}</th><th>{tx(`봉인 ${fcHorizon}주 감사`, `Sealed ${fcHorizon}-week audit`)}</th><th>{tx("적격", "Eligible")}</th></tr></thead><tbody>
-                            {regimeWindowScan.candidates.map((candidate) => <tr key={candidate.trainingWeeks} style={candidate.trainingWeeks === regimeWindowScan.recommended?.trainingWeeks ? { fontWeight: 700 } : undefined}><td>{candidate.startLabel || "—"}</td><td>{candidate.trainingWeeks}{tx("주", " wk")}</td><td className="tnum">{candidate.developmentWmape == null ? "—" : `${candidate.developmentWmape.toFixed(1)}%`}</td><td className="tnum">{candidate.latestWmape == null ? "—" : `${candidate.latestWmape.toFixed(1)}%`}</td><td>{candidate.decisionEligible ? tx("통과", "Pass") : tx("보류", "Hold")}</td></tr>)}
+                            {regimeWindowScan.candidates.map((candidate) => <tr key={candidate.trainingWeeks} style={candidate.trainingWeeks === regimeWindowScan.recommended?.trainingWeeks ? { fontWeight: 600 } : undefined}><td>{candidate.startLabel || "—"}</td><td>{candidate.trainingWeeks}{tx("주", " wk")}</td><td className="tnum">{candidate.developmentWmape == null ? "—" : `${candidate.developmentWmape.toFixed(1)}%`}</td><td className="tnum">{candidate.latestWmape == null ? "—" : `${candidate.latestWmape.toFixed(1)}%`}</td><td>{candidate.decisionEligible ? tx("통과", "Pass") : tx("보류", "Hold")}</td></tr>)}
                           </tbody></table></div>}
                         </div>
                       )}
@@ -6579,17 +6579,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     >
                       {forecast.isStructural
                         ? forecast.structuralEligible
-                          ? tx("⬇ 예측 분해 CSV (Organic·Perf)", "⬇ Forecast decomposition CSV (Organic · Perf)")
+                          ? tx("예측 분해 CSV (Organic·Perf)", "Forecast decomposition CSV (Organic · Perf)")
                           : forecast.structuralShortTermEligible
-                            ? tx(`⬇ 단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `⬇ ${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
-                            : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
+                            ? tx(`단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
+                            : tx("OOS 진단 CSV (예측 사용 불가)", "OOS diagnostic CSV (forecast unavailable)")
                         : forecast.isPaidOrganicSplit
                           ? forecastHasExactFormulaModels(forecast)
-                            ? tx("⬇ 살아있는 예측 CSV (OS·Cost 수식)", "⬇ Live forecast CSV (OS · Cost formulas)")
-                            : tx("⬇ 예측 분해 CSV (OS·Organic·Paid)", "⬇ Forecast decomposition CSV (OS · Organic · Paid)")
+                            ? tx("살아있는 예측 CSV (OS·Cost 수식)", "Live forecast CSV (OS · Cost formulas)")
+                            : tx("예측 분해 CSV (OS·Organic·Paid)", "Forecast decomposition CSV (OS · Organic · Paid)")
                           : forecast.isAnnualAnalog
-                            ? tx("⬇ 자동 선택 예측 CSV (고정 스냅샷)", "⬇ Auto-selected forecast CSV (fixed snapshot)")
-                          : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
+                            ? tx("자동 선택 예측 CSV (고정 스냅샷)", "Auto-selected forecast CSV (fixed snapshot)")
+                          : tx("살아있는 예측 CSV (수식·실측·예측)", "Live forecast CSV (formulas/actual/forecast)")}
                     </button>
                   </div>
                   <div className={`forecast-component-grid ${forecast.steps?.length ? "" : "forecast-component-grid--no-regimes"}`}>

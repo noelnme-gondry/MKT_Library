@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
-import PartnerAdSlot, { PartnerAdRail } from "./PartnerAdSlot";
+import PartnerAdSlot, { PartnerAdDisclosure, PartnerAdRail } from "./PartnerAdSlot";
 import { PARTNER_AD_DISCLOSURE, PARTNER_AD_PLACEMENTS } from "@/lib/partnerAds";
 import { CONSENT_STORAGE_KEY, writeStoredConsent } from "@/lib/consent";
 import * as adMode from "./usePartnerAdMode";
@@ -54,7 +54,7 @@ it("one Header-owned frame switches formats and leaves non-analysis mobile pages
   vi.spyOn(adMode, "default").mockReturnValue("live");
   let notify;
   vi.stubGlobal("ResizeObserver", class { constructor(callback) { notify = callback; } observe() {} disconnect() {} });
-  pathname = "/tools/budget-allocation";
+  pathname = "/dashboard";
   const tree = () => <div><PartnerAdRail /><main>Analysis content</main></div>;
   const { container, rerender } = render(tree());
   const host = container.firstChild;
@@ -68,6 +68,28 @@ it("one Header-owned frame switches formats and leaves non-analysis mobile pages
   pathname = "/guide";
   rerender(tree());
   expect(host.querySelectorAll("iframe")).toHaveLength(0);
+});
+
+it.each(["ko", "en"])("unmounts all Coupang surfaces when entering Pro or a tool (%s)", locale => {
+  vi.spyOn(adMode, "default").mockReturnValue("live");
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1600);
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ left: 0, width: 1600 });
+  vi.stubGlobal("ResizeObserver", class { constructor(callback) { this.callback = callback; } observe() { this.callback(); } disconnect() {} });
+  const prefix = locale === "en" ? "/en" : "";
+  const tree = () => <div><PartnerAdDisclosure locale={locale} /><PartnerAdRail locale={locale} /><PartnerAdSlot placement="analysis-bottom" locale={locale} /></div>;
+  pathname = `${prefix}/blog/correlation-vs-causation`;
+  const { container, rerender } = render(tree());
+  expect(container.querySelectorAll("iframe")).toHaveLength(2);
+  expect(container.querySelector(".partner-ad-disclosure").textContent).toBe(PARTNER_AD_DISCLOSURE[locale]);
+  for (const route of ["/subscription", "/tools/operations-planner"]) {
+    pathname = `${prefix}${route}`;
+    rerender(tree());
+    expect(container.querySelector("[data-ad-slot], .partner-ad-disclosure, iframe")).toBeNull();
+  }
+  pathname = prefix || "/";
+  rerender(tree());
+  expect(container.querySelectorAll("iframe")).toHaveLength(2);
+  expect(container.querySelector(".partner-ad-disclosure")).toBeNull();
 });
 
 it("mounts only the fitting live iframe on the partner origin", () => {

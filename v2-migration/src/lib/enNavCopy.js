@@ -36,7 +36,7 @@ export const ITEM_TITLE_EN = {
   "5-2": "Weekly check",
   "5-21": "Change drivers",
   "5-22": "Headroom check",
-  "5-3": "Budget split",
+  "5-3": "Budget detail",
   "5-26": "ASA keywords",
   "5-4": "A/B testing",
   "5-23": "Incremental lift",

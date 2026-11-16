@@ -886,7 +886,7 @@ export function Badge({ tone = "neutral", color, children }) {
   const finalColor = color || c.color;
   return (
     // 상태는 글자 + 색 하나다 — 누를 수 없는 표식을 알약 모양으로 두지 않는다(A4).
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: finalColor, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: finalColor, fontWeight: 600, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
       {children}
     </span>
   );
@@ -904,7 +904,7 @@ export function Card({ children, style }) {
 export function StatHead({ title, hint }) {
   return (
     <div style={{ margin: "18px 0 8px" }}>
-      <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)" }}>{title}</div>
+      <div style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{title}</div>
       {hint ? <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "3px", lineHeight: 1.55 }}>{hint}</div> : null}
     </div>
   );
@@ -1034,7 +1034,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
         <strong style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
-        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: "var(--primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 600, color: "var(--primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
         <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
@@ -1088,8 +1088,8 @@ export function NetEffectEvidence({ net, locale }) {
   const tone = isPositive ? NEG : isNegative ? POS : "#f59e0b";
   return <Card style={{ padding: "14px 16px" }}>
     <div style={{ display: "flex", gap: "18px", alignItems: "baseline", flexWrap: "wrap" }}>
-      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
-      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 700 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
+      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 600, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
+      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 600 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
     </div>
     <div style={{ position: "relative", height: "48px", margin: "14px 8px 4px", borderBottom: "1px solid var(--border)" }}>
       <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "var(--fs-xs)", color: MUTED }}>0</span></div>
@@ -1325,7 +1325,7 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
       )}
       {selectedEvidence.country && countryIndividualCandidates.length > 0 && (
         <section data-information-section="" className="mmm-evidence-ledger__pending">
-          <header data-information-heading="" style={{ fontWeight: 700 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</header>
+          <header data-information-heading="" style={{ fontWeight: 600 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</header>
           <div className="table-wrap" style={{ marginTop: "8px" }}>
             <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
               <thead><tr><th>{tx("국가", "Market")}</th><th>{tx("판정", "Status")}</th><th>{tx("반복 검증", "Rolling checks")}</th><th>{tx("평균 RMSE", "Mean RMSE")}</th><th>{tx("기본 대비", "vs base")}</th><th>{tx("근거", "Reason")}</th></tr></thead>

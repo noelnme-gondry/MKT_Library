@@ -21,6 +21,7 @@ export default function AdSenseScript() {
     script.src = ADSENSE_SCRIPT_SRC;
     script.crossOrigin = "anonymous";
     document.head.appendChild(script);
+    return () => script.remove();
   }, [enabled]);
 
   if (!enabled) return null;

@@ -79,10 +79,12 @@ export function saveFailureState(code) {
   return (SAVE_FAILURE_STATES.has(code) ? code : "UNKNOWN").toLowerCase();
 }
 
-export default function ReviewSaveDialog({ locale = "ko", record, report, onSaved, onClose, onConfirm, returnFocusRef }) {
+export default function ReviewSaveDialog({ locale = "ko", record, records, report, onSaved, onClose, onConfirm, returnFocusRef }) {
   const en = locale === "en";
   const entitlement = useAppStore(state => state.entitlement);
   const [draftRecord] = useState(() => record ? { ...record, id: record.id || crypto.randomUUID() } : null);
+  // One plan's actions are saved together; ids are fixed up front so a retry does not duplicate them.
+  const [draftRecords] = useState(() => Array.isArray(records) && records.length ? records.map(item => ({ ...item, id: item.id || crypto.randomUUID() })) : null);
   const projects = useAppStore(state => state.projects);
   const activeId = useAppStore(state => state.activeProjectId);
   const [sourceId] = useState(activeId);
@@ -108,7 +110,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       if (useAppStore.getState().activeProjectId !== sourceId) throw new Error("SAVE_CONTEXT_CHANGED");
       if (!useAppStore.getState().decisionPersistenceEnabled) throw new Error("STORAGE_DISABLED");
       if (onConfirm) { await onConfirm(); onClose(); return; }
-      const result = await saveProjectReview({ projectId: target, name, record: draftRecord, report, entitlement: access,
+      const result = await saveProjectReview({ projectId: target, name, record: draftRecord, records: draftRecords, report, entitlement: access,
         initialDecisions: useAppStore.getState().decisionRecords,
         shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement || verified.entitlement) && useAppStore.getState().decisionPersistenceEnabled && useAppStore.getState().activeProjectId === sourceId });
       committed = result;
@@ -121,7 +123,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       });
       if (result.project.id === useAppStore.getState().activeProjectId && result.record) {
         const state = useAppStore.getState();
-        useAppStore.setState({ decisionRecords: result.project.decisions, decisionSessionRecordIds: new Set([...state.decisionSessionRecordIds, result.record.id]) });
+        useAppStore.setState({ decisionRecords: result.project.decisions, decisionSessionRecordIds: new Set([...state.decisionSessionRecordIds, ...result.records.map(item => item.id)]) });
       }
       await useAppStore.getState().refreshProjects();
       // Files uploaded before the trial were memory-only. Persist only the source
@@ -141,7 +143,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       }
       setMessage(saveFailureMessage(error.message, en));
       if (!onConfirm) trackProductEvent("project_review_save_failed", {
-        ...(draftRecord?.toolId ? { tool_id: draftRecord.toolId } : {}),
+        ...((draftRecord || draftRecords?.[0])?.toolId ? { tool_id: (draftRecord || draftRecords[0]).toolId } : {}),
         state: saveFailureState(error.message), locale,
       });
     } finally { setBusy(false); }

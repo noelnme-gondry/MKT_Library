@@ -1,4 +1,5 @@
 "use client";
+import "./dashboard/DashboardBoard.css";
 import DashboardWorkspace from "./dashboard/DashboardWorkspace";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -165,24 +166,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
 
-  // 결론이 가리키는 탭을 실제 전환 액션으로 만든다. 문장만으로는 사용자가 탭
-  // 아홉 개 앞에서 다시 고르게 된다(§5.5 "다음 행동 1개").
-  const briefingPoints = useMemo(() => (verdict?.keyPoints || []).map((point) => (
-    point.tab
-      ? {
-        ...point,
-        text: (
-          <button
-            type="button"
-            className="dashboard-briefing__next-tab"
-            onClick={() => setDashboardTab(point.tab)}
-          >
-            {point.text}<span aria-hidden="true"> →</span>
-          </button>
-        ),
-      }
-      : point
-  )), [verdict?.keyPoints, setDashboardTab]);
+  // 결론 근거 줄(지출 최대 변동·효율 최대 영향). 다음에 볼 탭은 "이어서 확인할 분석"이 맡는다.
+  const briefingPoints = verdict?.keyPoints || [];
   const dashboardWorkbookExport = useMemo(() => {
     if (!verdict || verdict.insufficient) return null;
     const workbookTr = (ko, en) => locale === "en" ? en : ko;
@@ -241,8 +226,38 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     });
   }, [csvData, isContent, isDemo, locale, showResults, toolId, verdict, workerKey]);
 
+  const visualConclusion = activeTab === "viz" && !isContent && verdict && !verdict.insufficient;
+  const tabPanel = (
+            <AnalysisExportProvider value={isContent ? null : figureExportSettings({ options: recipe.export, toolId, toolTitle: pageTitle.name,
+              scope: activeTab === "scorecard" ? { ...dashboardFilter, dateStart: periods.current.start, dateEnd: periods.current.end, compareEnabled: true, comparisonStart: periods.previous.start, comparisonEnd: periods.previous.end } : { ...dashboardFilter, dateStart: chartDates[0], dateEnd: chartDates.at(-1), compareEnabled: false, comparisonStart: null, comparisonEnd: null },
+              resultState: chartDates.length ? "ready" : "insufficient", source: { importSource: isDemo ? "demo" : csvData.importSource, fileName: isDemo ? "" : csvData.fileName },
+              projectName: () => isDemo ? "" : useAppStore.getState().projects.find(project => project.id === useAppStore.getState().activeProjectId)?.name })}>
+            <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
+              <DashboardWorkspace enabled={!isContent} key={activeTab} tab={activeTab} locale={locale}>
+              {activeTab === "viz" && <VizTab domain={domain} locale={locale} hideSupporting={hidden.includes("supporting")} />}
+              {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
+              {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
+              {!isContent && activeTab === "seasonality" && <SeasonalityTab locale={locale} />}
+              {/* 콘텐츠 대시보드는 아래 마케팅 전용 탭(결제·예산·매출 전제)을 노출하지 않음. */}
+              {!isContent && activeTab === "pacing" && <PacingTab locale={locale} />}
+              {!isContent && activeTab === "ltv" && <LtvTab locale={locale} />}
+              {!isContent && activeTab === "cohort" && <CohortTab locale={locale} />}
+              {!isContent && activeTab === "funnel" && <FunnelTab locale={locale} />}
+              {!isContent && activeTab === "segment" && <SegmentTab locale={locale} />}
+              {!["viz", "scorecard", "seasonality", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
+                <div className="card">
+                  <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
+                    {tr(`[${activeTab}] 탭은 현재 마이그레이션 중입니다...`, `The [${activeTab}] tab is currently being migrated...`)}
+                  </p>
+                </div>
+              )}
+              </DashboardWorkspace>
+            </div>
+            </AnalysisExportProvider>
+  );
+
   return (
-    <div className={`section active dashboard-shell${!isContent ? " dashboard-workspace" : ""}${showResults ? " has-results" : ""}`}>
+    <div className={`section active dashboard-shell${!isContent ? " dashboard-workspace" : ""}${showResults ? " has-results" : ""}${!isContent ? " dashboard-card-board" : ""}`}>
       
       {/* Main Content Area */}
       <div className="dashboard-shell__main">
@@ -304,7 +319,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             (게이트는 CsvUploader가 setGroupAnalyzed로 확정). */}
         {hasData && !analyzed && (
           <div className="card" style={{ marginTop: "1rem", textAlign: "center", padding: "2.5rem 1rem" }}>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "var(--fs-md)", fontWeight: "700" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
+            <h3 style={{ margin: "0 0 0.5rem", fontSize: "var(--fs-md)", fontWeight: "600" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: 0, lineHeight: 1.6 }}>
               {tr("위에서 컬럼 매핑이 올바른지 확인한 뒤 ", "After confirming the column mapping above, ")}
               {tr(<><strong>&quot;데이터 분석하기&quot;</strong>를 눌러 대시보드를 생성하세요. </>, <>click <strong>&quot;Analyze Data&quot;</strong> to generate the dashboard. </>)}
@@ -351,6 +366,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 headline={verdict.headline}
                 points={briefingPoints}
                 stats={verdict.stats}
+                coreFigure={visualConclusion ? tabPanel : null}
+                controlsPlacement={isContent ? "header" : "footer"}
                 locale={locale}
                 workbookExport={dashboardWorkbookExport}
                 exportOptions={isContent ? undefined : recipe.export}
@@ -405,47 +422,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
                 />
-                {/* 예시라는 사실은 머리 줄("예시 데이터 · N행")이 먼저 말한다. 결론을 밀어내지 않도록
-                    교체 안내는 결론 뒤에 둔다(product-ssot §1.1c — 결론이 첫 화면). */}
-                {isDemo && (
-                  <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
-                    <div>
-                      <strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
-                      <p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
-                    </div>
-                    <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
-                  </section>
-                )}
-
+                {/* 예시 교체 안내 띠는 뺐다(2026-11-06) — 머리 줄이 "예시 데이터 · N행"과 "데이터·매핑 편집"을,
+                    결과 카드가 "내 데이터로 분석하기"를 이미 보여 줘 같은 행동이 세 번이었다. */}
               </section>
             )}
 
-            <AnalysisExportProvider value={isContent ? null : figureExportSettings({ options: recipe.export, toolId, toolTitle: pageTitle.name,
-              scope: activeTab === "scorecard" ? { ...dashboardFilter, dateStart: periods.current.start, dateEnd: periods.current.end, compareEnabled: true, comparisonStart: periods.previous.start, comparisonEnd: periods.previous.end } : { ...dashboardFilter, dateStart: chartDates[0], dateEnd: chartDates.at(-1), compareEnabled: false, comparisonStart: null, comparisonEnd: null },
-              resultState: chartDates.length ? "ready" : "insufficient", source: { importSource: isDemo ? "demo" : csvData.importSource, fileName: isDemo ? "" : csvData.fileName },
-              projectName: () => isDemo ? "" : useAppStore.getState().projects.find(project => project.id === useAppStore.getState().activeProjectId)?.name })}>
-            <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
-              <DashboardWorkspace enabled={!isContent} key={activeTab} tab={activeTab} locale={locale}>
-              {activeTab === "viz" && <VizTab domain={domain} locale={locale} hideSupporting={hidden.includes("supporting")} />}
-              {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
-              {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
-              {!isContent && activeTab === "seasonality" && <SeasonalityTab locale={locale} />}
-              {/* 콘텐츠 대시보드는 아래 마케팅 전용 탭(결제·예산·매출 전제)을 노출하지 않음. */}
-              {!isContent && activeTab === "pacing" && <PacingTab locale={locale} />}
-              {!isContent && activeTab === "ltv" && <LtvTab locale={locale} />}
-              {!isContent && activeTab === "cohort" && <CohortTab locale={locale} />}
-              {!isContent && activeTab === "funnel" && <FunnelTab locale={locale} />}
-              {!isContent && activeTab === "segment" && <SegmentTab locale={locale} />}
-              {!["viz", "scorecard", "seasonality", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
-                <div className="card">
-                  <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
-                    {tr(`[${activeTab}] 탭은 현재 마이그레이션 중입니다...`, `The [${activeTab}] tab is currently being migrated...`)}
-                  </p>
-                </div>
-              )}
-              </DashboardWorkspace>
-            </div>
-            </AnalysisExportProvider>
+            {!visualConclusion && tabPanel}
             {activeTab === "viz" && verdict && !verdict.insufficient && !hidden.includes("recommendations") && (
               <section className="dashboard-next-actions">
                 <DashboardRecommendedViews {...dashboardRecommendations} additional={[]} locale={locale} onSelect={selectRecommendedView} />

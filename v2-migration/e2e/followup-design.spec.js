@@ -19,7 +19,8 @@ for(const locale of ['ko','en']) for(const id of Object.keys(FOLLOWUP_TOOL_SPECS
     await expect(root.locator('.recipe-command__chip')).toContainText(locale==='en'?'PNG with title only':'PNG에 제목만 넣기');
     const surfaces=root.locator('.block:visible');
     if(locale==='ko')for(let i=0;i<await surfaces.count();i++) {
-      if(!(await surfaces.nth(i).getAttribute('class')).includes('mmm-stage-nav'))expect(await surfaces.nth(i).evaluate(e=>getComputedStyle(e).backgroundColor)).toBe('rgb(255, 255, 255)');
+      // 2026-11 Paper & Ink: 분석 구획은 흰 상자가 아니라 투명 바탕 + 위쪽 선의 열린 구획이다.
+      if(!(await surfaces.nth(i).getAttribute('class')).includes('mmm-stage-nav'))expect(await surfaces.nth(i).evaluate(e=>getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
     }
     expect(errors).toEqual([]);
   });

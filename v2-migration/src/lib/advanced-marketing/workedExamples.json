@@ -1,0 +1,1007 @@
+{
+ "5-32": {
+  "rowCount": 1516,
+  "currency": "KRW",
+  "settings": {
+   "observationEnd": "2026-09-30",
+   "horizonDays": 90
+  },
+  "input": [
+   {
+    "customer_id": "c0",
+    "order_id": "o0-0",
+    "transaction_id": "tx0",
+    "recorded_at": "2026-01-06T09:04:08Z",
+    "net_revenue": "3812.09",
+    "variable_cost": "2287.25",
+    "currency_code": "KRW",
+    "acquisition_cost": "12000"
+   },
+   {
+    "customer_id": "c1",
+    "order_id": "o1-0",
+    "transaction_id": "tx1",
+    "recorded_at": "2026-01-15T07:17:36Z",
+    "net_revenue": "4057.11",
+    "variable_cost": "2434.27",
+    "currency_code": "KRW",
+    "acquisition_cost": "12000"
+   },
+   {
+    "customer_id": "c1",
+    "order_id": "o1-1",
+    "transaction_id": "tx2",
+    "recorded_at": "2026-01-25T14:36:04Z",
+    "net_revenue": "1997.22",
+    "variable_cost": "1198.33",
+    "currency_code": "KRW",
+    "acquisition_cost": ""
+   }
+  ],
+  "metrics": [
+   {
+    "id": "customers",
+    "label": {
+     "ko": "관측 고객",
+     "en": "Observed customers"
+    },
+    "value": 400,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "margin",
+    "label": {
+     "ko": "관측 고객당 공헌이익",
+     "en": "Observed contribution per customer"
+    },
+    "value": 21918.246325,
+    "type": "money",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "recovered",
+    "label": {
+     "ko": "회수 유지 고객 / 획득비 입력 고객",
+     "en": "Recovered / acquisition-cost-known customers"
+    },
+    "value": 0.51,
+    "type": "rate",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "RFM은 환불 후 양수인 주문으로 계산하며 동점은 중간 순위를 공유합니다. 공헌이익은 순매출−변동비입니다. 코호트 값은 지정 일수의 관측 합계이며 미래 LTV 예측이 아닙니다.",
+   "en": "RFM uses positive-net orders with midrank tie handling. Contribution = net revenue minus variable costs. Cohort values are observed totals over the chosen horizon, not predicted lifetime value."
+  },
+  "action": {
+   "ko": "같은 관측 길이의 코호트를 비교하고, 미회수 고객을 제외하지 않은 상태에서 획득비를 점검하세요.",
+   "en": "Compare cohorts at equal observation lengths and keep unrecovered customers in acquisition-cost reviews."
+  },
+  "warnings": [
+   {
+    "ko": "첫 구매 이전 이력이 없으면 신규 고객 코호트가 아니라 첫 관측 구매 코호트입니다. 추가 환불은 현재의 회수 상태를 바꿀 수 있습니다.",
+    "en": "Without earlier history these are first-observed-purchase cohorts, not verified new customers. Later refunds can reverse recovery."
+   }
+  ]
+ },
+ "5-33": {
+  "rowCount": 458,
+  "currency": "KRW",
+  "settings": {
+   "observationEnd": "2026-09-30",
+   "steps": "visit\nsignup\npurchase",
+   "windowDays": 7,
+   "returnEvent": "visit"
+  },
+  "input": [
+   {
+    "event_name": "visit",
+    "event_time": "2026-01-01T00:00:00Z",
+    "event_id": "e0-0",
+    "user_id": "u0"
+   },
+   {
+    "event_name": "visit",
+    "event_time": "2026-01-02T02:00:00Z",
+    "event_id": "e0-1",
+    "user_id": "u0"
+   },
+   {
+    "event_name": "visit",
+    "event_time": "2026-01-08T02:00:00Z",
+    "event_id": "e0-2",
+    "user_id": "u0"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "entry",
+    "label": {
+     "ko": "진입 사용자",
+     "en": "Entering users"
+    },
+    "value": 100,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "mature",
+    "label": {
+     "ko": "퍼널 관측 완료 사용자",
+     "en": "Users with full funnel observation"
+    },
+    "value": 100,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "completion",
+    "label": {
+     "ko": "전체 퍼널 완료율",
+     "en": "Full-funnel completion"
+    },
+    "value": 0.53,
+    "type": "rate",
+    "low": 0.4328885697009936,
+    "high": 0.6248918204065872
+   }
+  ],
+  "method": {
+   "ko": "첫 진입마다 정해진 창 안에서 시각이 엄격히 증가하는 이벤트를 셉니다. 중간 다른 이벤트는 허용합니다. 리텐션은 첫 진입의 UTC 날짜 이후 정확히 N일째이며 비율 구간은 Wilson 95%입니다.",
+   "en": "Starting at each user's first entry, steps must occur at strictly increasing timestamps within the window; intervening events are allowed. Retention is exact Nth UTC calendar-day return with Wilson 95% intervals."
+  },
+  "action": {
+   "ko": "이탈이 큰 단계를 확인한 뒤 이벤트 누락·같은 시각 기록·코호트 성숙도를 함께 점검하세요.",
+   "en": "Review the largest drop-off together with missing events, tied timestamps and cohort maturity."
+  },
+  "warnings": [
+   {
+    "ko": "동일 시각의 서로 다른 단계는 순서를 확인할 수 없어 완료로 인정하지 않습니다. 관측 기간이 덜 찬 사용자는 성공 여부와 관계없이 분모에서 제외합니다.",
+    "en": "Different steps at the same timestamp cannot establish order and are not counted as completion. Immature users are excluded regardless of observed success."
+   }
+  ]
+ },
+ "5-34": {
+  "rowCount": 100,
+  "currency": "KRW",
+  "settings": {
+   "randomized": true,
+   "preTreatment": true,
+   "allocation": 0.5
+  },
+  "input": [
+   {
+    "unit_id": "u0",
+    "treatment": "0",
+    "baseline": "0",
+    "outcome": "20"
+   },
+   {
+    "unit_id": "u1",
+    "treatment": "1",
+    "baseline": "7",
+    "outcome": "28.860501110479923"
+   },
+   {
+    "unit_id": "u2",
+    "treatment": "0",
+    "baseline": "14",
+    "outcome": "33.48767535143881"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "adjusted",
+    "label": {
+     "ko": "보정 평균 차이",
+     "en": "Adjusted mean difference"
+    },
+    "value": 1.9784458730468077,
+    "type": "number",
+    "low": 1.097940578276429,
+    "high": 2.858951167817186
+   },
+   {
+    "id": "raw",
+    "label": {
+     "ko": "원시 평균 차이",
+     "en": "Raw mean difference"
+    },
+    "value": 1.6318120980230049,
+    "type": "number",
+    "low": -1.3297541803530728,
+    "high": 4.593378376399082
+   },
+   {
+    "id": "varianceReduction",
+    "label": {
+     "ko": "추정 분산 감소율",
+     "en": "Estimated variance reduction"
+    },
+    "value": 0.9116517526877006,
+    "type": "rate",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "평균 중심 ANCOVA2와 HC3 표준오차, 잔차 자유도의 t 근사 95% 구간. 단일 사전 공변량, 고정 종료 실험입니다.",
+   "en": "Mean-centered ANCOVA2 with HC3 standard errors and a residual-df t approximation for 95% intervals. One pre-experiment covariate; fixed-horizon testing."
+  },
+  "action": {
+   "ko": "원시 결과·보정 결과를 함께 보고 사전에 정한 실무 차이와 비교하세요.",
+   "en": "Compare raw and adjusted results against the practical difference declared before the test."
+  },
+  "warnings": [
+   {
+    "ko": "결과를 본 뒤 공변량·종료 시점·분석 대상을 고르면 이 구간의 의미가 유지되지 않습니다. 무유의성은 동등성이 아닙니다.",
+    "en": "Selecting covariates, stopping times or populations after outcomes invalidates this interpretation. Non-significance is not equivalence."
+   }
+  ]
+ },
+ "5-35": {
+  "rowCount": 1516,
+  "currency": "KRW",
+  "settings": {
+   "calibrationEnd": "2026-06-30",
+   "observationEnd": "2026-09-30",
+   "horizonDays": 90,
+   "marginRate": 0.4,
+   "historyComplete": true,
+   "noncontractual": true,
+   "independentValue": true
+  },
+  "input": [
+   {
+    "customer_id": "c0",
+    "order_id": "o0-0",
+    "transaction_id": "tx0",
+    "recorded_at": "2026-01-06T09:04:08Z",
+    "net_revenue": "3812.09",
+    "variable_cost": "2287.25",
+    "currency_code": "KRW",
+    "acquisition_cost": "12000"
+   },
+   {
+    "customer_id": "c1",
+    "order_id": "o1-0",
+    "transaction_id": "tx1",
+    "recorded_at": "2026-01-15T07:17:36Z",
+    "net_revenue": "4057.11",
+    "variable_cost": "2434.27",
+    "currency_code": "KRW",
+    "acquisition_cost": "12000"
+   },
+   {
+    "customer_id": "c1",
+    "order_id": "o1-1",
+    "transaction_id": "tx2",
+    "recorded_at": "2026-01-25T14:36:04Z",
+    "net_revenue": "1997.22",
+    "variable_cost": "1198.33",
+    "currency_code": "KRW",
+    "acquisition_cost": ""
+   }
+  ],
+  "metrics": [
+   {
+    "id": "customers",
+    "label": {
+     "ko": "학습 고객",
+     "en": "Calibration customers"
+    },
+    "value": 400,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "mae",
+    "label": {
+     "ko": "홀드아웃 구매 건수 MAE",
+     "en": "Holdout purchase-count MAE"
+    },
+    "value": 0.7325530688532482,
+    "type": "number",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "predicted",
+    "label": {
+     "ko": "홀드아웃 예상 구매",
+     "en": "Predicted holdout purchases"
+    },
+    "value": 266.4670750916208,
+    "type": "number",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "BG/NBD와 Gamma–Gamma 최대우도 적합. 학습 종료일부터 지정 기간의 예상 순매출×입력 공헌이익률이며 할인·획득비를 반영한 무한기간 CLV가 아닙니다. 평가 기간은 재학습에 사용하지 않습니다. 구간은 모형 독립 가정하 로그 델타법의 모수 불확실성입니다.",
+   "en": "BG/NBD and Gamma–Gamma maximum likelihood. Expected net revenue from calibration end over the chosen horizon times the supplied contribution rate; not infinite-horizon discounted CLV after acquisition costs. Evaluation data are not used to refit. Intervals use log-delta parameter uncertainty under model independence."
+  },
+  "action": {
+   "ko": "홀드아웃 오차와 빈도·객단가 관계를 확인한 뒤 예산 판단에 활용하세요. 재학습 전 평가 기준을 정하세요.",
+   "en": "Review holdout error and frequency–value dependence before using the forecast for budgets. Set evaluation rules before refitting."
+  },
+  "warnings": [
+   {
+    "ko": "95% 구간은 개별 고객의 실제 구매 변동을 포함한 예측구간이 아닙니다. 미래 환불·가격·시즌 변화는 별도 검토해야 합니다.",
+    "en": "95% intervals are not predictive intervals for an individual's realized purchases. Future refunds, price changes and seasonality require separate review."
+   },
+   {
+    "ko": "재구매 0회 고객의 활동 확률 100%는 BG/NBD의 가정에서 나오며 실제 재구매 보장이 아닙니다.",
+    "en": "Probability alive of 100% for zero-repeat buyers follows the BG/NBD assumption and does not guarantee another purchase."
+   }
+  ]
+ },
+ "5-36": {
+  "rowCount": 455,
+  "currency": "KRW",
+  "settings": {
+   "treatedRegion": "Treated",
+   "interventionDate": "2026-03-12",
+   "predeclared": true,
+   "noSpillover": true,
+   "maxNrmse": 0.25,
+   "powerDays": 14,
+   "plannedLift": 0.1
+  },
+  "input": [
+   {
+    "date": "2026-01-01",
+    "region": "Donor A",
+    "outcome": "105"
+   },
+   {
+    "date": "2026-01-01",
+    "region": "Donor B",
+    "outcome": "93"
+   },
+   {
+    "date": "2026-01-01",
+    "region": "Donor C",
+    "outcome": "100"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "effect",
+    "label": {
+     "ko": "일평균 보정 차이",
+     "en": "Adjusted daily difference"
+    },
+    "value": 15.059107190895217,
+    "type": "number",
+    "low": 14.861539630483284,
+    "high": 15.25667475130715
+   },
+   {
+    "id": "preError",
+    "label": {
+     "ko": "사전 검증 NRMSE",
+     "en": "Pre-validation NRMSE"
+    },
+    "value": 0.008567734344475175,
+    "type": "rate",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "placebo",
+    "label": {
+     "ko": "위약 순위 p (교환 가능 조건)",
+     "en": "Placebo-rank p (conditional exchangeability)"
+    },
+    "value": 0.2,
+    "type": "number",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "사전 앞 60%로 비음수·합 1 합성 대조를 적합하고 나머지 40%로 검증합니다. 고정 가중치의 검증/사후 격차 회귀에 Newey–West HAC 95% 구간을 적용합니다. 검정력은 사전 장기분산의 정규 근사입니다.",
+   "en": "Fit nonnegative, sum-to-one synthetic control on the first 60% of pre-data; validate on the remaining 40%. A validation/post gap regression uses Newey–West HAC 95% intervals conditional on fixed weights. Power uses a normal approximation from pre-period long-run variance."
+  },
+  "action": {
+   "ko": "사전 검증 오차·지역 위약 비교·동시 시행 변화를 함께 검토하세요. 다음 설계는 사전 기간만으로 정하세요.",
+   "en": "Review pre-validation error, regional placebos and concurrent changes. Design the next study using pre-period information only."
+  },
+  "warnings": [
+   {
+    "ko": "GeoLift 패키지의 재현 구현이 아닙니다. HAC 구간은 대조 가중치의 선택 불확실성을 포함하지 않습니다. 위약 순위는 지역 교환 가능성이 없으면 인과 검정 p값이 아닙니다.",
+    "en": "This is not a reproduction of the GeoLift package. HAC intervals omit donor-weight selection uncertainty. Placebo ranks are not causal-test p-values without regional exchangeability."
+   },
+   {
+    "ko": "지역 간 노출 누출·다른 정책 변화·사전 추세 불일치가 있으면 인과 해석을 보류하세요. 대조 지역이 적으면 위약 비교의 분해능이 낮습니다.",
+    "en": "Withhold causal interpretation under spillovers, concurrent changes or mismatched trends. Few donors limit placebo resolution."
+   }
+  ]
+ },
+ "5-37": {
+  "rowCount": 800,
+  "currency": "KRW",
+  "settings": {
+   "randomized": true,
+   "preTreatment": true,
+   "allocation": 0.5,
+   "heldout": true,
+   "margin": 1,
+   "contactCost": 0
+  },
+  "input": [
+   {
+    "unit_id": "u0",
+    "treatment": "0",
+    "segment": "new",
+    "sample_role": "train",
+    "outcome": "1"
+   },
+   {
+    "unit_id": "u1",
+    "treatment": "1",
+    "segment": "new",
+    "sample_role": "train",
+    "outcome": "1"
+   },
+   {
+    "unit_id": "u2",
+    "treatment": "0",
+    "segment": "returning",
+    "sample_role": "train",
+    "outcome": "1"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "policy",
+    "label": {
+     "ko": "평가 단위당 추가 순가치",
+     "en": "Incremental net value per evaluation unit"
+    },
+    "value": 0.1,
+    "type": "money",
+    "low": 0.031106373719390068,
+    "high": 0.16889362628060994
+   },
+   {
+    "id": "qini",
+    "label": {
+     "ko": "정규화 Qini 면적",
+     "en": "Normalized Qini area"
+    },
+    "value": 0.02750000000000001,
+    "type": "number",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "auuc",
+    "label": {
+     "ko": "정규화 AUUC",
+     "en": "Normalized AUUC"
+    },
+    "value": 0.07250000000000001,
+    "type": "number",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "사전 세그먼트별 두 집단 평균 차이를 학습합니다. 별도 평가 표본에서 사전 배정 확률을 사용한 Horvitz–Thompson 이득·정책 가치와 근사 95% 구간을 계산합니다.",
+   "en": "Learn two-arm mean differences within pre-treatment segments. Evaluate Horvitz–Thompson gains and policy value using the planned assignment probability on a held-out sample, with approximate 95% intervals."
+  },
+  "action": {
+   "ko": "평가 결과를 다시 학습 선택에 쓰지 말고 새 무작위 홀드아웃에서 정책을 확인하세요.",
+   "en": "Do not reuse evaluation outcomes for model selection; validate the policy in a new randomized holdout."
+  },
+  "warnings": [
+   {
+    "ko": "개인의 인과효과를 관측한 값이 아닙니다. 세그먼트 구간은 개별 구간이며 다중 선택을 보정하지 않았습니다.",
+    "en": "These are not observed individual causal effects. Segment intervals are pointwise and not adjusted for multiple selection."
+   }
+  ]
+ },
+ "5-38": {
+  "rowCount": 283,
+  "currency": "KRW",
+  "settings": {
+   "observationEnd": "2026-09-30",
+   "horizonDays": 90,
+   "stages": "lead\nqualified\nopportunity",
+   "wonStage": "won",
+   "lostStage": "lost"
+  },
+  "input": [
+   {
+    "deal_id": "d0",
+    "event_time": "2026-01-01T00:00:00Z",
+    "stage": "lead",
+    "amount": "100000",
+    "channel": "organic",
+    "currency_code": "KRW"
+   },
+   {
+    "deal_id": "d0",
+    "event_time": "2026-01-06T00:00:00Z",
+    "stage": "qualified",
+    "amount": "100000",
+    "channel": "organic",
+    "currency_code": "KRW"
+   },
+   {
+    "deal_id": "d1",
+    "event_time": "2026-01-02T00:00:00Z",
+    "stage": "lead",
+    "amount": "105000",
+    "channel": "paid",
+    "currency_code": "KRW"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "win",
+    "label": {
+     "ko": "관측 완료 딜의 기간 내 첫 수주율",
+     "en": "First-win rate within the horizon, mature deals"
+    },
+    "value": 0.5375,
+    "type": "rate",
+    "low": 0.42904357591268794,
+    "high": 0.6425200643721475
+   },
+   {
+    "id": "open",
+    "label": {
+     "ko": "현재 미종결 딜",
+     "en": "Currently open deals"
+    },
+    "value": 27,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "pipeline",
+    "label": {
+     "ko": "현재 미종결 파이프라인 금액",
+     "en": "Current open pipeline amount"
+    },
+    "value": 3315000,
+    "type": "money",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "최초 단계부터 지정 기간이 지난 딜만 고정 기간 첫 수주율의 분모에 포함합니다. 첫 실패 종결은 경쟁 결과이며 검열로 빼지 않습니다. 비율은 Wilson 95% 구간입니다. 현재 파이프라인은 마지막 단계·금액으로 계산합니다.",
+   "en": "Fixed-horizon first-win rates include only deals observed from the initial stage for the full horizon. First losses are competing outcomes, not censored away. Rates use Wilson 95% intervals. Current pipeline uses the latest stage and amount."
+  },
+  "action": {
+   "ko": "동일 기간을 관측한 유입 코호트의 수주율을 비교하고, 현재 단계 잔류 딜을 별도로 확인하세요.",
+   "en": "Compare win rates for acquisition cohorts observed over the same horizon; review deals still in each stage separately."
+  },
+  "warnings": [
+   {
+    "ko": "종결 딜만의 평균 영업기간은 진행 중인 딜의 미래 종결 시간을 추정하지 않습니다. 재개 후 수주는 첫 종결 수주율과 구분합니다. 채널 차이는 인과효과가 아닙니다.",
+    "en": "Mean cycle time among closed deals does not estimate open deals' future closure times. Wins after reopening differ from first-closure win rates. Source differences are not causal effects."
+   }
+  ]
+ },
+ "5-39": {
+  "rowCount": 1800,
+  "currency": "USD",
+  "settings": {
+   "choiceDesign": true
+  },
+  "input": [
+   {
+    "price": "10",
+    "attribute_1": "0",
+    "attribute_2": "0",
+    "respondent_id": "r0",
+    "task_id": "q0",
+    "alternative_id": "a0",
+    "chosen": "1",
+    "sample_role": "train",
+    "currency_code": "USD"
+   },
+   {
+    "price": "21",
+    "attribute_1": "1",
+    "attribute_2": "1",
+    "respondent_id": "r0",
+    "task_id": "q0",
+    "alternative_id": "a1",
+    "chosen": "0",
+    "sample_role": "train",
+    "currency_code": "USD"
+   },
+   {
+    "price": "12",
+    "attribute_1": "2",
+    "attribute_2": "0",
+    "respondent_id": "r0",
+    "task_id": "q0",
+    "alternative_id": "a2",
+    "chosen": "0",
+    "sample_role": "train",
+    "currency_code": "USD"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "loss",
+    "label": {
+     "ko": "평가 로그손실 (낮을수록 좋음)",
+     "en": "Evaluation log loss (lower is better)"
+    },
+    "value": 0.8443625193618183,
+    "type": "number",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "uniform",
+    "label": {
+     "ko": "균등 선택 로그손실",
+     "en": "Uniform-choice log loss"
+    },
+    "value": 1.098612288668108,
+    "type": "number",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "respondents",
+    "label": {
+     "ko": "학습 응답자",
+     "en": "Training respondents"
+    },
+    "value": 80,
+    "type": "integer",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "선택 세트별 조건부 다항 로짓, 응답자 군집 샌드위치 공분산과 t 근사 95% 구간. 수치형 속성은 단위당 선형 효과입니다. 금액 교환가치는 −속성계수/가격계수와 델타법입니다.",
+   "en": "Conditional multinomial logit with respondent-cluster sandwich covariance and t-approximate 95% intervals. Numeric attributes have linear per-unit effects. Monetary trade-offs use −attribute/price coefficient and the delta method."
+  },
+  "action": {
+   "ko": "평가 로그손실과 가격 계수의 구간을 먼저 확인한 뒤 속성 단위당 교환가치를 해석하세요.",
+   "en": "Check evaluation log loss and the price-coefficient interval before interpreting monetary trade-offs per attribute unit."
+  },
+  "warnings": [
+   {
+    "ko": "선호 선택 확률은 실제 시장 점유율이나 매출 예측이 아닙니다. 가격 계수의 95% 구간이 0 이상을 포함하면 금액 교환가치를 계산하지 않습니다. 속성 코딩·단위·대안 구성을 함께 확인하세요.",
+    "en": "Preference probabilities are not actual market share or revenue forecasts. Monetary trade-offs are uncomputed unless the price coefficient's 95% interval is strictly negative. Check coding, units and alternative design."
+   }
+  ]
+ },
+ "5-40": {
+  "rowCount": 100,
+  "currency": "USD",
+  "settings": {
+   "randomized": true,
+   "allocation": 0.5,
+   "includesNonbuyers": true
+  },
+  "input": [
+   {
+    "unit_id": "u0",
+    "treatment": "0",
+    "net_revenue": "0",
+    "variable_cost": "0",
+    "currency_code": "USD"
+   },
+   {
+    "unit_id": "u1",
+    "treatment": "1",
+    "net_revenue": "83",
+    "variable_cost": "35",
+    "currency_code": "USD"
+   },
+   {
+    "unit_id": "u2",
+    "treatment": "0",
+    "net_revenue": "66",
+    "variable_cost": "35",
+    "currency_code": "USD"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "profit",
+    "label": {
+     "ko": "단위당 공헌이익 차이",
+     "en": "Margin difference per unit"
+    },
+    "value": 16.000000000000004,
+    "type": "money",
+    "low": 8.467915226119002,
+    "high": 23.532084773881003
+   },
+   {
+    "id": "revenue",
+    "label": {
+     "ko": "단위당 순매출 차이",
+     "en": "Net-revenue difference per unit"
+    },
+    "value": 15.999999999999993,
+    "type": "money",
+    "low": 3.0746253469762586,
+    "high": 28.925374653023727
+   },
+   {
+    "id": "units",
+    "label": {
+     "ko": "배정 단위",
+     "en": "Assigned units"
+    },
+    "value": 100,
+    "type": "integer",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "미구매자를 포함한 배정 단위의 평균 차이와 Welch 95% 구간. 순매출은 할인·환불 후 값이며 할인액을 다시 빼지 않습니다.",
+   "en": "Mean differences and Welch 95% intervals across assigned units, including non-buyers. Net revenue is after discounts/refunds; discounts are not subtracted twice."
+  },
+  "action": {
+   "ko": "공헌이익 구간과 재고·반품·후속 구매를 확인한 뒤 확대 여부를 정하세요.",
+   "en": "Check margin uncertainty, stock, returns and later purchases before scaling."
+  },
+  "warnings": [
+   {
+    "ko": "미래 구매 당김·다른 상품 잠식·실험 밖 고정비는 입력에 포함된 경우만 반영됩니다.",
+    "en": "Purchase pull-forward, substitution and fixed costs outside the experiment are reflected only when included in the input."
+   }
+  ]
+ },
+ "5-41": {
+  "rowCount": 258,
+  "currency": "KRW",
+  "settings": {
+   "minSupport": 0.01,
+   "minCount": 3
+  },
+  "input": [
+   {
+    "order_id": "o0",
+    "product_id": "coffee",
+    "quantity": "1"
+   },
+   {
+    "order_id": "o0",
+    "product_id": "tea",
+    "quantity": "1"
+   },
+   {
+    "order_id": "o1",
+    "product_id": "coffee",
+    "quantity": "1"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "baskets",
+    "label": {
+     "ko": "환불 후 유효 장바구니",
+     "en": "Positive-net baskets"
+    },
+    "value": 100,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "products",
+    "label": {
+     "ko": "상품",
+     "en": "Products"
+    },
+    "value": 4,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "rules",
+    "label": {
+     "ko": "조건 충족 방향 규칙",
+     "en": "Directional rules meeting thresholds"
+    },
+    "value": 10,
+    "type": "integer",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "주문별 순수량이 양수인 상품의 존재 여부로 2상품 방향 규칙을 계산합니다. 지지도=P(A∩B), 신뢰도=P(B|A), 리프트=P(B|A)/P(B). 구간은 조건부 비율의 Wilson 95% 개별 구간입니다.",
+   "en": "Two-product directional rules use product presence after netting quantities per order. Support=P(A∩B), confidence=P(B|A), lift=P(B|A)/P(B). Intervals are pointwise Wilson 95% intervals for conditional rates."
+  },
+  "action": {
+   "ko": "실제 주문 건수와 구간을 확인하고, 묶음 판매·추천 효과는 별도 실험으로 확인하세요.",
+   "en": "Check order counts and uncertainty, then test bundles or recommendations in a separate experiment."
+  },
+  "warnings": [
+   {
+    "ko": "리프트는 추천·할인의 인과효과가 아닙니다. 여러 규칙 중 선택한 구간은 선택 편향과 다중비교를 보정하지 않습니다. 완전 환불 주문은 분모에서 제외합니다.",
+    "en": "Lift is not the causal effect of a recommendation or discount. Selected-rule intervals do not adjust for selection or multiplicity. Fully refunded orders are excluded."
+   }
+  ]
+ },
+ "5-42": {
+  "rowCount": 18,
+  "currency": "KRW",
+  "settings": {
+   "commonIdentity": false,
+   "universe": ""
+  },
+  "input": [
+   {
+    "channel": "Meta",
+    "period": "2026-09",
+    "frequency": "1",
+    "audience_count": "1000"
+   },
+   {
+    "channel": "Meta",
+    "period": "2026-09",
+    "frequency": "2",
+    "audience_count": "500"
+   },
+   {
+    "channel": "Meta",
+    "period": "2026-09",
+    "frequency": "3",
+    "audience_count": "333"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "exact",
+    "label": {
+     "ko": "식별자 기준 중복 제거 도달",
+     "en": "Identifier-deduplicated reach"
+    },
+    "value": null,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "lower",
+    "label": {
+     "ko": "도달 하한 (산술 경계)",
+     "en": "Reach lower bound (arithmetic)"
+    },
+    "value": 2450,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "upper",
+    "label": {
+     "ko": "도달 상한 (산술 경계)",
+     "en": "Reach upper bound (arithmetic)"
+    },
+    "value": 4492,
+    "type": "integer",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "집계 빈도 구간은 서로 배타적인 정확한 빈도여야 합니다. 공통 식별자가 없으면 합집합 도달은 최대 플랫폼 도달 이상, 플랫폼 도달 합 이하입니다. 이 범위는 신뢰구간이 아닙니다.",
+   "en": "Aggregated frequency bins must be mutually exclusive exact frequencies. Without shared identity, union reach is bounded by the maximum platform reach and the sum of platform reaches. These are not confidence intervals."
+  },
+  "action": {
+   "ko": "기간과 모집단을 일치시키고, 같은 사람을 뜻하는 공통 식별자가 있을 때만 정확한 중복 제거값을 사용하세요.",
+   "en": "Align periods and populations; use exact deduplication only when identifiers refer to the same person across platforms."
+  },
+  "warnings": [
+   {
+    "ko": "서로 다른 기간·중복되는 1+ 또는 2+ 누적 빈도 구간을 합치면 도달이 중복됩니다. 플랫폼별 사용자 ID가 같아 보인다는 이유만으로 공통 식별자로 간주할 수 없습니다.",
+    "en": "Different periods or cumulative 1+/2+ frequency bins double-count reach. Matching-looking platform IDs do not establish a shared identity."
+   }
+  ]
+ },
+ "5-43": {
+  "rowCount": 30,
+  "currency": "KRW",
+  "settings": {
+   "clickBasis": "net"
+  },
+  "input": [
+   {
+    "date": "2026-01-01",
+    "channel": "Search",
+    "clicks": "1000",
+    "invalid_clicks": "10",
+    "conversions": "45",
+    "cost": "200000",
+    "currency_code": "KRW"
+   },
+   {
+    "date": "2026-01-02",
+    "channel": "Search",
+    "clicks": "1005",
+    "invalid_clicks": "11",
+    "conversions": "46",
+    "cost": "200100",
+    "currency_code": "KRW"
+   },
+   {
+    "date": "2026-01-03",
+    "channel": "Search",
+    "clicks": "1010",
+    "invalid_clicks": "12",
+    "conversions": "47",
+    "cost": "200200",
+    "currency_code": "KRW"
+   }
+  ],
+  "metrics": [
+   {
+    "id": "invalid",
+    "label": {
+     "ko": "총 클릭 시도 대비 무효 비율",
+     "en": "Invalid share of gross click attempts"
+    },
+    "value": 0.015452876376988984,
+    "type": "rate",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "valid",
+    "label": {
+     "ko": "유효 클릭",
+     "en": "Valid clicks"
+    },
+    "value": 32175,
+    "type": "integer",
+    "low": null,
+    "high": null
+   },
+   {
+    "id": "cpc",
+    "label": {
+     "ko": "유효 클릭당 비용",
+     "en": "Cost per valid click"
+    },
+    "value": 187.83216783216784,
+    "type": "money",
+    "low": null,
+    "high": null
+   }
+  ],
+  "method": {
+   "ko": "순 클릭 입력이면 무효 클릭을 다시 차감하지 않습니다. 총 클릭 입력일 때만 유효=총−무효입니다. 이상 신호는 같은 채널의 이전 최대 14개 유효 관측 비율의 중앙값·MAD 기준이며 최소 7개가 필요합니다.",
+   "en": "Net-reported clicks are not filtered twice. Only gross input uses valid=gross−invalid. Signals use the prior up-to-14 valid rates from the same channel, with median/MAD and at least seven observations."
+  },
+  "action": {
+   "ko": "비율 급증 기간의 유입 위치·지면·추적 변경을 확인하고 플랫폼 무효 트래픽 보고서와 대조하세요.",
+   "en": "Review locations, placements and tracking changes during spikes against the platform's invalid-traffic report."
+  },
+  "warnings": [
+   {
+    "ko": "이상 신호는 부정행위 판정이 아닙니다. 플랫폼의 무효 분류가 정답임을 검증한 것도 아닙니다. 전환 수는 반복·기여 전환을 포함할 수 있어 클릭당 전환을 확률로 해석하지 않습니다.",
+    "en": "Anomalies do not establish fraud or validate the platform's classification. Conversion counts may include repeated or attributed conversions; conversions per click are not necessarily a probability."
+   }
+  ]
+ }
+}

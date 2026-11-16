@@ -1,3 +1,4 @@
+import AdSenseScript from "@/components/AdSenseScript";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
@@ -142,6 +143,7 @@ export default async function EnBlogPostPage({ params }) {
 
   return (
     <BlogJourneyProvider><div className="content-article blog-article" data-design-exempt="nested: Tables, practice tools and author information keep their own purpose within the article surface">
+      <AdSenseScript />
       <BlogReadTracker slug={post.slug} locale="en" />
       <script
         type="application/ld+json"
@@ -187,7 +189,7 @@ export default async function EnBlogPostPage({ params }) {
 
       <BlogSituationCheck slug={post.slug} toolId={post.primaryTool} locale="en" />
 
-      <EditorialTrust compact locale="en" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
+      <EditorialTrust compact locale="en" reviewedAt={post.reviewedAt} sources={post.sources} />
 
       <BlogReadingBar sample={Boolean(inline)} slug={post.slug} locale="en" targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} />
 

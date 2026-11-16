@@ -234,6 +234,7 @@ const CONTENT = {
         { q: "추천 배분을 그대로 적용해도 되나요?", a: "한 번에 전액 적용하는 것은 권장하지 않습니다. 과거 관측 기반 시뮬레이션이므로 작은 단위로 옮기고 실제 결과를 예상 범위와 비교하며 조정하세요." },
         { q: "왜 평균 효율이 가장 좋은 채널에 예산을 다 주지 않나요?", a: "채널별 관측 지출 상한을 적용하기 때문입니다. 기본인 안정적 효율 가중은 최근 평균 효율로 비중을 정하며 한계효율을 최적화하지 않습니다. 추가 예산의 추정 효율로 나누려면 한계효용 그리디를 선택하세요." },
         { q: "관측된 적 없는 큰 예산도 계산되나요?", a: "관측 지출 범위를 크게 벗어나면 추정 신뢰도가 급격히 떨어집니다. 도구는 채널별 관측 최대 지출을 넘지 않도록 제한을 두고 계산합니다." },
+        { q: "이 채널에 예산을 더 넣어도 되는지는 어디서 보나요?", a: "같은 화면의 '증액 여력' 보기에서 채널·캠페인별 한계 CPA와 평균 CPA를 비교합니다. 한계가 평균보다 크게 높으면 이미 포화에 가깝습니다." },
       ],
     },
     en: {
@@ -253,6 +254,7 @@ const CONTENT = {
         { q: "Can I apply the recommended split as-is?", a: "Applying the full move at once is not recommended. It is a simulation from historical observations, so shift in small steps and compare actuals against the estimated range." },
         { q: "Why not give everything to the best average-efficiency channel?", a: "Each channel is capped by observed spend. The default stable-efficiency weighting uses recent average efficiency, not a marginal optimum. Select marginal greedy allocation to allocate by the estimated return on additional spend." },
         { q: "Can it plan budgets far above anything observed?", a: "Reliability drops sharply outside the observed spend range, so the tool constrains recommendations to stay within each channel's observed maximum spend." },
+        { q: "Where do I check whether a channel can take more budget?", a: "Open the Headroom view on the same page to compare marginal and average CPA by channel or campaign. Marginal CPA far above average means it is close to saturation." },
       ],
     },
   },

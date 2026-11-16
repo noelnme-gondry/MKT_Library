@@ -5,7 +5,7 @@ import { buildVocabulary } from "@/lib/vocabulary/vocabulary";
 import { columnRef } from "@/lib/vocabulary/dataContext";
 import { foldSteps } from "./recipe";
 import { RECIPE_TOOL_IDS, recipeVocabularyFor } from "./toolVocabulary";
-import { publishedToolIds } from "@/lib/routeMap";
+import { analysisToolIds, publishedToolIds } from "@/lib/routeMap";
 import { accountRecipe } from "@/lib/account/recipeContract";
 import {
   applyPvmView,
@@ -217,7 +217,8 @@ describe("레시피 도구 등록·계정 계약", () => {
   it("레시피를 붙인 도구는 모두 발행 도구이고 사전이 있다", () => {
     expect(RECIPE_TOOL_IDS.length).toBeGreaterThan(0);
     for (const id of RECIPE_TOOL_IDS) {
-      expect(publishedToolIds()).toContain(id);
+      // 흡수된 보기(5-22 → 5-3 증액 여력)도 같은 레시피를 쓴다.
+      expect(analysisToolIds()).toContain(id);
       expect(recipeVocabularyFor(id)?.size).toBeGreaterThan(0);
     }
   });

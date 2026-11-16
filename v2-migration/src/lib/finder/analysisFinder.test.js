@@ -2,21 +2,40 @@ import { describe, expect, it } from "vitest";
 import data from "@/lib/blogExamples/data.json";
 import FINDER_EXAMPLES from "@/lib/finder/finderExamples.json";
 import { deriveFinderExamples } from "@/lib/finder/finderExamples";
-import { filterFinderCards, finderCards, finderFamilies, finderHref, finderSituations, parseFinderFamily, parseFinderSituation } from "@/lib/finder/analysisFinder";
+import { FINDER_CARD_GROUPS, countFinderAnalyses, filterFinderCards, finderCards, finderFamilies, finderHref, finderSituations, parseFinderFamily, parseFinderSituation } from "@/lib/finder/analysisFinder";
 import { publishedToolIds } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 
 describe("analysis finder cards (product-ssot §1.1c card contract)", () => {
-  it("lists every published analysis exactly once, under its situation", () => {
+  it("lists every published analysis exactly once, as a card or inside its group card", () => {
     for (const locale of ["ko", "en"]) {
       const cards = finderCards(locale);
-      const ids = cards.map((card) => card.id);
+      // 같은 파일을 쓰는 도구는 대표 카드 안의 목록이 된다(product-ssot §5.1 "묶기") — 도구는 빠지지 않는다.
+      const ids = cards.flatMap((card) => card.toolIds);
       expect(new Set(ids).size).toBe(ids.length);
       expect([...ids].sort()).toEqual([...publishedToolIds()].sort());
-      expect(ids.length).toBeGreaterThan(20);
+      expect(cards.length).toBeLessThan(ids.length);
+      expect(cards.length).toBeGreaterThan(20);
+      for (const group of FINDER_CARD_GROUPS) {
+        const card = cards.find((item) => item.id === group.lead);
+        expect(card.toolIds.slice(1), group.id).toEqual(group.members);
+        // 묶음 이름이 있는 카드는 대표 분석도 목록에 보인다(카드 이름이 그 분석 하나가 아니다).
+        expect(card.members.map((member) => member.id), group.id).toEqual(group.name ? [group.lead, ...group.members] : group.members);
+        for (const id of group.members) expect(cards.some((item) => item.id === id), id).toBe(false);
+      }
+      // 묶인 도구가 속한 상황에서도 대표 카드가 보인다 — 상황으로 찾았는데 그 도구가 사라지면 안 된다.
       const situations = finderSituations(locale);
       expect(situations).toHaveLength(7);
-      expect(situations.reduce((sum, situation) => sum + situation.count, 0)).toBe(cards.length);
+      for (const situation of situations) {
+        const shown = filterFinderCards(cards, { situation: situation.id });
+        // 칩의 수 = 그 상황의 분석 수 = 상황을 골랐을 때 카드들에 든 그 상황의 분석 수.
+        expect(countFinderAnalyses(shown, situation.id), situation.id).toBe(situation.count);
+        expect(situation.count, situation.id).toBeGreaterThan(0);
+      }
+      expect(situations.reduce((sum, situation) => sum + situation.count, 0)).toBe(publishedToolIds().length);
+      expect(countFinderAnalyses(cards)).toBe(publishedToolIds().length);
+      expect(filterFinderCards(cards, { situation: "performance" }).map((card) => card.id)).toEqual(expect.arrayContaining(["5-31", "5-18-trend"]));
+      expect(filterFinderCards(cards, { situation: "overlap" }).map((card) => card.id)).toContain("5-18-trend");
     }
   });
 
@@ -28,7 +47,7 @@ describe("analysis finder cards (product-ssot §1.1c card contract)", () => {
         expect(card.question, card.id).toBeTruthy();
         expect(card.exampleHref, card.id).toMatch(/\?example=1$/);
         if (locale === "en") {
-          const visible = [card.name, card.question, card.answer, card.example, card.source.file, card.source.family, card.situation.title, ...card.required, ...card.optional, ...card.sameFile.map((item) => item.name)];
+          const visible = [card.name, card.question, card.answer, card.example, card.source.file, card.source.family, card.situation.title, card.membersLabel, ...card.required, ...card.optional, ...card.sameFile.map((item) => item.name), ...card.members.flatMap((item) => [item.name, item.question])];
           for (const text of visible.filter(Boolean)) expect(/[가-힣]/.test(text), `${card.id}: ${text}`).toBe(false);
         }
       }
@@ -44,8 +63,11 @@ describe("analysis finder cards (product-ssot §1.1c card contract)", () => {
       linked += card.sameFile.length;
     }
     expect(linked).toBeGreaterThan(0);
-    // 효율 CSV 하나로 되는 분석들은 서로를 가리킨다.
-    expect(cards.find((card) => card.id === "5-21").sameFile.map((item) => item.id)).toEqual(expect.arrayContaining(["5-2", "5-22", "5-3"]));
+    // 같은 파일을 쓰는 묶음은 대표 카드의 목록이 말한다 — "같은 파일로" 줄이 같은 도구를 한 번 더 늘어놓지 않는다.
+    const planner = cards.find((card) => card.id === "5-31");
+    expect(planner.members.map((item) => item.id)).toEqual(["5-2", "5-21", "5-3"]);
+    expect(planner.sameFile.some((item) => planner.toolIds.includes(item.id))).toBe(false);
+    expect(cards.find((card) => card.id === "5-18-trend").href).toBe("/tools/marketing-response");
   });
 
   it("uses only engine-computed example conclusions from the same demo data the example button opens", () => {
@@ -66,8 +88,10 @@ describe("analysis finder cards (product-ssot §1.1c card contract)", () => {
     const cards = finderCards("ko");
     const budget = filterFinderCards(cards, { situation: "budget" });
     expect(budget.length).toBeGreaterThan(0);
-    expect(budget.every((card) => card.situation.id === "budget")).toBe(true);
-    expect(filterFinderCards(cards, { situation: "saved", savedIds: ["5-22"] }).map((card) => card.id)).toEqual(["5-22"]);
+    expect(budget.every((card) => card.situationIds.includes("budget"))).toBe(true);
+    // 묶인 도구를 저장해 뒀으면 대표 카드로 찾힌다(예전에 저장한 5-21 등).
+    expect(filterFinderCards(cards, { situation: "saved", savedIds: ["5-21"] }).map((card) => card.id)).toEqual(["5-31"]);
+    expect(filterFinderCards(cards, { query: "MMM" }).map((card) => card.id)).toContain("5-18-trend");
     expect(filterFinderCards(cards, { situation: "saved", savedIds: [] })).toEqual([]);
     // 파일 이름·출처로도 찾힌다.
     const byFile = filterFinderCards(cards, { query: cards.find((card) => card.id === "5-27").source.file });

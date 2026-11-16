@@ -108,7 +108,7 @@ function SidebarContents({ locale = "ko", onNavigate }) {
                 if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                 if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale });
               }}>
-              <span className="library-nav-item__icon" aria-hidden="true">{item.icon}</span>
+              {/* 메뉴는 글자만 둔다(2026-11-09 재설계) — 현재 위치는 굵기와 바탕이 말한다. */}
               <strong>{item.name}</strong>
               {isReview && dueDecisionCount > 0 && <b className="library-nav-item__count">{dueDecisionCount}</b>}
             </Link>;

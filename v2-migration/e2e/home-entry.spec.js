@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 import { toolIndexByStage } from "../src/lib/toolIndex";
+import { filterFinderCards, finderCards } from "../src/lib/finder/analysisFinder";
 
 async function checkHome(page, locale) {
   const hydrationErrors = [];
@@ -23,7 +24,8 @@ async function checkHome(page, locale) {
   await situations.nth(1).focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/start\\?situation=${stages[1].id}`));
-  await expect(page.locator(".finder-card")).toHaveCount(stages[1].tools.length);
+  // 같은 파일 도구는 대표 카드 하나로 묶인다(product-ssot §5.1) — 카드 수는 분석 수가 아니라 그 상황에 보이는 카드 수다.
+  await expect(page.locator(".finder-card")).toHaveCount(filterFinderCards(finderCards(locale), { situation: stages[1].id }).length);
   // 분석 찾기: 검색 → 저장 → 다시 와도 저장한 분석이 남는다.
   await page.getByRole("button", { name: en ? /^Show all/ : /^전체 보기/ }).click();
   const search = page.getByRole("searchbox", { name: en ? "Search analyses" : "분석 검색" });
@@ -38,7 +40,8 @@ async function checkHome(page, locale) {
   await expectNoSeriousAccessibilityViolations(page);
   // 키보드로 카드의 "내 파일로 하기"를 열면 그 도구의 업로더가 준비돼 있다.
   await page.getByRole("button", { name: en ? /^Show all/ : /^전체 보기/ }).click();
-  await page.locator('.finder-card[data-tool-id="5-31"] .finder-card__tool').focus();
+  // 묶음 카드는 관련 상황마다 보여 전체 보기에 두 번 나온다 — 첫 번째로 들어간다.
+  await page.locator('.finder-card[data-tool-id="5-31"] .finder-card__tool').first().focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/tools\/operations-planner$/);
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();

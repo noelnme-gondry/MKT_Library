@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { publishedToolIds } from "@/lib/routeMap";
+import { analysisToolIds, publishedToolIds } from "@/lib/routeMap";
 import { deriveMetrics } from "@/lib/weekly-review/snapshot";
 import {
   RERUN_GOAL_PREFIX,
@@ -34,7 +34,8 @@ describe("decisionGoals — 커버리지는 발행 라우트에서 파생한다"
   });
 
   it("레지스트리에 발행 도구가 아닌 id가 섞여 있지 않다", () => {
-    const stray = Object.keys(TOOL_DECISION_GOALS).filter((id) => !PUBLISHED.includes(id));
+    // 흡수된 보기(5-22)는 그 화면에서 저장한 결정이 계속 쓰므로 목표 선언이 남는다(product-ssot §4.2a).
+    const stray = Object.keys(TOOL_DECISION_GOALS).filter((id) => !analysisToolIds().includes(id));
     expect(stray).toEqual([]);
   });
 });

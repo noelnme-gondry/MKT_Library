@@ -43,7 +43,6 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } fro
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
-import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { sourceCurrencyOf } from "@/utils/format";
@@ -165,7 +164,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `${count}개의 데이터 시트를 찾았습니다. 한 번에 하나의 시트만 불러와 데이터가 섞이지 않도록 합니다.`,
     workbookSelectLabel: "시트",
     workbookImportBtn: "선택한 시트 불러오기",
-    starterTemplateBtn: "⬇ 기본 CSV 템플릿 받기",
+    starterTemplateBtn: "기본 CSV 템플릿 받기",
   },
   en: {
     emptyCsv: "This file is empty or invalid.",
@@ -254,7 +253,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `Found ${count} data worksheets. Import one at a time so data from different sheets never gets mixed.`,
     workbookSelectLabel: "Worksheet",
     workbookImportBtn: "Import selected worksheet",
-    starterTemplateBtn: "⬇ Download starter CSV template",
+    starterTemplateBtn: "Download starter CSV template",
   },
 };
 
@@ -272,14 +271,13 @@ export default function CsvUploader({
   toolId,
   refreshRef = null,
   onAnalyzed = null,
+  scrollToTopAfterAnalysis = true,
   onLoadDemo = null,
   analyticsToolId = toolId,
   showToolGuide = true,
   locale = "ko",
   afterFileSummary = null,
   showMappingReview = false,
-  showMappingCoach = false,
-  mappingCoachLeaving = false,
   onMappingReviewConfirmed = null,
   mappingReviewActionLabel = "",
   mappingReviewFallbackLabel = "",
@@ -985,7 +983,7 @@ export default function CsvUploader({
           setGroupAnalyzed(toolId);
           setIsStartingAnalysis(false);
           onAnalyzed?.();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (scrollToTopAfterAnalysis) window.scrollTo({ top: 0, behavior: "smooth" });
         });
       });
     });
@@ -1205,9 +1203,8 @@ export default function CsvUploader({
       {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
       {(!isRouterMode || showMappingReview) && <section data-information-section=""
-        className={`csv-mapping-block${showMappingCoach ? " is-dochi-highlighted" : ""}`}
+        className="csv-mapping-block"
         ref={mappingDetailsRef}
-        aria-describedby={showMappingCoach ? "dochi-mapping-coach-title" : undefined}
       >
         <header data-information-heading="" className="csv-mapping-header">
           <div className="csv-mapping-heading">
@@ -1289,11 +1286,6 @@ export default function CsvUploader({
           })}
         </div>
       </section>}
-      {showMappingCoach && <DochiMappingCoach
-        locale={locale}
-        isLeaving={mappingCoachLeaving}
-        onReview={onMappingReviewConfirmed}
-      />}
       {mappingReviewActionLabel && onMappingReviewConfirmed && (
         <div className="csv-mapping-review-action">
           <button type="button" className="ab-button" onClick={handleMappingReviewAction} disabled={!shouldOfferSemanticFallback && analysisBlocked}>

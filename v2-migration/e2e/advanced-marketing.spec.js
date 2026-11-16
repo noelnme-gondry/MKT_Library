@@ -17,8 +17,12 @@ for (const locale of ["ko", "en"]) {
       const root = page.locator(".advanced-analysis");
       await expect(root.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
       await expect(root.locator('[data-advanced-result="ready"]')).toHaveCount(0);
+      await expect(root.locator(`[data-worked-example="${tool.id}"]`)).toBeVisible();
+      await expect(root.getByRole("region", { name: en ? "Example results" : "예시 계산 결과", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await root.getByRole("button", { name: /예시|example|sample/i }).first().click();
       await expect(root.locator('[data-advanced-result="ready"]')).toBeVisible();
+      await expect(root.locator("[data-worked-example]")).toHaveCount(0);
       await expect(root.locator(".advanced-table table").first()).toBeVisible();
       if (en) expect(await root.innerText()).not.toMatch(/[가-힣]/);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);

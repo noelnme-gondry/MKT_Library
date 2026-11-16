@@ -72,6 +72,7 @@ export default function ResultActionCard({
   stats = [],
   download = null,
   controls = null,
+  controlsPlacement = "header",
   coreFigure = null,
   analysisDetails = null,
   analysisMeta = null,
@@ -293,6 +294,19 @@ export default function ResultActionCard({
     addReportBlock(generatedReportBlock);
     trackProductEvent("weekly_report_block_added", { tool_id: toolId, locale });
   };
+  const cardControls = (controls || download || canExportWorkbook) && (
+    <div className="result-action-card__controls">
+      {controls}
+      {download || (canExportWorkbook && (
+        <DownloadHub
+          toolId={toolId}
+          locale={locale}
+          align="right"
+          label={locale === "en" ? "Download results" : "결과 받기"}
+        />
+      ))}
+    </div>
+  );
   return (
     <AnalysisExportProvider value={canExportWorkbook ? analysisExport : null}>
     <section ref={cardRef} data-mobile-task=".result-action-card" className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
@@ -311,19 +325,7 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || canExportWorkbook) && (
-          <div className="result-action-card__controls">
-            {controls}
-            {download || (canExportWorkbook && (
-              <DownloadHub
-                toolId={toolId}
-                locale={locale}
-                align="right"
-                label={locale === "en" ? "Download results" : "결과 받기"}
-              />
-            ))}
-          </div>
-        )}
+        {controlsPlacement === "header" && cardControls}
         {/* 확인할 점은 결론 옆 빨간 "!" 하나로 모은다(데이터 기준·입력 결측·경고). 문제가 없으면 아무것도
             그리지 않는다. 예전의 '실제 분석 범위·분모 확인'·'신뢰도·방법' 블록은 2026-09-24 제거. */}
         {(combinedIssues != null || analysisMeta || analysisDetails || scopeEvidence || (analysisBasis && toolId)) && (
@@ -448,6 +450,7 @@ export default function ResultActionCard({
         </div>
       )}
 
+      {controlsPlacement === "footer" && cardControls}
       {children}
     </section>
     </AnalysisExportProvider>

@@ -12,7 +12,7 @@ const CASES = [
   { path: "/tools/budget-allocation", view: "변경 요약", file: /^budget_shift_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/vif-multicollinearity", file: /^vif_by_channel_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/content/freshness", file: /^creative_status_\d{4}-\d{2}-\d{2}\.png$/ },
-  { path: "/tools/campaign-saturation", scope: "#s-marginal-gap", file: /^marginal_gap_[a-z]+_[a-z]+_\d{4}-\d{2}-\d{2}\.png$/ },
+  { path: "/tools/budget-allocation?view=headroom", scope: "#s-marginal-gap", file: /^marginal_gap_[a-z]+_[a-z]+_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/subscription-survival", scope: "#subscription-survival-curve", canvas: true, file: /^survival_curve_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/incrementality", file: /^incrementality_holdout_lift_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/brand-campaign-incrementality", scope: ".brand-its-chart", canvas: true, file: /^brand_its_counterfactual_\d{4}-\d{2}-\d{2}\.png$/ },

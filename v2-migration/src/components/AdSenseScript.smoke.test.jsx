@@ -41,4 +41,17 @@ describe("AdSenseScript", () => {
     expect(script?.crossOrigin).toBe("anonymous");
     expect(script?.hasAttribute("data-nscript")).toBe(false);
   });
+
+  it("발행 글에서 목록·태그·없는 글로 이동하면 소유한 스크립트를 제거한다", () => {
+    vi.mocked(useAnalyticsEnabled).mockReturnValue(true);
+    const view = render(<AdSenseScript />);
+    expect(document.querySelector(SCRIPT_SELECTOR)).not.toBeNull();
+    view.rerender(<div>Article index</div>);
+    expect(document.querySelector(SCRIPT_SELECTOR)).toBeNull();
+    view.rerender(<AdSenseScript />);
+    expect(document.querySelectorAll(SCRIPT_SELECTOR)).toHaveLength(1);
+    vi.mocked(useAnalyticsEnabled).mockReturnValue(false);
+    view.rerender(<AdSenseScript />);
+    expect(document.querySelector(SCRIPT_SELECTOR)).toBeNull();
+  });
 });

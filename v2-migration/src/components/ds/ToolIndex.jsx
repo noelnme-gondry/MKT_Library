@@ -29,8 +29,9 @@ import { groupToolsByFile } from "@/lib/dataSources";
  * 방금 본 도구가 어디 있었는지 매번 다시 찾아야 했다. 갈래가 2~3개짜리로
  * 고르게 나뉜 뒤로는 전부 펴 두는 게 더 짧고, 위치가 고정된다.
  */
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, nearInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null, renderDetail = null, renderSummary = null, blockedCta = null, activeToolId, onActiveToolChange }) {
-  const stages = toolIndexByStage(locale);
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, nearInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null, renderDetail = null, renderSummary = null, blockedCta = null, activeToolId, onActiveToolChange, includeAbsorbed = false }) {
+  // 결과 작업대는 도구가 아니라 분석을 나열한다 — 흡수된 보기(증액 여력)도 그 도구 뒤에 둔다(lib/toolIndex).
+  const stages = toolIndexByStage(locale, { includeAbsorbed });
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
   const labels = locale === "en"
@@ -42,7 +43,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
       blockedDesc: "Select an analysis to see the data and additional setup it needs.",
       blockedHint: "Add the missing columns above to your file, then upload it again.",
       missing: "Missing:",
-      template: "⬇ Download a template with these columns",
+      template: "Download a template with these columns",
       more: (n) => `+${n} more`,
       openAnyway: "Open anyway",
       needPrefix: "Needs:",
@@ -63,7 +64,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
       blockedDesc: "분석을 선택하면 필요한 데이터와 추가 설정을 안내합니다.",
       blockedHint: "위 ‘필요 데이터’의 빠진 컬럼을 채워 다시 올리면 됩니다.",
       missing: "빠진 컬럼",
-      template: "⬇ 이 컬럼이 들어간 템플릿 받기",
+      template: "이 컬럼이 들어간 템플릿 받기",
       more: (n) => `외 ${n}개`,
       openAnyway: "그래도 열어 보기",
       needPrefix: "필요:",

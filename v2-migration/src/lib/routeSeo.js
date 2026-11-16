@@ -99,12 +99,12 @@ export const ROUTE_SEO = {
   },
   "5-3": {
     ko: {
-      title: "예산 배분 시뮬레이터 | 목표 CPI·CPA·ROAS",
-      description: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분을 계산합니다.",
+      title: "예산 배분·증액 여력 시뮬레이터 | 목표 CPI·CPA·ROAS",
+      description: "목표 CPI·CPA·ROAS나 총예산으로 관측 지출 안의 배분을 계산하고, 한계 CPA로 더 늘릴 수 있는 채널을 확인합니다.",
     },
     en: {
-      title: "Budget Allocation for CPI, CPA & ROAS",
-      description: "Set a total budget or target CPI, CPA, or ROAS to calculate a recommended budget and automatic channel allocation without exceeding observed maximum spend.",
+      title: "Budget Allocation & Headroom for CPI, CPA & ROAS",
+      description: "Set a total budget or target CPI, CPA, or ROAS to allocate within observed spend, and compare marginal with average CPA to see which channels can still scale.",
     },
   },
   "5-4": {
@@ -295,11 +295,11 @@ export const ROUTE_SEO = {
   "3-2": {
     ko: {
       title: "매체별 광고 소재 규격 | 사이즈·세이프존",
-      description: "매체별 소재 사이즈 매트릭스, 플레이어블 5MB 제약, 영상 세이프존을 정리한 규격 문서입니다.",
+      description: "매체·게재 위치별 제출 조건, 플레이어블 용량·로딩 검수, 영상 세이프존 확인 순서를 정리했습니다.",
     },
     en: {
       title: "Ad Creative Specs by Network",
-      description: "The size matrix, 5MB playable constraint, and video safe zones per network, so creatives never get rejected or auto-cropped mid-message.",
+      description: "Check submission requirements by network and placement, validate playable size and loading, and inspect video safe zones before delivery.",
     },
   },
   "3-3": {

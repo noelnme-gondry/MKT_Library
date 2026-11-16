@@ -34,11 +34,16 @@ async function demo(id, locale = "ko") {
   enter(id);
   const view = render(<AdvancedMarketingAnalysis toolId={id} locale={locale} />);
   expect(workers).toHaveLength(0);
+  const example = view.container.querySelector(`[data-worked-example="${id}"]`);
+  expect(example).not.toBeNull();
+  expect(example.querySelectorAll("tbody tr")).toHaveLength(6);
+  expect(example.textContent).toContain(locale === "en" ? "Synthetic example data" : "합성 예시 데이터");
   const buttons = screen.getAllByRole("button").filter(button => /예시|example|sample/i.test(button.textContent));
   expect(buttons.length).toBeGreaterThan(0);
   fireEvent.click(buttons[0]);
   expect(useAppStore.getState().isGroupAnalyzed(id)).toBe(true);
   await waitFor(() => expect(view.container.querySelector('[data-advanced-result="ready"]')).not.toBeNull());
+  expect(view.container.querySelector("[data-worked-example]")).toBeNull();
   return view;
 }
 describe.each(["ko", "en"])("advanced tools actual uploader path (%s)", locale => {

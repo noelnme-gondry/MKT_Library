@@ -3,17 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
-import {
-  Activity,
-  BarChart2,
-  CalendarDays,
-  ChevronDown,
-  Clock,
-  Filter,
-  Grid,
-  LineChart,
-  Users,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 // 운영 대시보드의 공통 뷰 전환. 분석 범위 필터와 함께 상단 sticky 바에 두어,
 // 어느 결과 탭을 스크롤 중이든 즉시 다른 분석 뷰로 이동할 수 있게 한다.
@@ -25,15 +15,15 @@ const MON_TAB_GROUPS = [
 
 // desc: 폰의 "보기 고르기" 창에서 이름 옆에 붙는 한 줄 — 그 보기가 무엇을 답하는지(각 탭의 섹션 제목에서 옮김).
 const TABS_INFO = {
-  viz: { label: "시각화", labelEn: "Visualization", icon: <BarChart2 size={13} />, desc: "핵심 지표와 기간별 추이", descEn: "Key metrics and their trend over time" },
-  scorecard: { label: "스코어카드", labelEn: "Scorecard", icon: <Grid size={13} />, desc: "기간별 핵심 지표 표", descEn: "Key-metric table for the period" },
-  pacing: { label: "페이싱", labelEn: "Pacing", icon: <Clock size={13} />, desc: "지출 속도와 기간 말 착지 예측", descEn: "Spend pace and end-of-period forecast" },
-  anomaly: { label: "이상탐지", labelEn: "Anomaly detection", icon: <Activity size={13} />, desc: "평소와 크게 다른 날과 변동을 만든 곳", descEn: "Days that broke from normal and what drove them" },
-  seasonality: { label: "시즈널리티", labelEn: "Seasonality", icon: <CalendarDays size={13} />, desc: "요일·월마다 반복되는 패턴", descEn: "Patterns that repeat by weekday and month" },
-  ltv: { label: "LTV & ROAS", labelEn: "LTV & ROAS", icon: <LineChart size={13} />, desc: "LTV:CAC·회수 기간·ROAS 성숙 예측", descEn: "LTV:CAC, payback period and ROAS maturity" },
-  cohort: { label: "코호트 분석", labelEn: "Cohort analysis", icon: <Users size={13} />, desc: "설치 후 경과일별 리텐션", descEn: "Retention by days since install" },
-  funnel: { label: "퍼널 진단", labelEn: "Funnel diagnosis", icon: <Filter size={13} />, desc: "단계별 전환과 지난주 대비 변화", descEn: "Stage conversion and change vs last week" },
-  segment: { label: "세그먼트", labelEn: "Segment", icon: <Grid size={13} />, desc: "세그먼트별 효율 비교", descEn: "Efficiency compared across segments" },
+  viz: { label: "시각화", labelEn: "Visualization", desc: "핵심 지표와 기간별 추이", descEn: "Key metrics and their trend over time" },
+  scorecard: { label: "스코어카드", labelEn: "Scorecard", desc: "기간별 핵심 지표 표", descEn: "Key-metric table for the period" },
+  pacing: { label: "페이싱", labelEn: "Pacing", desc: "지출 속도와 기간 말 착지 예측", descEn: "Spend pace and end-of-period forecast" },
+  anomaly: { label: "이상탐지", labelEn: "Anomaly detection", desc: "평소와 크게 다른 날과 변동을 만든 곳", descEn: "Days that broke from normal and what drove them" },
+  seasonality: { label: "시즈널리티", labelEn: "Seasonality", desc: "요일·월마다 반복되는 패턴", descEn: "Patterns that repeat by weekday and month" },
+  ltv: { label: "LTV & ROAS", labelEn: "LTV & ROAS", desc: "LTV:CAC·회수 기간·ROAS 성숙 예측", descEn: "LTV:CAC, payback period and ROAS maturity" },
+  cohort: { label: "코호트 분석", labelEn: "Cohort analysis", desc: "설치 후 경과일별 리텐션", descEn: "Retention by days since install" },
+  funnel: { label: "퍼널 진단", labelEn: "Funnel diagnosis", desc: "단계별 전환과 지난주 대비 변화", descEn: "Stage conversion and change vs last week" },
+  segment: { label: "세그먼트", labelEn: "Segment", desc: "세그먼트별 효율 비교", descEn: "Efficiency compared across segments" },
 };
 
 const CONTENT_TAB_GROUPS = [
@@ -88,7 +78,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
     <div className="dashboard-view-picker">
       <button type="button" className="btn secondary dashboard-view-picker__button" ref={pickerTrigger} aria-haspopup="dialog" onClick={() => setPickerOpen(true)}>
         <span className="dashboard-view-picker__label">{en ? "View" : "보기"}</span>
-        <strong>{activeInfo.icon} {en ? activeInfo.labelEn : activeInfo.label}</strong>
+        <strong>{en ? activeInfo.labelEn : activeInfo.label}</strong>
         <span className="dashboard-view-picker__count">{en ? `${activeIndex + 1} of ${availableTabs.length}` : `${availableTabs.length}개 중 ${activeIndex + 1}`}</span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
@@ -107,7 +97,6 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
                 return (
                   <li key={tabId}>
                     <button type="button" data-view-id={tabId} aria-current={isActive ? "true" : undefined} onClick={() => { selectTab(tabId); setPickerOpen(false); }}>
-                      <span className="dashboard-view-sheet__icon" aria-hidden="true">{info.icon}</span>
                       <strong>{en ? info.labelEn : info.label}{isActive && <em className="dashboard-view-sheet__current">{en ? "Showing" : "지금 보기"}</em>}</strong>
                       <small>{en ? info.descEn : info.desc}</small>
                     </button>
@@ -145,7 +134,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
                   onClick={() => selectTab(tabId)}
                   onKeyDown={(event) => onTabKeyDown(event, tabId)}
                 >
-                  {info.icon} {locale === "en" ? info.labelEn : info.label}
+                  {locale === "en" ? info.labelEn : info.label}
                 </button>
               );
             })}

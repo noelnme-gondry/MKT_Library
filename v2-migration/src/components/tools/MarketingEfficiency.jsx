@@ -735,7 +735,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                           <td className="tnum">{isFinite(r.marginalCpr) ? fmtCurrency(r.marginalCpr, currency, { metric: true }) : "∞"}</td>
                         </>
                       )}
-                      <td className="tnum" style={{ fontWeight: 700, color: vm.color }}>{idxStr}</td>
+                      <td className="tnum" style={{ fontWeight: 600, color: vm.color }}>{idxStr}</td>
                       <td>
                         <span className="chip" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", color: vm.color, borderColor: `color-mix(in srgb, ${vm.color} 33%, transparent)` }}>
                           <span className="dot" style={{ background: vm.color }}></span>{vm.label}

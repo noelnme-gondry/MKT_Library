@@ -55,11 +55,11 @@ function AdCreative({ placement, format, locale, mode, availableWidth, isHome = 
   const size = partnerAdDimensions(format, layout);
   return <div className="partner-ad-preview" style={{ "--partner-ad-width": `${size.width}px`, "--partner-ad-height": `${size.height}px` }}>
     <p className="partner-ad-preview__label">{mode === "preview" ? (en ? "Ad space · preview" : "광고 영역 · 미리보기") : (en ? "Advertisement" : "광고")}</p>
+    <p className="partner-ad-preview__note">{PARTNER_AD_DISCLOSURE[en ? "en" : "ko"]}</p>
     {mode === "live" ? <iframe ref={frameRef} className="partner-ad-frame" data-ad-format={format} data-ad-provider={provider} title={`${PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]} · Coupang Partners`} src={partnerAdSource(format, layout)} width={size.width} height={size.height} loading="lazy" sandbox={PARTNER_FRAME_SANDBOX} referrerPolicy="origin" scrolling="no" /> : <div className="partner-ad-preview__frame" data-ad-format={format}>
       <strong>{size.width} × {size.height}</strong>
       <span>{PARTNER_AD_PLACEMENTS[placement][en ? "en" : "ko"]}</span>
     </div>}
-    <p className="partner-ad-preview__note">{PARTNER_AD_DISCLOSURE[en ? "en" : "ko"]}</p>
   </div>;
 }
 
@@ -75,16 +75,16 @@ function HorizontalSlot({ placement, locale, mode }) {
 
 export default function PartnerAdSlot({ placement, locale = "ko" }) {
   const mode = usePartnerAdMode();
-  if (mode === "off" || !PARTNER_AD_PLACEMENTS[placement] || placement === "site-rail") return null;
+  const pathname = usePathname();
+  if (mode === "off" || !pageAdPlacement(pathname) || !PARTNER_AD_PLACEMENTS[placement] || placement === "site-rail") return null;
   return <HorizontalSlot placement={placement} locale={locale} mode={mode} />;
 }
 
-function RailSlot({ locale, mode }) {
+function RailSlot({ locale, mode, pathname }) {
   const ref = useRef(null);
   const [host, setHost] = useState(null);
   const attach = useCallback(node => { ref.current = node; setHost(node?.parentElement || null); }, []);
   const { width } = useParentWidth(ref);
-  const pathname = usePathname();
   const format = partnerAdRailFormat(pathname, width);
   // Header가 한 프레임만 소유한다. portal은 본문 뒤에 붙어 모바일 읽기·탭 순서도 지킨다.
   return <><span ref={attach} className="partner-ad-anchor" hidden />{host && createPortal(
@@ -96,12 +96,14 @@ function RailSlot({ locale, mode }) {
 
 export function PartnerAdRail({ locale = "ko" }) {
   const mode = usePartnerAdMode();
-  if (mode === "off") return null;
-  return <RailSlot locale={locale} mode={mode} />;
+  const pathname = usePathname();
+  if (mode === "off" || !pageAdPlacement(pathname)) return null;
+  return <RailSlot locale={locale} mode={mode} pathname={pathname} />;
 }
 
 export function PartnerAdDisclosure({ locale = "ko" }) {
   const mode = usePartnerAdMode();
-  if (mode === "off") return null;
+  const pathname = usePathname();
+  if (mode === "off" || pageAdPlacement(pathname) !== "blog-byline") return null;
   return <p className="partner-ad-disclosure">{PARTNER_AD_DISCLOSURE[locale === "en" ? "en" : "ko"]}</p>;
 }

@@ -107,7 +107,7 @@ export default function TemplatesPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()) }}
       />
       <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 600, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
           마케팅 보고서 샘플·CSV 템플릿
         </h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
@@ -122,7 +122,7 @@ export default function TemplatesPage() {
 
       {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
             {group.heading}
           </h2>
           {group.note && (

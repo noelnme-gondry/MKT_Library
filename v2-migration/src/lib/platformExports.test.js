@@ -5,8 +5,8 @@ import { evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 import { mapDataset } from "@/lib/data-import/semantic-mapper/mapDataset";
 import { evaluateV2Eligibility } from "@/lib/data-import/schema/toolDataRequirements";
 import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
-import { publishedToolIds } from "@/lib/routeMap";
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { analysisToolIds, publishedToolIds } from "@/lib/routeMap";
+import { templatePageForTool } from "@/lib/templateCatalog";
 import { PLATFORM_EXPORTS, platformExportHeaders, platformExportsForTool, toolReadsField } from "./platformExports";
 import { efficiencyAdapterFor, runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
 
@@ -102,10 +102,10 @@ describe("플랫폼 내보내기 파일 그대로 올리기", () => {
   });
 
   it("안내를 싣는 도구는 모두 발행 도구이고 템플릿 페이지가 있다", () => {
-    const templateTools = new Set(TEMPLATE_PAGES.map((page) => page.toolId));
     for (const entry of PLATFORM_EXPORTS) for (const toolId of entry.tools) {
-      expect(publishedToolIds(), toolId).toContain(toolId);
-      expect(templateTools.has(toolId), toolId).toBe(true);
+      expect(analysisToolIds(), toolId).toContain(toolId);
+      // 흡수된 보기(5-22)는 담은 페이지(5-3)의 템플릿을 쓴다.
+      expect(templatePageForTool(toolId), toolId).toBeTruthy();
     }
   });
 

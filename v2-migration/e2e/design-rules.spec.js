@@ -23,7 +23,7 @@ const STATIC_PAGES = [
 ];
 const KO_RESULT_PAGES = [
   "/tools/operations-planner?example=1",
-  "/dashboard", "/tools/campaign-variance", "/tools/campaign-saturation",
+  "/dashboard", "/tools/campaign-variance", "/tools/budget-allocation?view=headroom",
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
   "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality", "/tools/subscription-survival",
@@ -61,7 +61,7 @@ function expectClean(result) {
   expect(result.textCount, "the scanner must see the page").toBeGreaterThan(20);
   expect(result.overlaps, "text overlapping other text").toEqual([]);
   expect(result.covering, "fixed or sticky element covering content").toEqual([]);
-  expect(result.offWeights, "font weights outside 400/600/700").toEqual([]);
+  expect(result.offWeights, "font weights outside 400/600").toEqual([]);
   expect(result.nested, "box inside a box").toEqual([]);
   expect(result.hugging, "text touching the border of its box").toEqual([]);
   expect(result.eyebrows, "small label stuck above a heading").toEqual([]);

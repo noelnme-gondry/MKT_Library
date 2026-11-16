@@ -15,11 +15,13 @@ export default function DashboardRecommendedViews({ recommendations = [], additi
       </div>
       <div className="dashboard-recommendations__grid">
         {recommendations.map((item) => (
-          <button key={item.tab} type="button" className="dashboard-recommendation" onClick={() => onSelect?.(item)} aria-label={tr(`${item.rank}순위 ${item.title} 열기`, `Open priority ${item.rank}: ${item.title}`)}>
-            <span className="dashboard-recommendation__rank"><small>{tr("우선", "Priority")}</small>0{item.rank}</span>
+          <button key={item.tab} type="button" className="dashboard-recommendation" onClick={() => onSelect?.(item)} aria-label={tr(`${item.title} 열기`, `Open ${item.title}`)}>
+            {/* 순서 번호·"신뢰도 높음" 알약은 뺐다(2026-11-06) — 목록 순서가 곧 우선순위이고,
+                신뢰도는 기준을 통과한 뷰만 오므로 낮을 때만 글자로 말한다. */}
             <span className="dashboard-recommendation__content">
-              <span className="dashboard-recommendation__topline"><strong>{item.title}</strong><em>{item.confidenceLabel}</em></span>
+              <strong>{item.title}</strong>
               <span>{item.reason}</span>
+              {item.confidence && item.confidence !== "high" && <small className="dashboard-recommendation__confidence">{item.confidenceLabel}</small>}
             </span>
             <span className="dashboard-recommendation__open">{tr("열기", "Open")} <ChevronRight size={15} aria-hidden="true" /></span>
           </button>

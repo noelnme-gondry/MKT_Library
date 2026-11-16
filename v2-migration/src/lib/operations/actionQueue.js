@@ -3,7 +3,6 @@ import { shiftDate } from "./changeHistory";
 
 export const OPERATION_QUEUE_STATES = [
   { id: "review", ko: "검토할 결과", en: "Review results" },
-  { id: "new", ko: "새 액션", en: "New actions" },
   { id: "progress", ko: "진행 중", en: "In progress" },
   { id: "done", ko: "완료", en: "Completed" },
 ];
@@ -17,11 +16,13 @@ export function operationQueueState(record, today) {
 export function operationTargetKey(target) {
   return JSON.stringify([target.country, target.platform, target.channel, target.source, target.campaignId || target.campaign]);
 }
-export function buildOperationQueue(items, proposals, today) {
+// 제안(아직 기록하지 않은 액션)은 결과 위 예산안·소재 목록이 소유한다. 큐는 기록한 액션만 다룬다 —
+// 같은 제안을 두 곳에 두면 단위(기간 합계 vs 하루)까지 갈려 같은 캠페인이 다른 숫자로 보인다.
+export function buildOperationQueue(items, today) {
   const records = items.filter(item => item.review.action).map(item => ({ ...item, id: item.record.id,
     action: item.review.action, bucket: operationQueueState(item.record, today), name: item.record.actionTarget,
     due: item.review.due || item.record.reviewDate || "", date: item.record.updatedAt || item.record.createdAt || "" }));
-  return [...records, ...proposals.map(proposal => ({ id: proposal.id, action: proposal, proposal, name: proposal.name, bucket: "new", due: "", date: "" }))];
+  return records;
 }
 export function operationQueuePage(queue, { bucket, target = "all", page = 1, pageSize = 8 }) {
   const filtered = queue.filter(item => item.bucket === bucket && (target === "all" || operationTargetKey(item.action.target) === target));

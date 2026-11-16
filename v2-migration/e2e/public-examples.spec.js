@@ -14,7 +14,7 @@ async function bytesOf(download) {
 const examples = [
   { blog: "aso-basics-guide", file: "aso-mix-only.csv", tool: "/tools/aso-store-conversion", result: "#aso-result", kind: "aso" },
   { blog: "apple-search-ads-guide", file: "asa-mature-candidate.csv", tool: "/tools/asa-keyword-finder", result: "#asa-summary", kind: "asa" },
-  { blog: "budget-scaling-limit", file: "saturation-sparse.csv", tool: "/tools/campaign-saturation", result: ".result-action-card", kind: "saturation" },
+  { blog: "budget-scaling-limit", file: "saturation-sparse.csv", tool: "/tools/budget-allocation?view=headroom", result: ".result-action-card", kind: "saturation" },
 ];
 
 for (const locale of ["ko", "en"]) {
@@ -38,7 +38,7 @@ for (const locale of ["ko", "en"]) {
 
       // 글 끝 도구 패널은 상황 확인(B)으로 바뀌었다 — 받은 파일을 들고 도구로 간다.
       await page.goto(`${prefix}${example.tool}`);
-      await expect(page).toHaveURL(new RegExp(`${prefix}${example.tool}$`));
+      await expect(page).toHaveURL(new RegExp(`${prefix}${example.tool.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
       await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
       await page.locator('.csv-uploader input[type="file"]').first().setInputFiles({ name: example.file, mimeType: "text/csv", buffer: input });
       await expect(page.locator(".csv-uploader .file-state")).toBeVisible();

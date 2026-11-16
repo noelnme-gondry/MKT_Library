@@ -76,8 +76,6 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".home-service-terms")?.textContent).toContain("7일 체험에는 포함되지 않습니다.");
     expect(document.querySelector('.home-entry__no-file a[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('.home-entry__no-file a[href="/diagnose"]')).toBeTruthy();
-    // 액션 흐름 미리보기는 실제 예시 진입으로 이어진다.
-    expect(document.querySelector('.home-result-preview a[href]').getAttribute("href")).toContain("/tools/operations-planner?example=1");
     expect(document.querySelectorAll('.home-result-preview [role="tab"]')).toHaveLength(4);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     // 홈 아래쪽의 전체 분석 목록은 분석 찾기로 합쳤다 — 같은 목록을 두 곳에 두지 않는다.
@@ -164,14 +162,16 @@ describe("LandingPage render smoke", () => {
     const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
     const metrics = [...document.querySelectorAll(".operations-sample-budget__metrics dd")];
     const recent = data.raw.filter(row => row.Date >= periods.current.start && row.Date <= periods.current.end);
-    expect(metrics[0].textContent).toBe(money(recent.reduce((total, row) => total + row.Cost, 0) / 7));
-    expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults, 0)} → ${fmtNum(plan.expectedResults, 0)}`);
+    // 홈 미리보기는 플래너 기본 적용 기간(다음 7일)과 같은 합계 단위로 보인다.
+    const days = 7;
+    expect(metrics[0].textContent).toBe(money(recent.reduce((total, row) => total + row.Cost, 0) / 7 * days));
+    expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults * days, 0)} → ${fmtNum(plan.expectedResults * days, 0)}`);
     expect(document.querySelectorAll(".operations-sample-budget__moves > div")).toHaveLength(4);
-    const axis = Math.ceil(Math.max(...plan.items.map(item => Math.abs(item.budget - item.current))) / 10000) * 10000;
+    const axis = Math.ceil(Math.max(...plan.items.map(item => Math.abs(item.budget - item.current) * days)) / 10000) * 10000;
     for (const item of plan.items) {
       const name = brief.campaigns.find(row => row.id === item.id).name;
       const node = [...document.querySelectorAll(".operations-sample-budget__moves > div")].find(row => row.querySelector("dt").textContent === name);
-      const delta = item.budget - item.current, bar = node.querySelector(".home-budget-delta i");
+      const delta = (item.budget - item.current) * days, bar = node.querySelector(".home-budget-delta i");
       expect(node.querySelector("dd").textContent).toBe(`${delta > 0 ? "+" : "−"}${money(Math.abs(delta))}`);
       expect(parseFloat(bar.style.width) / 50 * axis).toBeCloseTo(Math.abs(delta), 8);
       expect(parseFloat(bar.style.left) + (delta < 0 ? parseFloat(bar.style.width) : 0)).toBeCloseTo(50, 10);
@@ -206,7 +206,8 @@ describe("LandingPage render smoke", () => {
       const proposal = proposals.find(row => row.textContent.includes(name));
       expect(proposal.textContent).toContain(`${money(item.current)} → ${money(item.budget)}`);
     }
-    expect(document.querySelectorAll(".operations-sample-preview__footer .btn")).toHaveLength(1);
+    const sampleEntry = document.querySelector(".home-planner-entry .primary");
+    expect(document.querySelectorAll(`.dc-hero a[href="${sampleEntry.getAttribute("href")}"]`)).toHaveLength(1);
     expect(document.querySelectorAll(".operations-sample-preview__body a")).toHaveLength(0);
     expect(useAppStore.getState().csvData).toBe(userData);
   });

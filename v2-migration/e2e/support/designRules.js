@@ -6,7 +6,8 @@
 // 예외는 주석이 아니라 DOM 표식 + 사유로만: data-design-exempt="<rule>: <reason>".
 // 표식은 요소 자신 또는 조상에 둔다. 사유가 비면 예외로 인정하지 않는다.
 
-export const ALLOWED_WEIGHTS = [400, 600, 700];
+// 2026-11-09 unslop: 제목 700 폐지 — 렌더된 굵기도 두 단(브라우저 기본 bold 포함).
+export const ALLOWED_WEIGHTS = [400, 600];
 
 // 글자에 쓸 수 있는 색 — 본문·보조 회색·파랑(선택·링크)·빨강/초록/노랑(나빠짐/좋아짐/주의)과
 // 채운 버튼 위 글자. 이 밖의 색(하드코딩 #f87171·#22c55e 등)은 화면마다 새 색을 만든다(A1).
@@ -225,6 +226,8 @@ export async function measureDesignRules(page) {
       if (st.textTransform === "uppercase" && /[a-z]/i.test(t.text)) caps.push(`uppercase "${t.text}"`);
       // ROAS·CPA 같은 약어는 원래 대문자다 — 여러 단어로 된 대문자 라벨(START HERE 등)만 잡는다.
       else if (/^[A-Z][A-Z0-9·&/-]*( [A-Z0-9·&/-]+)+$/.test(t.text) && parseFloat(st.letterSpacing) > 0.5) caps.push(`spaced caps "${t.text}"`);
+      // 2026-11-09 재설계 후 되돌림: 명조·고정폭을 일부에만 입히자 한 화면에 글꼴 셋이 섞여 누더기가 됐다(사용자 지적).
+      // 숫자는 본문 고딕 + tabular-nums로 자릿수만 맞춘다.
       if (/\d/.test(t.text) && /mono/i.test(st.fontFamily.split(",")[0])) monoNumbers.push(`"${t.text}"`);
     }
 
@@ -297,7 +300,8 @@ export async function measureDesignRules(page) {
     }
     const titleInsets = [...document.querySelectorAll(".page-sticky-bar:has(h1)")].filter(visible).flatMap(node => {
       const style = getComputedStyle(node);
-      const filled = !["rgba(0, 0, 0, 0)", "transparent"].includes(style.backgroundColor) || style.backgroundImage !== "none" || [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth].some(width => parseFloat(width) > 0);
+      // 위·아래 머리카락 선 하나는 열린 구획이지 상자가 아니다(2026-11 재설계) — 바탕이나 옆 테두리가 있을 때만 그린 면이다.
+      const filled = !["rgba(0, 0, 0, 0)", "transparent"].includes(style.backgroundColor) || style.backgroundImage !== "none" || [style.borderRightWidth, style.borderLeftWidth].some(width => parseFloat(width) > 0);
       if (!filled) return []; // Only a drawn title surface needs an internal gutter.
       const box = node.getBoundingClientRect(), title = node.querySelector("h1").getBoundingClientRect();
       const minimum = window.innerWidth <= 768 ? 15 : 23;

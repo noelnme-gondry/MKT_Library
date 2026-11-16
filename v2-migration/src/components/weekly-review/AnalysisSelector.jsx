@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { toolIndexEntry } from "@/lib/toolIndex";
-import { isRoutePublished } from "@/lib/routeMap";
+import { analysisToolIds } from "@/lib/routeMap";
 import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
 
@@ -70,7 +70,7 @@ export default function AnalysisSelector({ locale = "ko" }) {
     if (!csvData?.raw?.length) return [];
     return Object.keys(ANALYSIS_CONTRACTS)
       // 같은 그룹 + 발행된 도구 + 이 화면이 실제로 마운트할 수 있는 컴포넌트가 있는 것.
-      .filter((id) => TOOL_GROUP[id] === activeDataGroup && isRoutePublished(id) && TOOL_COMPONENTS[id])
+      .filter((id) => TOOL_GROUP[id] === activeDataGroup && analysisToolIds().includes(id) && TOOL_COMPONENTS[id])
       .map((id) => {
         const eligibility = evaluateEligibility({ mapping: csvData.mapping, canonicalData: csvData.canonicalData, toolId: id, locale });
         const entry = toolIndexEntry(id, locale);
