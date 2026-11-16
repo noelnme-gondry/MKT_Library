@@ -6,7 +6,7 @@
 .home-budget-pair-key > span { display: inline-flex; align-items: center; gap: 6px; }
 .home-budget-pair-key i { display: inline-block; width: 14px; height: 6px; background: var(--text-muted); }
 .home-budget-pair-key > span:last-child i { background: var(--primary); }
-.operations-sample-budget__moves .home-budget-pair { display: grid; grid-column: 1 / -1; gap: 8px; text-align: left; white-space: normal; }
+.operations-sample-budget__moves .home-budget-pair { display: grid; grid-column: 1 / -1; gap: 4px; text-align: left; white-space: normal; }
 .home-budget-pair__values { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: var(--fs-sm); }
 .home-budget-pair__values > span { color: var(--text-muted); font-weight: 400; white-space: nowrap; }
 .home-budget-pair__values > strong { font-weight: 600; white-space: nowrap; }

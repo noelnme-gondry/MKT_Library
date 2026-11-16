@@ -1163,11 +1163,11 @@
 .operations-sample-preview__budget > .home-sample-context { grid-column: 2; }
 .operations-sample-preview__budget > :is(.operations-sample-preview__note, [role="status"]) { grid-column: 1 / -1; }
 /* Each view uses the shared body for evidence; the next action stays in one footer. */
-.home-planner-intro .operations-sample-preview__budget:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(min-content, 1fr) auto auto; gap: 12px; }
+.home-planner-intro .operations-sample-preview__budget:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(min-content, 1fr) auto auto; gap: 8px; }
 .home-planner-intro .operations-sample-preview__budget > * { grid-column: 1; grid-row: auto; }
 .home-planner-intro .operations-sample-budget__metrics { grid-template-columns: repeat(2,minmax(0,1fr)); margin: 0; gap: 1rem; }
 .home-planner-intro .operations-sample-budget__moves { grid-template-rows: repeat(4, 1fr); }
-.home-planner-intro .operations-sample-budget__moves > div { align-content: center; padding-block: .5rem; gap: .3rem 1rem; }
+.home-planner-intro .operations-sample-budget__moves > div { align-content: center; padding-block: .25rem; gap: .15rem 1rem; }
 .home-planner-intro .operations-sample-budget__moves dt { font-size: var(--fs-sm); }
 .home-planner-intro .operations-sample-budget__metrics dd { font-size: var(--fs-lg); }
 .home-planner-intro .operations-sample-preview__budget > h3 { font-size: var(--fs-md); margin: 0; }
