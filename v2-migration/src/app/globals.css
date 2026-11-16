@@ -13119,12 +13119,14 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
 .finder-card__save[aria-pressed="true"] { color: var(--primary); }
 .finder-card__question { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.6; }
 .finder-card__result { margin: 0; color: var(--text-primary); font-size: var(--fs-base); line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
-.finder-card__result > span { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: var(--fs-xs); }
-.finder-card__data { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
-.finder-card__data p { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; margin: 0; color: var(--text-secondary); line-height: 1.5; }
+.finder-card__result > span { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: var(--fs-sm); }
+.finder-card__result p { margin: 0; }
+.finder-card__result ul { display: grid; gap: 4px; margin: 0; padding-left: 1.1em; }
+.finder-card__data { display: flex; align-items: flex-start; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
+.finder-card__data > svg { flex: none; margin-top: 3px; color: var(--text-muted); }
+.finder-card__data p { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0; color: var(--text-secondary); line-height: 1.5; }
 .finder-card__data p > span:first-child { color: var(--text-muted); }
 .finder-card__data strong { color: var(--text-primary); font-weight: 600; }
-.finder-card__data small { color: var(--text-muted); font-size: var(--fs-xs); }
 .finder-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px; }
 .finder-card__actions .btn { min-height: 44px; text-decoration: none; }
 /* 예시 보고서(외곽선 버튼) > 내 파일로 하기·준비 방법(글자 링크) — 카드 안 행동의 무게를 나눈다. */
@@ -13134,15 +13136,13 @@ body .app:not(.is-home) .page-sticky-bar:has(.page-sticky-title) { padding: 20px
 /* 묶은 카드의 상세·같은 파일 분석 목록(product-ssot §5.1 "묶기"). 링크마다 질문 한 줄로 무엇을 보는지 말한다. */
 .finder-card__members { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
 .finder-card__members > p { margin: 0; color: var(--text-muted); }
-.finder-card__members ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.finder-card__members li { display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr); gap: 0 12px; align-items: baseline; } /* 같은 첫 칸 폭 — 행마다 질문 시작선이 같아야 한다 */
-.finder-card__members a { display: inline-flex; align-items: center; min-height: 32px; color: var(--primary); font-weight: 600; }
-.finder-card__members small { color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.5; }
-@media (max-width: 720px) { .finder-card__members li { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 720px), (pointer: coarse) { .finder-card__members a { min-height: 44px; } }
-.finder-card__same { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.7; }
-.finder-card__same > span:first-child { margin-right: 8px; color: var(--text-muted); }
-.finder-card__same a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.finder-card__members ul { display: flex; flex-wrap: wrap; gap: 0 16px; margin: 0; padding: 0; list-style: none; }
+.finder-card__members li { min-width: 0; }
+.finder-card__members a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
+.finder-prep-dialog__related { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.finder-prep-dialog__related h3 { margin: 0; font-size: var(--fs-md); }
+.finder-prep-dialog__related ul { display: flex; flex-wrap: wrap; gap: 0 20px; margin: 8px 0 0; padding: 0; list-style: none; }
+.finder-prep-dialog__related a { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-sm); }
 .finder-card__situation { margin: 0; color: var(--text-muted); font-size: var(--fs-xs); }
 .start-finder { display: grid; gap: 24px; min-width: 0; }
 .start-finder[hidden] { display: none; }
