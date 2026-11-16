@@ -87,6 +87,7 @@
 }
 @media (max-width: 720px) {
   .finder-card { padding: 16px 0; }
+  .finder-card__data p { gap: 4px 8px; }
   .finder-preview { padding: 14px 12px; }
   .finder-preview figcaption > span, .finder-preview__count-total small, .finder-preview__interval-values { font-size: var(--fs-sm); }
   .finder-preview__count-layout { gap: 12px; }
