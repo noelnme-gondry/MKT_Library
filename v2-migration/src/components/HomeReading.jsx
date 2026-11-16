@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getAllPosts } from "@/lib/blog";
 import { localizedHref } from "@/lib/localizedHref";
 
@@ -17,7 +18,14 @@ export default function HomeReading({ locale = "ko" }) {
       <Link href={localizedHref("/blog", locale)}>{en ? "All articles" : "블로그 전체 보기"}</Link></header>
     <div className="home-reading-list__layout">
       <div className="home-reading-list__articles">
-        {selected.map((post) => <Link key={post.slug} href={localizedHref(`/blog/${post.slug}`, locale)}><h3>{post.title}</h3>{post.description && <p>{post.description}</p>}</Link>)}
+        {selected.map((post) => {
+          // 글에 실린 해당 언어의 실제 그림만 사용한다. 그림이 없으면 제목으로 연결한다.
+          const figure = post.html.match(/<img\b[^>]*\bsrc="(\/blog-assets(?:-en)?\/[^"<>]+)"/i)?.[1];
+          return <Link key={post.slug} href={localizedHref(`/blog/${post.slug}`, locale)}>
+            {figure && <span className="home-reading-list__figure"><Image src={figure} alt="" width={720} height={420} /></span>}
+            <h3>{post.title}</h3>
+          </Link>;
+        })}
       </div>
       <aside className="home-guide-shelf">
         <h3>{en ? "Practical guides" : "실무 가이드"}</h3>
