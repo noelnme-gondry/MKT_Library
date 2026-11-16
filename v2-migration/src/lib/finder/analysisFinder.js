@@ -4,6 +4,7 @@ import { TOOL_GROUP } from "@/lib/toolGroups";
 import { TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { exampleHref } from "@/lib/exampleLink";
 import FINDER_EXAMPLES from "@/lib/finder/finderExamples.json";
+import { finderPreview } from "@/lib/finder/finderPreviews";
 import { DATA_SOURCE_FAMILIES, DATA_SOURCE_FAMILY_IDS } from "@/lib/dataSources";
 
 /* ============================================================
@@ -97,6 +98,7 @@ export function finderCards(locale = "ko") {
       : [];
     const hrefId = cardGroup?.hrefId;
     const example = FINDER_EXAMPLES[tool.id]?.[locale === "en" ? "en" : "ko"] || null;
+    const preview = finderPreview(tool.id, locale);
     const optional = optionalLabels(tool.id, locale);
     return {
       id: tool.id,
@@ -113,7 +115,8 @@ export function finderCards(locale = "ko") {
       source: tool.source,
       required: tool.needs,
       optional,
-      exampleHref: exampleHref(tool.id, locale),
+      preview,
+      exampleHref: exampleHref(preview?.toolId || tool.id, locale),
       sameFile,
       // 묶은 도구: 대표 카드 안의 목록. 카드는 묶인 도구가 속한 상황에서도 보인다.
       members: named ? [leadMember, ...members] : members,

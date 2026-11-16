@@ -1,0 +1,76 @@
+{
+  "ko": {
+    "toolId": "5-31",
+    "kind": "budget",
+    "title": "캠페인별 7일 예산",
+    "headline": "같은 예산에서 모형 예상 설치가 3,238건에서 3,331건으로 늘어납니다(+2.9%).",
+    "caption": "98일의 가상 이력으로 계산한 모형 예상이며, 미래 성과를 보장하지 않습니다.",
+    "rows": [
+      {
+        "label": "Meta · 신규 고객",
+        "from": 1804895,
+        "value": 2165874,
+        "beforeDisplay": "₩1,804,895",
+        "display": "₩2,165,874"
+      },
+      {
+        "label": "Google · 앱 탐색",
+        "from": 1474172,
+        "value": 1546170.2,
+        "beforeDisplay": "₩1,474,172",
+        "display": "₩1,546,170"
+      },
+      {
+        "label": "Meta · 리타겟팅",
+        "from": 1343668,
+        "value": 1074934.4,
+        "beforeDisplay": "₩1,343,668",
+        "display": "₩1,074,934"
+      },
+      {
+        "label": "TikTok · 제품 시연",
+        "from": 821218,
+        "value": 656974.4,
+        "beforeDisplay": "₩821,218",
+        "display": "₩656,974"
+      }
+    ]
+  },
+  "en": {
+    "toolId": "5-31",
+    "kind": "budget",
+    "title": "Campaign budgets · 7 days",
+    "headline": "With the same budget, modeled installs change from 3,238 to 3,331 (+2.9%).",
+    "caption": "Model estimate from 98 days of fictional data, not guaranteed future performance.",
+    "rows": [
+      {
+        "label": "Meta · New customers",
+        "from": 1804895,
+        "value": 2165874,
+        "beforeDisplay": "₩1,804,895",
+        "display": "₩2,165,874"
+      },
+      {
+        "label": "Google · App discovery",
+        "from": 1474172,
+        "value": 1546170.2,
+        "beforeDisplay": "₩1,474,172",
+        "display": "₩1,546,170"
+      },
+      {
+        "label": "Meta · Retargeting",
+        "from": 1343668,
+        "value": 1074934.4,
+        "beforeDisplay": "₩1,343,668",
+        "display": "₩1,074,934"
+      },
+      {
+        "label": "TikTok · Product demo",
+        "from": 821218,
+        "value": 656974.4,
+        "beforeDisplay": "₩821,218",
+        "display": "₩656,974"
+      }
+    ]
+  }
+}
