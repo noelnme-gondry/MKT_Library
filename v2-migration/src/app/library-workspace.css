@@ -1530,7 +1530,9 @@
   .home-entry { margin-top: 32px; }
   .home-approved .operations-sample-preview { height: 55rem; padding: 16px; }
   .home-planner-intro .operations-sample-campaigns { gap: 4px 8px; }
-  .home-planner-intro .operations-sample-budget__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .home-planner-intro .operations-sample-budget__metrics { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .home-planner-intro .operations-sample-budget__metrics > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; }
+  .home-planner-intro .operations-sample-budget__metrics dd { margin: 0; white-space: nowrap; }
   .csv-upload-entry-toolbar { gap: 6px; }
   .csv-upload-entry-toolbar .tutorial-inline { margin-left: 0; }
   .home-entry__situations ul { grid-template-columns: minmax(0, 1fr); }
