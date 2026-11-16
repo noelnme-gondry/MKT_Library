@@ -167,14 +167,18 @@ describe("LandingPage render smoke", () => {
     expect(metrics[0].textContent).toBe(money(recent.reduce((total, row) => total + row.Cost, 0) / 7 * days));
     expect(metrics[1].textContent).toContain(`${fmtNum(plan.baselineResults * days, 0)} → ${fmtNum(plan.expectedResults * days, 0)}`);
     expect(document.querySelectorAll(".operations-sample-budget__moves > div")).toHaveLength(4);
-    const axis = Math.ceil(Math.max(...plan.items.map(item => Math.abs(item.budget - item.current) * days)) / 10000) * 10000;
+    const axis = Math.ceil(Math.max(...plan.items.flatMap(item => [item.current * days, item.budget * days])) / 10000) * 10000;
     for (const item of plan.items) {
       const name = brief.campaigns.find(row => row.id === item.id).name;
       const node = [...document.querySelectorAll(".operations-sample-budget__moves > div")].find(row => row.querySelector("dt").textContent === name);
-      const delta = (item.budget - item.current) * days, bar = node.querySelector(".home-budget-delta i");
+      const delta = (item.budget - item.current) * days;
       expect(node.querySelector("dd").textContent).toBe(`${delta > 0 ? "+" : "−"}${money(Math.abs(delta))}`);
-      expect(parseFloat(bar.style.width) / 50 * axis).toBeCloseTo(Math.abs(delta), 8);
-      expect(parseFloat(bar.style.left) + (delta < 0 ? parseFloat(bar.style.width) : 0)).toBeCloseTo(50, 10);
+      const values = node.querySelector(".home-budget-pair__values").textContent;
+      expect(values).toBe(`${money(item.current * days)}→${money(item.budget * days)}`);
+      const bars = node.querySelectorAll(".home-budget-pair__bars i");
+      expect(bars).toHaveLength(2);
+      expect(parseFloat(bars[0].style.width) / 100 * axis).toBeCloseTo(item.current * days, 8);
+      expect(parseFloat(bars[1].style.width) / 100 * axis).toBeCloseTo(item.budget * days, 8);
     }
     const firstDates = new Map();
     for (const row of data.raw) if (!firstDates.has(row["Creative ID"])) firstDates.set(row["Creative ID"], row.Date);

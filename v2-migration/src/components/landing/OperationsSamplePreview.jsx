@@ -34,7 +34,7 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
   };
   const money = value => fmtCurrency(value, { currency: "KRW", precise: true });
   const change = sample.current.cpr / sample.previous.cpr - 1;
-  const budgetMax = Math.ceil(Math.max(1, ...sample.budgetMoves.map(row => Math.abs(row.delta))) / 10000) * 10000;
+  const budgetMax = Math.ceil(Math.max(1, ...sample.plan.items.flatMap(row => [row.current, row.budget])) * sample.planDays / 10000) * 10000;
   const date = index => sample.dates.at(index).slice(5).replace("-", ".");
   const pct = value => `${value > 0 ? "+" : value < 0 ? "−" : ""}${fmtPct(Math.abs(value))}`;
   const tone = value => value > 0 ? "bad" : value < 0 ? "good" : "neutral";
@@ -107,11 +107,18 @@ export default function OperationsSamplePreview({ locale = "ko" }) {
           <div><dt>{tr(`다음 ${sample.planDays}일 예산`, `Next ${sample.planDays}-day budget`)}</dt><dd>{money(sample.plan.totalBudget * sample.planDays)}</dd></div>
           <div><dt>{tr(`예상 설치 · ${sample.planDays}일`, `Modeled installs · ${sample.planDays} days`)}</dt><dd>{fmtNum(sample.plan.baselineResults * sample.planDays, 0)} → {fmtNum(sample.plan.expectedResults * sample.planDays, 0)} <b>{pct(sample.plan.improvementPct / 100)}</b></dd></div>
         </dl>
-        <dl className="operations-sample-budget__moves">{sample.budgetMoves.map(row => <div key={row.id}><dt>{row.name}</dt><dd>{row.delta > 0 ? "+" : row.delta < 0 ? "−" : ""}{money(Math.abs(row.delta))}</dd>
-          <dd className="home-budget-delta" aria-hidden="true"><i data-direction={row.delta < 0 ? "decrease" : "increase"} style={{ left: `${row.delta < 0 ? 50 - Math.abs(row.delta) / budgetMax * 50 : 50}%`, width: `${Math.abs(row.delta) / budgetMax * 50}%` }} /></dd>
-        </div>)}</dl>
-        <div className="home-budget-axis" aria-hidden="true"><span>−{money(budgetMax)}</span><span>0</span><span>+{money(budgetMax)}</span></div>
-        <p className="home-sample-context">{tr("← 감액 · 증액 →", "← Decrease · increase →")} · {tr("변경 한도", "Limit")} ±{fmtPct(sample.changeLimit, 0)}</p>
+        <div className="home-budget-pair-key"><span><i aria-hidden="true" />{tr("현재 배분", "Current")}</span><span><i aria-hidden="true" />{tr("조정안", "Proposed")}</span></div>
+        <dl className="operations-sample-budget__moves">{sample.budgetMoves.map(row => {
+          const plan = sample.plan.items.find(item => item.id === row.id);
+          return <div key={row.id}><dt>{row.name}</dt><dd>{row.delta > 0 ? "+" : row.delta < 0 ? "−" : ""}{money(Math.abs(row.delta))}</dd>
+            <dd className="home-budget-pair">
+              <span className="home-budget-pair__values"><span>{money(plan.current * sample.planDays)}</span><span aria-hidden="true">→</span><strong>{money(plan.budget * sample.planDays)}</strong></span>
+              <span className="home-budget-pair__bars" aria-hidden="true"><i style={{ width: `${plan.current * sample.planDays / budgetMax * 100}%` }} /><i style={{ width: `${plan.budget * sample.planDays / budgetMax * 100}%` }} /></span>
+            </dd>
+          </div>;
+        })}</dl>
+        <div className="home-budget-axis" aria-hidden="true"><span>0</span><span>{money(budgetMax)}</span></div>
+        <p className="home-sample-context">{tr(`${sample.planDays}일 예산 합계 · 변경 한도`, `${sample.planDays}-day budget totals · limit`)} ±{fmtPct(sample.changeLimit, 0)}</p>
       </> : <p role="status">{tr("이 데이터에서는 예산 조정안을 추정할 수 없습니다.", "A budget plan cannot be estimated from this data.")}</p>}
     </section>
     <section className="operations-sample-preview__creatives" role="tabpanel" id={`${id}-panel-creatives`} aria-labelledby={`${id}-tab-creatives`} tabIndex={0} hidden={view !== "creatives"}>

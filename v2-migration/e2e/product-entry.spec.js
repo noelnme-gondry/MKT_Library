@@ -92,6 +92,7 @@ for (const locale of ["ko", "en"]) {
       await expect(page.locator(".operations-sample-preview__body > section")).toHaveCount(4);
       await expect(page.getByRole("tabpanel")).toHaveCount(1);
       await expect(page.locator(".operations-sample-budget__moves > div")).toHaveCount(4);
+      await expect(page.locator(".home-budget-pair__bars i")).toHaveCount(8);
       await expect(page.locator(".operations-sample-creatives > li")).toHaveCount(2);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await expect(page.locator(".operations-sample-campaigns > li")).toHaveCount(4);
@@ -172,5 +173,66 @@ for (const locale of ["ko", "en"]) {
         }
       }
     }
+  });
+}
+
+// 승인한 시각적 진입의 실제 빌드 배치를 검사한다. 폭·테마·언어를 대표 조합으로 분산한다.
+for (const variant of [
+  { locale: "ko", project: "mobile-320", light: false, width: 320 },
+  { locale: "ko", project: "desktop-1440", light: true, width: 1440 },
+  { locale: "en", project: "tablet-768", light: false, width: 980 },
+  { locale: "en", project: "desktop-light-en", light: true, width: 1440, tag: "@light-en" },
+]) {
+  test(`operations home preview and finder visual review (${variant.locale}, ${variant.width}) ${variant.tag || ""}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== variant.project, "Representative visual review combination");
+    await page.setViewportSize({ width: variant.width, height: 1000 });
+    await page.addInitScript(light => localStorage.setItem("mkt-library-theme", light ? "light" : "dark"), variant.light);
+    const prefix = variant.locale === "en" ? "/en" : "";
+    await page.goto(prefix || "/");
+    await expect(page.locator(".home-hero-capabilities li")).toHaveCount(3);
+    await page.evaluate(() => document.fonts.ready);
+    // 금액 중간 줄바꿈은 가로 넘침 검사만으로 잡히지 않는다.
+    expect(await page.locator(".operations-sample-budget__metrics dd").first().evaluate(node => {
+      const range = document.createRange(); range.selectNodeContents(node);
+      return range.getClientRects().length;
+    }), "the total budget must remain one complete number").toBe(1);
+    // Full-page capture alone does not bring lazy editorial images into the viewport.
+    for (const image of await page.locator(".home-reading-list__figure img").all()) {
+      await image.scrollIntoViewIfNeeded();
+      await expect.poll(() => image.evaluate(node => node.complete && node.naturalWidth > 0)).toBe(true);
+    }
+    await page.evaluate(() => scrollTo(0, 0));
+    // Railway PR 호스트는 운영으로 301 이동한다. CI 빌드의 변경 화면을 직접 검토할 증거다.
+    await page.screenshot({ path: testInfo.outputPath("entry-review-home.png"), fullPage: true, animations: "disabled" });
+    await page.goto(`${prefix}/start`);
+    await expect(page.locator(".finder-preview").first()).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    // All figure types must stay inside their own card, including long EN labels and signed intervals.
+    const geometry = await page.locator(".finder-preview").evaluateAll(figures => figures.flatMap(figure => {
+      const outer = figure.closest(".finder-card").getBoundingClientRect();
+      return [figure, ...figure.querySelectorAll("strong, li, .finder-preview__interval-track, .finder-preview__parts, .finder-preview__count-grid")].flatMap(node => {
+        const box = node.getBoundingClientRect();
+        return box.width && (box.left < outer.left - 1 || box.right > outer.right + 1) ? [node.className || node.tagName] : [];
+      });
+    }));
+    expect(geometry).toEqual([]);
+    const design = await measureDesignRules(page);
+    expect(design.overlaps).toEqual([]);
+    expect(design.horizontalOverflow).toBeLessThanOrEqual(1);
+    // Label and value must not overlap even when a label wraps to multiple lines.
+    const labelOverlaps = await page.locator(".finder-preview__row-label").evaluateAll(rows => rows.flatMap(row => {
+      if (row.children.length < 2) return [];
+      const label = row.children[0].getBoundingClientRect(), value = row.children[1].getBoundingClientRect();
+      return label.right > value.left - 3 ? [row.textContent] : [];
+    }));
+    expect(labelOverlaps).toEqual([]);
+    if (variant.width > 860) {
+      const orphanWidths = await page.locator(".analysis-finder__cards > .finder-card:last-child:nth-child(odd)").evaluateAll(cards => cards.map(card => Math.abs(card.getBoundingClientRect().width - card.parentElement.getBoundingClientRect().width)));
+      expect(orphanWidths.length).toBeGreaterThan(0);
+      for (const difference of orphanWidths) expect(difference).toBeLessThanOrEqual(1);
+    }
+    const audit = await new AxeBuilder({ page }).include(".analysis-finder").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    expect(audit.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath("entry-review-finder.png"), fullPage: true, animations: "disabled" });
   });
 }

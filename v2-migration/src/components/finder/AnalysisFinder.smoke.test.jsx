@@ -25,10 +25,12 @@ describe("analysis finder", () => {
     const first = container.querySelector(`.finder-card[data-tool-id="${cards[0].id}"]`);
     expect(first.querySelector("h3").textContent).toBe(cards[0].name);
     expect(first.querySelector(".finder-card__data").textContent).toContain(cards[0].source.file);
+    // 목록에서는 파일을 먼저 고른다. 열별 쓰임은 아래 준비 방법 창에서 읽는다.
+    expect(first.querySelectorAll(".finder-card__data p")).toHaveLength(1);
     expect(within(first).getByRole("link", { name: en ? "Explore an example" : "예시로 분석해 보기" }).getAttribute("href")).toBe(cards[0].exampleHref);
     expect(within(first).getByRole("link", { name: en ? /^Use my file/ : /^내 파일로 하기/ }).getAttribute("href")).toBe(`${en ? "/en" : ""}${cards[0].href}`);
     // 예시가 없는 카드는 지어내지 않고 보고서에 담기는 것을 보여 준다.
-    const plain = cards.find((card) => !card.example && card.outputs.length);
+    const plain = cards.find((card) => !card.preview && !card.example && card.outputs.length);
     const plainNode = container.querySelector(`.finder-card[data-tool-id="${plain.id}"] .finder-card__result`);
     expect(plainNode.querySelector("span").textContent).toBe(en ? "What this analysis answers" : "분석으로 확인할 것");
     expect(plainNode.textContent).toContain(plain.outputs[0]);
@@ -105,6 +107,7 @@ describe("analysis finder", () => {
     fireEvent.click(within(cardNode).getByRole("button", { name: en ? "How to prepare" : "준비 방법" }));
     const dialog = screen.getByRole("dialog", { name: en ? `How to prepare · ${card.name}` : `준비 방법 · ${card.name}` });
     expect(within(dialog).getByRole("table", { name: en ? "Required data and its use" : "필요한 데이터와 쓰임" })).toBeTruthy();
+    expect(within(dialog).getByRole("table", { name: en ? "Required data and its use" : "필요한 데이터와 쓰임" }).querySelectorAll("tbody tr").length).toBeGreaterThan(0);
     expect(within(dialog).getByRole("button", { name: en ? "Download blank CSV" : "빈 CSV 양식 받기" })).toBeTruthy();
     // 5-23은 비교 방식마다 필요한 데이터가 다르다 — 방식 선택이 창 안에 남아 있다.
     const methods = within(dialog).getByRole("group", { name: en ? "How will you compare?" : "어떤 방식으로 비교하나요?" });

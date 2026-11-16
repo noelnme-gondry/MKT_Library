@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CalendarCheck, GitCompareArrows, ScanLine } from "lucide-react";
 import OperationsSamplePreview from "@/components/landing/OperationsSamplePreview";
 import OperationsHomeActions from "@/components/landing/OperationsHomeActions";
 import { readOperationAction } from "@/lib/operations/actionContract";
@@ -51,9 +52,7 @@ const COPY = {
     openInbox: "내 프로젝트 열기",
     reopenTool: "원본 도구 다시 열기",
     loopTitle: "판단의 기록과 다음 검토",
-    loopDeck: "무엇을 바꿨는지, 어떤 근거로 판단했는지 남기세요.",
-    loopFollowup: "검토일에 새 데이터를 보고 결과와 배운 점을 이어 기록합니다.",
-    loopCondition: "기록 저장은 로그인과 유효한 Pro가 필요합니다. 7일 체험에도 포함됩니다.",
+    loopDeck: "분석한 결정을 저장하고, 다음 주 결과를 검토하세요.",
     // 이용 안내가 같은 조건을 문장으로 설명한다 — 기록 섹션은 이름표 한 줄만 둔다.
     loopTag: "Pro 기능 · 로그인 필요 · 7일 체험 포함",
     libraryTitle: "실무 가이드와 분석 글",
@@ -98,9 +97,7 @@ const COPY = {
     openInbox: "Open My projects",
     reopenTool: "Reopen source tool",
     loopTitle: "Decisions and follow-up reviews",
-    loopDeck: "Record what changed and the evidence behind your decision.",
-    loopFollowup: "Return with new data to review the outcome and record what you learned.",
-    loopCondition: "Saving requires sign-in and active Pro, including the 7-day trial.",
+    loopDeck: "Save your decision and review next week’s results.",
     loopTag: "Pro feature · Sign-in required · Included in the 7-day trial",
     libraryTitle: "Guides and analysis articles",
     libraryDeck: "Practical articles to understand the question, and SOPs to put it into practice.",
@@ -214,8 +211,12 @@ export default function LandingPage({ locale = "ko", reading }) {
           <div className="home-planner-entry">
             <Link className="btn primary" href={exampleHref(OPERATIONS_TOOL_ID, lang)} onClick={() => prepareSample(OPERATIONS_TOOL_ID, "hero_example")}>{T.demoCta} →</Link>
             <Link className="btn secondary" href={toolHref(OPERATIONS_TOOL_ID)} onClick={() => trackLandingNav("landing_data_start_clicked", "hero_data")}>{lang === "en" ? "Plan with my data" : "내 데이터로 운영 계획"}</Link>
-            <p>{lang === "en" ? "Budget up, down or unchanged → campaign actions → execution and next review" : "예산 유지·증액·감액 → 캠페인별 실행안 → 실행과 다음 검토"}</p>
           </div>
+          <ul className="home-hero-capabilities">
+            <li><GitCompareArrows size={16} strokeWidth={1.5} aria-hidden="true" /><span>{lang === "en" ? "Compare campaign budgets and modeled outcomes" : "캠페인별 예산과 예상 성과 비교"}</span></li>
+            <li><ScanLine size={16} strokeWidth={1.5} aria-hidden="true" /><span>{lang === "en" ? "Check new creatives and fatigue signals" : "새 소재와 피로 신호 확인"}</span></li>
+            <li><CalendarCheck size={16} strokeWidth={1.5} aria-hidden="true" /><span>{lang === "en" ? "Record executed actions and review outcomes" : "실행한 액션과 다음 결과 검토"}</span></li>
+          </ul>
           </div>
           </header>
           <OperationsSamplePreview locale={lang} />
@@ -274,18 +275,17 @@ export default function LandingPage({ locale = "ko", reading }) {
             <h2 id="dc-loop-title">{T.loopTitle}</h2>
           </div>
           <p>{T.loopDeck}</p>
-          <p>{T.loopFollowup}</p>
           <p className="home-pro-condition">{T.loopTag}</p>
           <Link className="dc-text-link" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackLandingNav("landing_review_opened", "weekly_loop")}>{T.openInbox}</Link>
         </header>
         <article className="home-review-example">
           <h3>{lang === "en" ? "Compare channels using consistent definitions" : "채널별 집계 기준을 맞춰 다시 비교"}</h3>
           <p>{lang === "en" ? "Illustrative record" : "예시 기록"}</p>
-          <dl>
-            <div><dt>{lang === "en" ? "Observation" : "확인한 내용"}</dt><dd>{lang === "en" ? "Channel ROAS varies within the overall average" : "같은 평균 안에서도 채널별 ROAS가 다름"}</dd></div>
-            <div><dt>{lang === "en" ? "Next action" : "다음 행동"}</dt><dd>{lang === "en" ? "Align periods and attribution before reanalyzing" : "기간과 전환 귀속 기준을 맞춘 뒤 재분석"}</dd></div>
-            <div><dt>{lang === "en" ? "Review date" : "검토 시점"}</dt><dd>{lang === "en" ? "After next week’s conversions are counted" : "다음 주 전환 집계가 끝난 뒤"}</dd></div>
-          </dl>
+          <ol className="home-review-sequence">
+            <li><h4>{lang === "en" ? "Observation" : "확인한 내용"}</h4><p>{lang === "en" ? "Channel ROAS varies within the overall average" : "같은 평균 안에서도 채널별 ROAS가 다름"}</p></li>
+            <li><h4>{lang === "en" ? "Next action" : "다음 행동"}</h4><p>{lang === "en" ? "Align periods and attribution before reanalyzing" : "기간과 전환 귀속 기준을 맞춘 뒤 재분석"}</p></li>
+            <li><h4>{lang === "en" ? "Review date" : "검토 시점"}</h4><p>{lang === "en" ? "After next week’s conversions are counted" : "다음 주 전환 집계가 끝난 뒤"}</p></li>
+          </ol>
         </article>
       </section>
 
@@ -324,9 +324,11 @@ export default function LandingPage({ locale = "ko", reading }) {
         <h2 id="home-terms-title">{lang === "en" ? "Before you start" : "이용 안내"}</h2>
         <div>
           <section><h3>{lang === "en" ? "What is free?" : "어디까지 무료인가요?"}</h3>
-            <p>{lang === "en" ? "Analysis and on-screen results are free, with no sign-up required." : "분석 실행과 화면 결과 확인은 무료이며, 가입 없이 시작합니다."}</p>
-            <p>{T.loopCondition}</p>
-            <p>{lang === "en" ? "Report downloads require an active purchased pass. They are not included in the 7-day trial." : "보고서 다운로드는 구매한 유효 이용권이 필요합니다. 7일 체험에는 포함되지 않습니다."}</p>
+            <dl className="home-access-comparison">
+              <div><dt>{lang === "en" ? "Analysis & results" : "분석·결과 확인"}</dt><dd>{lang === "en" ? "Free · No sign-up" : "무료 · 가입 없이"}</dd></div>
+              <div><dt>{lang === "en" ? "Save records" : "기록 저장"}</dt><dd>{T.loopTag}</dd></div>
+              <div><dt>{lang === "en" ? "Report downloads" : "보고서 다운로드"}</dt><dd>{lang === "en" ? "Active purchased pass required. They are not included in the 7-day trial." : "구매한 유효 이용권 필요. 7일 체험에는 포함되지 않습니다."}</dd></div>
+            </dl>
             <Link href={lang === "en" ? "/en/subscription" : "/subscription"}>{lang === "en" ? "Compare free and Pro" : "무료·Pro 범위 보기"}</Link>
           </section>
           <section><h3>{lang === "en" ? "Where is my file processed?" : "파일은 어디서 처리하나요?"}</h3>

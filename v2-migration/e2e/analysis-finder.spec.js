@@ -107,11 +107,11 @@ for (const locale of ["ko", "en"]) {
       await page.evaluate((value) => document.body.classList.toggle("light-mode", value), light);
       await page.waitForTimeout(300);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-      // 분석 카드는 페이지와 구분되는 콘텐츠 면이다(design.md §2). 위 두 칸은 열린 열이라 칸 자체가 면이 아니다.
-      for (const selector of [".finder-card", ".analysis-finder__situations button"]) {
+      // 열린 분석 행 안에서 예시 그림이 콘텐츠 면을 소유한다. 전체 행을 다시 상자로 감싸지 않는다.
+      for (const selector of [".finder-preview", ".analysis-finder__situations button"]) {
         const styles = await page.locator(selector).first().evaluate((el) => ({ surface: getComputedStyle(el).backgroundColor, page: getComputedStyle(document.body).backgroundColor, padding: parseFloat(getComputedStyle(el).paddingLeft) }));
         expect(styles.surface, selector).not.toBe(styles.page);
-        expect(styles.padding, selector).toBeGreaterThanOrEqual(selector === ".finder-card" ? 16 : 10);
+        expect(styles.padding, selector).toBeGreaterThanOrEqual(selector === ".finder-preview" ? 12 : 10);
       }
       const audit = await new AxeBuilder({ page }).include(".analysis-finder").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
       expect(audit.violations).toEqual([]);

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark, FileSpreadsheet } from "lucide-react";
 import ModalDialog from "@/components/ds/ModalDialog";
 import AnalysisDataPrep from "@/components/finder/AnalysisDataPrep";
+import FinderExampleFigure from "@/components/finder/FinderExampleFigure";
 import { countFinderAnalyses, filterFinderCards, finderCards, finderFamilies, finderSituations } from "@/lib/finder/analysisFinder";
 import { groupToolsByFile } from "@/lib/dataSources";
 import { localizedHref } from "@/lib/localizedHref";
@@ -37,13 +38,10 @@ const COPY = {
     example: "예시 결론",
     answer: "분석으로 확인할 것",
     file: "필요한 파일",
-    required: "필수",
-    optional: "있으면 더 좋음",
     exampleCta: "예시로 분석해 보기",
     toolCta: "내 파일로 하기",
     prep: "준비 방법",
     sameFile: "같은 파일로",
-    more: (n) => `외 ${n}개`,
     save: "저장",
     savedHint: "이 브라우저에만 저장됩니다. 카드의 저장 버튼으로 다시 쓸 분석을 모아 두세요.",
     noSaved: "아직 저장한 분석이 없습니다.",
@@ -67,13 +65,10 @@ const COPY = {
     example: "Example conclusion",
     answer: "What this analysis answers",
     file: "File you need",
-    required: "Required",
-    optional: "Helpful",
     exampleCta: "Explore an example",
     toolCta: "Use my file",
     prep: "How to prepare",
     sameFile: "Same file",
-    more: (n) => `+${n} more`,
     save: "Save",
     savedHint: "Saved in this browser only. Use the save button on a card to collect analyses you reuse.",
     noSaved: "No saved analyses yet.",
@@ -85,7 +80,6 @@ const COPY = {
   },
 };
 
-const SAME_FILE_SHOWN = 3;
 // globals.css에서 상황과 파일 입력이 한 열이 되는 폭.
 const STACKED_FINDER_QUERY = "(max-width: 1000px)";
 const desktopFinderSnapshot = () => false;
@@ -239,7 +233,6 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
             <ul className="analysis-finder__cards">
               {group.cards.map((card) => {
                 const saved = savedIds.includes(card.id);
-                const moreSame = card.sameFile.length - SAME_FILE_SHOWN;
                 return (
                   <li key={card.id} className="finder-card" data-tool-id={card.id}>
                     <div className="finder-card__head">
@@ -249,11 +242,16 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
                       </button>
                     </div>
                     <p className="finder-card__question">{card.question}</p>
-                    {(card.example || card.outputs.length > 0 || card.answer) && (
-                      <p className={`finder-card__result${card.example ? " is-example" : ""}`}>
+                    {card.preview && <div className="finder-card__visual">
+                      <FinderExampleFigure preview={card.preview} locale={locale} />
+                      {card.preview.headline && <p className="finder-card__result is-example"><span>{T.example}</span>{card.preview.headline}</p>}
+                      <p className="finder-card__limit">{card.preview.caption}</p>
+                    </div>}
+                    {!card.preview && (card.example || card.outputs.length > 0 || card.answer) && (
+                      <div className={`finder-card__result${card.example ? " is-example" : ""}`}>
                         <span>{card.example ? T.example : T.answer}</span>
-                        {card.example || (card.outputs.length ? card.outputs.join(" · ") : card.answer)}
-                      </p>
+                        {card.example ? <p>{card.example}</p> : card.outputs.length ? <ul>{card.outputs.map((output) => <li key={output}>{output}</li>)}</ul> : <p>{card.answer}</p>}
+                      </div>
                     )}
                     {card.members.length > 0 && (
                       <div className="finder-card__members">
@@ -262,7 +260,6 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
                           {card.members.map((member) => (
                             <li key={member.id} data-tool-id={member.id}>
                               <Link href={localizedHref(member.href, locale)} onClick={() => track("finder_tool_clicked", { ...card, id: member.id })}>{member.name}</Link>
-                              <small>{member.question}</small>
                             </li>
                           ))}
                         </ul>
@@ -270,25 +267,15 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
                     )}
                     {card.source && (
                       <div className="finder-card__data">
-                        <p><span>{T.file}</span><span><strong>{card.source.file}</strong> <small>{card.source.family}</small></span></p>
-                        {card.required.length > 0 && <p><span>{T.required}</span><span>{card.required.join(" · ")}</span></p>}
-                        {card.optional.length > 0 && <p><span>{T.optional}</span><span>{card.optional.join(" · ")}</span></p>}
+                        <FileSpreadsheet size={16} strokeWidth={1.5} aria-hidden="true" />
+                        <p><span>{T.file}</span><strong>{card.source.file}</strong></p>
                       </div>
                     )}
                     <div className="finder-card__actions">
-                      {card.exampleHref && <Link className="btn secondary" href={card.exampleHref} onClick={() => track("finder_example_clicked", card)}>{T.exampleCta}</Link>}
+                      {card.exampleHref && <Link className="btn secondary" href={card.exampleHref} onClick={() => track("finder_example_clicked", { ...card, id: card.preview?.toolId || card.id })}>{T.exampleCta}</Link>}
                       <Link className="finder-card__tool" href={localizedHref(card.href, locale)} onClick={() => track("finder_tool_clicked", card)}>{T.toolCta} →</Link>
                       <button type="button" className="finder-card__prep" onClick={(event) => { prepTrigger.current = event.currentTarget; setPrepId(card.id); track("finder_prep_opened", card); }}>{T.prep}</button>
                     </div>
-                    {card.sameFile.length > 0 && (
-                      <p className="finder-card__same">
-                        <span>{T.sameFile}</span>
-                        {card.sameFile.slice(0, SAME_FILE_SHOWN).map((item, index) => (
-                          <span key={item.id}>{index > 0 && " · "}<Link href={localizedHref(item.href, locale)}>{item.name}</Link></span>
-                        ))}
-                        {moreSame > 0 && <span> · {T.more(moreSame)}</span>}
-                      </p>
-                    )}
                     {!grouped && <p className="finder-card__situation">{card.situation.label} {card.situation.title}</p>}
                   </li>
                 );
@@ -314,6 +301,10 @@ export default function AnalysisFinder({ locale = "ko", initialSituation = "all"
             <button type="button" className="btn ghost" onClick={() => setPrepId(null)}>{T.close}</button>
           </header>
           <AnalysisDataPrep toolId={prepCard.id} locale={locale} exampleHref={prepCard.exampleHref} toolHref={localizedHref(prepCard.href, locale)} />
+          {prepCard.sameFile.length > 0 && <nav className="finder-prep-dialog__related" aria-label={T.sameFile}>
+            <h3>{T.sameFile}</h3>
+            <ul>{prepCard.sameFile.map((item) => <li key={item.id}><Link href={localizedHref(item.href, locale)}>{item.name}</Link></li>)}</ul>
+          </nav>}
         </>}
       </ModalDialog>
     </section>
