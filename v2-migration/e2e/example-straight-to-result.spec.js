@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { toolResultSelector } from "./support/toolResult";
 import { idToSlug, publishedToolIds } from "../src/lib/routeMap";
 
 // 예시는 "결과가 어떻게 나오나"를 보여 주는 길이다. 예시를 눌렀는데 매핑 확인·분석하기
@@ -15,7 +16,7 @@ for (const toolId of TOOLS) {
     test.setTimeout(150_000);
     await page.goto(idToSlug[toolId]);
     const example = page.getByRole("button", { name: /예시 데이터로 결과 바로 보기/ }).first();
-    const card = page.locator(".result-action-card").first();
+    const card = page.locator(toolResultSelector(toolId)).first();
     await expect(example.or(card)).toBeVisible({ timeout: 30_000 });
     // 빌드본은 버튼이 서버 렌더로 먼저 보이고 하이드레이션이 뒤에 붙는다 — 그 사이 클릭은 사라진다.
     await expect(async () => {

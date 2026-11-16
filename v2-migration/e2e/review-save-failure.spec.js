@@ -33,6 +33,9 @@ for (const locale of ["ko", "en"]) {
     await expect(openSave).toBeFocused();
     await expect(actual).toHaveValue("2500");
     await openSave.click();
+    // Escape belongs to the reopened dialog only after it has acquired focus.
+    await expect(dialog).toBeVisible();
+    await expect(close).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(openSave).toBeFocused();

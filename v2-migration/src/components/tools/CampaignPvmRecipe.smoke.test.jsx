@@ -118,9 +118,11 @@ describe("CampaignPvm — 명령 입력창", () => {
   it.each(["ko", "en"])("%s: 날짜는 독립 적용·취소되며 실제 집계와 기간 명령까지 연결된다", (locale) => {
     const en = locale === "en";
     const { container } = render(<CampaignPvm locale={locale} />);
+    // 결과가 나오면 기간 선택기는 조건 바꾸기 창 안에 있다(§1.1c). 날짜 창은 그 위에 겹쳐 열린다.
+    fireEvent.click(screen.getByRole("button", { name: en ? "Change settings" : "조건 바꾸기" }));
     const open = (comparison = false) => {
       fireEvent.click(screen.getByRole("button", { name: comparison ? (en ? /^Comparison period/ : /^비교 기간/) : (en ? /^Analysis period/ : /^분석 기간/) }));
-      return within(screen.getByRole("dialog"));
+      return within(screen.getAllByRole("dialog").at(-1));
     };
     let dialog = open();
     fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-23" } });
@@ -130,7 +132,7 @@ describe("CampaignPvm — 명령 입력창", () => {
     fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-23" } });
     fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
     expect(useAppStore.getState().dashboardFilter).toMatchObject({ dateStart: "2026-01-23", dateEnd: "2026-01-25", comparisonStart: "2026-01-12", comparisonEnd: "2026-01-18" });
-    expect(container.querySelector(".analysis-period-notes").textContent).toContain(en ? "3 days" : "3일");
+    expect(document.querySelector(".analysis-period-notes").textContent).toContain(en ? "3 days" : "3일");
     // 시작>종료를 제출해도 이전 결과와 필터를 유지한다.
     dialog = open(true);
     fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-20" } });
@@ -149,10 +151,15 @@ describe("CampaignPvm — 명령 입력창", () => {
     const result = container.querySelector("#s-pvm-result .result-action-card");
     expect(result.textContent).toContain(cpi("2026-01-05", "2026-01-11"));
     expect(result.textContent).toContain(cpi("2026-01-23", "2026-01-25"));
+    // 조건 창을 닫고 입력창으로 같은 기간을 바꾼다 — 결과 위 맥락 줄이 실제 계산 기간을 따라간다.
+    fireEvent.click(screen.getByRole("button", { name: en ? "Close" : "닫기" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     type(en ? "2 weeks" : "2주");
     choose(en ? "Compare with 2 weeks ago" : "2주 전과 비교");
     expect(useAppStore.getState().dashboardFilter.dateStart).toBeNull();
-    expect([...container.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
+    const line = container.querySelector(".report-context__line").textContent;
+    expect(line).toContain("2026-01-19 – 2026-01-25");
+    expect(line).toContain("2026-01-05 – 2026-01-11");
   });
 
   it.each(["ko", "en"])("%s: 선택한 축 컬럼이 사라지면 칩을 보존하고 사유를 보인다", (locale) => {
@@ -266,6 +273,7 @@ describe("CampaignPvm — 명령 입력창", () => {
     render(<CampaignPvm />);
     expect(screen.getByRole("button", { name: "플랫폼: iOS 빼기" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "기간 2026-01-12 ~ 끝 빼기" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     expect(screen.getByRole("button", { name: /^분석 기간/ })).toBeTruthy();
   });
 

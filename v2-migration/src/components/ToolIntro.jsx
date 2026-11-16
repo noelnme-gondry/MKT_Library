@@ -1,5 +1,7 @@
+"use client";
 import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 import { toolDisplayTitle } from "@/lib/toolIndex";
+import { useAppStore } from "@/store/useDataStore";
 
 const INTRO = {
   "5-4": {
@@ -59,6 +61,7 @@ const INTRO = {
 const HEADER_COPY = { ko: { aria: "도구 안내" }, en: { aria: "About this tool" } };
 
 export default function ToolIntro({ toolId, locale = "ko" }) {
+  const analyzed = useAppStore(state => state.isGroupAnalyzed(toolId));
   const localeKey = locale === "en" ? "en" : "ko";
   const searchContent = getResponseSubtoolContent(toolId, localeKey);
   const copy = INTRO[toolId]?.[localeKey] || (searchContent ? [searchContent.h1, searchContent.intro] : null);
@@ -66,11 +69,11 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
   if (!copy) return null;
   // 제목은 레지스트리 이름, INTRO의 검색어형 이름은 제목 밑 한 줄(toolDisplayTitle).
   const { name, alias } = toolDisplayTitle(toolId, localeKey, copy[0]);
-  return <header className="tool-context-header tool-instrument-header tool-instrument-header--surface" aria-label={T.aria} data-tool-id={toolId}>
+  return <header className="tool-context-header tool-instrument-header tool-instrument-header--surface" aria-label={T.aria} data-tool-id={toolId} data-results={analyzed ? "true" : undefined}>
     <div className="tool-instrument-header__copy">
       <h1 className="tool-context-header__title tool-instrument-header__title">{name}</h1>
-      {alias && <p className="tool-instrument-header__alias">{alias}</p>}
-      <p className="tool-instrument-header__description">{copy[1]}</p>
+      {!analyzed && alias && <p className="tool-instrument-header__alias">{alias}</p>}
+      {!analyzed && <p className="tool-instrument-header__description">{copy[1]}</p>}
     </div>
   </header>;
 }

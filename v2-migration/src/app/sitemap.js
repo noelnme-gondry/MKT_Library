@@ -135,7 +135,6 @@ export default function sitemap() {
   const enLandingEntries = [
     { url: `${BASE}/en`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${BASE}/en/start`, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE}/en/data-guide`, lastModified: routeLastModified("data-guide"), changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/en/guide`, changeFrequency: "monthly", priority: 0.6 },
   ];
 

@@ -33,11 +33,13 @@ describe("정확한 표준 필드명이 별칭과의 충돌을 가른다", () =>
     expect(scored.conflicts).toEqual([{ field: "channel", headers: ["channel", "Channel"] }]);
   });
 
-  it("홈 샘플은 효율 도구 5개가 확인 대기 없이 바로 계산 대상이 된다", () => {
+  // 홈 샘플은 소재 단위 행이라 소재 피로도(9-6)도 된다 — 광고비 cost를 소재 도구가 spend로 읽는다
+  // (evaluateAnalysisEligibility, 2026-10-27). 그 전에는 같은 열을 공용 매핑이 cost로 덮어 9-6이 늘 막혔다.
+  it("홈 샘플은 효율 도구 5개와 소재 피로도가 확인 대기 없이 바로 계산 대상이 된다", () => {
     const ready = computeCsvEligibility({ ...buildSampleJourney("ko"), locale: "ko" })
       .filter((result) => result.status === "ready")
       .map((result) => result.toolId)
       .sort();
-    expect(ready).toEqual(["5-2", "5-21", "5-22", "5-25", "5-3"]);
+    expect(ready).toEqual(["5-2", "5-21", "5-22", "5-25", "5-3", "9-6"]);
   });
 });

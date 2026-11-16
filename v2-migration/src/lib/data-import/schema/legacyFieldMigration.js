@@ -1,3 +1,4 @@
+import { ADVANCED_FIELDS } from "../../advanced-marketing/fields";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { CANONICAL_FIELDS } from "./canonicalFields";
 import { MULTITOUCH_FIELDS } from "../../attributionReports/fields";
@@ -19,6 +20,7 @@ export function canonicalKeysForToolLegacyField(toolId, legacyKey) {
 // V1 키 중 V2에서 같은 의미로 합쳐지는 것만 명시한다. 나머지는 이번 기준선에서
 // 억지로 역할을 만들지 않고 legacy_passthrough로 보존한다.
 export const LEGACY_FIELD_MIGRATIONS = Object.freeze({
+  ...Object.fromEntries(Object.keys(ADVANCED_FIELDS).map(key => [key, key === "acquisition_cost" ? exact("customer_acquisition_cost", { memberHint: "initial_purchase" }) : exact(key)])),
   count: exact("observed_outcome_count", { requiresConfirmation: true }),
   ...Object.fromEntries(Object.keys(MULTITOUCH_FIELDS).filter(key => key.startsWith("af_")).map(key => [key, exact(key)])),
   date: exact("date"),

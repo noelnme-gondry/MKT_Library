@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { beforeAll, afterAll, beforeEach, afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
@@ -7,8 +7,20 @@ import ProjectReviewWorkspace from "./ProjectReviewWorkspace";
 import { confirmProjectExit, useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 vi.mock("./weekly-review/WeeklyReviewScreen", () => ({ default: function Review() { const [text, setText] = useState(""); useReviewDraftGuard(Boolean(text)); return <input aria-label="Draft decision" value={text} onChange={event => setText(event.target.value)} />; } }));
 vi.mock("./ProjectsPage", () => ({ default: ({ onReview }) => <button onClick={onReview}>Open selected review</button> }));
+// JSDOM은 실제 브라우저의 element.scrollIntoView를 구현하지 않는다. rAF가
+// 테스트 종료 전에 실행되는지에 따라 기존 주간 진입 테스트가 간헐 실패했다.
+const scrollIntoView = vi.fn();
+const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+beforeAll(() => Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView }));
+afterAll(() => { if (originalScroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll); else delete HTMLElement.prototype.scrollIntoView; });
+beforeEach(() => scrollIntoView.mockClear());
 beforeEach(() => { window.history.replaceState(null, "", "/weekly-review"); useAppStore.setState({ ...useAppStore.getInitialState(), projectsReady: true, activeProjectId: "a", projects: [{ id: "a", name: "Client A" }, { id: "b", name: "Client B" }] }); });
 afterEach(cleanup);
+it("scrolls to the weekly section through the browser API after opening it", async () => {
+  render(<ProjectReviewWorkspace />);
+  fireEvent.click(screen.getByRole("button", { name: "주간 성과 비교" }));
+  await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" }));
+});
 it.each(["ko", "en"])("keeps the draft when managing projects and returning (%s)", locale => {
   const en = locale === "en";
   render(<ProjectReviewWorkspace locale={locale} />);

@@ -4,13 +4,15 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-// 굵기는 세 단만 쓴다: 본문 400 · 강조·라벨·버튼 600 · 제목 700.
+// 굵기는 두 단만 쓴다: 본문 400 · 제목·강조·라벨·버튼 600(2026-11-09 전까지는 제목 700까지 세 단).
 // 2026-09-24 실측에서 CSS에 굵기가 25종(430·450·520·540·550·560·570·590·610·620·
 // 640·650·680·690·720·730·740·750·760·780·800…)이었고, 한 화면 첫 화면에만 8~10종이
 // 섞여 "볼드가 제멋대로"로 읽혔다(사용자 지적). 사이값은 눈으로 구분되지 않고 위계만
 // 흐린다. 이 가드는 값이 아니라 "세 단에서만 고른다"는 계약을 지킨다.
 // @font-face의 굵기 범위(`100 900`)는 글꼴이 지원하는 축이지 선택이 아니므로 대상 밖.
-const ALLOWED = new Set(["400", "600", "700", "normal", "bold", "inherit"]);
+// 2026-11-09 unslop: 제목 700을 걷고 두 단(400·600)으로 — 위계는 굵기가 아니라 크기·색으로 만든다
+// (굵은 제목이 화면마다 소리치던 것이 "AI 티"로 읽혔다). 700·bold가 다시 들어오면 실패한다.
+const ALLOWED = new Set(["400", "600", "normal", "inherit"]);
 const SRC_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 function collect(dir, ext, acc = []) {
@@ -39,14 +41,14 @@ export function offScaleInlineWeights(source) {
     .filter((m) => [...m[1].matchAll(/\b(\d{3})\b/g)].some((n) => !ALLOWED.has(n[1]))).map((m) => m[0].trim());
 }
 
-describe("글자 굵기는 400 · 600 · 700 세 단", () => {
+describe("글자 굵기는 400 · 600 두 단", () => {
   const cssFiles = collect(path.join(SRC_ROOT, "app"), [".css"]).concat(collect(path.join(SRC_ROOT, "components"), [".css"]));
   const jsFiles = collect(SRC_ROOT, [".jsx", ".js"]);
 
   it("스캐너가 실제로 무언가를 센다(0건으로 조용히 통과하지 않게)", () => {
     const total = cssFiles.reduce((n, f) => n + (readFileSync(f, "utf8").match(/font-weight:/g) || []).length, 0);
     expect(total).toBeGreaterThan(200);
-    expect(offScaleCssWeights(".a{font-weight: 650} .b{font: 750 12px x}")).toHaveLength(2);
+    expect(offScaleCssWeights(".a{font-weight: 650} .b{font: 750 12px x} .c{font-weight: 700}")).toHaveLength(3);
     expect(offScaleCssWeights("@font-face{font-weight:100 900} .a{font-weight: 600}")).toHaveLength(0);
     expect(offScaleInlineWeights("style={{ fontWeight: 650 }} x={{ fontWeight: on ? 700 : 500 }}")).toHaveLength(2);
   });

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { chooseDashboardView } from './support/dashboardView.js';
 const paid = () => ({ plan:'paid', account:true, payment:true, expiresAt:Date.now()+86400000, offlineUntil:Date.now()+3600000 });
 for (const locale of ['ko','en']) {
   test(`all dashboard tabs retain analysis surfaces and free controls (${locale})`, async ({page}) => {
@@ -12,11 +13,13 @@ for (const locale of ['ko','en']) {
     const tabs=await page.locator('[id^="dashboard-tab-"]').evaluateAll(nodes=>nodes.map(node=>node.id));
     expect(tabs).toHaveLength(9);
     for (const id of tabs) {
-      await page.locator(`#${id}`).click();
+      await chooseDashboardView(page,id);
       await expect(page.locator('.dashboard-block-grid')).toBeVisible();
-      const surfaces=page.locator('.dashboard-layout-block > .block');
+      // 2026-11 Paper & Ink: KPI·차트 구획은 흰 상자가 아니라 종이 위 열린 구획(투명 바탕 + 위쪽 선)이다.
+      const surfaces=page.locator('.dashboard-layout-block > .block:not(.dashboard-supporting-charts), .dashboard-viz-workbench .kpi-card, .dashboard-explorer, .dashboard-supporting-charts .chart-card');
+      expect(await surfaces.count()).toBeGreaterThan(0);
       for(let i=0;i<await surfaces.count();i++) {
-        if(await surfaces.nth(i).isVisible()) expect(await surfaces.nth(i).evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
+        if(await surfaces.nth(i).isVisible()) expect(await surfaces.nth(i).evaluate(el=>[getComputedStyle(el).backgroundColor, parseFloat(getComputedStyle(el).borderTopWidth) >= 1])).toEqual(['rgba(0, 0, 0, 0)', true]);
       }
       expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
     }
@@ -35,7 +38,7 @@ for (const locale of ['ko','en']) {
     await page.addInitScript(()=>localStorage.setItem('mkt-library-source-survey-answered','1'));
     await page.goto(`${en?'/en':''}/dashboard?example=1`);
     await expect(page.locator('#s-kpi')).toBeVisible();
-    await page.locator('#dashboard-tab-pacing').click();
+    await chooseDashboardView(page,'pacing');
     const initial=await page.locator('#s-pace .ab-stat-value').first().textContent();
     await page.getByRole('button',{name:t('대시보드 편집 · Pro','Edit dashboard · Pro'),exact:true}).click();
     const editor=page.locator('.dashboard-editor');
@@ -102,11 +105,11 @@ for (const locale of ['ko','en']) {
     await page.locator('#s-pace').getByRole('radio',{name:t('비용','Cost'),exact:true}).click();
     await page.getByRole('button',{name:t('취소','Cancel'),exact:true}).click();
     await expect(page.locator('#s-pace').getByRole('radio',{name:t('설치','Installs'),exact:true})).toHaveAttribute('aria-checked','true');
-    await page.reload(); await page.goto(`${en?'/en':''}/dashboard?example=1`); await page.locator('#dashboard-tab-pacing').click();
+    await page.reload(); await page.goto(`${en?'/en':''}/dashboard?example=1`); await chooseDashboardView(page,'pacing');
     await expect(page.locator('.dashboard-custom-block')).toHaveCount(2);
     await expect(page.locator('#s-pace').getByRole('radio',{name:t('설치','Installs'),exact:true})).toHaveAttribute('aria-checked','true');
     entitlement=null;
-    await page.reload();await page.goto(`${en?'/en':''}/dashboard?example=1`);await page.locator('#dashboard-tab-pacing').click();
+    await page.reload();await page.goto(`${en?'/en':''}/dashboard?example=1`);await chooseDashboardView(page,'pacing');
     await expect(page.locator('.dashboard-custom-block')).toHaveCount(2);
     await page.getByRole('button',{name:t('대시보드 편집 · Pro','Edit dashboard · Pro'),exact:true}).click();
     await expect(editor).toHaveCount(0);

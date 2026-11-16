@@ -12,6 +12,8 @@
  * 셋 다 mergeEvents()로 합치고, 같은 (날짜·라벨)은 한 건으로 접는다.
  * ============================================================ */
 
+import { reimportableCsvBody, restoreCsvRecord } from "./download";
+
 // 액션 종류. value는 CSV·저장에 쓰는 안정 키이므로 바꾸지 말 것(저장본 호환).
 export const EVENT_TYPES = [
   { value: "listing", ko: "스토어 등록정보", en: "Store listing" },
@@ -103,7 +105,7 @@ export function eventsFromRows(rows, field = "event") {
 
 /** ② 별도 이벤트 CSV. 한 날짜에 여러 행을 두면 그대로 여러 건이 된다. */
 export function eventsFromEventRows(rows) {
-  return mergeEvents(rows || []);
+  return mergeEvents((rows || []).map(row => restoreCsvRecord(row, ["event", "note"])));
 }
 
 /**
@@ -143,16 +145,12 @@ export function parseEventText(text) {
   return mergeEvents(events);
 }
 
-const csvCell = (value) => {
-  const text = value == null ? "" : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-
 /** 저장·재업로드용 CSV. 그대로 ②경로로 다시 올릴 수 있는 헤더를 쓴다. */
 export function eventsToCsv(events) {
   const header = ["date", "event", "type", "note"];
-  const lines = [header, ...mergeEvents(events).map((event) => [event.date, event.label, event.type, event.note])];
-  return lines.map((line) => line.map(csvCell).join(",")).join("\r\n") + "\r\n";
+  const rows = mergeEvents(events).map(event => [event.date, event.label, event.type, event.note]);
+  // 기존 호출자가 BOM을 붙이는 저장 계약을 유지한다.
+  return reimportableCsvBody(header, rows).slice(1);
 }
 
 /**

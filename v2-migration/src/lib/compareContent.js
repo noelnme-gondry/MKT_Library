@@ -140,7 +140,8 @@ const CONTENT = {
   },
 
   "budget-allocation-methods": {
-    toolIds: ["5-3", "5-22", "5-21"],
+    // 증액 여력(구 5-22)은 5-3의 보기다(product-ssot §4.2a) — 링크는 같은 페이지 하나로 충분하고, 플래너가 예산 계획의 출발점이다.
+    toolIds: ["5-3", "5-31", "5-21"],
     ko: {
       eyebrow: "방법 비교",
       title: "광고 예산 배분 방법 비교 — 균등·과거 CPA·한계효율",

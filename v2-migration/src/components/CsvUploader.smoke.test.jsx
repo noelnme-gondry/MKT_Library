@@ -319,14 +319,43 @@ describe("CsvUploader render smoke", () => {
     fireEvent.change(container.querySelector('input[type="file"]'), {
       target: { files: [new File(["late-secret"], "cancelled-private.csv", { type: "text/csv" })] },
     });
-    fireEvent.click(screen.getByRole("button", { name: "가져오기 취소" }));
-    // CSV는 이제 파싱 전 file.arrayBuffer()로 인코딩을 복원하므로 Papa.parse가 마이크로태스크
-    // 뒤에 호출된다 — 콜백을 수동 발화하기 전 호출을 기다린다.
+    // 워커가 시작된 뒤 취소하는 경로와 파일을 읽는 중 취소하는 경로를 따로 확인한다.
     await waitFor(() => expect(Papa.parse).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "가져오기 취소" }));
     await act(async () => parseOptions.complete({ data: [], meta: { fields: [] } }));
 
     expect(window.gtag.mock.calls.filter((call) => call[1] === "data_import_failed")).toHaveLength(0);
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("does not start a CSV worker after cancelling during file decoding", async () => {
+    useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
+    let finishRead;
+    const file = new File(["date,cost\n2026-01-01,100"], "cancelled.csv");
+    file.arrayBuffer = () => new Promise(resolve => { finishRead = resolve; });
+    const { container } = render(<CsvUploader toolId="5-2" />);
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "가져오기 취소" }));
+    await act(async () => finishRead(new TextEncoder().encode("date,cost\n2026-01-01,100").buffer));
+    expect(Papa.parse).not.toHaveBeenCalled();
+    expect(useAppStore.getState().csvData.raw).toEqual([]);
+  });
+
+  it("aborts the active CSV parser and does not apply its buffered rows", async () => {
+    useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
+    const parser = { abort: vi.fn() };
+    let parseOptions;
+    Papa.parse.mockImplementation((_file, options) => {
+      parseOptions = options;
+      options.chunk({ data: [["date", "cost"], ["2026-01-01", "100"]] }, parser);
+    });
+    const { container } = render(<CsvUploader toolId="5-2" />);
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [new File(["data"], "cancelled.csv")] } });
+    await waitFor(() => expect(Papa.parse).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "가져오기 취소" }));
+    expect(parser.abort).toHaveBeenCalledOnce();
+    await act(async () => parseOptions.complete());
+    expect(useAppStore.getState().csvData.raw).toEqual([]);
   });
 
   it("tracks a required-field blocker once with aggregate counts only", async () => {

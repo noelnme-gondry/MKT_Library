@@ -11,6 +11,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { CREATIVE_STATS } from "@/utils/creativeMath";
 import { useAppStore } from "@/store/useDataStore";
 import CreativeAnalyzer from "@/components/tools/CreativeAnalyzer";
+import { buildToolDemo } from "@/lib/toolDemo";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -149,6 +150,16 @@ function seedWithCpaRoasData() {
 
 describe("CreativeAnalyzer render smoke", () => {
   beforeEach(() => seedNoData());
+  it.each(["ko", "en"])("asks to review fatigue timing instead of launching replacements when no immediate alert exists (%s)", locale => {
+    useAppStore.getState().setCurrentRouteId("9-6");
+    useAppStore.getState().setCsvData(buildToolDemo("9-6", locale));
+    useAppStore.getState().setGroupAnalyzed("9-6");
+    const { container } = render(<CreativeAnalyzer locale={locale} />);
+    const next = container.querySelector(".result-next-action");
+    expect(next.textContent).toContain(locale === "en" ? "Recheck fatigue signals" : "피로 신호를 다시 확인");
+    expect(next.textContent).not.toMatch(/Launch a replacement|대체 소재를 투입/);
+    expect(container.querySelector(".result-action-card__stats .is-primary").textContent).toContain(locale === "en" ? "Fatigue signals" : "피로 신호");
+  });
   it("waits for explicit analysis before deriving creative metrics", () => {
     seedWithData();
     useAppStore.setState({ analyzedByGroup: {} });

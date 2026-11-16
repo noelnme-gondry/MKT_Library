@@ -6,7 +6,8 @@
 // 예외는 주석이 아니라 DOM 표식 + 사유로만: data-design-exempt="<rule>: <reason>".
 // 표식은 요소 자신 또는 조상에 둔다. 사유가 비면 예외로 인정하지 않는다.
 
-export const ALLOWED_WEIGHTS = [400, 600, 700];
+// 2026-11-09 unslop: 제목 700 폐지 — 렌더된 굵기도 두 단(브라우저 기본 bold 포함).
+export const ALLOWED_WEIGHTS = [400, 600];
 
 // 글자에 쓸 수 있는 색 — 본문·보조 회색·파랑(선택·링크)·빨강/초록/노랑(나빠짐/좋아짐/주의)과
 // 채운 버튼 위 글자. 이 밖의 색(하드코딩 #f87171·#22c55e 등)은 화면마다 새 색을 만든다(A1).
@@ -110,6 +111,9 @@ export async function measureDesignRules(page) {
     // 4) 박스 안 박스(테두리+배경+모서리). 버튼·입력 같은 컨트롤은 박스가 아니다.
     // 컨트롤(버튼·입력·토글 묶음·툴팁)과 글줄 안 배지는 상자가 아니다.
     const control = (el) => el.matches("button, a, input, select, textarea, label, summary, [role='button'], [role='tab'], [role='radio'], [role='switch'], [role='radiogroup'], [role='tablist'], [role='tooltip'], [role='group'], .btn, code, kbd, pre, mark, [class*='badge'], [class*='chip'], .pill")
+      // 공용 PillGroup의 시각 래퍼와 의미를 가진 자식 그룹은 같은 컨트롤이다.
+      // 바깥에 잘못 붙던 중복 ARIA를 요구하지 않는다. 같은 클래스의 일반 상자는 계속 검사한다.
+      || Boolean(el.matches(".ab-pillgroup") && el.querySelector(':scope > [role="radiogroup"]'))
       || getComputedStyle(el).display.startsWith("inline");
     // 상자 = 모서리가 둥글고, (테두리 세 변 이상 + 바탕) 이거나 바탕색이 바로 뒤 바탕과 다른 면.
     // 테두리 없이 바탕색만 다른 안쪽 면도 눈에는 상자 안 상자다.
@@ -222,6 +226,8 @@ export async function measureDesignRules(page) {
       if (st.textTransform === "uppercase" && /[a-z]/i.test(t.text)) caps.push(`uppercase "${t.text}"`);
       // ROAS·CPA 같은 약어는 원래 대문자다 — 여러 단어로 된 대문자 라벨(START HERE 등)만 잡는다.
       else if (/^[A-Z][A-Z0-9·&/-]*( [A-Z0-9·&/-]+)+$/.test(t.text) && parseFloat(st.letterSpacing) > 0.5) caps.push(`spaced caps "${t.text}"`);
+      // 2026-11-09 재설계 후 되돌림: 명조·고정폭을 일부에만 입히자 한 화면에 글꼴 셋이 섞여 누더기가 됐다(사용자 지적).
+      // 숫자는 본문 고딕 + tabular-nums로 자릿수만 맞춘다.
       if (/\d/.test(t.text) && /mono/i.test(st.fontFamily.split(",")[0])) monoNumbers.push(`"${t.text}"`);
     }
 
@@ -293,6 +299,10 @@ export async function measureDesignRules(page) {
       }
     }
     const titleInsets = [...document.querySelectorAll(".page-sticky-bar:has(h1)")].filter(visible).flatMap(node => {
+      const style = getComputedStyle(node);
+      // 위·아래 머리카락 선 하나는 열린 구획이지 상자가 아니다(2026-11 재설계) — 바탕이나 옆 테두리가 있을 때만 그린 면이다.
+      const filled = !["rgba(0, 0, 0, 0)", "transparent"].includes(style.backgroundColor) || style.backgroundImage !== "none" || [style.borderRightWidth, style.borderLeftWidth].some(width => parseFloat(width) > 0);
+      if (!filled) return []; // Only a drawn title surface needs an internal gutter.
       const box = node.getBoundingClientRect(), title = node.querySelector("h1").getBoundingClientRect();
       const minimum = window.innerWidth <= 768 ? 15 : 23;
       return title.left - box.left < minimum ? [`${label(node)}: title has no inner gutter`] : [];

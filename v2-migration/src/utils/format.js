@@ -49,8 +49,8 @@ export function fmtCurrency(value, opts = {}) {
   const v = Number(value);
   const sym = CURRENCY_SYMBOL[currency] || "₩";
   let digits = currency === "USD" ? 2 : 0;
-  if (precise && Math.abs(v) < 10) digits = 2;
-  return sym + v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (precise && v !== 0 && Math.abs(v) < 10) digits = 2;
+  return (v < 0 ? "−" : "") + sym + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 // Percent. `value` is a ratio by default (0.123 → "12.3%"); pass asRatio:false
@@ -77,6 +77,23 @@ export function fmtCompact(value) {
   if (abs >= 1e8) return sign + (abs / 1e8).toFixed(abs >= 1e9 ? 0 : 1) + "억";
   if (abs >= 1e4) return sign + (abs / 1e4).toFixed(abs >= 1e5 ? 0 : 1) + "만";
   return sign + abs.toLocaleString("en-US");
+}
+
+// Compact money for dense executive tables: KO KRW uses 만·억 (₩490만), others K·M·B (₩4.9M).
+// Below 10,000 the full amount is shown. Sign uses the minus sign (−).
+export function fmtCurrencyCompact(value, opts = {}) {
+  const { currency = "KRW", locale = "ko" } = opts;
+  if (value == null || !Number.isFinite(Number(value))) return "—";
+  const v = Number(value);
+  const abs = Math.abs(v);
+  const sign = v < 0 ? "−" : "";
+  const sym = CURRENCY_SYMBOL[currency] || "₩";
+  if (abs < 1e4) return sign + fmtCurrency(abs, { currency });
+  if (locale !== "en" && currency === "KRW") return sign + sym + fmtCompact(abs);
+  const units = [[1e9, "B"], [1e6, "M"], [1e3, "K"]];
+  const [size, suffix] = units.find(([unit]) => abs >= unit);
+  const scaled = abs / size;
+  return `${sign}${sym}${scaled.toFixed(scaled >= 100 ? 0 : 1)}${suffix}`;
 }
 
 // Parse a possibly comma-formatted string → number, or null.

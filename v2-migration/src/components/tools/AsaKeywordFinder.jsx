@@ -9,6 +9,8 @@ import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
+import ReportContext from "@/components/ds/ReportContext";
+import DeclaredConditions from "@/components/ds/DeclaredConditions";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
@@ -68,6 +70,19 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
     { key: "action", label: tr("CPT 조치", "CPT action"), fmt: (value, row) => <><strong className={`asa-tool__action asa-tool__action--${value.code}`}>{actionCopy(value.code, locale)}</strong>{row.recommendedCpt != null && <small className="asa-tool__sub">{tr("권장", "Target")} {money(row.recommendedCpt, locale)} ({value.pct > 0 ? "+" : ""}{Math.round(value.pct * 100)}%)</small>}</> },
   ];
 
+  const thresholdText = (value) => String(value || "").trim() || tr("CSV 값", "from CSV");
+  const setupFields = (
+    <>
+        <p>{tr("CSV에 캠페인 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요. 예산 소진률은 캠페인 단위로 계산하고, 검색어 성과와 함께 CPT 조치에 반영합니다. 입력값은 이 화면에서만 사용됩니다.", "When campaign daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below. Pacing is calculated per campaign, then paired with each search term's performance for CPT actions. These inputs are used only in this screen.")}</p>
+        <div className="asa-tool__inputs">
+          <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input disabled={!clientReady} inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
+          <label>{tr("목표 CPA", "Target CPA")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
+          <label>{tr("목표 CPT", "Target CPT")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
+        </div>
+        <p className="asa-tool__note">{tr("소진이 예산의 70% 미만이면서 목표를 달성하면 CPT를 +10%(40% 미만이면 +15%) 제안합니다. 110%를 넘겨 소진하면서 목표를 못 맞추면 −10%(140% 초과면 −15%)를 제안합니다. 목표가 없으면 임의로 입찰을 추천하지 않습니다.", "Below 70% pacing and meeting target: suggest +10% CPT (+15% below 40%). Above 110% pacing while missing target: suggest −10% (−15% above 140%). Without a target, the tool will not invent a bid recommendation.")}</p>
+    </>
+  );
+
   return (
     <ToolPageShell
       toolId="5-26"
@@ -77,28 +92,32 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
       summary={<p>{tr("Search Match·Broad 검색어를 Exact로 승격할 후보와, 예산 대비 소진률·목표 CPA를 함께 반영한 CPT 증감 제안을 만듭니다. 실제 변경 전에는 최근 검색어와 앱스토어 콘솔의 정책·입찰 한도를 확인하세요.", "Find Exact-promotion candidates from Search Match and Broad terms, then combine pacing and target CPA for CPT changes. Check recent terms, policy, and bid limits in the Apple Ads console before changing anything.")}</p>}
       toc={hasData && analyzed ? [{ id: "asa-summary", title: tr("조치 요약", "Action summary") }, { id: "asa-actions", title: tr("키워드별 조치", "Keyword actions") }] : []}
     >
-      <section className="block asa-tool__setup" id="asa-setup">
-        <h2 className="section-title">{tr("판정 기준", "Decision thresholds")}</h2>
-        <p>{tr("CSV에 캠페인 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요. 예산 소진률은 캠페인 단위로 계산하고, 검색어 성과와 함께 CPT 조치에 반영합니다. 입력값은 이 화면에서만 사용됩니다.", "When campaign daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below. Pacing is calculated per campaign, then paired with each search term's performance for CPT actions. These inputs are used only in this screen.")}</p>
-        <div className="asa-tool__inputs">
-          <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input disabled={!clientReady} inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
-          <label>{tr("목표 CPA", "Target CPA")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
-          <label>{tr("목표 CPT", "Target CPT")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
-        </div>
-        <p className="asa-tool__note">{tr("소진이 예산의 70% 미만이면서 목표를 달성하면 CPT를 +10%(40% 미만이면 +15%) 제안합니다. 110%를 넘겨 소진하면서 목표를 못 맞추면 −10%(140% 초과면 −15%)를 제안합니다. 목표가 없으면 임의로 입찰을 추천하지 않습니다.", "Below 70% pacing and meeting target: suggest +10% CPT (+15% below 40%). Above 110% pacing while missing target: suggest −10% (−15% above 140%). Without a target, the tool will not invent a bid recommendation.")}</p>
-      </section>
+      {/* 결과가 나오면 판정 기준은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계). */}
+      {hasData && analyzed
+        ? <div id="asa-setup"><ReportContext locale={locale} dialogTitle={tr("판정 기준", "Decision thresholds")} parts={[
+          { text: tr("판정 기준", "Thresholds"), emphasis: true },
+          { text: tr(`일 예산 ${thresholdText(settings.budget)}`, `daily budget ${thresholdText(settings.budget)}`) },
+          { text: tr(`목표 CPA ${thresholdText(settings.cpa)}`, `target CPA ${thresholdText(settings.cpa)}`) },
+          { text: tr(`목표 CPT ${thresholdText(settings.cpt)}`, `target CPT ${thresholdText(settings.cpt)}`) },
+        ]}>{setupFields}</ReportContext></div>
+        : <section className="block asa-tool__setup" id="asa-setup">
+          <h2 className="section-title">{tr("판정 기준", "Decision thresholds")}</h2>
+          {setupFields}
+        </section>}
 
       <CsvUploader toolId="5-26" locale={locale} />
-      {hasData && <section className="block analysis-design-check">
-        <label>{tr("최근 며칠은 전환이 아직 더 들어올 수 있나요?", "Can conversions still arrive for the most recent days?")}
-          <select value={maturity} onChange={(e) => setMaturityDeclaration({ raw: csvData.raw, value: e.target.value })}>
-            <option value="unknown">{tr("아직 모름", "Not sure yet")}</option>
-            <option value="immature">{tr("네, 아직 들어오는 중인 날이 있습니다", "Yes, some days are still filling in")}</option>
-            <option value="mature">{tr("아니요, 전환이 다 들어온 기간만 올렸습니다", "No, only fully settled days are included")}</option>
-          </select>
-        </label>
-        <p>{tr("일별 합계만으로 전환 지연을 복원할 수 없습니다. 계정의 전환 창·보고 기준을 확인하세요. 성숙도 미확인 또는 탭 8건·설치 3건 미만은 조치를 보류합니다. 이 표본 기준은 서비스 운영 휴리스틱이며 통계적 유의성을 뜻하지 않습니다.", "Daily totals cannot reconstruct conversion delay. Check your account's conversion window and reporting basis. Unknown maturity, fewer than 8 taps, or fewer than 3 installs holds actions. These service heuristics do not establish statistical significance.")}</p>
-      </section>}
+      {hasData && <DeclaredConditions locale={locale} title={tr("전환 집계 확인", "Conversion completeness")}
+        answered={maturity === "unknown" ? 0 : 1} total={1} ready={maturity === "mature"}
+        status={maturity === "mature" ? tr("다 들어온 기간만 — 조치 검토 가능", "Settled days only — actions can be reviewed") : maturity === "immature" ? tr("아직 들어오는 날 포함 — 조치 보류", "Includes unsettled days — actions held") : tr("확인 전에는 조치 보류", "Actions held until confirmed")}
+        note={tr("일별 합계만으로 전환 지연을 복원할 수 없습니다. 계정의 전환 창·보고 기준을 확인하세요. 성숙도 미확인 또는 탭 8건·설치 3건 미만은 조치를 보류합니다. 이 표본 기준은 서비스 운영 휴리스틱이며 통계적 유의성을 뜻하지 않습니다.", "Daily totals cannot reconstruct conversion delay. Check your account's conversion window and reporting basis. Unknown maturity, fewer than 8 taps, or fewer than 3 installs holds actions. These service heuristics do not establish statistical significance.")}>
+          <label>{tr("최근 며칠은 전환이 아직 더 들어올 수 있나요?", "Can conversions still arrive for the most recent days?")}
+            <select value={maturity} onChange={(e) => setMaturityDeclaration({ raw: csvData.raw, value: e.target.value })}>
+              <option value="unknown">{tr("아직 모름", "Not sure yet")}</option>
+              <option value="immature">{tr("네, 아직 들어오는 중인 날이 있습니다", "Yes, some days are still filling in")}</option>
+              <option value="mature">{tr("아니요, 전환이 다 들어온 기간만 올렸습니다", "No, only fully settled days are included")}</option>
+            </select>
+          </label>
+      </DeclaredConditions>}
 
       {hasData && analyzed && (
         <>

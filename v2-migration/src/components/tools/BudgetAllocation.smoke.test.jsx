@@ -6,7 +6,7 @@
 // asserts the component MOUNTS without throwing in both the no-data and
 // with-data states. Copy this pattern verbatim for the other tool components.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, act, fireEvent, screen } from "@testing-library/react";
+import { render, act, fireEvent, screen, within } from "@testing-library/react";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
@@ -108,18 +108,26 @@ describe("BudgetAllocation render smoke", () => {
     });
     expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
+    // 실행안이 있으면 자료·곡선 설정은 "조건 바꾸기" 창 안으로 접힌다(product-ssot §1.1c).
+    const openDataSettings = () => {
+      const direct = screen.queryByRole("button", { name: "자료·곡선 설정" });
+      if (!direct) fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
+      fireEvent.click(direct || within(screen.getByRole("dialog")).getByRole("button", { name: "자료·곡선 설정" }));
+    };
+    openDataSettings();
     fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "weekly" } });
     fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "2026-02-01" } });
     fireEvent.change(screen.getByLabelText("분배 단위", { selector: "select" }), { target: { value: "channel" } });
     expect(screen.getByLabelText("자료 단위").value).toBe("weekly");
     expect(screen.getByLabelText("분배 단위", { selector: "select" }).value).toBe("channel");
     fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     expect(document.querySelector(".allocation-observation-note").textContent).toContain("주간 합계를 7일로");
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
     fireEvent.click(screen.getByRole("tab", { name: "예산 비교", exact: true }));
     expect(screen.getAllByRole("table", { name: "예산 실행안 비교" })).toHaveLength(1);
     expect(document.querySelector(".result-action-card")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "자료·곡선 설정" }));
+    openDataSettings();
     fireEvent.change(screen.getByLabelText("자료 단위"), { target: { value: "auto" } });
     fireEvent.change(screen.getByLabelText("분배 단위", { selector: "select" }), { target: { value: "os" } });
     fireEvent.change(screen.getByLabelText("추출 기준일"), { target: { value: "" } });
@@ -150,7 +158,7 @@ describe("BudgetAllocation render smoke", () => {
     expect(document.getElementById("s-table").closest("[hidden]")).toBeNull();
     expect(figure.closest("[hidden]")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
-    expect(container.querySelector(".alloc-verify-strip").closest('[role="tabpanel"]').hidden).toBe(false);
+    expect(container.querySelector(".planner-status").closest('[role="tabpanel"]').hidden).toBe(false);
     expect(container.querySelector(".alloc-total-card")).toBeNull();
     expect(container.querySelector(".prism-result-grid")).toBeNull();
     expect(figure.textContent).toBe(original);
@@ -158,8 +166,7 @@ describe("BudgetAllocation render smoke", () => {
     fit.mockRestore();
   });
 
-  it("greedy mode says when it shows the plan that starts from the current split", () => {
-    // 샘플은 0원부터 채우는 그리디가 지금보다 나쁜 안을 내는 데이터다(결과 화면 5-3과 같은 샘플).
+  it("switches between the next-step plan and the target allocation on the same planner", () => {
     const csv = buildSampleJourney("ko");
     useAppStore.setState({
       currentRouteId: "5-3",
@@ -168,15 +175,59 @@ describe("BudgetAllocation render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-3");
     render(<BudgetAllocation />);
-    const greedy = [...document.querySelectorAll(".alloc-mode-toggle button")].find((button) => button.textContent === "한계효용 그리디");
-    expect(greedy).toBeTruthy();
-    act(() => greedy.click());
-    expect(greedy.getAttribute("aria-pressed")).toBe("true");
-    expect(document.body.textContent).toContain("현재 배분을 기준으로 조정한 안입니다");
+    // 실행 방식은 "조건 바꾸기" 창에서 고르고, 바깥 요약 한 줄이 지금 방식을 말한다.
+    expect(document.getElementById("s-controls").textContent).toContain("이번 실행안");
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
+    const buttons = [...document.querySelectorAll(".alloc-mode-toggle button")];
+    expect(buttons.map((button) => button.textContent)).toEqual(["이번 실행안", "목표 배분"]);
+    expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("하루 증액 20%·감액 30% 안에서만");
+    act(() => buttons[1].click());
+    expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("단계적으로 다가가세요");
     // 결과 작업대와 같은 핵심 그림(지금 하루 예산 ↔ 바꾼 안)이 결론 카드 바로 뒤에 온다.
     const figure = document.querySelector(".tool-core-figure .result-shift");
     expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();
     expect(figure.querySelectorAll("li").length).toBeGreaterThan(1);
     expect(document.querySelector(".result-action-card").compareDocumentPosition(figure) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+});
+
+describe("BudgetAllocation comparison basis", () => {
+  beforeEach(() => useAppStore.setState(useAppStore.getInitialState()));
+
+  it("withholds modeled totals when a target has only a recent-average fallback", () => {
+    seedWithData();
+    const store = useAppStore.getState();
+    const csv = store.csvData;
+    store.setCsvData({ ...csv, raw: [...csv.raw, { ...csv.raw.at(-1), Channel: "Sparse", Installs: 1 }] });
+    store.setGroupAnalyzed("5-3");
+    expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
+    render(<BudgetAllocation />);
+    const stats = document.querySelector(".result-action-card__stats");
+    expect(stats).toBeTruthy();
+    expect(stats.children[0].querySelector("strong").textContent).toBe("추정 불가 → 추정 불가");
+    expect(stats.children[1].querySelector("strong").textContent).toBe("추정 불가 → 추정 불가");
+    expect(stats.children[0].querySelector("small")).toBeNull();
+  });
+
+  for (const locale of ["ko", "en"]) it(`aligns the headline percentage with the displayed modeled CPI (${locale})`, () => {
+    const store = useAppStore.getState();
+    store.setCurrentRouteId("5-3");
+    store.setCsvData(buildSampleJourney(locale));
+    store.setGroupAnalyzed("5-3");
+    expect(useAppStore.getState().isGroupAnalyzed("5-3")).toBe(true);
+    render(<BudgetAllocation locale={locale} />);
+
+    const stats = document.querySelector(".result-action-card__stats");
+    expect(stats).toBeTruthy();
+    const cpi = stats.children[0];
+    const [current, next] = cpi.querySelector("strong").textContent.split("→").map(value => Number(value.replace(/[^\d.]/g, "")));
+    const displayedChange = Number(cpi.querySelector("small").textContent.replaceAll("−", "-").replaceAll("%", ""));
+    expect(Math.abs((next / current - 1) * 100 - displayedChange)).toBeLessThan(0.15);
+    expect(cpi.textContent).toContain(locale === "en" ? "Modeled CPI" : "모형 예상 CPI");
+    expect(stats.children[1].textContent).toContain(locale === "en" ? "Modeled" : "모형 예상");
+    expect(document.querySelector(".result-shift__basis").textContent).toContain(locale === "en" ? "both plans" : "두 배분안");
+    expect(document.querySelector(".alloc-plan__table thead").textContent).toContain(locale === "en" ? "Modeled" : "모형");
   });
 });

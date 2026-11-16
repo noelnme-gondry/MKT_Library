@@ -3,48 +3,56 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 import { toolIndexEntry, toolIndexByStage } from "../src/lib/toolIndex";
-import { idToSlug, publishedToolIds } from "../src/lib/routeMap";
+import { toolResultSelector } from "./support/toolResult";
+import { analysisToolIds, idToSlug } from "../src/lib/routeMap";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en";
   const prefix = en ? "/en" : "";
   const tag = en ? " @light-en" : "";
-  test(`shared typography and interior layouts (${locale})${tag}`, async ({ page }) => {
+  test(`shared typography and interior layouts (${locale})${tag}`, async ({ context }) => {
     const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
     for (const route of ["/dashboard", "/weekly-review", "/blog", "/guide", "/guide/dev-collaboration", "/subscription"]) {
-      await page.goto(`${prefix}${route}`);
-      const heading = page.locator("h1").first();
-      await expect(heading).toBeVisible();
-      await page.evaluate(() => document.fonts.ready);
-      await expect(heading).toHaveCSS("font-family", /GOP Heading/i);
-      expect(await page.evaluate(() => [...document.fonts].some((font) => /GOP Heading/i.test(font.family) && font.status === "loaded")), route).toBe(true);
-      // Long SOP code tokens must wrap without making the entire page scroll.
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
+      // Inspect each entry in its own document. WebKit reports cancelled fetches
+      // from a document being replaced as page errors on rapid hard navigation.
+      const page = await context.newPage();
+      const onError = error => errors.push(error.message);
+      page.on("pageerror", onError);
+      try {
+        await page.goto(`${prefix}${route}`);
+        const heading = page.locator("h1").first();
+        await expect(heading).toBeVisible();
+        await page.evaluate(() => document.fonts.ready);
+        await expect(heading).toHaveCSS("font-family", /GOP Heading/i);
+        expect(await page.evaluate(() => [...document.fonts].some((font) => /GOP Heading/i.test(font.family) && font.status === "loaded")), route).toBe(true);
+        // Long SOP code tokens must wrap without making the entire page scroll.
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
+      } finally {
+        page.off("pageerror", onError);
+        await page.close();
+      }
     }
     expect(errors).toEqual([]);
   });
   test(`library question entry and persistent navigation (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
-    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
+    await expect(page.locator(".home-entry__situations")).toBeVisible();
     await expect(page.getByRole("dialog")).toBeHidden();
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
     const intro = await page.locator(".dc-hero__intro").boundingBox();
     const inset = await page.locator(".dc-hero__intro").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft));
-    // CSV is the primary entry; sample exploration remains beside it.
-    const primary = await page.locator(".dc-action-route--primary").boundingBox();
-    expect(primary.x).toBeGreaterThanOrEqual(intro.x + inset - 1);
-    expect(primary.x + primary.width).toBeLessThanOrEqual(intro.x + intro.width - inset + 1);
-    // 시작 버튼은 소개 면 안의 같은 기준선에 놓이며 긴 설명 카드가 되지 않는다.
-    expect(primary.height).toBeGreaterThanOrEqual(44);
-    expect(primary.height).toBeLessThanOrEqual(72);
-    await expect(page.locator(".dc-hero__actions .dc-action-route__hint")).toHaveCount(3);
-    await page.locator(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`).click();
+    // 상황 고르기와 파일 놓기는 제목과 같은 왼쪽 기준선에서 시작한다.
+    const situations = await page.locator(".home-entry__situations").boundingBox();
+    expect(Math.abs(situations.x - (intro.x + inset))).toBeLessThanOrEqual(1);
+    const tile = await page.locator(".home-entry__situations li a").first().boundingBox();
+    expect(tile.height).toBeGreaterThanOrEqual(44);
+    expect(tile.height).toBeLessThanOrEqual(72);
+    await page.locator(`.home-entry__no-file a[href="${prefix}/diagnose"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
     await page.goto(prefix || "/");
-    await expect(page.locator(".home-tool-directory > section")).toHaveCount(toolIndexByStage(locale).length);
+    await expect(page.locator(".home-entry__situations li:not(.home-entry__all-tile) a")).toHaveCount(toolIndexByStage(locale).length);
     await expect(page.locator("#dochi-upload")).toBeHidden();
     await expect(page.locator(".home-reading-list__articles a")).toHaveCount(3);
     await expect(page.locator(`.home-guide-shelf a[href="${prefix}/guide"]`)).toBeVisible();
@@ -61,7 +69,7 @@ for (const locale of ["ko", "en"]) {
       await expect(toggle).toBeFocused();
       await toggle.click();
     }
-    for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start", "/start?view=methods"]) {
+    for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start"]) {
       await expect(page.locator(`.library-nav-item[href="${prefix}${path}"]`)).toBeVisible();
     }
     await page.locator(`.library-nav-item[href="${prefix}/blog"]`).click();
@@ -97,21 +105,22 @@ for (const locale of ["ko", "en"]) {
     const readyNames = await page.locator(".tool-index__stage--ready .tool-index__q").allInnerTexts();
     expect(readyNames).toEqual(expect.arrayContaining(["5-2", "5-21", "5-3"].map((id) => toolIndexEntry(id, locale).name)));
     const blockedRows = page.locator(".tool-index__stage--blocked .tool-index__chip");
-    expect(await blockedRows.count()).toBe(publishedToolIds().length - readyNames.length);
+    // 작업대는 분석을 나열한다 — 다른 도구의 보기로 흡수된 분석(5-22 증액 여력)도 칩이다(product-ssot §4.2a).
+    expect(await blockedRows.count()).toBe(analysisToolIds().length - readyNames.length);
     for (const text of await blockedRows.allInnerTexts()) {
       expect(text).toMatch(/\S/);
       expect(text).not.toMatch(en ? /Example result/ : /예시 결과/);
     }
     await expect(page.locator(".tool-index__stage--blocked .tool-index__need")).toHaveCount(await blockedRows.count());
     const stuck = [];
-    for (const toolId of publishedToolIds()) {
+    for (const toolId of analysisToolIds()) {
       // 샘플은 메모리에만 있다 — 도구마다 홈에서 샘플을 새로 연다.
       await openDochiSample(page, locale);
       await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
       await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
       await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
-      await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId]}$`), { timeout: 30_000 });
-      const reached = await page.locator(".result-action-card").first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
+      await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), { timeout: 30_000 });
+      const reached = await page.locator(toolResultSelector(toolId)).first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
       if (!reached || await page.getByRole("dialog").count()) stuck.push(toolId);
     }
     expect(stuck).toEqual([]);
@@ -146,6 +155,9 @@ for (const locale of ["ko", "en"]) {
       await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
       await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
       await expect(page.locator(".sample-journey-scope")).toBeVisible();
+      // Returning renders the result shell before its analysis queue settles.
+      // Use the same readiness contract as the initial sample entry.
+      await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     }
   });
 

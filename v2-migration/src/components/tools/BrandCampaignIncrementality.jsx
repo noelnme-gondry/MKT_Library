@@ -18,7 +18,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { CHART_THEME, CHART_FONT_STACK, chartCommonOpts } from "@/utils/chartUtils";
-import { downloadCsv } from "@/utils/download";
+import { csvBody, downloadCsv } from "@/utils/download";
 import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
 import { fmtNum, fmtCurrency, sourceCurrencyOf, parseNum } from "@/utils/format";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
@@ -280,11 +280,6 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   // 결과 내보내기. 이 도구는 오래도록 **입력 템플릿만** 받을 수 있고 추정 증가분·
   // 반사실·AR(1) 구간을 화면 밖으로 꺼낼 방법이 없었다(§12.27 "계산한 인사이트만"에
   // 정면으로 어긋남 — 원자료가 아니라 계산 결과가 없어서 못 받던 경우).
-  const csvCell = (value) => {
-    const text = value == null ? "" : String(value);
-    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  const buildCsv = (rows) => `﻿${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
   const downloadSeries = () => {
     if (!result?.ok) return;
     const header = ["date", "campaign_on", "actual", "counterfactual", "incremental"];
@@ -295,7 +290,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       point.counterfactual,
       point.incremental,
     ]);
-    downloadCsv(buildCsv([header, ...rows]), "brand_campaign_its_series");
+    downloadCsv(csvBody(header, rows), "brand_campaign_its_series");
   };
   const downloadSummary = () => {
     if (!result?.ok) return;
@@ -318,7 +313,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         "통제군 없는 ITS 관찰 추정입니다. 계절성·PR·프로모션 영향은 분리되지 않습니다.",
         "Observational ITS without a control. Seasonality, PR, and promotions are not separated.")],
     ];
-    downloadCsv(buildCsv(rows), "brand_campaign_its_summary");
+    downloadCsv(csvBody(rows[0], rows.slice(1)), "brand_campaign_its_summary");
   };
   const brandDecisionPrefill = design.ready && result?.ok && !isDemo ? {
     conclusion: !profileReady

@@ -17,6 +17,8 @@ import {
   guessPaidOrganicColumns,
 } from "@/utils/paidOrganicTrend";
 
+import ReportContext from "@/components/ds/ReportContext";
+import { isDemoData } from "@/lib/dataOrigin";
 import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
 import { comparisonConditionsTable } from "@/lib/analysis-results/comparisonConditions";
 import FigurePngButton from "@/components/ds/FigurePngButton";
@@ -293,6 +295,24 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
   const runExample = () => setCsvData(buildPaidOrganicTrendDemo(locale));
   useExampleLink(isHydrated && !hasData ? runExample : null);
 
+  const mappingGrid = (
+    <div className="paid-organic-mapping__grid">
+      {[
+        ["date", C.date, true],
+        ["total", C.total, !mapping.organic],
+        ["paid", C.paid, true],
+        ["organic", C.organic, false],
+      ].map(([key, label, required]) => (
+        <label key={key}>
+          <span>{label}{required ? " *" : ""}</span>
+          <select value={mapping[key] || ""} onChange={(event) => setColumn(key, event.target.value)}>
+            <option value="">{C.optional}</option>
+            {(csvData.headers || []).map((header) => <option key={header} value={header}>{header}</option>)}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
   return (
     <div className="paid-organic-tool" data-hydrated={isHydrated ? "true" : "false"}>
       <h1 className="page-title">{pageTitle.name}</h1>
@@ -321,51 +341,27 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
         </section>
       ) : (
         <>
-          <section className="paid-organic-mapping" aria-labelledby="paid-organic-mapping-title">
-            <header>
-              <div><h2 id="paid-organic-mapping-title">{C.mapping}</h2></div>
-              <p>{C.mappingDesc}</p>
-            </header>
-            <div className="paid-organic-mapping__grid">
-              {[
-                ["date", C.date, true],
-                ["total", C.total, !mapping.organic],
-                ["paid", C.paid, true],
-                ["organic", C.organic, false],
-              ].map(([key, label, required]) => (
-                <label key={key}>
-                  <span>{label}{required ? " *" : ""}</span>
-                  <select value={mapping[key] || ""} onChange={(event) => setColumn(key, event.target.value)}>
-                    <option value="">{C.optional}</option>
-                    {(csvData.headers || []).map((header) => <option key={header} value={header}>{header}</option>)}
-                  </select>
-                </label>
-              ))}
-            </div>
-            <footer><span>{sourceLabel}</span><b>{csvData.fileName}</b></footer>
-          </section>
+          {/* 결과가 나오면 열 확인은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계). */}
+          {result.points.length >= 1
+            ? <ReportContext locale={locale} dialogTitle={C.mapping} parts={[
+              { text: isDemoData(csvData) ? (locale === "en" ? "Sample data" : "예시 데이터") : csvData.fileName, emphasis: true },
+              { text: locale === "en" ? `${(csvData.raw?.length || 0).toLocaleString()} rows` : `${(csvData.raw?.length || 0).toLocaleString()}행` },
+              { text: `Paid ${mapping.paid || "—"}` },
+              { text: sourceLabel },
+            ]}>{mappingGrid}</ReportContext>
+            : (
+            <section className="paid-organic-mapping" aria-labelledby="paid-organic-mapping-title">
+              <header>
+                <div><h2 id="paid-organic-mapping-title">{C.mapping}</h2></div>
+                <p>{C.mappingDesc}</p>
+              </header>
+              {mappingGrid}
+              <footer><span>{sourceLabel}</span><b>{csvData.fileName}</b></footer>
+            </section>
+            )}
 
           {result.points.length >= 1 ? (
             <>
-              <section className="paid-organic-summary" aria-label={locale === "en" ? "Movement summary" : "변화 요약"}>
-                <article><span>{C.recentOrganic}</span><strong className={result.recentOrganicChange < 0 ? "is-down" : "is-up"}>{fmtPct(result.recentOrganicChange)}</strong></article>
-                <article><span>{C.recentPaid}</span><strong className={result.recentPaidChange < 0 ? "is-down" : "is-up"}>{fmtPct(result.recentPaidChange)}</strong></article>
-                <article><span>{C.opposite}</span><strong>{result.oppositeCount}/{result.meaningfulCount || 0}</strong></article>
-              </section>
-
-              <RecipeBlock id="paid-organic-movement" className="paid-organic-chart-card">
-                <header className="figure-head"><div><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p><FigurePngButton title={locale === "en" ? "Paid and organic traffic changes" : "유료·오가닉 유입 변화"} target={canvasRef} fileName="paid_organic_movement" locale={locale} /></header>
-                <div className="paid-organic-chart"><canvas ref={canvasRef}></canvas></div>
-                {(result.invalidRows > 0 || result.invalidWeeks > 0) && <small className="paid-organic-quality">{C.invalid(result.invalidRows, result.invalidWeeks)}</small>}
-              </RecipeBlock>
-
-              <section className={`paid-organic-verdict is-${verdictCopy[2]}`}>
-                <div><h2>{verdictCopy[0]}</h2><p>{verdictCopy[1]}</p></div>
-                <div className="paid-organic-verdict__action">
-                  <Link href={locale === "en" ? "/en/tools/cannibalization-diagnosis" : "/tools/cannibalization-diagnosis"}>{C.cta} <b aria-hidden="true">→</b></Link>
-                  <small>{C.ctaHint}</small>
-                </div>
-              </section>
               {/* download 없음: 이 화면의 산출물은 판정 한 줄과 수치 3개뿐이라
                   CSV로 되돌려줄 "계산한 인사이트"가 없다. 원천 데이터를 그대로
                   내보내는 것은 §12.27이 금지한다. 정밀 진단이 필요하면 잠식 진단
@@ -416,6 +412,18 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                 decisionReview={Boolean(decisionPrefill)}
                 decisionPrefill={decisionPrefill}
               />
+              {/* 결론 뒤에 근거 그림, 그 뒤에 정밀 진단으로 가는 길(결론 문장은 카드가 말한다). */}
+              <RecipeBlock id="paid-organic-movement" className="paid-organic-chart-card">
+                <header className="figure-head"><div><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p><FigurePngButton title={locale === "en" ? "Paid and organic traffic changes" : "유료·오가닉 유입 변화"} target={canvasRef} fileName="paid_organic_movement" locale={locale} /></header>
+                <div className="paid-organic-chart"><canvas ref={canvasRef}></canvas></div>
+                {(result.invalidRows > 0 || result.invalidWeeks > 0) && <small className="paid-organic-quality">{C.invalid(result.invalidRows, result.invalidWeeks)}</small>}
+              </RecipeBlock>
+              <section className={`paid-organic-verdict is-${verdictCopy[2]}`}>
+                <div className="paid-organic-verdict__action">
+                  <Link href={locale === "en" ? "/en/tools/cannibalization-diagnosis" : "/tools/cannibalization-diagnosis"}>{C.cta} <b aria-hidden="true">→</b></Link>
+                  <small>{C.ctaHint}</small>
+                </div>
+              </section>
             </>
           ) : (
             <div className="callout warn paid-organic-insufficient" role="status"><div className="ico">!</div><div className="body">{C.insufficient}</div></div>

@@ -88,6 +88,13 @@ export function objectParticle(word) {
   return jong === 0 ? "를" : "을";
 }
 
+/** 이/가 — 결론 문장의 주어(지표 이름·캠페인명). 읽을 수 없는 끝 글자면 이(가) 병기. */
+export function subjectParticle(word) {
+  const jong = finalConsonantIndex(word);
+  if (jong == null) return "이(가)";
+  return jong === 0 ? "가" : "이";
+}
+
 /** 으로/로 — 받침 없음·ㄹ받침이면 로. */
 export function directionParticle(word) {
   const jong = finalConsonantIndex(word);

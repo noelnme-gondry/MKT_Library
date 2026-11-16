@@ -2,6 +2,16 @@ import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
 
+// 실행안이 있으면 예산·지표는 "조건 바꾸기" 창 안에 있고, 없으면 본문에 펼쳐져 있다(product-ssot §1.1c).
+// 어느 쪽이든 같은 컨트롤 하나를 찾아 돌려준다. 창을 열었으면 close()로 닫는다.
+async function budgetControls(page, en) {
+  if (await page.locator('#prism-total-budget').isVisible()) return { root: page.locator('#s-controls'), close: async () => {} };
+  await page.locator('#s-controls').getByRole('button', { name: en ? 'Change settings' : '조건 바꾸기' }).click();
+  const dialog = page.getByRole('dialog', { name: en ? 'Allocation settings' : '배분 조건', exact: true });
+  await expect(dialog.locator('#prism-total-budget')).toBeVisible();
+  return { root: dialog, close: () => dialog.getByRole('button', { name: en ? 'Close' : '닫기', exact: true }).click() };
+}
+
 for (const locale of ['ko', 'en']) {
   test(`allocation workspace keeps scope, dates, evidence and methods coherent (${locale})`, async ({ page }) => {
     const en = locale === 'en';
@@ -16,31 +26,46 @@ for (const locale of ['ko', 'en']) {
       const outer = el.getBoundingClientRect();
       const heading = el.querySelector('h1').getBoundingClientRect();
       const date = el.querySelector('.result-period-picker').getBoundingClientRect();
-      return { padding: heading.x - outer.x, alignment: Math.abs(heading.x - date.x) };
+      const style = getComputedStyle(el);
+      return { left: heading.x, right: innerWidth - outer.right, background: style.backgroundColor, border: parseFloat(style.borderLeftWidth), alignment: Math.abs(heading.x - date.x) };
     });
-    expect(header.padding).toBeGreaterThanOrEqual(16);
+    // 결과 위의 제목은 별도 상자가 아니다. 페이지 여백과 날짜 정렬은 유지한다.
+    expect(header.background).toBe('rgba(0, 0, 0, 0)');
+    expect(header.border).toBe(0);
+    // 공용 모바일 셸의 페이지 gutter는 12px이며, 별도 상자 패딩과 구분한다.
+    expect(header.left).toBeGreaterThanOrEqual(12);
+    expect(header.right).toBeGreaterThanOrEqual(12);
     expect(header.alignment).toBeLessThanOrEqual(1);
     const views = page.getByRole('tablist', { name: en ? 'Allocation views' : '배분 보기' });
     await expect(views.getByRole('tab')).toHaveCount(4);
-    await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveCount(1);
-    await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveAttribute('aria-label', en ? '3 things to check' : '확인할 점 3개');
+    // 결론은 행동 목록으로 끝난다. 일반 방법 안내 3줄로 빨간 "!"를 띄우지 않는다 — 남는 것은 예시 파일의 데이터 품질 1건뿐.
+    await expect(page.locator('.result-action-card__evidence .issue-mark')).toHaveAttribute('aria-label', en ? '1 thing to check' : '확인할 점 1개');
+    await expect(page.locator('.result-action-card__stats > div')).toHaveCount(3);
+    // 실행안이 있으면 조건은 맥락 한 줄로 접히고 결론이 첫 화면에 온다.
+    await expect(page.locator('#s-controls .report-context__line')).toContainText(en ? 'Daily budget' : '일예산');
+    await expect(page.locator('#s-controls #prism-total-budget')).toHaveCount(0);
+    await expect(page.locator('.tool-instrument-header').getByRole('button', { name: en ? 'Data and curve settings' : '자료·곡선 설정' })).toHaveCount(0);
+    const actions = page.getByRole('table', { name: en ? 'Changes by target' : '채널별 조정안' }).locator('tbody tr');
+    expect(await actions.count()).toBeGreaterThan(0);
+    expect(await actions.count()).toBeLessThanOrEqual(6);
+    await expect(actions.first().locator('.alloc-plan__why')).not.toBeEmpty();
     await expect(page.locator('.prism-result-grid, .alloc-total-card')).toHaveCount(0);
     const analysis = page.locator('.allocation-result-workspace');
     const review = page.locator('.decision-review-preview');
     await expect(review).toBeVisible();
     expect(await analysis.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('.decision-review-preview')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    await expect(page.locator('#s-table')).toBeHidden();
-    await page.getByRole('radio', { name: en ? 'Full table' : '전체 배분표', exact: true }).click();
     await expect(page.locator('#s-table')).toBeVisible();
     await expect(page.locator('.result-shift')).toBeHidden();
     await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
+    await expect(page.locator('.result-shift')).toBeVisible();
+    await expect(page.locator('#s-table')).toBeHidden();
     const allocationTab = views.getByRole('tab', { name: en ? 'Allocation' : '배분안', exact: true });
     await allocationTab.focus();
     await allocationTab.press('End');
     const checks = views.getByRole('tab', { name: en ? 'Checks' : '확인', exact: true });
     await expect(checks).toBeFocused();
     await expect(checks).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.alloc-verify-strip')).toBeVisible();
+    await expect(page.locator('.planner-status')).toBeVisible();
     const panelId = await checks.getAttribute('aria-controls');
     await expect(page.locator(`[id="${panelId}"]`)).toHaveAttribute('aria-labelledby', await checks.getAttribute('id'));
     const tabAudit = await new AxeBuilder({ page }).include('.allocation-result-workspace').withTags(['wcag2a', 'wcag2aa']).analyze();
@@ -84,11 +109,16 @@ for (const locale of ['ko', 'en']) {
     page.on('dialog', d => d.accept());
     await page.getByRole('button', { name: en ? /Finish verification/ : /검증 완료 및 예산 배분/ }).first().click();
     await expect(page.locator('#s-controls')).toBeVisible();
-    // Narrowing to one channel preserves the entered budget. Bring it within
-    // this scope's observed ceiling before expecting an executable plan.
-    const ceiling = Number(await page.locator('#prism-total-budget').getAttribute('max'));
-    await page.locator('#prism-total-budget-exact').fill(String(Math.floor(ceiling * 0.8)));
-    await page.locator('#prism-total-budget-exact').blur();
+    // Narrowing to one channel preserves the entered budget. Bring it inside
+    // this scope's executable band — the observed ceiling above and, for the
+    // next-step pace, the daily decrease limit below — before expecting a plan.
+    const controls = await budgetControls(page, en);
+    const ceiling = Number(await controls.root.locator('#prism-total-budget').getAttribute('max'));
+    const floor = Number(await controls.root.locator('#prism-total-budget').getAttribute('min'));
+    expect(floor).toBeLessThan(ceiling);
+    await controls.root.locator('#prism-total-budget-exact').fill(String(Math.round((floor + ceiling) / 2)));
+    await controls.root.locator('#prism-total-budget-exact').blur();
+    await controls.close();
     await page.getByRole('radio', { name: en ? 'Full table' : '전체 배분표', exact: true }).click();
     await expect(page.locator('#s-table')).toBeVisible();
     await expect(scope).toContainText('KR');
@@ -111,11 +141,15 @@ test('allocation content surfaces and alignment in light mode', async ({ page })
   await page.addInitScript(() => localStorage.setItem('mkt-library-theme', 'light'));
   await page.goto('/tools/budget-allocation?example=1');
   await expect(page.locator('#s-controls')).toBeVisible();
-  const surfaces = await page.locator('#s-controls, .result-action-card, .allocation-data').evaluateAll(els => els.map(el => ({ bg: getComputedStyle(el).backgroundColor, padding: parseFloat(getComputedStyle(el).paddingLeft) })));
-  expect(surfaces).toHaveLength(3);
+  // 실행안이 있으면 데이터 칸은 조건 창 안으로 접힌다 — 본문 표면은 조건 한 줄과 결론 카드다.
+  await expect(page.locator('#tab-alloc .allocation-data')).toHaveCount(0);
+  // 2026-11 Paper & Ink: 흰 상자 대신 종이 위 열린 구획 — 바탕 투명, 위쪽 선 하나, 본문 기준선(좌우 여백 0).
+  const surfaces = await page.locator('#s-controls, .result-action-card').evaluateAll(els => els.map(el => ({ bg: getComputedStyle(el).backgroundColor, top: parseFloat(getComputedStyle(el).borderTopWidth), padding: parseFloat(getComputedStyle(el).paddingLeft) })));
+  expect(surfaces).toHaveLength(2);
   for (const surface of surfaces) {
-    expect(surface.bg).toBe('rgb(255, 255, 255)');
-    expect(surface.padding).toBeGreaterThanOrEqual(16);
+    expect(surface.bg).toBe('rgba(0, 0, 0, 0)');
+    expect(surface.top).toBeGreaterThanOrEqual(1);
+    expect(surface.padding).toBe(0);
   }
 });
 
@@ -126,6 +160,8 @@ for (const locale of ['ko', 'en']) {
     await page.route('**/api/account/session', route => route.fulfill({ json: { enabled: true, account: { id: 'figure-test', email: 'figure@example.com' }, entitlement } }));
     await page.route('**/api/payments/access', route => route.fulfill({ json: { entitlement } }));
     await page.goto(`${en ? '/en' : ''}/tools/budget-allocation?example=1`);
+    // 자세히 보기는 전체 배분표로 열린다 — 그림은 "변경 요약"에 있다.
+    await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
     const figure = page.locator('.result-shift');
     const entities = figure.locator('.result-shift__entity');
     await expect(entities).toHaveCount(8);
@@ -258,12 +294,14 @@ for (const locale of ['ko', 'en']) {
     }
     const firstEfficiency = figure.locator('.result-shift__efficiency').first();
     const before = await firstEfficiency.textContent();
-    const budget = page.locator('#prism-total-budget-exact');
+    const controls = await budgetControls(page, en);
+    const budget = controls.root.locator('#prism-total-budget-exact');
     const amount = Number((await budget.inputValue()).replaceAll(',', ''));
     await budget.fill(String(Math.round(amount * 0.8)));
     await budget.blur();
+    await controls.root.getByRole('radio', { name: /ROAS/ }).click();
+    await controls.close();
     await expect(firstEfficiency).not.toHaveText(before);
-    await page.locator('#s-controls').getByRole('radio', { name: /ROAS/ }).click();
     await expect(firstEfficiency).toContainText('ROAS');
     await expect(firstEfficiency.locator('strong')).toContainText('%');
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -290,6 +328,7 @@ for (const locale of ['ko', 'en']) {
     const command = page.locator('.allocation-context-controls .recipe-command');
     const input = command.getByRole('combobox');
     const plan = page.locator('.result-shift');
+    await page.getByRole('radio', { name: en ? 'Changes' : '변경 요약', exact: true }).click();
     await expect(plan).toBeVisible();
     const initial = await plan.textContent();
     await page.getByRole('tab', { name: en ? 'Budget comparison' : '예산 비교', exact: true }).click();
@@ -298,12 +337,14 @@ for (const locale of ['ko', 'en']) {
     await expect(page.locator('#s-scenario')).toBeHidden();
     await expect(page.locator('#s-table')).toBeHidden();
     await expect(plan).toHaveText(initial);
-    const amount = await page.locator('#prism-total-budget-exact').inputValue();
+    // 예산은 맥락 한 줄이 말한다 — 보기 설정을 넣고 빼도 같은 금액이어야 한다.
+    const condition = page.locator('#s-controls .report-context__line');
+    const amount = await condition.textContent();
     await input.fill('');
     await input.press('Backspace');
     await expect(page.locator('#s-scenario')).toBeVisible();
     await input.press('Backspace');
-    await expect(page.locator('#prism-total-budget-exact')).toHaveValue(amount);
+    await expect(condition).toHaveText(amount);
     await input.fill(en ? 'Hide Budget scenarios' : '예산 시나리오 숨기기');
     await page.getByRole('option', { name: en ? /Hide Budget scenarios/ : /예산 시나리오 숨기기/ }).click();
     await command.getByRole('button', { name: en ? 'Save this setup' : '이 설정 저장' }).click();
@@ -319,7 +360,7 @@ for (const locale of ['ko', 'en']) {
     await input.fill('Weekly allocation');
     await page.getByRole('option', { name: /Weekly allocation/ }).click();
     await expect(page.locator('#s-scenario')).toBeHidden();
-    await expect(page.locator('#prism-total-budget-exact')).toHaveValue(amount);
+    await expect(condition).toHaveText(amount);
     await expect(plan).toHaveText(initial);
     await input.fill(en ? 'File name: tool_period' : '파일 이름: 도구_기간');
     await page.getByRole('option', { name: en ? /File name: tool_period/ : /파일 이름: 도구_기간/ }).click();

@@ -1,5 +1,5 @@
 import { getToolTemplateFields, hasToolTemplate, ROLE_MAPPING_TEMPLATE_FIELD_META, ROLE_MAPPING_TEMPLATE_REQUIRED, ROLE_MAPPING_TEMPLATE_ONE_OF, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
-import { idToSlug, isRoutePublished, ROUTES } from "@/lib/routeMap";
+import { hostToolId, idToSlug, isRoutePublished, ROUTES } from "@/lib/routeMap";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 
 // 도구별 템플릿 상세 페이지(`/templates/<slug>`)의 SSOT.
@@ -32,6 +32,11 @@ export const TEMPLATE_PAGES = ROUTES
 
 export const TEMPLATE_PAGE_SLUGS = TEMPLATE_PAGES.map((page) => page.slug);
 
+/** 도구의 템플릿 페이지. 흡수된 보기(5-22)는 담은 페이지(5-3)와 같은 파일이라 그 템플릿을 쓴다. */
+export function templatePageForTool(toolId) {
+  return TEMPLATE_PAGES.find((page) => page.toolId === toolId) || TEMPLATE_PAGES.find((page) => page.toolId === hostToolId(toolId)) || null;
+}
+
 export function getTemplatePage(slug, locale = "ko") {
   const page = TEMPLATE_PAGES.find((item) => item.slug === slug);
   if (!page) return null;
@@ -42,9 +47,10 @@ export function getTemplatePage(slug, locale = "ko") {
   ];
   const fields = getToolTemplateFields(page.toolId).map((key) => {
     const field = ROLE_MAPPING_TEMPLATE_FIELD_META[key] || STANDARD_FIELDS[key] || {};
+    const label = (locale === "en" ? field.labelEn : field.label) || field.label || "";
     return {
       key: CANON_HEADER(key),
-      label: (locale === "en" ? field.labelEn : field.label) || field.label || "",
+      label: required.has(key) ? label.replace(/\s*\((?:선택|optional)\)/gi, "") : label,
       type: field.type || "text",
       group: field.group || "",
       required: required.has(key),
@@ -53,6 +59,7 @@ export function getTemplatePage(slug, locale = "ko") {
   });
   return {
     ...page,
+    exactTime: fields.some((field) => field.key === "event_time"),
     fields,
     requiredCount: required.size + alternatives.length,
     alternatives: alternatives.map(group => group.map(CANON_HEADER)),

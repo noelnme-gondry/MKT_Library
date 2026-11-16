@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "./pvmExport.js";
+import * as XLSX from "xlsx";
 
 const fmt = (v) => Math.round(v).toLocaleString() + "원";
 
@@ -103,6 +104,24 @@ describe("buildPvmResultCsv", () => {
     // scorecard delta formula
     expect(/=D\d+-C\d+/.test(csv)).toBe(true);
     expect(csv).not.toContain("==");
+  });
+
+  it("keeps internal formulas live while external labels and URLs remain text", () => {
+    const formulaLabel = '=HYPERLINK("https://example.com","x")';
+    const csv = buildPvmResultCsv({
+      ...cache,
+      finest: cache.finest.map(row => ({ ...row, chKey: "=1+1", cmpKey: "+SUM(A1)", crKey: formulaLabel })),
+      crUrlMap: new Map([[formulaLabel, "@SUM(A1:A2)"]]),
+    }, "CPA");
+    const workbook = XLSX.read(csv, { type: "string" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+    const index = rows.findIndex(row => row[0] === "CREATIVE_FULL") + 1;
+    expect(index).toBeGreaterThan(0);
+    for (const column of ["B", "C", "D", "E"]) expect(sheet[`${column}${index}`].f).toBeUndefined();
+    expect(sheet[`D${index}`].v).toBe(`'${formulaLabel}`);
+    expect(sheet[`T${index}`].f).toBe(`Q${index}+R${index}+S${index}`);
+    expect(sheet[`F${index}`].t).toBe("n");
   });
 
   it("skips CAMPAIGN block when campaign not mapped", () => {

@@ -6,6 +6,7 @@ import PaidOrganicTrend from "@/components/tools/PaidOrganicTrend";
 import { buildPaidOrganicTrendDemo } from "@/utils/paidOrganicTrend";
 import { buildDemoCsv } from "@/utils/demoData";
 import { toolIndexEntry } from "@/lib/toolIndex";
+import { withDeclared } from "@/test/declaredConditions";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -19,9 +20,11 @@ function seed(slice = EMPTY_CSV) {
 }
 
 function confirmConditions(locale = "ko") {
-  for (const [ko, en, value] of [["기간 중 추적·어트리뷰션 기준이 바뀌었나요?", "Did tracking or attribution rules change in this period?", "consistent"], ["같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", "reviewed"], ["광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", "continuous"]]) {
-    fireEvent.change(screen.getByLabelText(locale === "en" ? en : ko), { target: { value } });
-  }
+  withDeclared(() => {
+    for (const [ko, en, value] of [["기간 중 추적·어트리뷰션 기준이 바뀌었나요?", "Did tracking or attribution rules change in this period?", "consistent"], ["같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", "reviewed"], ["광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", "continuous"]]) {
+      fireEvent.change(screen.getByLabelText(locale === "en" ? en : ko), { target: { value } });
+    }
+  });
 }
 
 describe("PaidOrganicTrend render smoke", () => {
@@ -66,15 +69,15 @@ describe("PaidOrganicTrend render smoke", () => {
     const { container } = render(<PaidOrganicTrend locale={locale} />);
     confirmConditions(locale);
     expect(container.querySelector(".decision-review")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(locale === "en" ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?"), { target: { value: "changed" } });
+    withDeclared(() => { fireEvent.change(screen.getByLabelText(locale === "en" ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?"), { target: { value: "changed" } }); });
     expect(container.querySelector(".decision-review")).toBeNull();
     confirmConditions(locale);
-    fireEvent.change(screen.getByLabelText(locale === "en" ? "Did ads pause or budget shift a lot?" : "광고를 멈추거나 예산을 크게 옮긴 적이 있나요?"), { target: { value: "interrupted" } });
+    withDeclared(() => { fireEvent.change(screen.getByLabelText(locale === "en" ? "Did ads pause or budget shift a lot?" : "광고를 멈추거나 예산을 크게 옮긴 적이 있나요?"), { target: { value: "interrupted" } }); });
     expect(container.querySelector(".decision-review")).toBeNull();
     expect(container.textContent).toContain(locale === "en" ? "Treat patterns as descriptive" : "패턴은 현상 설명으로만");
     confirmConditions(locale);
     act(() => seed({ ...buildPaidOrganicTrendDemo(locale), fileName: "replacement.csv" }));
-    expect(screen.getByLabelText(locale === "en" ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?").value).toBe("");
+    withDeclared(() => { expect(screen.getByLabelText(locale === "en" ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?").value).toBe(""); });
     expect(container.querySelector(".decision-review")).toBeNull();
   });
 

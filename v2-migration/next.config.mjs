@@ -38,9 +38,18 @@ const nextConfig = {
     ]);
     return [
       ...legacyBlogTagRedirects(),
+      // GA4 2026-10-28의 404 3건: EN 가이드 주소 끝에 ')'가 붙은 유입.
+      // 확인된 주소만 복구한다. 실제로 없는 경로는 계속 404이며 쿼리는 보존된다.
+      ...["\\)", "%29"].flatMap(suffix => ["", "/en"].map(prefix => ({
+        source: `${prefix}/guide/meta-advantage-plus${suffix}`,
+        destination: `${prefix}/guide/meta-advantage-plus`,
+        permanent: true,
+      }))),
       ...[
         ["/tools/experiment", "/tools/experiment-analysis"],
         ["/tools/vif-diagnosis", "/tools/vif-multicollinearity"],
+        // 분석별 데이터 안내는 분석 찾기 카드의 "준비 방법"으로 합쳤다(product-ssot §1.1c 결정 1).
+        ["/data-guide", "/start"],
       ].flatMap(([source, destination]) => [
         { source, destination, permanent: true },
         { source: `/en${source}`, destination: `/en${destination}`, permanent: true },
@@ -61,6 +70,20 @@ const nextConfig = {
         destination: "/en/content/freshness",
         permanent: true,
       },
+      // 증액 여력(5-22)은 예산 상세 설계(5-3)의 보기로 흡수됐다(product-ssot §4.2a).
+      {
+        source: "/tools/campaign-saturation",
+        destination: "/tools/budget-allocation?view=headroom",
+        permanent: true,
+      },
+      {
+        source: "/en/tools/campaign-saturation",
+        destination: "/en/tools/budget-allocation?view=headroom",
+        permanent: true,
+      },
+      // 같은 광고 성과 파일이라 템플릿도 예산 상세 설계(5-3)의 것 하나다.
+      { source: "/templates/campaign-saturation", destination: "/templates/budget-allocation", permanent: true },
+      { source: "/en/templates/campaign-saturation", destination: "/en/templates/budget-allocation", permanent: true },
       ...budgetRedirects,
       ...diagnosisRedirects,
       ...pillarRedirects,
@@ -71,11 +94,11 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Strict-Transport-Security", value: "max-age=31536000" },
         ],
       },
     ];

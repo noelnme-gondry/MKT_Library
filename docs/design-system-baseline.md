@@ -94,6 +94,8 @@
 
 ## 4. 미래 도구 강제 규약 (P4에서 CLAUDE.md 반영)
 
+2026-11-05 공용 적용: `ResultActionCard`의 `decisionPrefill.action`은 핵심 수치 바로 아래 `result-next-action`에 표시하고 같은 문장을 근거에서 반복하지 않는다(내보내기 원문은 보존). 강조 수치는 소비 도구가 `emphasis: "primary"`로 지정한다. `ResultChange`는 실제 값이 바뀌고 화면에 보일 때만 210ms의 투명도·4px 이동으로 알리며 `prefers-reduced-motion`이면 생략한다. `DataTable`은 옅은 열 구분을 제공한다. 플래너 모바일 실행안만 항목 라벨이 붙은 행으로 바꾸며 다른 분석 표를 임의로 카드화하지 않는다. 색·유형·상태가 아니라 현재 선택과 과업을 강조한다.
+
 신규 분석 도구는 반드시:
 1. `<ToolPageShell>`로 감싸거나 라우터의 `<ToolIntro>` 대상에 등록한다. 둘을 함께 쓰거나 자체 `h1`을 추가하지 않는다.
 2. 표는 `<DataTable>` (직접 `<table>` 금지).

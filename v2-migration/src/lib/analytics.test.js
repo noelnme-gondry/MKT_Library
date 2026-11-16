@@ -188,12 +188,15 @@ describe("privacy-safe product analytics", () => {
     })).toEqual({ tool_id: "5-3", row_count: 42, state: "parse_error", days_since_decision: "4-9d" });
   });
 
-  it("normalizes marketing-response subroutes into one funnel tool id", () => {
+  it("preserves the family funnel and adds a derived subroute dimension", () => {
     expect(sanitizeProductEventParams({ tool_id: "5-18-mmm", source: "route" })).toEqual({
       tool_id: "5-18",
+      tool_route_id: "5-18-mmm",
       source: "route",
     });
     expect(sanitizeProductEventParams({ tool_id: "5-18-paid-organic", source: "route" }).tool_id).toBe("5-18");
+    expect(sanitizeProductEventParams({ tool_id: "5-18-paid-organic" }).tool_route_id).toBe("5-18-paid-organic");
+    expect(sanitizeProductEventParams({ tool_id: "5-2", tool_route_id: "private-campaign" })).toEqual({ tool_id: "5-2" });
   });
 
   it("uses the same PVM analysis type for performance and content routes", () => {

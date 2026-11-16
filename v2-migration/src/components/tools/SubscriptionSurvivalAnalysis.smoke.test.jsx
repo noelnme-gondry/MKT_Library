@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import SubscriptionSurvivalAnalysis, { buildSegmentCurveChartData, scheduleSubscriptionChartResize } from "@/components/tools/SubscriptionSurvivalAnalysis";
 import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
+import { withSettings } from "@/test/declaredConditions";
 
 beforeEach(() => useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } }));
 
@@ -90,12 +91,16 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
-    const horizon = screen.getByLabelText("확인할 기간");
-    fireEvent.change(horizon, { target: { value: "2" } });
-    expect(container.textContent).toContain("현재 결과는 최신 설정과 다를 수 있습니다");
-    expect(container.querySelector("#subscription-survival-result")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "다시 분석" }));
+    // 결과가 나오면 설정은 맥락 한 줄의 조건 바꾸기 창 안에 있다. 창 안에서 바꾸면 결과가 숨지만 창은 남는다.
+    withSettings(() => {
+      fireEvent.change(screen.getByLabelText("확인할 기간"), { target: { value: "2" } });
+      expect(document.body.textContent).toContain("현재 결과는 최신 설정과 다를 수 있습니다");
+      expect(container.querySelector("#subscription-survival-result")).toBeNull();
+      expect(document.querySelector(".report-context-dialog")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "다시 분석" }));
+    });
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();
+    expect(container.querySelector(".report-context__line").textContent).toContain("2개월까지");
   });
 
   it("offers Word and calculation workbook after analysis and segment changes", () => {
@@ -107,9 +112,10 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
     fireEvent.pointerDown(document.body, { button: 0 });
 
-    const segment = screen.getByLabelText("세그먼트");
-    fireEvent.change(segment, { target: { value: "channel" } });
-    fireEvent.click(screen.getByRole("button", { name: "다시 분석" }));
+    withSettings(() => {
+      fireEvent.change(screen.getByLabelText("세그먼트"), { target: { value: "channel" } });
+      fireEvent.click(screen.getByRole("button", { name: "다시 분석" }));
+    });
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
     expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
   });

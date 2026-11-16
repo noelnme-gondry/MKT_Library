@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { marked } from "marked";
-import matter from "gray-matter";
+import matter from "./frontmatter";
 import { getTemplatePage, TEMPLATE_PAGES } from "./templateCatalog";
 import { highlightSopCode } from "./sopHighlight";
 import { rememberAllocationPreview, readAllocationPreview } from "./assistant/allocationPreview";

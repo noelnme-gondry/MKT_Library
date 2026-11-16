@@ -2,7 +2,7 @@ import { ANALYSIS_CATALOG } from "@/lib/assistant/analysisCatalog";
 import { evaluateAnalysisEligibility, rankRecommendedAnalyses } from "@/lib/assistant/evaluateAnalysisEligibility";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
-import { buildResponseAdapterColMap } from "@/lib/assistant/responseAnalysisAdapters";
+import { buildResponseAdapterColMap } from "@/lib/assistant/responseColumnMapping";
 
 /**
  * "이 CSV로 지금 어떤 분석이 되는가" — 한 곳에서만 판정한다.

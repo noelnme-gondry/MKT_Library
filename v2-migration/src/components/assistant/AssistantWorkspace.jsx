@@ -4,6 +4,7 @@ import { metricChangeTone, formatComparisonMetric } from "@/lib/assistant/metric
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
 import ToolIndex from "@/components/ds/ToolIndex";
+import { classifyDataReadiness } from "@/lib/assistant/dataReadiness";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
 import { isDemoData } from "@/lib/dataOrigin";
@@ -18,11 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ANALYSIS_CATALOG, analysisCatalogEntry } from "@/lib/assistant/analysisCatalog";
 import { beginNextAnalysis, confirmAnalysis, createAnalysisQueue, markQueueStale, settleAnalysis } from "@/lib/assistant/analysisQueue";
 import { buildNaturalExperimentHandoff, detectBudgetInterruptionCandidates } from "@/lib/assistant/detectBudgetInterruptionCandidates";
-import { efficiencyAdapterFor, runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
-import { optimizationAdapterFor, runOptimizationAnalysis } from "@/lib/assistant/optimizationAnalysisAdapters";
-import { responseAdapterFor, runResponseAnalysis } from "@/lib/assistant/responseAnalysisAdapters";
-import { runSpecialAnalysis, specialAdapterFor } from "@/lib/assistant/specialAnalysisAdapters";
-import { runSubscriptionAnalysis, subscriptionAdapterFor } from "@/lib/assistant/subscriptionAnalysisAdapters";
+import { loadAnalysisRunner } from "@/lib/assistant/loadAnalysisRunner";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
@@ -799,35 +796,23 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   useEffect(() => {
     if (!activeQueueItem || queue?.signature !== queueSignature) return undefined;
     let cancelled = false;
-    const execute = () => {
+    const execute = async () => {
       if (cancelled) return;
       const eventKey = productEventKey("dochi_workspace", activeQueueItem.toolId, queueSignature, locale);
       const event = { tool_id: activeQueueItem.toolId, source: isDemoData(csvData) ? "demo" : "csv", placement: "dochi_workspace", analysis_type: productAnalysisType(activeQueueItem.toolId), locale };
       trackProductEventOnce("analysis_started", eventKey, event);
-      const efficiencyAdapter = efficiencyAdapterFor(activeQueueItem.toolId);
-      const optimizationAdapter = optimizationAdapterFor(activeQueueItem.toolId);
-      const responseAdapter = responseAdapterFor(activeQueueItem.toolId);
-      const specialAdapter = specialAdapterFor(activeQueueItem.toolId);
-      const subscriptionAdapter = subscriptionAdapterFor(activeQueueItem.toolId);
-      const adapter = efficiencyAdapter || optimizationAdapter || responseAdapter || specialAdapter || subscriptionAdapter;
-      if (!adapter) {
-        trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "adapter_unavailable" });
-        setQueue((current) => current?.signature === queueSignature
-          ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_pending" })
-          : current);
-        setAnnouncement(C.adapterPendingDetail);
-        return;
-      }
       try {
-        const run = efficiencyAdapter
-          ? runEfficiencyAnalysis
-          : optimizationAdapter
-            ? runOptimizationAnalysis
-            : responseAdapter
-              ? runResponseAnalysis
-              : specialAdapter
-                ? runSpecialAnalysis
-                : runSubscriptionAnalysis;
+        const run = await loadAnalysisRunner(activeQueueItem.toolId);
+        // 청크를 받는 동안 입력·매핑이 바뀌거나 화면을 떠났으면 오래된 계산을 시작하지 않는다.
+        if (cancelled) return;
+        if (!run) {
+          trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "adapter_unavailable" });
+          setQueue((current) => current?.signature === queueSignature
+            ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_pending" })
+            : current);
+          setAnnouncement(C.adapterPendingDetail);
+          return;
+        }
         const prepared = prepareAnalysisHandoff({ ...csvData, mapping: mappingsByTool[activeQueueItem.toolId] }, activeQueueItem.toolId);
         const preflight = executionPreflight(prepared, activeQueueItem.toolId, locale);
         const computedResult = preflight.status === "blocked" ? createAnalysisResult({
@@ -856,6 +841,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           : current);
         setAnnouncement(result.verdict.headline);
       } catch {
+        if (cancelled) return;
         trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "calculation_error" });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_error" })
@@ -988,6 +974,11 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   </section>;
   const hasSheet = Boolean(summaryHead || summaryFoot);
 
+  // 자격은 있었지만 돌려 보니 판정을 못 낸 분석 — 엔진이 말한 사유를 그대로 쓴다.
+  const notComputable = Object.fromEntries(eligibility
+    .filter(result => ["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status))
+    .map(result => [result.toolId, queueItemFor(result.toolId).result.verdict?.headline || C.notComputableFallback]));
+  const readiness = classifyDataReadiness({ eligibility, notComputable, locale });
   return (<>
     {hasSheet && <section className="result-sheet" aria-labelledby="dochi-result-title">
       {summaryHead}
@@ -1002,13 +993,14 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       {(!queue || queue.cancelled || queue.signature !== queueSignature) && !autoStart && <button type="button" className="btn primary" onClick={startNext}>{locale === "en" ? "Analyze data" : "분석하기"}</button>}
       {isPreparingHandoff && <p role="status">{C.preparingDetails}</p>}
       {!hasSheet && conclusion}
-      <ToolIndex locale={locale} density="grid"
+      <ToolIndex locale={locale} density="grid" includeAbsorbed
         blockedCta={sampleMode ? (locale === "en" ? "Open with example data" : "예시로 열기") : null}
-        blockedInfo={Object.fromEntries(eligibility
-          .filter(result => ["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status))
-          .map(result => [result.toolId, { reason: queueItemFor(result.toolId).result.verdict?.headline || C.notComputableFallback }]))}
+        blockedInfo={Object.fromEntries(Object.entries(notComputable).map(([toolId, reason]) => [toolId, { reason }]))}
+        // 내 파일이면 세 칸(바로 가능 · 조금만 더 · 다른 파일 필요). 예시 작업대는 "예시로 열기"가
+        // 길이라 예전 두 칸을 유지한다.
+        nearInfo={sampleMode ? null : readiness.near}
         activeToolId={selectedAnalysis} onActiveToolChange={setSelectedAnalysis}
-        eligibleIds={eligibility.filter(result => result.status === "ready" && !["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status)).map(result => result.toolId)}
+        eligibleIds={eligibility.filter(result => result.status === "ready" && !notComputable[result.toolId]).map(result => result.toolId)}
         renderSummary={toolId => {
           const item = currentResults.find(({ result }) => result.toolId === toolId);
           if (!item) return null;

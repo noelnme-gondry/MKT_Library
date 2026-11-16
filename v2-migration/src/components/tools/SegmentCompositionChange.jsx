@@ -3,6 +3,8 @@ import RecipeBlock from "@/components/ds/RecipeBlock";
 
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import MappingEditorDialog from "@/components/ds/MappingEditorDialog";
+import ReportContext from "@/components/ds/ReportContext";
+import { isDemoData } from "@/lib/dataOrigin";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "@/utils/chartGlobals";
@@ -506,6 +508,30 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       `${large.count} large moves with disagreeing directions. Do not read this as one event.`);
   };
 
+  const fixMappingButton = (manualMapping || auto.ok) ? (
+    <button type="button" className="btn ghost segment-mapping-toggle" onClick={() => setMappingEditOpen(true)}>
+            {tx(locale, "다르게 읽혔다면 고치기", "Read it wrong? Fix it")}
+          </button>
+  ) : null;
+  const comparisonControls = (
+    <div className="analysis-local-controls">
+      <div className="analysis-local-controls__inner">
+        <AnalysisFilterField label={tx(locale, "이전 기간", "Earlier period")} value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
+          <option value="">{tx(locale, "선택", "Select")}</option>
+          {periods.map((period) => <option key={period} value={period}>{period}</option>)}
+        </AnalysisFilterField>
+        <AnalysisFilterField label={tx(locale, "이후 기간", "Later period")} value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
+          <option value="">{tx(locale, "선택", "Select")}</option>
+          {periods.map((period) => <option key={period} value={period}>{period}</option>)}
+        </AnalysisFilterField>
+        {scopeValues.length ? <AnalysisFilterField label={tx(locale, "경쟁 범위", "Scope")} value={draft.scopeValue} onChange={(event) => setDraft((value) => ({ ...value, scopeValue: event.target.value }))}>
+          <option value="">{tx(locale, "전체", "All")}</option>
+          {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
+        </AnalysisFilterField> : null}
+      </div>
+    </div>
+  );
+  const reportFolded = Boolean(analysis && selected) && Boolean(manualMapping || auto.ok);
   return <ToolPageShell
     toolId={TOOL_ID}
     // 페이지 h1은 상단 ToolIntro가 갖는다. 여기서 제목을 또 그리면 같은 화면에
@@ -525,7 +551,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
         업로드 화면에 같은 문장이 세 번 나온다(제품 SSOT §5.3 "설명 카드와 입력이 같은 내용 반복"). */}
     {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
 
-    {hasRows && <section className="block" aria-labelledby="segment-composition-mapping">
+    {hasRows && !reportFolded && <section className="block" aria-labelledby="segment-composition-mapping">
       <h2 id="segment-composition-mapping" className="section-title">{tx(locale, "이렇게 읽었습니다", "How this file was read")}</h2>
       {manualMapping ? (
         <p className="muted">{tx(locale, "직접 지정한 매핑을 씁니다.", "Using the mapping you set.")}</p>
@@ -541,9 +567,27 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       {auto.review.length && !manualMapping ? <p className="muted">{tx(locale,
         `확인이 필요해 자동으로 넣지 않은 컬럼: ${auto.review.map((item) => item.header).join(", ")}`,
         `Left out pending your check: ${auto.review.map((item) => item.header).join(", ")}`)}</p> : null}
-      {(manualMapping || auto.ok) && <button type="button" className="btn ghost segment-mapping-toggle" onClick={() => setMappingEditOpen(true)}>
-        {tx(locale, "다르게 읽혔다면 고치기", "Read it wrong? Fix it")}
-      </button>}
+      {fixMappingButton}
+    </section>}
+
+    {/* 결과가 나오면 읽은 방식·비교 조건은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계).
+        무엇으로 읽었는지는 줄에 남기고(§9), 매핑 고치기는 줄 옆 버튼이다. */}
+    {reportFolded && <ReportContext locale={locale} dialogTitle={tx(locale, "비교 조건", "Comparison")} actions={fixMappingButton} parts={[
+      { text: isDemoData(csvData) ? tx(locale, "예시 데이터", "Sample data") : (csvData?.fileName || tx(locale, "업로드한 데이터", "Uploaded data")), emphasis: true },
+      { text: tx(locale, `${rows.length.toLocaleString()}행`, `${rows.length.toLocaleString()} rows`) },
+      { text: manualMapping ? tx(locale, "직접 지정한 매핑", "your mapping") : tx(locale,
+        `날짜 ${auto.roles.time} · 인원 ${autoCountColumn} · ${auto.dimensions.map((dimension) => dimension.label).join("·")} 기준`,
+        `dates ${auto.roles.time} · people ${autoCountColumn} · split by ${auto.dimensions.map((dimension) => dimension.label).join("/")}`) },
+      { text: `${pre} → ${post}` },
+      ...(draft.scopeValue ? [{ text: tx(locale, `범위 ${draft.scopeValue}`, `scope ${draft.scopeValue}`) }] : []),
+      ...(auto.review.length && !manualMapping ? [{ text: tx(locale, `확인 필요 열 ${auto.review.length}개`, `${auto.review.length} column(s) to check`) }] : []),
+    ]}>{comparisonControls}</ReportContext>}
+    {hasRows && !reportFolded && <section className="block" aria-labelledby="segment-composition-compare">
+      <h2 id="segment-composition-compare" className="section-title">{tx(locale, "비교 조건", "Comparison")}</h2>
+      {comparisonControls}
+      {!gateOpen ? <p className="muted">{tx(locale, "업로드 화면의 ‘데이터 분석하기’를 누르면 결과가 나옵니다.", "Choose Analyze data on the upload panel to see results.")}</p> : null}
+      {gateOpen && !ready ? <p className="muted">{tx(locale, "서로 다른 두 기간이 있어야 비교할 수 있습니다.", "Two different periods are needed to compare.")}</p> : null}
+    </section>}
       <MappingEditorDialog asDialog={Boolean(manualMapping || auto.ok)} open={mappingEditOpen} onClose={() => setMappingEditOpen(false)} locale={locale}>
       <section id="segment-mapping-edit" className="segment-mapping-edit">
         <SegmentRoleMapper
@@ -556,29 +600,6 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
         />
       </section>
       </MappingEditorDialog>
-    </section>}
-
-    {hasRows && <section className="block" aria-labelledby="segment-composition-compare">
-      <h2 id="segment-composition-compare" className="section-title">{tx(locale, "비교 조건", "Comparison")}</h2>
-      <div className="analysis-local-controls">
-        <div className="analysis-local-controls__inner">
-          <AnalysisFilterField label={tx(locale, "이전 기간", "Earlier period")} value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
-            <option value="">{tx(locale, "선택", "Select")}</option>
-            {periods.map((period) => <option key={period} value={period}>{period}</option>)}
-          </AnalysisFilterField>
-          <AnalysisFilterField label={tx(locale, "이후 기간", "Later period")} value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
-            <option value="">{tx(locale, "선택", "Select")}</option>
-            {periods.map((period) => <option key={period} value={period}>{period}</option>)}
-          </AnalysisFilterField>
-          {scopeValues.length ? <AnalysisFilterField label={tx(locale, "경쟁 범위", "Scope")} value={draft.scopeValue} onChange={(event) => setDraft((value) => ({ ...value, scopeValue: event.target.value }))}>
-            <option value="">{tx(locale, "전체", "All")}</option>
-            {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
-          </AnalysisFilterField> : null}
-        </div>
-      </div>
-      {!gateOpen ? <p className="muted">{tx(locale, "업로드 화면의 ‘데이터 분석하기’를 누르면 결과가 나옵니다.", "Choose Analyze data on the upload panel to see results.")}</p> : null}
-      {gateOpen && !ready ? <p className="muted">{tx(locale, "서로 다른 두 기간이 있어야 비교할 수 있습니다.", "Two different periods are needed to compare.")}</p> : null}
-    </section>}
 
     {analysis && selected ? <>
       <section className="block" id="segment-composition-result">

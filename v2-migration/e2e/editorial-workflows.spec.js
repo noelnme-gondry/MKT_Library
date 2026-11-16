@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { setupBarShowsInput } from "../src/lib/report/reportContextTools";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
+import { chooseDashboardView } from "./support/dashboardView.js";
 
 const articles = ["weekly-marketing-report-template", "cac-payback-period", "marketing-report-sheets-bigquery", "ga4-data-traps", "ltv-cac-ratio", "cpi-cpa-cpm-difference", "cannibalization-organic-paid"];
 const localOnly = route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort();
@@ -54,6 +56,10 @@ for (const locale of ["ko", "en"]) {
       // 운영 대시보드(5-2)는 입력을 제목 줄("예시 데이터 · 28행")이 말하고 위의 설정 줄을 두지 않는다.
       if (BLOG_INSIGHT_PLACEMENTS[slug].toolId === "5-2") {
         await expect(page.locator(".dashboard-sticky-context__meta")).toContainText(locale === "en" ? "28 rows" : "28행");
+      } else if (!setupBarShowsInput(BLOG_INSIGHT_PLACEMENTS[slug].toolId, true)) {
+        // 결과가 나온 도구는 결과 위 맥락 줄이나 접힌 업로더 줄이 입력을 말한다(product-ssot §1.1c) — 맨 위에 다시 쓰지 않는다.
+        await expect(page.locator(".report-context__line, .csv-collapsed-summary").first()).toContainText(`${followup ? 42 : 28}${locale === "en" ? " rows" : "행"}`);
+        await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toHaveCount(0);
       } else {
         await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toContainText(`${followup ? 42 : 28} ${locale === "en" ? "source rows" : "원본 행"}`);
       }
@@ -83,8 +89,8 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".blog-arrival")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
-    await page.getByRole("tab", { name: "LTV & ROAS", exact: true }).click();
-    await expect(page.getByRole("tab", { name: "LTV & ROAS", exact: true })).toHaveAttribute("aria-selected", "true");
+    await chooseDashboardView(page, "ltv");
+    await expect(page.locator("#dashboard-tab-ltv")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel")).toContainText(/LTV/);
     await expect(page.getByRole("tabpanel")).toContainText(locale === "en" ? "A ratio of 3× alone does not justify scaling." : "3× 이상이라는 이유만으로 증액을 결정할 수는 없습니다.");
   });

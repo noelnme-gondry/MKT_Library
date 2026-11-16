@@ -1,4 +1,5 @@
 "use client";
+import { csvCell } from "@/utils/download";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import RecipeBlock from "@/components/ds/RecipeBlock";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
@@ -36,7 +37,6 @@ const CREATIVE_COPY_EN = {
     uploaderToolId: "5-6",
     entity: "creative",
     noDataDesc: "Upload creative performance data to analyze fatigue and concepts.",
-    heroTitle: "Which creatives are winning, and when should you swap them?",
     heroSub:
       "For each creative (video, image, etc.), see what's working, why it's working, and when it's time to replace it — all in one place.",
     heroJourney: [
@@ -102,7 +102,6 @@ const CREATIVE_COPY_EN = {
     uploaderToolId: "9-6",
     entity: "content",
     noDataDesc: "Upload content performance data to analyze freshness decline and response decay.",
-    heroTitle: "Which content is resonating, and when should you publish new content?",
     heroSub:
       "For each piece of content (article, video, post, etc.), see what's working, why it's working, and when it's time to publish something new — all in one place.",
     heroJourney: [
@@ -431,13 +430,11 @@ function exportCreativeMetricsCSV(metrics, snapshotHash, version, locale = "ko")
         m.cta_style || "",
         m.duration_bucket || "",
       ]
-        .map((v) =>
-          /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v,
-        )
+        .map(csvCell)
         .join(","),
     );
   }
-  const blob = new Blob(["﻿" + lines.join("\n")], {
+  const blob = new Blob(["﻿" + lines.join("\r\n") + "\r\n"], {
     type: "text/csv;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
@@ -950,39 +947,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
   return (
     <div className="tab-pane active" id="tab-creative">
-      {/* 도구 소개는 한 줄만 유지한다. 실제 판단은 바로 아래 결론·컨트롤룸이 담당한다. */}
-      <section
-        className="block"
-        id="s-creative-hero"
-        style={{
-          background: "transparent",
-          border: "1px solid rgba(122,162,247,0.25)",
-          borderRadius: "14px",
-          padding: "18px 20px",
-          marginBottom: "16px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
-          <div>
-            <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{C.heroTitle}</h2>
-            <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: "660px" }}>
-              {tr("교체할 소재, 다음 제작 후보, 성과 변화 신호를 한 번에 정리합니다.", "See what to replace, what to produce next, and what changed performance.")}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
-            <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
-          </div>
-        </div>
-
-        <section data-information-section="" style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
-          <header data-information-heading="">{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</header>
-          <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
-            {C.heroCausationBody}
-          </div>
-        </section>
-      </section>
-
+      {/* 결론이 맨 위다. 도구 소개는 제목 줄이 하고, 해석 한계는 결과 끝에 둔다(product-ssot §1.1c 4단계). */}
       <ResultActionCard
         coreFigure={domain !== "content" && <ToolCoreFigure embedded
           figure={creativeStatusFigure({
@@ -1002,24 +967,24 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         decisionReview={hasDecisionTarget}
         decisionPrefill={hasDecisionTarget ? {
           conclusion: `${fatigueHeadline} · ${decisionEntityLabel}`,
-          action: domain === "content"
+          action: !immediateDecisionTarget ? tr(`${decisionEntityLabel}의 피로 신호를 다시 확인하고 교체 시점을 정한다`, `Recheck fatigue signals for ${decisionEntityLabel} and decide when to replace it`) : domain === "content"
             ? tr(`${decisionEntityLabel}의 한 요소만 바꾼 새 버전을 발행한다`, `Publish a refreshed version of ${decisionEntityLabel} with one element changed`)
             : tr(`${decisionEntityLabel}의 한 요소만 바꾼 대체 소재를 투입한다`, `Launch a replacement for ${decisionEntityLabel} with one element changed`),
-          hypothesis: domain === "content"
+          hypothesis: !immediateDecisionTarget ? tr("피로 신호가 다음 기간에도 이어지는지 확인한다", "Check whether fatigue signals persist in the next period") : domain === "content"
             ? tr("한 요소만 바꾼 새 버전은 CTR 하락을 멈추고 현재 기준을 넘어설 것이다", "A one-variable refresh should stop the CTR decline and beat the current baseline")
             : tr("한 요소만 바꾼 대체 소재는 CTR 하락을 멈추고 현재 기준을 넘어설 것이다", "A one-variable replacement should stop the CTR decline and beat the current baseline"),
           metric: fatiguedDecisionTarget ? "CTR" : tr("CTR 일별 추세", "Daily CTR trend"),
           baseline: fatiguedDecisionTarget ? fmtPct(fatiguedDecisionTarget.currentValue) : fmtPctDay(immediateDecisionTarget?.ctrTrendPctPerDay, locale),
           sourcePeriod: decisionSourcePeriod,
-          reviewQuestion: tr("교체·발행 7일 뒤 CTR이 기준값을 넘었는가?", "Seven days after launch, did CTR beat the baseline?"),
+          reviewQuestion: immediateDecisionTarget ? tr("교체·발행 7일 뒤 CTR이 기준값을 넘었는가?", "Seven days after launch, did CTR beat the baseline?") : tr("다음 7일에도 CTR 하락이 이어지고 교체 경고가 발생했는가?", "Over the next seven days, did CTR keep declining and trigger a replacement alert?"),
         } : null}
         tone={fatigueTone}
         title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
         headline={fatigueHeadline}
         points={fatiguePoints}
         stats={[
-          { label: tr("즉시 교체", "Replace now"), value: `${alertNowN}${tr("개", "")}` },
-          { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
+          { label: tr("즉시 교체", "Replace now"), emphasis: alertNowN > 0 ? "primary" : undefined, value: `${alertNowN}${tr("개", "")}` },
+          { label: tr("피로 신호", "Fatigue signals"), emphasis: alertNowN === 0 && fatiguedCount > 0 ? "primary" : undefined, value: `${fatiguedCount}${tr("개", "")}` },
           { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
         ]}
         workbookExport={() => ({
@@ -1293,7 +1258,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             id="creative-export-metrics"
             onClick={() => requirePaidExport({ locale }) && exportCreativeMetricsCSV(metrics, snapshotHash, CREATIVE_CONFIG.version, locale)}
           >
-            {tr("⬇ 지표 CSV 다운로드", "⬇ Download metrics CSV")}
+            {tr("지표 CSV 다운로드", "Download metrics CSV")}
           </button>
         </div>
       </section>
@@ -1897,6 +1862,15 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         ) : (
           <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 충분히 관측되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations have enough observations or there isn't enough data).")}</p>
         )}
+      </section>
+
+      <section className="block" id="s-creative-hero" aria-labelledby="s-creative-limits-title">
+        <h2 id="s-creative-limits-title" className="section-title">{tr("해석 한계 (상관 ≠ 인과)", "Interpretation limits (correlation ≠ causation)")}</h2>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "0 0 8px" }}>
+          <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
+          <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
+        </div>
+        <p style={{ margin: 0, fontSize: "var(--fs-sm)", lineHeight: 1.6, color: "var(--text-secondary)" }}>{C.heroCausationBody}</p>
       </section>
     </div>
   );

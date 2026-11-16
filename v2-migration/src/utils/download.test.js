@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import * as XLSX from "xlsx";
 
-import { csvBody, withAttribution } from "./download";
+import { csvBody, trustedCsvFormula, withAttribution } from "./download";
 
 describe("download attribution", () => {
   it("appends one source line to text exports", () => {
@@ -31,6 +32,34 @@ describe("download attribution", () => {
 });
 
 describe("csvBody", () => {
+  it("preserves explicitly authored arithmetic formulas and numeric negatives", () => {
+    const csv = csvBody(["formula", "number"], [[trustedCsvFormula("=A2+B2"), -3.25]]);
+    const sheet = XLSX.read(csv, { type: "string" }).Sheets.Sheet1;
+    expect(sheet.A2.f).toBe("A2+B2");
+    expect(sheet.B2).toMatchObject({ t: "n", v: -3.25 });
+    expect(() => trustedCsvFormula('=HYPERLINK("https://example.com")')).toThrow(TypeError);
+  });
+
+  it("keeps imported labels as text when a spreadsheet reads the CSV", () => {
+    const labels = ["=1+1", "+SUM(1,2)", "-1+1", "@SUM(A1)", "\t=1+1", "\r=1+1", "  =1+1", "＝1+1"];
+    const csv = csvBody(["label", "value"], labels.map((label) => [label, -3]));
+    const sheet = XLSX.read(csv, { type: "string" }).Sheets.Sheet1;
+    labels.forEach((label, index) => {
+      const row = index + 2;
+      expect(sheet[`A${row}`].f).toBeUndefined();
+      expect(sheet[`A${row}`].v).toBe(`'${label}`);
+      expect(sheet[`B${row}`].v).toBe(-3);
+    });
+  });
+
+  it("keeps formatted numeric results usable as spreadsheet numbers", () => {
+    const csv = csvBody(["negative", "percent", "grouped"], [["-3.25", "-12.5%", "-1,234.50"]]);
+    const sheet = XLSX.read(csv, { type: "string" }).Sheets.Sheet1;
+    expect(sheet.A2).toMatchObject({ t: "n", v: -3.25 });
+    expect(sheet.B2).toMatchObject({ t: "n", v: -0.125 });
+    expect(sheet.C2).toMatchObject({ t: "n", v: -1234.5 });
+  });
+
   // Excel이 한 행으로 뭉치거나 한글이 깨지는 두 사고가 반복돼서 조립을 한 곳으로 모았다(§7).
   it("joins with CRLF and leads with a BOM", () => {
     const csv = csvBody(["week", "value"], [["2026-W01", 10], ["2026-W02", 12]]);

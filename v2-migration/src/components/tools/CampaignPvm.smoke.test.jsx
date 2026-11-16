@@ -157,9 +157,13 @@ describe("CampaignPvm render smoke", () => {
     seedWithData();
     let view;
     expect(() => { view = render(<CampaignPvm />); }).not.toThrow();
-    // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
-    // from the ToolPageShell TOC link of the same name).
+    // 결과가 나오면 기간·지표는 맥락 한 줄 + 조건 바꾸기 창이다(product-ssot §1.1c 결정 4).
+    // 결과 위에 기간 선택기가 없고, 창을 열면 같은 선택기가 있다.
+    expect(screen.queryByRole("button", { name: /^분석 기간/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     expect(screen.getByRole("button", { name: /^분석 기간/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     // 5-21은 전역 분모 기준에 따라 CPA·CPI 어느 쪽으로도 말한다 — 둘 다 후보에 있어야
@@ -187,6 +191,7 @@ describe("CampaignPvm render smoke", () => {
     const full = { ...csv, headers: [...csv.headers, "Clicks", "Actions"], mapping: { ...csv.mapping, Clicks: "clicks", Actions: "actions" }, raw: csv.raw.map(row => ({ ...row, Clicks: row.Installs * 4, Actions: row.Installs / 2 })) };
     useAppStore.setState({ csvData: full, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: full } });
     const { container } = render(<CampaignPvm />);
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     fireEvent.click(screen.getByRole("radio", { name: "CPA", exact: true }));
     expect(container.querySelectorAll(".pvm-stage-analysis__rows > li")).toHaveLength(4);
     expect(container.querySelector(".pvm-stage-analysis").textContent).toContain("설치 → 가입");
@@ -244,8 +249,13 @@ describe("CampaignPvm render smoke", () => {
         platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set(),
       },
     });
-    render(<CampaignPvm />);
+    const { container } = render(<CampaignPvm />);
 
+    // 결과 위에는 실제 계산에 쓴 두 기간을 날짜 그대로 한 줄로 말한다.
+    const line = container.querySelector(".report-context__line").textContent;
+    expect(line).toContain("분석 2026-01-19 – 2026-01-25");
+    expect(line).toContain("비교 2026-01-05 – 2026-01-11");
+    fireEvent.click(screen.getByRole("button", { name: "조건 바꾸기" }));
     expect([...document.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
     expect(screen.getByRole("button", { name: /^비교 기간/ })).toBeTruthy();
   });

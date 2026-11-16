@@ -224,6 +224,16 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
     ])), "aso-store-conversion");
   };
 
+  const rulesSection = (
+    <section className="block diagnostic-tool__rules" id="aso-setup">
+      <h2 className="section-title">{tr("무엇을 가르나", "What it separates")}</h2>
+      <p>{tr(
+        "설치당 조회 수 변화를 구성 항과 소스별 효율 항으로 분해합니다. 이는 관측 산술이며 페이지·광고 변경의 인과 효과를 구분하는 검정은 아닙니다.",
+        "Decompose changes in views per install into mix and within-source efficiency. This is observational arithmetic, not a causal test of page or advertising changes.",
+      )}</p>
+    </section>
+  );
+
   return (
     <ToolPageShell
       toolId={TOOL_ID}
@@ -235,13 +245,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
         "Build the store funnel from a console CSV and split conversion change into traffic mix and per-source efficiency.",
       )}</p>}
     >
-      <section className="block diagnostic-tool__rules" id="aso-setup">
-        <h2 className="section-title">{tr("무엇을 가르나", "What it separates")}</h2>
-        <p>{tr(
-          "설치당 조회 수 변화를 구성 항과 소스별 효율 항으로 분해합니다. 이는 관측 산술이며 페이지·광고 변경의 인과 효과를 구분하는 검정은 아닙니다.",
-          "Decompose changes in views per install into mix and within-source efficiency. This is observational arithmetic, not a causal test of page or advertising changes.",
-        )}</p>
-      </section>
+      {/* 무엇을 가르는지는 분석 전에는 위에서, 결과가 나오면 결론 뒤에서 말한다(§1.1c 4단계). */}
+      {!(analyzed && result) && rulesSection}
 
       <CsvUploader toolId={TOOL_ID} locale={locale} />
 
@@ -414,6 +419,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             "To test whether paid traffic is displacing organic, use incrementality analysis; to confirm a screenshot or icon change, use a store experiment (App Store PPO or Play store listing experiments).",
           )}</p>
         </section>
+        {rulesSection}
       </>}
     </ToolPageShell>
   );

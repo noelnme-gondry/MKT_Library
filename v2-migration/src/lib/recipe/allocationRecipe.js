@@ -9,7 +9,7 @@ export const ALLOCATION_OPTIONS = {
   budgetPeriod: choice("daily", ["daily", "monthly"], "예산 단위", "Budget period"),
   budget: { value: "", private: true, ko: "예산", en: "Budget" },
   recentDays: number(7, 1, 365, "기준 일수", "Baseline days"),
-  allocMode: choice("c", ["c", "b"], "배분 방식", "Allocation method"),
+  allocPace: choice("paced", ["paced", "full"], "실행 방식", "Execution pace"),
   holdLowConfidence: { value: true, ko: "저신뢰 대상 유지", en: "Hold low-confidence targets" },
   objective: choice(null, ["install", "action", "roas"], "성과 기준", "Objective"),
   selectedCountries: { value: null, list: true, private: true, ko: "분석 국가", en: "Analysis countries" },

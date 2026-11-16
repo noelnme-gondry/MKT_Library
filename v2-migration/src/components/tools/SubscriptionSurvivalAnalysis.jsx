@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "@/utils/chartGlobals";
 import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
+import ReportContext from "@/components/ds/ReportContext";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DataTable from "@/components/ds/DataTable";
 import { FigureHead } from "@/components/ds/FigurePngButton";
@@ -336,6 +337,8 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
   const [draft, setDraft] = useSavedToolInput("5-28", "draft", { inputMode: "periods", timeUnit: "month", horizon: "", segmentKey: "", observationEndDate: "", eventDefinition: "", arpu: "", margin: "", discountRate: "" });
   const [applied, setApplied] = useState(null);
   const [validationMessage, setValidationMessage] = useState("");
+  // 조건 바꾸기 창이 열린 동안은 설정을 바꿔 결과가 잠시 비어도(다시 분석 전) 접힌 채로 둔다.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const defaultPrepared = useMemo(() => prepareSurvivalRows(sourceRows, draft), [draft, sourceRows]);
   const maxObserved = defaultPrepared.validRows.reduce((maximum, row) => Math.max(maximum, row.time), 0);
   const draftHorizon = Math.min(maxObserved, Math.max(0, parseNum(draft.horizon) ?? maxObserved));
@@ -423,12 +426,9 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
   const availableSegments = SEGMENTS.filter((key) => sourceRows.some((row) => firstDefined(row, [key]) != null));
 
   // 페이지 h1은 상단 ToolIntro가 갖는다(§ 5-25·5-26·5-27과 동일).
-  return <ToolPageShell toolId={TOOL_ID} titleLevel={0} title={tx(locale, "핵심 액션 생존·이탈 분석", "Action Survival & Drop-off Analysis")} locale={locale} summary={<p>{tx(locale, "특정 핵심 액션을 계속 유지하는지, 언제 이탈·종료하는지 중도절단을 반영해 봅니다. 구독은 하나의 입력 예시일 뿐이며, 개별 이탈을 예측하거나 원인을 확정하지는 않습니다.", "Measure whether an entity keeps a defined key action and when it exits or drops off with censoring handled. Subscription is only one input example; this does not predict individual drop-off or establish causes.")}</p>} toc={[{ id: "subscription-survival-result", title: tx(locale, "결론", "Conclusion") }, { id: "subscription-survival-curve", title: tx(locale, "생존곡선", "Survival") }, { id: "subscription-hazard", title: tx(locale, "위험 구간", "Risk") }]}>
-    {/* 빈 상태 문구는 CsvUploader/CsvGuide가 소유한다 — 도구가 같은 말을 다시 쓰면
-        업로드 화면에 같은 문장이 두 번 나온다(제품 SSOT §5.3). */}
-    {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
-    {hasRows && !gateOpen && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /><p className="muted">{tx(locale, "매핑을 확인한 뒤 ‘데이터 분석하기’를 눌러 결과를 계산하세요.", "Confirm the mapping, then choose Analyze data to calculate results.")}</p></section>}
-    {hasRows && gateOpen && <section className="block" aria-label={tx(locale, "분석 설정", "Analysis settings")}>
+  const unitWord = (unit) => unit === "day" ? "일" : unit === "week" ? "주" : "월";
+  const settingsForm = (
+    <>
       <div className="survival-settings">
         <fieldset><legend>{tx(locale, "관측 기준", "Observation scope")}</legend><div className="survival-settings__grid">
           <AnalysisFilterField label={tx(locale, "입력 방식", "Input mode")}><select className="mon-filter-select" value={draft.inputMode} onChange={(event) => setDraft((value) => ({ ...value, inputMode: event.target.value }))}><option value="periods">{tx(locale, "기간 + 이벤트 여부", "Duration + event flag")}</option><option value="dates">{tx(locale, "시작·이벤트·관측 종료일", "Start, event, and observation dates")}</option></select></AnalysisFilterField>
@@ -450,7 +450,29 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
       {validationMessage && <p className="callout" role="alert">{validationMessage}</p>}
       {!active && <p><button type="button" className="btn primary" onClick={run}>{tx(locale, "분석하기", "Analyze")}</button></p>}
       {isStale && <p className="callout">{tx(locale, "설정이 바뀌었습니다. 현재 결과는 최신 설정과 다를 수 있습니다.", "Settings changed. The current result may not match them.")} <button type="button" className="ab-pill" onClick={run}>{tx(locale, "다시 분석", "Re-analyze")}</button></p>}
-    </section>}
+    </>
+  );
+  const reportFolded = Boolean(result && !isStale) || settingsOpen;
+  return <ToolPageShell toolId={TOOL_ID} titleLevel={0} title={tx(locale, "핵심 액션 생존·이탈 분석", "Action Survival & Drop-off Analysis")} locale={locale} summary={<p>{tx(locale, "특정 핵심 액션을 계속 유지하는지, 언제 이탈·종료하는지 중도절단을 반영해 봅니다. 구독은 하나의 입력 예시일 뿐이며, 개별 이탈을 예측하거나 원인을 확정하지는 않습니다.", "Measure whether an entity keeps a defined key action and when it exits or drops off with censoring handled. Subscription is only one input example; this does not predict individual drop-off or establish causes.")}</p>} toc={[{ id: "subscription-survival-result", title: tx(locale, "결론", "Conclusion") }, { id: "subscription-survival-curve", title: tx(locale, "생존곡선", "Survival") }, { id: "subscription-hazard", title: tx(locale, "위험 구간", "Risk") }]}>
+    {/* 빈 상태 문구는 CsvUploader/CsvGuide가 소유한다 — 도구가 같은 말을 다시 쓰면
+        업로드 화면에 같은 문장이 두 번 나온다(제품 SSOT §5.3). */}
+    {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
+    {hasRows && !gateOpen && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /><p className="muted">{tx(locale, "매핑을 확인한 뒤 ‘데이터 분석하기’를 눌러 결과를 계산하세요.", "Confirm the mapping, then choose Analyze data to calculate results.")}</p></section>}
+    {/* 결과가 나오면 관측 기준·이탈 정의·가치 계산은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계).
+        창 안에서 설정을 바꾸면 결과가 잠시 숨지만 창은 닫히지 않는다 — 같은 창에서 다시 분석한다. */}
+    {hasRows && gateOpen && (reportFolded
+      ? <ReportContext locale={locale} onOpenChange={setSettingsOpen} dialogTitle={tx(locale, "분석 설정", "Analysis settings")} parts={[
+        { text: isDemoData(csvData) ? tx(locale, "예시 데이터", "Example data") : (csvData?.fileName || tx(locale, "올린 데이터", "Uploaded data")), emphasis: true },
+        { text: tx(locale, `${sourceRows.length.toLocaleString()}행`, `${sourceRows.length.toLocaleString()} rows`) },
+        { text: tx(locale, `${unitWord(draft.timeUnit)} 단위 · ${draftHorizon}${draft.timeUnit === "month" ? "개월" : unitWord(draft.timeUnit)}까지`, `by ${draft.timeUnit} · up to ${draftHorizon} ${draft.timeUnit}${draftHorizon === 1 ? "" : "s"}`) },
+        ...(draft.eventDefinition ? [{ text: tx(locale, `이탈: ${draft.eventDefinition}`, `exit: ${draft.eventDefinition}`) }] : []),
+        { text: draft.segmentKey ? tx(locale, `세그먼트 ${draft.segmentKey}`, `segment ${draft.segmentKey}`) : tx(locale, "전체만", "overall only") },
+      ]}>{settingsForm}</ReportContext>
+      : <section className="block" aria-label={tx(locale, "분석 설정", "Analysis settings")}>
+        {/* 실행 전에도 입력은 도구가 직접 말한다(맨 위 현재 입력 줄은 쓰지 않는다 — reportContextTools). */}
+        <CsvUploader toolId={TOOL_ID} locale={locale} />
+        {settingsForm}
+      </section>)}
     {result && !isStale && <>
       <div id="subscription-survival-result"><ResultActionCard toolId={TOOL_ID} locale={locale} resultState={result.evidence.status === "READY" ? "ready" : "withheld"} tone={result.evidence.status === "READY" ? "neutral" : "bad"} title={statusCopy(result.evidence.status, locale)} headline={evidenceHeadline({ evidence: result.evidence, hazard: result.hazard, timeUnit: result.timeUnit, locale })} decisionPrefill={decisionPrefill} download={download} workbookExport={() => ({
         calculationMode: "exact_after_preprocessing",

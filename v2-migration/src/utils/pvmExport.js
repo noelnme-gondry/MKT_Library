@@ -1,6 +1,7 @@
 // 5-21 PVM 도구 전용 순수 헬퍼 — index.html pvmGenerateDiagnosis / downloadPvmCsv 이식.
 // 살아있는 스프레드시트 수식 CSV(§7 CRLF+BOM+q() 이스케이프) + 진단 문구 생성.
 // 순수 함수(사이드이펙트 없음) — 단위 테스트 대상.
+import { csvCell, trustedCsvFormula } from "./download";
 
 // 진단(💡) 문구 — index.html pvmGenerateDiagnosis 이식.
 // level: "channel" | "campaign" | "creative" — 표의 1·2·3단. names가 있으면 그 단의 실제 축 이름
@@ -65,15 +66,17 @@ export function buildPvmResultCsv(c, ml, locale = "ko") {
   if (c?.analysisStatus !== "COMPLETE" || c?.identity?.ok !== true) {
     throw new Error("PVM export requires an identity-verified decomposition.");
   }
-  const q = (s) => {
-    s = String(s == null ? "" : s);
-    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
   const r0 = Math.round;
   const r1 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(1));
   const r4 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(4));
   const lines = [];
-  const push = (arr) => lines.push(arr.map(q).join(","));
+  const push = (arr) => lines.push(arr.map((value, column) => {
+    // 외부 라벨은 항상 텍스트. 수식은 아래에서 직접 만드는 계산 열에만 존재한다.
+    const isCalculation = arr[0] === "SCORECARD" ? column === 4
+      : ["CREATIVE_FULL", "CAMPAIGN", "CHANNEL"].includes(arr[0]) && column >= 5;
+    return csvCell(isCalculation && typeof value === "string" && value.startsWith("=")
+      ? trustedCsvFormula(value) : value);
+  }).join(","));
   const rowNum = () => lines.length + 1; // 다음 push의 스프레드시트 행번호(1-indexed)
   const Cbar = (c.CPA1 + c.CPA2) / 2; // 전체 평균 CPA(centering 기준)
   const sumExpr = (col, rows) => rows.length ? rows.map((r) => col + r).join("+") : "0";

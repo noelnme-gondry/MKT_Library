@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { resolvePathToId } from "@/lib/routeMap";
 import { RESPONSE_STAGES, responseStageHref } from "@/lib/responseStage";
 /**
@@ -73,6 +74,7 @@ const RAIL_VOLUME = rail("conversions", "전환수 유지", "Hold conversions", 
  * `publishedToolIds()`에서 파생해 강제한다(손으로 쓴 목록을 돌면 가드가 아니다).
  */
 export const TOOL_DECISION_GOALS = Object.freeze({
+  ...advancedMap((tool) => ({ goals: [g(`rerun:${tool.key}`, tool.goal.ko, tool.goal.en, tool.direction)], guardrails: [], guardrailUnavailable: { ko: "이 도구는 효율 스냅샷과 단위가 달라 자동 가드레일을 제공하지 않습니다. 원본 도구에서 새 데이터로 다시 확인하세요.", en: "This tool uses a different unit from efficiency snapshots. Automated guardrails are unavailable; rerun the original tool on new data." } })),
   "5-31": { goals: [g("cpi", "CPI", "CPI", "down"), g("cpa", "CPA", "CPA", "down"), g("conversions", "전환수", "Conversions", "up")], guardrails: [RAIL_SPEND, RAIL_VOLUME, RAIL_CPI] },
   "5-2": {
     goals: [

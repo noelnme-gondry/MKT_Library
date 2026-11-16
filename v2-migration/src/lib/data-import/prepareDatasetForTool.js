@@ -3,6 +3,7 @@ import { buildMappingContract } from "./mappingContract";
 import { buildLegacyRows } from "./canonical-v2/buildLegacyRows";
 import { buildCanonicalDatasetV2 } from "./canonical-v2/buildCanonicalDatasetV2";
 import { mapDataset } from "./semantic-mapper/mapDataset";
+import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 
 export function toolFieldKeys(toolId) {
   const keys = new Set();

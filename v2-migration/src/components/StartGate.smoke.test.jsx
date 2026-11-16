@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
+import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 import { PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
@@ -17,6 +17,9 @@ async function analyzePreparedFile() {
   fireEvent.click(document.querySelector(".csv-analysis-action"));
   await waitFor(() => expect(document.querySelector(".workspace-input-summary")).toBeTruthy());
 }
+
+// 같은 파일 도구는 대표 카드 안의 목록이다(product-ssot §5.1 "묶기") — 카드 수가 아니라 화면에 닿는 분석을 센다.
+const renderedAnalysisIds = () => new Set([...document.querySelectorAll(".finder-card")].flatMap((card) => [card.dataset.toolId, ...[...card.querySelectorAll(".finder-card__members li")].map((item) => item.dataset.toolId)]));
 
 describe("StartGate render smoke", () => {
   beforeEach(() => {
@@ -61,19 +64,22 @@ describe("StartGate render smoke", () => {
     expect(screen.getByRole("button", { name: "원 ₩" })).toBeTruthy();
   });
 
-  it("mounts with one upload entry and no premature analysis catalog", () => {
+  it("mounts as the single analysis finder: situations, one upload entry and every analysis card", () => {
     expect(() => render(<StartGate />)).not.toThrow();
     // 진입 시 데모 자동로드 억제 플래그 on.
     expect(useAppStore.getState().demoDisabled).toBe(true);
-    // 도구 인덱스가 발행 도구를 전부 버튼으로 내놓는다. 예전에는 <details>로 접혀
-    // 있어 "무엇을 할 수 있는지"가 첫 화면에 없었다. 격자로 바뀐 뒤에도 개수 계약은
-    // 같다 — 접는 것과 격자에 담는 것은 다르다(상세만 눌러서 연다).
-    expect(document.querySelectorAll(".tool-index__chip")).toHaveLength(0);
-    expect(screen.getByRole("heading", { name: "내 데이터로 시작" })).toBeTruthy();
+    // 홈 목록·내 데이터로 시작·분석 방법 둘러보기·/data-guide를 하나로 합쳤다(product-ssot §1.1c 결정 1).
+    // 파일을 올리기 전에도 무엇을 할 수 있는지와 필요한 파일이 보여야 한다.
+    expect(screen.getByRole("heading", { name: "분석 찾기", level: 1 })).toBeTruthy();
+    expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
+    expect(document.querySelectorAll(".start-upload-panel")).toHaveLength(1);
+    expect(document.querySelector(".analysis-finder__file .start-upload-panel")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "어떤 상황인가요?" })).toBeTruthy();
+    expect(document.querySelector(".tool-index")).toBeNull();
     // 페이지 설명문이 하는 말을 업로드 안내가 다시 하지 않는다 — 문장·단계 표시 모두 한 번만(2026-09-29).
     expect(screen.queryByText(/도구별 데이터 조건/)).toBeNull();
     expect(document.querySelector(".csv-guide-outcomes")).toBeNull();
-    expect(screen.getByRole("button", { name: "⬇ 기본 CSV 템플릿 받기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "기본 CSV 템플릿 받기" })).toBeTruthy();
     expect(document.querySelector(".start-direct-actions")).toBeNull();
     expect(document.querySelector(".start-presets")).toBeNull();
   });
@@ -90,13 +96,39 @@ describe("StartGate render smoke", () => {
     });
   });
 
+  it.each(["ko", "en"])("preserves an example loaded before the delayed parent effect (%s)", (locale) => {
+    search = "example=1";
+    const originalUrl = window.location.href;
+    window.history.replaceState({}, "", `${locale === "en" ? "/en" : ""}/start?example=1`);
+    useAppStore.setState({ projectsReady: true, projectSwitching: false });
+    const hydrated = vi.spyOn(useAppStore.persist, "hasHydrated").mockReturnValue(true);
+    try {
+      const { rerender } = render(<StartGate locale={locale} />);
+      const sample = useAppStore.getState().csvGroups.efficiency;
+      expect(sample.fileName).toMatch(/^demo_/);
+      expect(sample.raw.length).toBeGreaterThan(0);
+      expect(useAppStore.getState().analyzedByGroup.efficiency).toBe(computeAnalyzeSig(sample));
+      search = "";
+      rerender(<StartGate locale={locale} />);
+      expect(useAppStore.getState().csvGroups.efficiency.raw).toBe(sample.raw);
+      act(() => useAppStore.getState().setCurrentRouteId("dochi-result"));
+      expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+    } finally {
+      hydrated.mockRestore();
+      window.history.replaceState({}, "", originalUrl);
+    }
+  });
+
   it("keeps upload, calculator, diagnosis, and generic example equivalent in English", () => {
     render(<StartGate locale="en" />);
-    expect(screen.getByRole("heading", { name: "Start with my data" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Find an analysis", level: 1 })).toBeTruthy();
     expect(screen.queryByText(/check each tool’s data requirements/)).toBeNull();
-    expect(screen.getByRole("button", { name: "⬇ Download starter CSV template" })).toBeTruthy();
-    expect(document.querySelector(".tool-index")).toBeNull();
+    expect(screen.getByRole("button", { name: "Download starter CSV template" })).toBeTruthy();
+    expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
     expect(screen.getByRole("button", { name: /Run the example and see results/ })).toBeTruthy();
+    expect(document.querySelector('a[href="/en/calculator"]')).toBeTruthy();
+    expect(document.querySelector('a[href="/en/diagnose"]')).toBeTruthy();
+    expect(/[가-힣]/.test(document.querySelector(".start-finder").textContent)).toBe(false);
   });
 
   it("startMyData clears demo-loaded groups only (real uploads kept)", () => {
@@ -134,10 +166,11 @@ describe("StartGate render smoke", () => {
     expect(mapping).toBeTruthy();
     expect(mapping.tagName).toBe("SECTION");
     await analyzePreparedFile();
-    expect(document.querySelector(".start-upload-panel").hidden).toBe(true);
+    // 제출하면 분석 찾기(업로드 칸 포함)는 감추기만 한다 — 업로더 상태를 잃지 않게.
+    expect(document.querySelector(".start-upload-panel").closest("[hidden]")).toBeTruthy();
     expect(document.querySelectorAll(".tool-index")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "입력·매핑 수정" }));
-    expect(document.querySelector(".start-upload-panel").hidden).toBe(false);
+    expect(document.querySelector(".start-upload-panel").closest("[hidden]")).toBeNull();
     expect(document.querySelector(".dochi-workspace")).toBeNull();
     await analyzePreparedFile();
     act(() => useAppStore.getState().setCsvData({ ...slice, mapping: { ...slice.mapping, cost: "__ignore__" } }));
@@ -314,13 +347,20 @@ describe("StartGate render smoke", () => {
     expect(container.querySelector('[data-decision-review-tool="5-26"]')).toBeNull();
   });
 
-  it.each(["ko", "en"])("offers the full methods catalog separately from file preparation (%s)", locale => {
+  it.each(["ko", "en"])("serves the old methods address and situation links from the same finder (%s)", locale => {
+    // 옛 "분석 방법 둘러보기"(?view=methods)는 같은 화면이다 — 이미 열어 둔 예시는 지우지 않는다.
     search = "view=methods";
+    const first = render(<StartGate locale={locale} />);
+    expect(renderedAnalysisIds()).toEqual(new Set(PUBLISHED_TOOL_IDS));
+    expect(document.querySelectorAll(".start-upload-panel")).toHaveLength(1);
+    expect(useAppStore.getState().demoDisabled).not.toBe(true);
+    first.unmount();
+    // 홈의 상황 고르기는 ?situation=으로 그 상황만 연다.
+    search = "situation=budget";
     render(<StartGate locale={locale} />);
-    expect(document.querySelectorAll(".tool-index__chip")).toHaveLength(PUBLISHED_TOOL_IDS.length);
-    expect(document.querySelector(".start-upload-panel")).toBeNull();
-    fireEvent.click(document.querySelector(".tool-index__chip"));
-    expect(document.querySelector(".tool-index__guidance p").textContent.length).toBeGreaterThan(40);
+    expect(document.querySelectorAll(".analysis-finder__group")).toHaveLength(1);
+    expect(document.querySelector(".analysis-finder__situations button[aria-pressed=\"true\"]")).toBeTruthy();
     expect(document.querySelector(`a[href="${locale === "en" ? "/en" : ""}/calculator"]`)).toBeTruthy();
+    search = "";
   });
 });

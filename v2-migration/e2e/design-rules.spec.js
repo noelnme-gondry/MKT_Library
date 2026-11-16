@@ -7,8 +7,8 @@ import { ROUTES, hasEnVersion } from "../src/lib/routeMap";
 // 정적 화면과, 예시 데이터로 실제 결과를 그린 도구 화면을 같이 본다 — 결과 화면에서만
 // 생기는 겹침·상자 안 상자는 빈 업로드 화면으로는 절대 안 잡힌다.
 const STATIC_PAGES = [
-  "/data-guide", "/en/data-guide",
-  "/", "/start", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
+  // /start = 분석 찾기(상황·파일·분석 카드). 옛 /data-guide는 여기로 영구 이동했다.
+  "/", "/start", "/start?situation=budget", "/en/start?situation=proof", "/start?file=commerce", "/en/start?file=store", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
   "/guide/kpi-analysis", "/glossary", "/templates", "/compare",
   "/en", "/en/blog/ad-performance-diagnosis", "/en/start",
   // 2026-09-24 점검에서 눈금 막대·상자 안 상자·작은 라벨이 남아 있던 화면.
@@ -19,11 +19,11 @@ const STATIC_PAGES = [
   "/calculator/roas", "/en/calculator/roas", "/calculator/uplift", "/en/calculator/uplift",
   "/compare/incrementality-methods", "/templates/dashboard", "/templates/aso-store-conversion", "/en/templates/aso-store-conversion", "/tools/mmm-contribution", "/tools/cannibalization-diagnosis",
   // 결론 카드가 수동 입력 뒤에야 그려지는 도구는 입력 화면을 본다.
-  "/tools/budget-allocation", "/tools/experiment-analysis", "/tools/incrementality",
+  "/tools/budget-allocation", "/tools/experiment-analysis", "/en/tools/experiment-analysis", "/tools/incrementality",
 ];
 const KO_RESULT_PAGES = [
   "/tools/operations-planner?example=1",
-  "/dashboard", "/tools/campaign-variance", "/tools/campaign-saturation",
+  "/dashboard", "/tools/campaign-variance", "/tools/budget-allocation?view=headroom",
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
   "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality", "/tools/subscription-survival",
@@ -61,7 +61,7 @@ function expectClean(result) {
   expect(result.textCount, "the scanner must see the page").toBeGreaterThan(20);
   expect(result.overlaps, "text overlapping other text").toEqual([]);
   expect(result.covering, "fixed or sticky element covering content").toEqual([]);
-  expect(result.offWeights, "font weights outside 400/600/700").toEqual([]);
+  expect(result.offWeights, "font weights outside 400/600").toEqual([]);
   expect(result.nested, "box inside a box").toEqual([]);
   expect(result.hugging, "text touching the border of its box").toEqual([]);
   expect(result.eyebrows, "small label stuck above a heading").toEqual([]);
@@ -81,6 +81,22 @@ function expectClean(result) {
   expect(result.figureCrowding, "PNG exports crowding figure titles or metrics").toEqual([]);
   expect(result.titleInsets, "filled page titles without an inner gutter").toEqual([]);
 }
+
+test("the scanner recognizes an owned radio wrapper and still rejects a plain nested box", async ({ page }) => {
+  await page.setContent(`<style>
+    .surface { padding: 20px; border: 1px solid; border-radius: 8px; background: #eee; }
+    .ab-pillgroup { min-height: 60px; width: 280px; padding: 12px; border: 1px solid; border-radius: 8px; background: white; }
+  </style><section class="surface">
+    <div class="ab-pillgroup"><div role="radiogroup" aria-label="Window" style="display:contents">
+      <button role="radio" aria-checked="true">Week</button><button role="radio" aria-checked="false">Month</button>
+    </div></div>
+    <article class="ab-pillgroup">Ordinary content with the same styling class</article>
+  </section>`);
+  const measured = await measureDesignRules(page);
+  expect(await page.getByRole("radiogroup").count()).toBe(1);
+  expect(measured.nested).not.toContain("div.ab-pillgroup ⊂ section.surface");
+  expect(measured.nested).toContain("article.ab-pillgroup ⊂ section.surface");
+});
 
 test("the scanner accepts compact figure actions and rejects reserved PNG rows", async ({ page }) => {
   await page.setContent('<main id="main-content"><header class="figure-head" style="display:flex;align-items:center;gap:12px"><h3 style="margin:0">Chart heading</h3><span class="figure-png-download"><button>PNG</button></span></header></main>');
@@ -132,6 +148,11 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
 for (const path of STATIC_PAGES) {
   test(`design rules hold on ${path}`, async ({ page }) => {
     await page.goto(path);
+    // 동적 도구가 아직 없으면 셸만 재고 통과한다. 실험 조건 두 묶음까지 기다린다.
+    if (path.endsWith("/tools/experiment-analysis")) {
+      await expect(page.locator("#tab-ab #s-mode .ab-pillgroup")).toHaveCount(2);
+      await expect(page.locator("#tab-ab #s-mode .ab-pillgroup").last()).toBeVisible();
+    }
     await page.evaluate(async () => { await document.fonts.ready; });
     await page.waitForLoadState("networkidle");
     expectClean(await measureDesignRules(page));
@@ -143,17 +164,26 @@ for (const path of RESULT_PAGES) {
     // 9-6은 소재 480개를 분석해 그리는 데만 1분 가까이 걸린다(빌드본 기준).
     test.setTimeout(150_000);
     await page.goto(path);
-    if (path.includes("?example=1")) await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
+    if (path.includes("?example=1")) await expect(page.locator(".result-action-card, .operations-queue").first()).toBeVisible({ timeout: 30_000 });
     else await openExampleResult(page);
     expectClean(await measureDesignRules(page));
     // 결과가 나왔으면 매핑 선택상자는 결론 카드 위에 하나도 없어야 한다 — 매핑은 한 줄 요약으로 접힌다.
     const mappingAbove = await page.evaluate(() => {
-      const card = [...document.querySelectorAll(".result-action-card")].find((el) => el.checkVisibility());
+      const card = [...document.querySelectorAll(".result-action-card, .operations-queue")].find((el) => el.checkVisibility());
       const top = card.getBoundingClientRect().top;
       return [...document.querySelectorAll(".mapping-grid select, .segment-role-mapper select, #s-aha-map select, #brand-its-setup select")]
         .filter((el) => el.checkVisibility() && el.getBoundingClientRect().top < top).length;
     });
     expect(mappingAbove).toBe(0);
+    // 운영 플래너는 액션 작업대가 기본이다. 이력과 근거 탭도 같은 규칙으로 검사한다.
+    if (path.split("?")[0].endsWith("/operations-planner")) {
+      const tabs = page.locator(".operations-loop > .allocation-result-workspace > .allocation-result-tabs [role=tab]");
+      await expect(tabs).toHaveCount(3);
+      for (let index = 1; index < 3; index++) {
+        await tabs.nth(index).click();
+        expectClean(await measureDesignRules(page));
+      }
+    }
   });
 }
 
@@ -245,6 +275,7 @@ test("incrementality waits for stored-project startup before accepting a real fi
   await expect(page.getByRole("button", { name: "증분 분석 CSV 파일 선택" })).toHaveAttribute("aria-disabled", "true");
   await page.evaluate(() => window.releaseWorkspaceOpen());
   await MANUAL_RESULTS["/tools/incrementality"](page);
-  await expect(page.locator('#tab-incr .file-state').getByText("holdout-design.csv", { exact: true })).toBeVisible();
+  // 결과가 나오면 파일 이름은 결과 위 맥락 한 줄이 말한다(§1.1c 4단계).
   await expect(page.locator(".result-action-card").first()).toBeVisible();
+  await expect(page.locator("#tab-incr .report-context").getByText("holdout-design.csv", { exact: true })).toBeVisible();
 });

@@ -2,7 +2,7 @@
 export async function captureAnalysisCharts(root = null) {
   if (typeof document === "undefined") return [];
   const { Chart } = await import("chart.js");
-  return [...(root || document).querySelectorAll(root ? "canvas" : "main canvas, #content canvas")].filter(canvas => canvas.getClientRects().length && canvas.width && canvas.height).flatMap(canvas => {
+  const charts = [...(root || document).querySelectorAll(root ? "canvas" : "main canvas, #content canvas")].filter(canvas => canvas.getClientRects().length && canvas.width && canvas.height).flatMap(canvas => {
     const chart = Chart.getChart(canvas);
     if (!chart) return [];
     const labels = (chart.data.labels || []).map(String);
@@ -22,4 +22,10 @@ export async function captureAnalysisCharts(root = null) {
     context.fillRect(0, 0, image.width, image.height); context.drawImage(canvas, 0, 0);
     return [{ title: String(chart.options.plugins?.title?.text || canvas.getAttribute("aria-label") || series[0]?.label || "Chart"), type: chart.config.type, labels, series, image: image.toDataURL("image/png"), width: image.width, height: image.height }];
   });
+  const svgRoot = root || document.querySelector("main, #content");
+  if (svgRoot?.querySelector("svg[data-analysis-svg]")) {
+    const { captureSvgFigures } = await import("./svgSnapshots");
+    charts.push(...await captureSvgFigures(svgRoot));
+  }
+  return charts;
 }

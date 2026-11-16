@@ -1,6 +1,7 @@
 import { openDochiSample } from "./support/dochiSample";
 import { test, expect } from "@playwright/test";
 import { ITEM_TITLE_EN } from "../src/lib/enNavCopy";
+import { toolIndexEntry } from "../src/lib/toolIndex";
 import { blogConversionFor } from "../src/lib/blogConversion";
 
 for (const locale of ["ko", "en"]) {
@@ -49,7 +50,7 @@ for (const locale of ["ko", "en"]) {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await openDochiSample(page, locale);
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    await page.locator(".tool-index__chip", { hasText: en ? ITEM_TITLE_EN["5-3"] : "예산 재배분" }).click();
+    await page.locator(".tool-index__chip", { hasText: toolIndexEntry("5-3", locale).name }).click();
     await expect(page.locator(".tool-index__panel .allocation-preview-explanation")).toContainText(en ? "recalculates" : "다시 계산");
     const preview = page.locator(".tool-index__panel .dochi-workspace__result");
     const previous = await preview.locator(".dochi-workspace__decision-tape").innerText();
@@ -92,7 +93,9 @@ for (const locale of ["ko", "en"]) {
     await uploader.locator(".csv-analysis-action").click();
     await expect(page.getByRole("heading", { name: en ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다", exact: true })).toBeVisible();
     await expect(page.locator(".journey-progress .is-done")).toHaveCount(0);
-    await expect(page.locator(".workspace-input-summary")).toContainText(en ? "file loaded" : "파일 읽기 완료");
+    // 올린 파일 한 줄: 파일 이름 · 행 수(날짜 열이 없으니 기간은 말하지 않는다).
+    await expect(page.locator(".workspace-input-summary")).toContainText(`unmatched.csv${en ? "2 rows" : "2행"}`);
+    await expect(page.locator(".workspace-input-summary")).not.toContainText("–");
     await page.getByRole("button", { name: en ? "Fix column mapping" : "컬럼 매핑 수정", exact: true }).click();
     await expect(uploader).toBeVisible();
     await expect(uploader.getByRole("combobox").first()).toBeVisible();
@@ -102,6 +105,7 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/guide/ios-privacy-att-skan`);
     const code = page.locator(".code-block").first();
     await expect(code.locator("pre")).toBeVisible();
+    await expect(page.locator('[data-copy-ready="true"]').first()).toBeAttached();
     const originalText = await code.locator("pre").textContent();
     expect(originalText).toContain("import");
     expect(originalText).not.toMatch(/<span|class=["']|&quot;/);

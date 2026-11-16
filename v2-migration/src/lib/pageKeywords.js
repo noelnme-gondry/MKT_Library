@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 // 도구/SOP 페이지별 SEO keywords 메타 (네이버는 구글보다 meta keywords·description
 // 텍스트 매칭에 민감 — AGENTS.md §1). 하드코딩 전체 표 대신 "그룹(SOP)/항목(분석 도구)"
 // 최소 단위로만 매핑하고, generateMetadata가 전역 브랜드 키워드와 합쳐 최종 keywords를
@@ -11,11 +12,12 @@ export const PAGE_KEYWORDS_BASE = "퍼포먼스 마케팅, 마케팅 데이터 �
 
 // 분석 도구 (5-x, 9-x) — 항목(item) 단위.
 export const ITEM_KEYWORDS = {
+  ...advancedMap((tool) => [tool.name.ko, ...tool.outputs.map((item) => item.ko)].join(", ")),
   "5-31": "운영 플래너, 캠페인 예산 조정, 최근 효율, 신규 소재, PVM, 동일 예산 예상 성과",
   "5-2": "운영 대시보드, 마케팅 대시보드 무료, 캠페인 스코어카드, 페이싱 분석, 이상탐지, 코호트 분석, 퍼널 분석",
   "5-21": "캠페인 성과 변동, PVM 분해, 믹스효과, 효율효과, CPA 상승 원인, 성과 변동 진단",
   "5-22": "캠페인 포화도, 한계 CPA, 한계 ROAS, 응답곡선, 캠페인 최적화, 예산 스케일업",
-  "5-3": "마케팅 예산 배분, 예산 배분 시뮬레이터, 목표 CPI, 목표 CPA, 목표 ROAS, 채널 예산 최적화, 예산 재배분",
+  "5-3": "마케팅 예산 배분, 예산 배분 시뮬레이터, 목표 CPI, 목표 CPA, 목표 ROAS, 채널 예산 최적화, 예산 재배분, 증액 여력, 캠페인 포화도, 한계 CPA",
   "5-4": "A/B 테스트, AB test, 실험 분석, 통계적 유의성, 표본 크기, 전환율 최적화",
   "5-23": "증분 분석, incrementality, 홀드아웃 테스트, 인과추론 마케팅, 전후 비교 분석, iROAS",
   "5-18": "마케팅 반응 분석, 주간 패널 CSV, MMM 데이터 준비, 컬럼 매핑",
@@ -64,11 +66,12 @@ export const ITEM_KEYWORDS = {
 export const PAGE_KEYWORDS_BASE_EN = "performance marketing, marketing data analytics, free marketing tools, data-driven marketing";
 
 export const ITEM_KEYWORDS_EN = {
+  ...advancedMap((tool) => [tool.name.en, ...tool.outputs.map((item) => item.en)].join(", ")),
   "5-31": "operations planner, campaign budget plan, recent efficiency, new creatives, PVM, same-budget forecasts",
   "5-2": "operations dashboard, free marketing dashboard, campaign scorecard, pacing analysis, anomaly detection, cohort analysis, funnel analysis",
   "5-21": "campaign performance variance, PVM decomposition, mix effect, efficiency effect, CPA increase cause, performance variance diagnosis",
   "5-22": "campaign saturation, marginal CPA, marginal ROAS, response curve, campaign optimization, budget scale-up",
-  "5-3": "marketing budget allocation, budget allocation simulator, target CPI, target CPA, target ROAS, channel budget optimization, budget reallocation",
+  "5-3": "marketing budget allocation, budget allocation simulator, target CPI, target CPA, target ROAS, channel budget optimization, budget reallocation, budget headroom, campaign saturation, marginal CPA",
   "9-6": "creative analysis, ad creative analysis, creative fatigue, CTR improvement, ad creative, forest plot",
   "5-4": "A/B test, AB testing, experiment analysis, statistical significance, sample size, conversion rate optimization",
   "5-23": "incrementality analysis, incrementality, holdout test, causal inference marketing, pre-post analysis, iROAS",

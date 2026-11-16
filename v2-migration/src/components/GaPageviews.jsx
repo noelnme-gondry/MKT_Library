@@ -5,6 +5,7 @@ import { resolvePathToId } from "@/lib/routeMap";
 import { trackProductEvent } from "@/lib/analytics";
 import { journeySurface } from "@/lib/siteJourney";
 import { GA_MEASUREMENT_ID } from "@/lib/analyticsHost";
+import { beginPartnerAdPage } from "@/lib/partnerAdMeasurement";
 
 // SPA(App Router) page_view SSOT. layout의 config는 send_page_view:false라서,
 // 최초 진입과 history 변경 모두 여기서 정확히 한 번 보낸다. GA enhanced measurement나
@@ -59,6 +60,8 @@ export default function GaPageviews() {
   const pathname = usePathname();
   const lastPagePath = useRef(null);
   const lastToolPath = useRef(null);
+  // GA 준비/동의 여부와 무관하게 경로 진입을 갱신한다. 광고 없는 페이지도 경계다.
+  useEffect(() => { beginPartnerAdPage(pathname); }, [pathname]);
   useEffect(() => {
     if (lastPagePath.current === pathname) return;
     return runWhenGtagReady(() => {

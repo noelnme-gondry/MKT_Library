@@ -16,6 +16,7 @@ import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
 import { CHART_FONT_STACK, CHART_THEME as GLOBAL_CHART_THEME } from "@/utils/chartUtils";
 import HelpTip from "@/components/ds/HelpTip";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+import { csvCell, csvText, trustedCsvFormula } from "@/utils/download";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -885,7 +886,7 @@ export function Badge({ tone = "neutral", color, children }) {
   const finalColor = color || c.color;
   return (
     // 상태는 글자 + 색 하나다 — 누를 수 없는 표식을 알약 모양으로 두지 않는다(A4).
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: finalColor, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: finalColor, fontWeight: 600, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
       {children}
     </span>
   );
@@ -903,7 +904,7 @@ export function Card({ children, style }) {
 export function StatHead({ title, hint }) {
   return (
     <div style={{ margin: "18px 0 8px" }}>
-      <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)" }}>{title}</div>
+      <div style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{title}</div>
       {hint ? <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "3px", lineHeight: 1.55 }}>{hint}</div> : null}
     </div>
   );
@@ -1033,7 +1034,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
         <strong style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
-        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: "var(--primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 600, color: "var(--primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
         <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
@@ -1087,8 +1088,8 @@ export function NetEffectEvidence({ net, locale }) {
   const tone = isPositive ? NEG : isNegative ? POS : "#f59e0b";
   return <Card style={{ padding: "14px 16px" }}>
     <div style={{ display: "flex", gap: "18px", alignItems: "baseline", flexWrap: "wrap" }}>
-      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
-      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 700 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
+      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 600, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
+      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 600 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
     </div>
     <div style={{ position: "relative", height: "48px", margin: "14px 8px 4px", borderBottom: "1px solid var(--border)" }}>
       <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "var(--fs-xs)", color: MUTED }}>0</span></div>
@@ -1324,7 +1325,7 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
       )}
       {selectedEvidence.country && countryIndividualCandidates.length > 0 && (
         <section data-information-section="" className="mmm-evidence-ledger__pending">
-          <header data-information-heading="" style={{ fontWeight: 700 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</header>
+          <header data-information-heading="" style={{ fontWeight: 600 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</header>
           <div className="table-wrap" style={{ marginTop: "8px" }}>
             <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
               <thead><tr><th>{tx("국가", "Market")}</th><th>{tx("판정", "Status")}</th><th>{tx("반복 검증", "Rolling checks")}</th><th>{tx("평균 RMSE", "Mean RMSE")}</th><th>{tx("기본 대비", "vs base")}</th><th>{tx("근거", "Reason")}</th></tr></thead>
@@ -1637,12 +1638,10 @@ export function CommaNumberInput({ value, onCommit, style, placeholder, disabled
 
 /* ── CSV helpers (§7 CRLF+BOM, RFC4180 quoting) — index _mmmDownload/q 이식 ── */
 export function csvQ(s) {
-  s = String(s == null ? "" : s);
-  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  return csvCell(s);
 }
 export function csvSafeLiteral(s) {
-  const value = String(s == null ? "" : s);
-  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return csvText(String(s == null ? "" : s), { allowNumericText: false });
 }
 export function csvNum(v, d = 2) {
   return v == null || !isFinite(v) ? "" : (+v).toFixed(d);
@@ -2406,6 +2405,10 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
     : tx(`${livePlatforms[0] || "OS"} 예측`, `${livePlatforms[0] || "OS"} forecast`);
   const lines = [];
   const push = (row) => lines.push(row.map(csvQ).join(","));
+  // 데이터 표의 계산 열만 신뢰한다. 기간·채널·모델 이름은 공용 텍스트 보호를 거친다.
+  const pushFormulaRow = (row, firstFormulaColumn) => push(row.map((value, column) =>
+    column >= firstFormulaColumn && typeof value === "string" && value.startsWith("=")
+      ? trustedCsvFormula(value) : value));
   push([
     tx("# 도구", "# Tool"),
     isPaidOrganicLive
@@ -2775,7 +2778,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         : model.futureUpperMargins?.[futureIndex]
           ?? model.futureMargins?.[futureIndex]
           ?? 0;
-      push([
+      pushFormulaRow([
         index + 1,
         csvSafeLiteral(isHistory ? model.histLabels[index] : model.futLabels[futureIndex]),
         isHistory ? "history" : "forecast",
@@ -2790,7 +2793,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         ...hill,
         ...logs,
         ...spend,
-      ]);
+      ], 4);
     }
     tables.push({
       model,
@@ -2843,7 +2846,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
           const label = isHistory
             ? organic.model.histLabels.at(-(historyLength - index))
             : organic.model.futLabels[index - historyLength];
-          push([
+          pushFormulaRow([
             csvSafeLiteral(label),
             isHistory ? "history" : "forecast",
             isHistory ? `=D${organicRow}+D${paidRow}` : "",
@@ -2854,7 +2857,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
             `=MAX(0,E${paidRow})`,
             isHistory ? "" : `=MAX(0,H${organicRow}+H${paidRow})`,
             isHistory ? "" : `=MAX(D${rowNumber},I${organicRow}+I${paidRow})`,
-          ]);
+          ], 2);
         }
         return {
           platform,
@@ -2901,7 +2904,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
           ? platformTables[0].labels.at(-(historyLength - index))
           : platformTables[0].futureLabels[index - historyLength];
         const sumRefs = (column) => refs.map((row) => `${column}${row}`).join("+");
-        push([
+        pushFormulaRow([
           csvSafeLiteral(label),
           isHistory ? "history" : "forecast",
           isHistory ? `=${sumRefs("C")}` : "",
@@ -2912,7 +2915,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
           `=${sumRefs("H")}`,
           isHistory ? "" : `=${sumRefs("I")}`,
           isHistory ? "" : `=${sumRefs("J")}`,
-        ]);
+        ], 2);
       }
     }
   } else if (fc.isAdditiveTotal && tables.length === 2) {
@@ -2930,7 +2933,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         return { actual: `D${row}`, prediction: `E${row}`, organic: `F${row}`, performance: `G${row}`, lower: `H${row}`, upper: `I${row}` };
       });
       const label = isHistory ? tables[0].model.histLabels.at(-(historyLength - index)) : tables[0].model.futLabels[index - historyLength];
-      push([
+      pushFormulaRow([
         csvSafeLiteral(label),
         isHistory ? "history" : "forecast",
         isHistory ? `=${refs.map((ref) => ref.actual).join("+")}` : "",
@@ -2939,7 +2942,7 @@ export function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, dis
         `=${refs.map((ref) => ref.performance).join("+")}`,
         isHistory ? "" : `=${refs.map((ref) => ref.lower).join("+")}`,
         isHistory ? "" : `=${refs.map((ref) => ref.upper).join("+")}`,
-      ]);
+      ], 2);
     }
   }
   return lines;
@@ -2973,7 +2976,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
         period,
         segment,
         actual ?? "",
-        hasParts ? `=E${rowNumber}+F${rowNumber}` : fitted ?? "",
+        hasParts ? trustedCsvFormula(`=E${rowNumber}+F${rowNumber}`) : fitted ?? "",
         hasParts ? organic : "",
         hasParts ? performance : "",
         lower ?? "",
@@ -3345,6 +3348,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
         ...adcells,
         ...spend,
       ]
+        .map((value, column) => column >= 4 && typeof value === "string" && value.startsWith("=") ? trustedCsvFormula(value) : value)
         .map(csvQ)
         .join(","),
     );

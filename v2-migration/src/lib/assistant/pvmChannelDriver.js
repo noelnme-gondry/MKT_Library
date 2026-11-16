@@ -43,13 +43,16 @@ export function pvmKeys(fields, resultField) {
   };
 }
 
-/** 최소 단위에서 한 번 분해한 뒤 채널로 롤업하고, 기여 절댓값이 가장 큰 채널을 고른다. 분해 불가면 null. */
-export function pvmChannelBreakdown({ prior, recent, keys, unspecifiedLabel }) {
+/**
+ * 최소 단위에서 한 번 분해한 뒤 채널(채널 열이 없으면 캠페인)로 롤업하고, 기여 절댓값이 가장 큰 대상을 고른다.
+ * 롤업만 바뀌고 분해는 같은 최소 단위 한 번이라 Σ 항등식은 그대로다(AGENTS §7 단계 독립 분해). 분해 불가면 null.
+ */
+export function pvmChannelBreakdown({ prior, recent, keys, unspecifiedLabel, rollupBy = "channel" }) {
   const decomposition = PVM_MATH.decomposeFinest(prior, recent, keys);
   if (!decomposition) return null;
   const byChannel = PVM_MATH.rollup(
     decomposition.finest,
-    (row) => row.chKey || unspecifiedLabel,
+    (row) => (rollupBy === "campaign" ? row.cmpKey : row.chKey) || unspecifiedLabel,
     decomposition.Result1,
     decomposition.Result2,
   ).map((row) => ({ entity: row.key, mix: safeNumber(row.mix), rate: safeNumber(row.rate), contribution: safeNumber(row.contribution) }));

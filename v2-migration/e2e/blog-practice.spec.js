@@ -11,6 +11,13 @@ import { blogSelfCheckFor } from "../src/lib/blogSelfCheck";
 import { blogSelfCheckNext } from "../src/lib/blogSelfCheckNext";
 import { getPostBySlug } from "../src/lib/blog";
 import { buildBlogPracticeDownload } from "../src/lib/blogPracticeData";
+import { withDeclaredConditions } from "./support/declaredConditions.js";
+
+// 5-26은 전환 집계 질문을 결과 위 한 줄 + 창으로 묻는다 — 글에서 넘어온 예시는 아직 답하지 않은 상태다.
+async function expectMaturityUnanswered(page, en) {
+  await withDeclaredConditions(page, en ? "Conversion completeness" : "전환 집계 확인", en, (dialog) =>
+    expect(dialog.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown"));
+}
 
 // One real browser handoff per distinct generated dataset family; coverage of
 // every published article (including exclusions) is checked separately below.
@@ -110,7 +117,7 @@ for (const locale of ["ko", "en"]) {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       // Reaching a route is not conversion: the sample's actual result must render.
       await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
-      if (slug === "apple-search-ads-guide") await expect(page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown");
+      if (slug === "apple-search-ads-guide") await expectMaturityUnanswered(page, en);
       expect(errors).toEqual([]);
     });
   }
@@ -171,7 +178,7 @@ for (const locale of ["ko", "en"]) {
         await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         if (BLOG_INSIGHT_PLACEMENTS[slug].toolId === "5-26") {
-          await expect(page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown");
+          await expectMaturityUnanswered(page, en);
         }
       } else {
         await panel.getByRole("button", { name: en ? "Show result" : "결과 보기", exact: true }).click();

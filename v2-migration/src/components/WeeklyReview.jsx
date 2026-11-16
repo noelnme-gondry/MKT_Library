@@ -26,6 +26,10 @@ import {
   decisionEpisodeList,
 } from "@/lib/decisionReview";
 import { assessForecastActual } from "@/lib/forecastReview";
+import { findAllocationPlanMatches, planReviewText } from "@/lib/budgetPlanner/planReview";
+import { parseAllocationPlan } from "@/lib/budgetPlanner/planSnapshot";
+import { getMappedRows } from "@/utils/dashboardAggregator";
+import { fmtCurrency, fmtNum } from "@/utils/format";
 import { buildComparableDecisionActual } from "@/lib/decisionComparableActual";
 import { buildDatasetContinuitySnapshot, classifyDatasetContinuity } from "@/lib/dataContinuity";
 import { localizedTool } from "@/lib/toolConnections";
@@ -151,6 +155,17 @@ const COPY = {
     period_setupHint: "기준일과 비교 범위를 채우면 같은 기간의 후속 데이터를 자동 대조할 수 있습니다.",
     forecast_auto: "예측 자동 대조",
     forecast_autoHint: "마케팅 예측에 새 CSV를 올리면 저장한 기간·타깃·플랫폼의 실제값만 제안합니다.",
+    plan_auto: "배분안 자동 대조",
+    plan_autoHint: "계획 기간을 모두 담은 효율 CSV가 있으면 대상별 실제 지출·결과와 대조해 차이를 실행 편차와 모형 오차로 나눕니다.",
+    planTicket: "저장한 배분안",
+    planPeriod: (start, end, count) => `${start}–${end} · 대상 ${count}개`,
+    planPending: "아직 대조할 데이터가 없습니다",
+    planPendingHint: "계획 기간이 끝난 뒤의 효율 CSV를 예산 배분 도구에 올리면 여기서 대조합니다.",
+    planScopeMissing: "저장된 비교 조건이 없습니다",
+    planScopeMissingHint: "이전 형식의 기록에는 통화·필터·집계 주기가 없어 자동 비교할 수 없습니다. 기존 기록은 유지되며, 새 배분안부터 비교 조건이 함께 저장됩니다.",
+    planMatched: "새 데이터로 대조한 결과",
+    planApply: "이 대조 결과 기록",
+    openPlanTool: "예산 배분 열기",
     rerun_manual: "새 데이터 재분석 후 기록",
     rerun_manualHint: "VIF·ASA·증분 추정처럼 진단형 결과는 원본 도구에서 새 데이터를 다시 분석한 뒤 실제 결과와 배운 점을 기록합니다.",
   },
@@ -264,6 +279,17 @@ const COPY = {
     period_setupHint: "Add a baseline date and comparison scope to compare an equally long follow-up window automatically.",
     forecast_auto: "Automatic forecast comparison",
     forecast_autoHint: "Upload a new CSV in Marketing Forecast to suggest only the actual for the saved period, target, and platform.",
+    plan_auto: "Automatic plan comparison",
+    plan_autoHint: "Once an efficiency CSV covers the whole plan period, we compare actual spend and results per target and split the gap into execution and model error.",
+    planTicket: "Saved allocation plan",
+    planPeriod: (start, end, count) => `${start}–${end} · ${count} ${count === 1 ? "target" : "targets"}`,
+    planPending: "No data to compare yet",
+    planPendingHint: "Upload an efficiency CSV covering the plan period to the budget allocation tool, then compare it here.",
+    planScopeMissing: "Comparison criteria were not saved",
+    planScopeMissingHint: "This older record has no saved currency, filters or cadence, so automatic comparison is unavailable. The record is retained; new allocation plans include these criteria.",
+    planMatched: "Compared with new data",
+    planApply: "Record this comparison",
+    openPlanTool: "Open budget allocation",
     rerun_manual: "Rerun with new data, then record",
     rerun_manualHint: "For diagnostic results such as VIF, ASA, and incrementality, rerun the source tool with new data, then record the actual outcome and learning.",
   },
@@ -327,17 +353,48 @@ export function buildBrief(records, t, locale) {
  * 제품이 가져갔고 이 화면은 그 안의 접기 섹션으로 들어간다(명세 §1.1). 기능을 지우는 것이
  * 아니라 위계를 내리는 것이라, `embedded`일 때 페이지 셸과 h1만 벗는다.
  */
+/** 저장한 5-3 배분안과, 지금 메모리의 효율 CSV로 계산한 계획 대비 실적(spec §8.2). */
+function AllocationPlanTicket({ record, match, t, locale, isReviewed, isReviewDue, formatCpr, onComplete }) {
+  const plan = parseAllocationPlan(record.allocationPlan);
+  if (!plan) return null;
+  const end = new Date(Date.parse(`${plan.start}T00:00:00Z`) + (plan.days - 1) * 86400000).toISOString().slice(0, 10);
+  const text = match ? planReviewText(match, { locale, formatCpr: formatCpr(plan.metric), formatCount: (value) => fmtNum(value) }) : null;
+  return <div className="weekly-review-record__forecast-ticket">
+    <div>
+      <span>{t.planTicket}</span>
+      <strong>{t.planPeriod(plan.start, end, plan.targets.length)} · {record.metric} {record.baseline}</strong>
+    </div>
+    {text ? <div className="weekly-review-record__plan-match">
+      <span>{t.planMatched}</span>
+      <p>{text.actual}</p>
+      {text.learning && <p>{text.learning}</p>}
+      {!isReviewed && <button type="button" className="btn" disabled={!isReviewDue} onClick={(event) => onComplete(text, event.currentTarget)}>{t.planApply}</button>}
+    </div> : !isReviewed && <div className="weekly-review-record__forecast-pending">
+      <span>{plan.scope?.currency ? t.planPending : t.planScopeMissing}</span>
+      <p>{plan.scope?.currency ? t.planPendingHint : t.planScopeMissingHint}</p>
+      <Link href={locale === "en" ? "/en/tools/budget-allocation" : "/tools/budget-allocation"}>{t.openPlanTool}</Link>
+    </div>}
+  </div>;
+}
+
 export default function WeeklyReview({ locale = "ko", embedded = false, toolFilter = "", decisionId = "", compact = false }) {
   const t = COPY[locale] || COPY.ko;
   const [message, setMessage] = useState("");
   const [clearPending, setClearPending] = useState(false);
   const importRef = useRef(null);
+  const importTriggerRef = useRef(null);
+  const saveTriggerRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
   const inboxRef = useRef(null);
   const storedRecords = useAppStore((state) => state.decisionRecords);
   const [recordDrafts, setRecordDrafts] = useState({});
   const [nextRequest, setNextRequest] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
+  const requestConfirmation = (action, trigger = null) => {
+    // Safari does not focus a button on pointer activation.
+    saveTriggerRef.current = trigger;
+    setPendingAction(action);
+  };
   useReviewDraftGuard(Object.keys(recordDrafts).length > 0);
   const records = useMemo(() => storedRecords.filter(record => (!toolFilter || record.toolId === toolFilter) && (!decisionId || record.id === decisionId)).map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts, toolFilter, decisionId]);
   const findingsByGroup = useAppStore((state) => state.findingsByGroup);
@@ -391,6 +448,17 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
     });
     return [record.id, classifyDatasetContinuity(record.datasetSnapshot, current)];
   })), [activeDataGroup, csvData, csvGroups, records]);
+  // 5-3 배분안은 효율 CSV(같은 그룹)로 대조한다. 원본 행은 저장하지 않고 지금 메모리의 CSV로 매번 계산한다.
+  const planMatches = useMemo(() => {
+    const slice = csvGroups?.efficiency || (activeDataGroup === "efficiency" ? csvData : null);
+    if (!slice?.raw?.length || !records.some((record) => record.comparisonKind === "allocation_plan")) return new Map();
+    return new Map(findAllocationPlanMatches(records, getMappedRows(slice), undefined, { currency: slice.currency }).map((match) => [match.recordId, match]));
+  }, [activeDataGroup, csvData, csvGroups, records]);
+  const planCurrency = csvGroups?.efficiency?.currency || "KRW";
+  const formatPlanCpr = (metric) => (value) => {
+    if (!(value > 0)) return "—";
+    return metric === "revenue_d7" ? `${((1 / value) * 100).toFixed(1)}%` : fmtCurrency(value, { currency: planCurrency, precise: true });
+  };
   const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
     const assessment = record.closureReason ? null : assessForecastActual(record);
     return assessment && assessment.state !== "incomplete";
@@ -421,15 +489,15 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
       setMessage(t.importError);
       return;
     }
-    setPendingAction(() => async () => { await importDecisionRecords(imported); setMessage(t.imported(imported.length)); });
+    requestConfirmation(() => async () => { await importDecisionRecords(imported); setMessage(t.imported(imported.length)); }, importTriggerRef.current);
   };
 
   const updateRecord = (id, key, value) => setRecordDrafts(current => ({ ...current, [id]: { ...current[id], [key]: value } }));
 
   const storedRecordOf = (id) => storedRecords.find((item) => item.id === id) || {};
-  const completeReview = (record, actual = record.actual, source = "weekly_review") => {
+  const completeReview = (record, actual = record.actual, source = "weekly_review", trigger = null) => {
     if (!record || !record.reviewDate || record.reviewDate > todayKey || !String(actual || "").trim()) return;
-    setPendingAction(() => async () => {
+    requestConfirmation(() => async () => {
     // 관측은 쌓는다(v11). 초안에 적힌 `배운 점`을 이 관측에 함께 실어 보내고,
     // 초안의 나머지 필드(검토일 등)는 그대로 패치에 남긴다.
     const draft = recordDrafts[record.id] || {};
@@ -440,7 +508,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
     if (!patch) return;
     const { actual: _draftActual, learning: _draftLearning, ...restDraft } = draft;
     await updateDecisionRecord(record.id, { ...restDraft, ...patch, status: "reviewed" });
-    if (canTrackDecisionReview(record, useAppStore.getState().csvGroups[groupForRoute(record.toolId)], source === "comparable_data")) trackProductEvent("decision_review_completed", {
+    if (canTrackDecisionReview(record, useAppStore.getState().csvGroups[groupForRoute(record.toolId)], ["comparable_data", "allocation_plan"].includes(source))) trackProductEvent("decision_review_completed", {
       tool_id: record.toolId,
       source,
       result_state: "reviewed",
@@ -448,7 +516,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
       locale,
     });
     setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
-    });
+    }, trigger);
   };
 
   const saveDraft = async record => {
@@ -478,7 +546,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
   const Shell = embedded ? "div" : "article";
   return (
     <Shell ref={inboxRef} className={embedded ? "weekly-review-page is-embedded" : "page-inner weekly-review-page"}>
-      {pendingAction && <ReviewSaveDialog locale={locale} onConfirm={pendingAction} onClose={() => setPendingAction(null)} />}
+      {pendingAction && <ReviewSaveDialog locale={locale} returnFocusRef={saveTriggerRef} onConfirm={pendingAction} onClose={() => setPendingAction(null)} />}
       {!compact && <>{embedded ? (
         // 흡수돼도 제목은 남긴다 — h1만 벗고 h2로 낮춘다. 제목을 통째로 지우면 보조기술이
         // 이 섹션의 시작을 알 수 없다.
@@ -586,7 +654,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
       </section>
 
       <section className="weekly-review-page__toolbar" aria-label={t.title}>
-        <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
+        <button ref={importTriggerRef} type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
         <input ref={importRef} type="file" accept=".csv,text/csv" className="sr-only" aria-label={t.import} onChange={importRecords} />
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadCsv(serializeDecisionReviewCsv(records), "weekly_decision_review")}>{t.export}</button>
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadText(buildBrief(sortedRecords, t, locale), "weekly_operating_brief", "md", locale)}>{t.brief}</button>
@@ -681,6 +749,16 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                   <Link href={locale === "en" ? "/en/tools/marketing-forecast" : "/tools/marketing-forecast"}>{t.openForecast}</Link>
                 </div>}
               </div>}
+              {record.comparisonKind === "allocation_plan" && <AllocationPlanTicket
+                record={record}
+                match={planMatches.get(record.id)}
+                t={t}
+                locale={locale}
+                isReviewed={status === "reviewed"}
+                isReviewDue={isReviewDue}
+                formatCpr={formatPlanCpr}
+                onComplete={(text, trigger) => completeReview({ ...record, learning: record.learning || text.learning }, text.actual, "allocation_plan", trigger)}
+              />}
               {!isForecastReview && !record.reviewPlan && <label className="weekly-review-record__direction">
                 <span>{t.targetDirection}</span>
                 <select aria-label={`${t.targetDirection} — ${record.action}`} value={targetDirection} onChange={(event) => updateRecord(record.id, "targetDirection", event.target.value)}>
@@ -727,7 +805,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                   <strong>{comparableCandidate.actual}</strong>
                   <small>{t.candidatePeriod} · {comparableCandidate.comparisonStart}–{comparableCandidate.comparisonEnd}</small>
                   <p>{t.candidateReady}</p>
-                  <button type="button" className="btn small" onClick={() => completeReview(record, comparableCandidate.actual, "comparable_data")}>{t.useCandidate}</button>
+                  <button type="button" className="btn small" onClick={(event) => completeReview(record, comparableCandidate.actual, "comparable_data", event.currentTarget)}>{t.useCandidate}</button>
                 </> : <p>{comparableCandidate.state === "not_due"
                   ? t.candidateNotDue
                   : comparableCandidate.state === "waiting_for_data"
@@ -757,16 +835,16 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
-              {recordDrafts[record.id] && <button type="button" className="btn small" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={() => setPendingAction(() => async () => {
+              {recordDrafts[record.id] && <button type="button" className="btn small" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={(event) => requestConfirmation(() => async () => {
                 await saveDraft(record);
-              })}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}
-              {recordDrafts[record.id] && Boolean(record.actual?.trim() || record.learning?.trim()) && <button className="btn primary" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={() => setPendingAction(() => async () => { await saveDraft(record); setNextRequest(current => ({ ...current, [record.id]: (current[record.id] || 0) + 1 })); })}>{locale === "en" ? "Save observation and plan next action" : "관측 저장 후 다음 행동 정하기"}</button>}
+              }, event.currentTarget)}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}
+              {recordDrafts[record.id] && Boolean(record.actual?.trim() || record.learning?.trim()) && <button className="btn primary" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={(event) => requestConfirmation(() => async () => { await saveDraft(record); setNextRequest(current => ({ ...current, [record.id]: (current[record.id] || 0) + 1 })); }, event.currentTarget)}>{locale === "en" ? "Save observation and plan next action" : "관측 저장 후 다음 행동 정하기"}</button>}
               <DecisionFollowUp record={storedRecords.find(item => item.id === record.id) || record} locale={locale} requestOpen={nextRequest[record.id] || 0} />
               {status !== "reviewed" && <div className="weekly-review-record__complete">
-                <button type="button" className="btn small primary" disabled={!isReviewDue || !record.actual.trim()} onClick={() => completeReview(record)}>{t.completeReview}</button>
+                <button type="button" className="btn small primary" disabled={!isReviewDue || !record.actual.trim()} onClick={(event) => completeReview(record, record.actual, "weekly_review", event.currentTarget)}>{t.completeReview}</button>
                 {!isReviewDue && <small>{t.completeLocked}</small>}
               </div>}
-              {status !== "reviewed" && <section data-information-section=""><header data-information-heading="">{locale === "en" ? "Stop or redesign this decision" : "이 결정 중단·재설계"}</header><p>{locale === "en" ? "Close the decision without declaring statistical success or failure. The original review date and observations are preserved." : "통계적 성공·실패를 판정하지 않고 결정을 종료합니다. 원래 검토일과 관측 기록은 남습니다."}</p>{Object.entries(DECISION_CLOSURE_REASONS).map(([reason, labels]) => <button key={reason} className="btn" onClick={() => setPendingAction(() => async () => { await updateDecisionRecord(record.id, { ...(recordDrafts[record.id] || {}), closureReason: reason, status: "reviewed", reviewedAt: new Date().toISOString() }); setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; }); })}>{labels[locale === "en" ? 1 : 0]}</button>)}</section>}
+              {status !== "reviewed" && <section data-information-section=""><header data-information-heading="">{locale === "en" ? "Stop or redesign this decision" : "이 결정 중단·재설계"}</header><p>{locale === "en" ? "Close the decision without declaring statistical success or failure. The original review date and observations are preserved." : "통계적 성공·실패를 판정하지 않고 결정을 종료합니다. 원래 검토일과 관측 기록은 남습니다."}</p>{Object.entries(DECISION_CLOSURE_REASONS).map(([reason, labels]) => <button key={reason} className="btn" onClick={(event) => requestConfirmation(() => async () => { await updateDecisionRecord(record.id, { ...(recordDrafts[record.id] || {}), closureReason: reason, status: "reviewed", reviewedAt: new Date().toISOString() }); setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; }); }, event.currentTarget)}>{labels[locale === "en" ? 1 : 0]}</button>)}</section>}
               <button type="button" aria-label={`${record.action} — ${t.remove}`} className="btn text" onClick={() => removeDecisionRecord(record.id)}>{t.remove}</button>
             </article>;
           })}

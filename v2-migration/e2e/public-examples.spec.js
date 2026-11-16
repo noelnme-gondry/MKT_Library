@@ -2,6 +2,7 @@ import { enablePaidReports } from "./support/paidReports";
 import { expect, test } from "@playwright/test";
 import Papa from "papaparse";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
+import { withDeclaredConditions } from "./support/declaredConditions.js";
 
 async function bytesOf(download) {
   const stream = await download.createReadStream();
@@ -13,7 +14,7 @@ async function bytesOf(download) {
 const examples = [
   { blog: "aso-basics-guide", file: "aso-mix-only.csv", tool: "/tools/aso-store-conversion", result: "#aso-result", kind: "aso" },
   { blog: "apple-search-ads-guide", file: "asa-mature-candidate.csv", tool: "/tools/asa-keyword-finder", result: "#asa-summary", kind: "asa" },
-  { blog: "budget-scaling-limit", file: "saturation-sparse.csv", tool: "/tools/campaign-saturation", result: ".result-action-card", kind: "saturation" },
+  { blog: "budget-scaling-limit", file: "saturation-sparse.csv", tool: "/tools/budget-allocation?view=headroom", result: ".result-action-card", kind: "saturation" },
 ];
 
 for (const locale of ["ko", "en"]) {
@@ -37,7 +38,7 @@ for (const locale of ["ko", "en"]) {
 
       // 글 끝 도구 패널은 상황 확인(B)으로 바뀌었다 — 받은 파일을 들고 도구로 간다.
       await page.goto(`${prefix}${example.tool}`);
-      await expect(page).toHaveURL(new RegExp(`${prefix}${example.tool}$`));
+      await expect(page).toHaveURL(new RegExp(`${prefix}${example.tool.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
       await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
       await page.locator('.csv-uploader input[type="file"]').first().setInputFiles({ name: example.file, mimeType: "text/csv", buffer: input });
       await expect(page.locator(".csv-uploader .file-state")).toBeVisible();
@@ -54,14 +55,17 @@ for (const locale of ["ko", "en"]) {
         await expect(result).toContainText("16.00%");
         await expect(result).toContainText(en ? "Traffic mix drove it" : "트래픽 구성 변화가 주도");
       } else if (example.kind === "asa") {
-        const maturity = page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?");
-        await expect(maturity).toHaveValue("unknown");
         await expect(page.getByText(en ? "Conversion maturity unknown" : "전환 성숙도 미확인", { exact: true }).first()).toBeVisible();
-        await maturity.selectOption("mature");
+        await withDeclaredConditions(page, en ? "Conversion completeness" : "전환 집계 확인", en, async (dialog) => {
+          const maturity = dialog.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?");
+          await expect(maturity).toHaveValue("unknown");
+          await maturity.selectOption("mature");
+        });
         await expect(page.locator("#asa-actions")).toContainText("budget app");
       } else {
-        await expect(result).toContainText(en ? "Abstain — no analyzable items" : "판단 보류 — 분석 가능한 항목 없음");
-        await expect(result).toContainText("0/24");
+        // 결론 문장은 lib/report/saturationHeadline이 판정에서 파생한다(§12.26b).
+        await expect(result.locator(".result-action-card__headline")).toContainText(en ? "On hold: no channel has enough daily data to judge." : "판단 보류: 판단할 만큼 일별 데이터가 쌓인 채널이 없습니다.");
+        await expect(result.locator(".result-action-card__stats")).toContainText("0/24");
         await expect(page.locator('[data-decision-review-tool="5-22"]')).toHaveCount(0);
       }
       if (example.kind === "saturation") {

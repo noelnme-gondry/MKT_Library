@@ -90,9 +90,9 @@ describe("계측 스크립트는 게이트를 통해서만 실린다", () => {
     );
   });
 
-  it("RootDocument와 블로그 셸이 게이트 컴포넌트를 쓴다", () => {
+  it("RootDocument와 발행 글이 게이트 컴포넌트를 쓴다", () => {
     expect(stripComments(read("components/RootDocument.jsx"))).toContain("<AnalyticsScripts />");
-    for (const rel of ["app/(ko)/blog/layout.js", "app/(en)/en/blog/layout.js"]) {
+    for (const rel of ["app/(ko)/blog/[slug]/page.js", "app/(en)/en/blog/[slug]/page.js"]) {
       expect(stripComments(read(rel)), rel).toContain("<AdSenseScript />");
     }
   });

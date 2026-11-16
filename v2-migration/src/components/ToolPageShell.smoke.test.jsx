@@ -3,11 +3,19 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ToolPageShell from "@/components/ToolPageShell";
 import { toolIndexEntry } from "@/lib/toolIndex";
+import { useAppStore } from "@/store/useDataStore";
 
 // 도구 이름의 SSOT는 스토어 IA다. toolId가 있으면 셸이 레지스트리 이름을 h1로 쓰고,
 // 넘긴 title이 다르면 제목 밑 한 줄(검색어형 이름)로만 남는다(2026-09-29 결정 A).
 
 describe("ToolPageShell instrument header contract", () => {
+  it("uses the existing analysis gate for title-only tool shells without adding a journey or duplicate brief", () => {
+    useAppStore.getState().setGroupAnalyzed("5-21");
+    const { container } = render(<ToolPageShell titleToolId="5-21" title="성과 변동" summary="입력 안내"><div>결과</div></ToolPageShell>);
+    expect(container.querySelector(".tool-page-shell").getAttribute("data-results")).toBe("true");
+    expect(container.querySelector(".tool-brief, .journey-progress, .summary")).toBeNull();
+    useAppStore.setState({ analyzedByGroup: useAppStore.getInitialState().analyzedByGroup });
+  });
   it("keeps title, status, scope, summary, and contents in one Korean shell", () => {
     const { container } = render(
       <ToolPageShell

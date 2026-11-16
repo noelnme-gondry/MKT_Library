@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { getMappedRows, getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { fmtCurrency, fmtNum, fmtPct, sourceCurrencyOf } from "@/utils/format";
 import { useAppStore } from "@/store/useDataStore";
@@ -9,7 +8,7 @@ import ModalDialog from "@/components/ds/ModalDialog";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import DashboardComparisonPeriod from "@/components/dashboard/DashboardComparisonPeriod";
-import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
+import { operationsSourceRows, operationsPeriods, prepareOperationsIntervals, operationsSourceGrain } from "@/lib/operations/operationsIntervals";
 import { dateBounds } from "@/lib/analysisPeriod";
 import { isDemoData } from "@/lib/dataOrigin";
 import { buildToolDemo } from "@/lib/toolDemo";
@@ -18,14 +17,21 @@ import { csvBody, downloadCsv } from "@/utils/download";
 import { OPERATIONS_TOOL_ID } from "@/lib/operations/operationsDemo";
 import { comparisonWarnings } from "@/lib/analysisPeriod";
 import { scopeFilters } from "@/lib/analysis-results/scopeEvidence";
-import { prepareOperationsBrief, planOperationsBudget, OPERATIONS_HOLDS } from "@/lib/operations/operationsBrief";
-import { operationsReviewCandidates } from "@/lib/operations/operationsReview";
-import OperationsWorkbench from "./OperationsWorkbench";
-import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
+import { OPERATIONS_HOLDS } from "@/lib/operations/operationsBrief";
+import { operationsPlanRange, planOperationsScenario } from "@/lib/operations/operationsScenario";
+import { buildOperationsHistory } from "@/lib/operations/changeHistory";
+import { operationsCreativeSignals } from "@/lib/operations/operationLoop";
+import OperationsActionLoop from "./OperationsActionLoop";
+import { operationsInputEvidence } from "@/lib/operations/operationsEvidence";
+import OperationsPlanBoard from "./OperationsPlanBoard";
+import OperationsDecisionEvidence from "./OperationsDecisionEvidence";
+import OperationsMetricEvidence from "./OperationsMetricEvidence";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DataTable from "@/components/ds/DataTable";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import PvmEfficiencyStages from "@/components/tools/PvmEfficiencyStages";
+
+const localToday = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; };
 
 function EvidenceTable({ title, columns, rows, locale, emptyText }) {
   const [expanded, setExpanded] = useState(false);
@@ -38,21 +44,21 @@ function EvidenceTable({ title, columns, rows, locale, emptyText }) {
   </div>;
 }
 
-function OperationsResults({ csvData, filter, periods, denomBasis, currency, locale = "ko" }) {
+function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomBasis, currency, locale = "ko", onInspectMapping, dataOpen, setDataOpen }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const metric = effectiveDenomBasis(csvData, denomBasis);
   const metricName = metric === "actions" ? "CPA" : "CPI";
   const outcomeName = metric === "actions" ? tr("가입", "sign-ups") : tr("설치", "installs");
-  const input = useMemo(() => ({ csvData, filter, periods, metric, currency }), [csvData, filter, periods, metric, currency]);
+  const input = useMemo(() => ({ csvData, sourceRows, grain, filter, periods, metric, currency }), [csvData, sourceRows, grain, filter, periods, metric, currency]);
   const [bundle, setBundle] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [view, setView] = useState("actions");
   const [creativeSelection, setCreativeSelection] = useState(null);
-  const [reviewSelection, setReviewSelection] = useState(null);
-  const reviewRef = useRef(null);
   const [replanning, setReplanning] = useState(false);
   const [failure, setFailure] = useState(null);
-  const [limit, setLimit] = useState(0.2);
-  const limitRef = useRef(0.2);
+  const [options, setOptions] = useState({ mode: "maintain", horizon: "week", targetTotal: null, changeLimit: .2 });
+  const optionsRef = useRef(options);
+  const limit = options.changeLimit;
   // 매핑/기간 변경 때 이전 결과를 먼저 숨긴다. 계산은 분석 게이트 안에서만,
   // 두 번의 rAF 뒤에 실행해 로딩 상태를 실제로 페인트한다.
   useEffect(() => {
@@ -60,10 +66,11 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
     const frame1 = requestAnimationFrame(() => { frame2 = requestAnimationFrame(() => {
       if (!active) return;
       try {
-        const rows = getMonFilteredRows(input.csvData, { ...input.filter, dateStart: null, dateEnd: null });
-        const brief = prepareOperationsBrief({ rows, periods: input.periods, metric: input.metric,
+        const rows = input.sourceRows;
+        const brief = prepareOperationsIntervals({ rows, periods: input.periods, metric: input.metric, grain: input.grain,
           mappedFields: Object.values(input.csvData.mapping || {}) });
-        setBundle({ input, brief, plan: planOperationsBudget(brief, { changeLimit: limitRef.current, currency: input.currency }) });
+        const evidence = operationsInputEvidence({ rows: brief.currentAvailable ? rows : [], mapping: input.csvData.mapping, period: input.periods.current, metric: input.metric });
+        setBundle({ input, brief, evidence, rows: operationsSourceRows(getMappedRows(input.csvData)), history: buildOperationsHistory(rows, input.metric), signals: brief.sourceGrain === "day" ? operationsCreativeSignals(rows, input.metric) : [], plan: planOperationsScenario(brief, { ...optionsRef.current, range: operationsPlanRange(input.periods.current.end, optionsRef.current.horizon), currency: input.currency }) });
         setFailure(null);
       } catch { setFailure(input); }
     }); });
@@ -74,23 +81,25 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
   const ready = bundle?.input === input;
   const brief = ready ? bundle.brief : null;
   const plan = ready ? bundle.plan : null;
-  const changeLimit = next => {
-    if (!ready || replanning) return;
+  const changeOptions = patch => {
+    if (!ready) return;
+    const next = { ...optionsRef.current, ...patch };
+    optionsRef.current = next;
+    setOptions(next);
     setReplanning(true);
     requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (optionsRef.current !== next) return;
       try {
-        const nextPlan = planOperationsBudget(brief, { changeLimit: next, currency });
+        const nextPlan = planOperationsScenario(brief, { ...next, range: operationsPlanRange(periods.current.end, next.horizon), currency });
         setBundle(current => current?.input === input ? { ...current, plan: nextPlan } : current);
-        setLimit(next);
-        limitRef.current = next;
       } finally { setReplanning(false); }
     }));
   };
   if (failure === input) return <div className="callout" role="alert">{tr("운영 계획을 계산할 수 없습니다. 데이터·매핑을 확인해 주세요.", "The operations plan could not be calculated. Check your data and mappings.")}</div>;
   if (!ready) return <><p role="status">{tr("운영 계획을 계산하고 있습니다…", "Calculating your operations plan…")}</p><AnalyzingOverlay show title={tr("운영 계획 계산 중…", "Calculating operations plan…")} /></>;
   const money = value => Number.isFinite(value) ? fmtCurrency(value, { currency, precise: true }) : tr("계산 불가", "Unavailable");
-  const number = value => Number.isFinite(value) ? fmtNum(value, 1) : tr("계산 불가", "Unavailable");
-  const pct = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${fmtPct(value / 100)}` : tr("비교 불가", "Not comparable");
+  const number = value => Number.isFinite(value) ? fmtNum(value) : tr("계산 불가", "Unavailable");
+  const pct = value => Number.isFinite(value) ? `${value > 0 ? "+" : value < 0 ? "−" : ""}${fmtPct(Math.abs(value) / 100)}` : tr("비교 불가", "Not comparable");
   const entity = row => row.name || tr("대상 미지정", "Unspecified entity");
   const noun = brief.unit === "campaign" ? tr("캠페인", "campaigns") : tr("채널", "channels");
   const deteriorated = brief.campaigns.filter(row => row.changePct > 1e-8);
@@ -101,22 +110,12 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
     : !comparable ? tr("최근 실적은 확인되지만 비교할 이전 실적이 부족합니다.", "Recent performance is available, but prior observations are insufficient for comparison.")
       : deteriorated.length ? tr(`${entity(deteriorated[0])}의 ${metricName}가 ${pct(deteriorated[0].changePct)} 올랐습니다.`, `${entity(deteriorated[0])} ${metricName} rose ${pct(deteriorated[0].changePct)}.`)
         : tr(`비교 가능한 ${noun} ${comparable}개의 단가 상승은 관측되지 않았습니다.`, `No unit-cost increase was observed among ${comparable} comparable ${noun}.`);
-  const holdMessages = [...new Set(plan.holds.map(hold => OPERATIONS_HOLDS[hold.reason]?.[locale] || OPERATIONS_HOLDS.missing[locale]))];
+  const holdCopy = { direction: tr("증액 총액은 현재 기준보다 크게, 감액 총액은 작게 입력하세요.", "Enter a higher total to increase, or a lower total to decrease."), interval: tr("서로 겹치지 않는 완전한 집계 기간을 선택하세요. 주·월 자료를 날짜별로 나눌 수 없습니다.", "Select complete, non-overlapping periods. Weekly/monthly rows cannot be split into days."), grain: tr("원본의 날짜 단위를 확인하세요. 원본보다 작은 단위로 나눌 수 없습니다.", "Check source date units. Observations cannot be split into smaller units.") };
+  const holdMessages = [...new Set(plan.holds.map(hold => holdCopy[hold.reason] || OPERATIONS_HOLDS[hold.reason]?.[locale] || OPERATIONS_HOLDS.missing[locale]))];
   const campaignById = new Map(brief.campaigns.map(row => [row.id, row]));
   const budgetRows = plan.items.map(row => ({ ...row, name: entity(campaignById.get(row.id)), context: campaignById.get(row.id).context,
     observedCpr: campaignById.get(row.id).current.cpr, baselineCpr: row.current / row.currentResults }));
   const isDemo = isDemoData(csvData);
-  const reviewCandidates = operationsReviewCandidates({ brief, plan, currency, locale });
-  const chooseReview = id => {
-    const current = reviewCandidates.find(row => row.id === reviewSelection) || reviewCandidates[0];
-    if (id !== current?.id && !confirmReviewExit(useAppStore.getState().activeProjectId, locale)) return;
-    setReviewSelection(id);
-    requestAnimationFrame(() => {
-      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      reviewRef.current?.scrollIntoView?.({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-      reviewRef.current?.querySelector("h3")?.focus({ preventScroll: true });
-    });
-  };
   const notes = [tr("단가 상승과 단계별 기여는 관측 비교이며, 원인을 증명하지 않습니다.", "Unit-cost changes and stage contributions compare observations; they do not prove causation."),
     ...comparisonWarnings(periods.current, periods.previous, locale)];
   if (brief.missingCreativeRows) notes.push(tr(`최근 ${brief.missingCreativeRows}행에 소재 ID가 없어 소재별 목록에 포함되지 않았습니다.`, `${brief.missingCreativeRows} recent rows have no creative ID and are excluded from the creative list.`));
@@ -135,31 +134,33 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
     { name: "OPS_DECOMPOSITION", title: tr("단가 분해 엔진 출력", "Unit-cost decomposition engine outputs"), rows: [
       ["entity", "context", "creative", "mix_engine", "rate_engine", "total_contribution_engine"],
       ...brief.campaigns.flatMap(row => (row.pvm?.finest || []).map(item => [entity(row), row.context, item.crKey || "", item.mix, item.rate, item.contribution])) ] },
-  ], method: { name: "operations-brief", version: "1", assumptions: ["Same daily budget; observed daily coverage; historical curves, recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range."], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
+    { name: "OPS_METRIC_INPUTS", title: tr("지표에 사용한 실제 입력", "Actual inputs behind metrics"), rows: [
+      ["field", "source_columns", "period_start", "period_end", "observations", "complete_total", "invalid_rows", "unavailable_reason"],
+      ...bundle.evidence.inputs.map(row => [row.key, row.headers.join(" · "), periods.current.start, periods.current.end,
+        bundle.evidence.observations, row.total ?? "", row.invalidCount, row.reason || ""]) ] },
+    { name: "OPS_METRICS", title: tr("기존 지표 정의의 계산값", "Values from existing metric definitions"), rows: [
+      ["metric", "outcome_basis", "unit", "value_registry", "input_fields", "unavailable_reason"],
+      ...bundle.evidence.metrics.map(row => [row.id, metric, row.unit, row.value ?? "", row.dependencies.map(input => input.key).join(" · "), row.reason || ""]) ] },
+  ], method: { name: "operations-brief", version: "1", assumptions: [`Budget mode: ${plan.mode}; plan period: ${plan.planRange.start}–${plan.planRange.end}; source: ${brief.sourceGrain}; curve observations: ${brief.grain}. Historical curves with recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range. Execution amounts are daily equivalents.`], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
 
-  return <ResultActionCard title={tr("이번 운영에서 확인할 일", "Checks for your next operating plan")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
+  return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo, view, setView }}
+    overview={chooseReview => <><OperationsPlanBoard {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages, metric, currency, isDemo }} signals={bundle.signals} today={localToday()} sourceThrough={bundle.history.end || bundle.history.dates.at(-1) || ""} onChange={changeOptions} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
+      <OperationsDecisionEvidence {...{ brief, plan, campaign, creative, setSelected, setCreativeSelection, metricName, outcomeName, currency, locale, periods, isDemo, money, number, pct, chooseReview }} signals={bundle.signals} />
+      <ModalDialog open={dataOpen} onClose={() => setDataOpen(false)} ariaLabel={tr("입력·상세 데이터", "Inputs and detailed data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2>{tr("입력과 지표 계산", "Inputs and metric calculations")}</h2><OperationsMetricEvidence inDialog evidence={bundle.evidence} {...{ currency, locale }} onInspectMapping={() => { setDataOpen(false); onInspectMapping(); }} /><button type="button" className="btn ghost" onClick={() => setDataOpen(false)}>{tr("닫기", "Close")}</button></ModalDialog></>}
+    evidence={() => <ResultActionCard title={tr("선택 기간의 성과와 원본 근거", "Performance and source evidence for the selected periods")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
     locale={locale} toolId={OPERATIONS_TOOL_ID} analysisKey="operations" resultState={brief.recentObservations ? "ready" : "insufficient"} issues={notes}
     stats={[{ label: tr("최근 광고비", "Recent spend"), value: money(brief.current.cost), detail: `${tr("직전", "Prior")} ${money(brief.previous.cost)}` },
       { label: tr(`최근 ${outcomeName}`, `Recent ${outcomeName}`), value: number(brief.current.results), detail: `${tr("직전", "Prior")} ${number(brief.previous.results)}` },
       { label: tr(`최근 ${metricName}`, `Recent ${metricName}`), value: money(brief.current.cpr), detail: `${tr("직전", "Prior")} ${money(brief.previous.cpr)}` },
-      { label: tr("동일 예산의 모형 예상 개선", "Modeled same-budget improvement"), value: plan.ok ? pct(plan.improvementPct) : tr("추정 보류", "Withheld"), detail: tr("유지안과 조정안의 예상 성과 비교", "Expected outcomes: maintenance vs revised") },
+      { label: tr("이 예산안의 예상 성과 변화", "Expected outcome change with this plan"), value: plan.ok ? pct(plan.improvementPct) : tr("추정 보류", "Withheld"), detail: tr("유지안과 조정안의 예상 성과 비교", "Expected outcomes: maintenance vs revised") },
     ]}
-    scopeEvidence={{ observationUnit: tr(`${noun} × 일`, `${noun} × day`), denominatorKey: metric, currency, filters: scopeFilters(filter),
+    scopeEvidence={{ observationUnit: tr(`${noun} × ${brief.grain === "month" ? "월" : brief.grain === "week" ? "주" : "일"}`, `${noun} × ${brief.grain}`), denominatorKey: metric, currency, filters: scopeFilters(filter),
       periods: [{ id: "after", ...periods.current, observations: brief.recentObservations }, { id: "before", ...periods.previous, observations: brief.priorObservations }] }}
     workbookExport={workbookExport}
     decisionReview={false}
-    coreFigure={<nav className="operations-result-actions" aria-label={tr("결과와 다음 행동", "Results and next actions")}>
-      <a href="#ops-budget-title">{tr("예산안 확인", "Inspect budget plan")}<span>{plan.ok ? tr(`${pct(plan.improvementPct)} 모형 예상`, `${pct(plan.improvementPct)} modeled`) : tr("추정 보류", "Estimate withheld")} →</span></a>
-      <a href="#ops-campaign">{tr("캠페인 변화 확인", "Inspect campaign changes")}<span>{comparable ? tr(`단가 상승 ${deteriorated.length}개`, `${deteriorated.length} with rising unit cost`) : tr("비교 불가", "Not comparable")} →</span></a>
-      <a href="#ops-new-title">{tr("새 소재 비교", "Compare new creatives")}<span>{brief.creatives.length ? tr(`첫 관측 ${brief.creatives.filter(row => row.isNew).length}개`, `${brief.creatives.filter(row => row.isNew).length} first observed`) : tr("소재 식별 부족", "Insufficient creative IDs")} →</span></a>
-      <a href="#ops-review-title">{tr("주간 리뷰 준비", "Prepare weekly review")}<span>{tr("다음 검토로 연결", "Plan a follow-up")} →</span></a>
-    </nav>}
     analysisContent={<div className="operations-brief">
-      <OperationsWorkbench {...{ brief, plan, budgetRows, campaign, creative, setSelected, setCreativeSelection,
-        limit, replanning, changeLimit, holdMessages, metricName, outcomeName, currency, locale, periods, isDemo,
-        money, number, pct, reviewCandidates, reviewSelection, chooseReview, reviewRef }} />
-      <details className="operations-data">
-        <summary>{tr("차트의 상세 데이터", "Data behind the charts")}<span>{tr("예산·캠페인·소재·단계별 지표", "Budget, campaigns, creatives and stage metrics")}</span></summary>
+      <section className="operations-data">
+        <h3>{tr("차트의 상세 데이터", "Data behind the charts")}</h3>
         <div className="operations-data__body">
         {plan.ok && <EvidenceTable title={tr("대상별 예산과 효율", "Budget and efficiency by entity")} locale={locale} rows={budgetRows} columns={[
             { key: "name", label: tr("대상", "Entity"), fmt: (value, row) => <span className="operations-brief__entity"><strong>{value}</strong><small>{row.context}</small></span> },
@@ -191,9 +192,9 @@ function OperationsResults({ csvData, filter, periods, denomBasis, currency, loc
           <PvmEfficiencyStages value={campaign.stages} metric={metricName} currency={currency} locale={locale} headingLevel={4} title={`${tr("단계별 지표", "Stage metrics")} · ${campaign.name}`} />
         </section>}
         </div>
-      </details>
+      </section>
       <AnalyzingOverlay show={replanning} title={tr("예산 조정안 계산 중…", "Calculating budget adjustment…")} />
-    </div>} />;
+    </div>} />} />;
 }
 
 
@@ -207,10 +208,16 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const setWindow = useAppStore(state => state.setDashWindowDays);
   const setFilter = useAppStore(state => state.setDashboardFilter);
   const ready = Boolean(csvData.raw?.length && analyzed);
-  const periods = useMemo(() => dashboardPeriods(ready ? csvData : null, filter, windowDays), [ready, csvData, filter, windowDays]);
-  const bounds = useMemo(() => dateBounds(getMappedRows(ready ? csvData : null).map(row => row.date)), [ready, csvData]);
+  const channelOptions = useMemo(() => ready ? [...new Set(getMappedRows(csvData).map(row => String(row.channel || "").trim()).filter(Boolean))].sort() : [], [ready, csvData]);
+  const sourceRows = useMemo(() => operationsSourceRows(getMonFilteredRows(ready ? csvData : null, { ...filter, dateStart: null, dateEnd: null })), [ready, csvData, filter]);
+  const periods = useMemo(() => operationsPeriods(sourceRows, filter, windowDays), [sourceRows, filter, windowDays]);
+  const bounds = useMemo(() => dateBounds(sourceRows.flatMap(row => [row.date, row.periodEnd])), [sourceRows]);
+  const [grain, setGrain] = useState("auto");
   const [replaceSample, setReplaceSample] = useState(false);
   const [conditionsOpen, setConditionsOpen] = useState(false);
+  // 입력 검증은 분석 조건의 일부다 — 결과 사이에 혼자 떠 있던 버튼을 조건 줄로 옮겼다.
+  const [dataOpen, setDataOpen] = useState(false);
+  const settingsTitleRef = useRef(null);
   const filterNames = { countries: tr("국가", "Country"), platforms: tr("플랫폼", "Platform"), channels: tr("채널", "Channel"), sources: tr("유입", "Source") };
   const appliedScope = Object.entries(scopeFilters(filter)).filter(([, values]) => values.length).map(([key, values]) => `${filterNames[key]} ${values.join(", ")}`).join(" · ") || tr("전체 대상", "All entities");
   const metricName = effectiveDenomBasis(csvData, denomBasis) === "actions" ? "CPA" : "CPI";
@@ -237,38 +244,47 @@ export default function OperationsPlanner({ locale = "ko" }) {
     const data = buildToolDemo(OPERATIONS_TOOL_ID, locale);
     downloadCsv(csvBody(data.headers, data.raw.map(row => data.headers.map(header => row[header]))), "fictional_operations_98days");
   };
-  return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false}>
-    <details className={`operations-planner__conditions${ready ? " has-results" : ""}`} open={!ready || conditionsOpen}
-      onToggle={event => { if (ready) setConditionsOpen(event.currentTarget.open); }}>
-      <summary>
+  const inspectMapping = () => {
+    setConditionsOpen(true);
+  };
+  return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} showJourney={false} chips={ready ? <button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button> : null}>
+    <section className="ops-analysis-context" aria-label={tr("분석 조건", "Analysis settings")}>
+      <div id="ops-analysis-settings" tabIndex={-1} className="ops-section-heading">
         <span className="operations-planner__context">
           <strong>{ready ? tr("분석 조건", "Analysis settings") : tr("데이터 준비", "Prepare data")}</strong>
-          {ready && <><span>{tr("최근", "Recent")} {periods.current.start} – {periods.current.end}<span className="operations-planner__prior"> · {tr("직전", "Prior")} {periods.previous.start} – {periods.previous.end}</span></span>
-            <small>{isDemoData(csvData) ? tr("가상 예시", "Fictional sample") : csvData.fileName} · {tr(`${fmtNum(csvData.raw.length)}행`, `${fmtNum(csvData.raw.length)} source rows`)} · {metricName} · {sourceCurrencyOf(csvData)} · {appliedScope}</small></>}
+          {ready && <small>{isDemoData(csvData) ? tr("가상 예시", "Fictional sample") : csvData.fileName} · {tr(`${fmtNum(csvData.raw.length)}행`, `${fmtNum(csvData.raw.length)} source rows`)} · {metricName} · {sourceCurrencyOf(csvData)} · {appliedScope} · <button type="button" className="operations-planner__inputs" onClick={() => setDataOpen(true)}>{tr("입력·상세 데이터 확인", "Inspect inputs and detailed data")}</button></small>}
         </span>
-        <span className="operations-planner__conditions-action">{ready ? conditionsOpen ? tr("닫기", "Close") : tr("변경", "Edit") : tr("파일·예시", "File or sample")}</span>
-      </summary>
-      <div className={ready ? "tool-instrument-header tool-instrument-header--static tool-instrument-header--surface operations-planner__settings" : "operations-planner__entry"} data-currency-scope="declare">
-        <CsvUploader toolId={OPERATIONS_TOOL_ID} locale={locale} onLoadDemo={launchDemo} />
-        {ready && <>
-          <DashboardFilterBar locale={locale} compact hideDate />
-          <DashboardComparisonPeriod {...bounds} periods={periods} windowDays={windowDays} locale={locale}
+      </div>
+      {!ready && <div className="operations-planner__entry"><CsvUploader toolId={OPERATIONS_TOOL_ID} locale={locale} onLoadDemo={launchDemo} /></div>}
+      {ready && <><DashboardComparisonPeriod compact {...bounds} periods={periods} windowDays={windowDays} locale={locale} showPresets={operationsSourceGrain(sourceRows) === "day"}
             onWindowChange={days => { setWindow(days); setFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null }); }}
             onPeriodChange={(current, previous) => setFilter({ dateStart: current.start, dateEnd: current.end, compareEnabled: true, comparisonStart: previous.start, comparisonEnd: previous.end, comparisonPreset: "custom" })} />
+        <label className="ops-grain-control">{tr("차트 집계 단위", "Chart interval")} <select value={grain} onChange={event => setGrain(event.target.value)}><option value="auto">{tr("원본 날짜 형식에 맞춤", "Match source date format")}</option><option value="day">{tr("일별", "Daily")}</option><option value="week">{tr("주별", "Weekly")}</option><option value="month">{tr("월별", "Monthly")}</option></select></label></>}
+      {ready && channelOptions.length > 1 && <div className="ops-scope-chips" role="group" aria-label={tr("분석에 포함할 매체", "Channels included in the analysis")}><span>{tr("포함할 매체", "Included channels")}</span>{channelOptions.map(channel => {
+        const selected = filter.channels?.size ? channelOptions.filter(value => filter.channels.has(value)) : channelOptions;
+        const included = selected.includes(channel);
+        return <button type="button" key={channel} aria-pressed={included} disabled={included && selected.length === 1} onClick={() => {
+          const next = new Set(included ? selected.filter(value => value !== channel) : [...selected, channel]);
+          setFilter({ channels: next.size === channelOptions.length ? new Set() : next });
+        }}>{included ? "✓ " : ""}{channel}</button>;
+      })}{filter.channels?.size > 0 && <button type="button" className="btn ghost" onClick={() => setFilter({ channels: new Set() })}>{tr("전체 포함", "Include all")}</button>}</div>}
+      <ModalDialog initialFocusRef={settingsTitleRef} open={ready && conditionsOpen} onClose={() => setConditionsOpen(false)} ariaLabel={tr("파일·분석 대상 설정", "File and analysis scope")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2 ref={settingsTitleRef} tabIndex={-1} id="ops-settings-dialog-title">{tr("파일·분석 대상 설정", "File and analysis scope")}</h2><div className="operations-planner__settings" data-currency-scope="declare">
+        <CsvUploader toolId={OPERATIONS_TOOL_ID} locale={locale} onLoadDemo={launchDemo} />
+        <DashboardFilterBar locale={locale} compact hideDate /><p>{tr("날짜가 2026-W40처럼 주차이거나 2026-10처럼 월이면 그 기간의 합계로 읽습니다. 주·월 합계를 하루 날짜로 적은 파일은 날짜 형식을 먼저 맞춰 주세요.", "Week labels such as 2026-W40 and month labels such as 2026-10 are treated as period totals. Relabel weekly/monthly totals recorded as individual dates before analysis.")}</p>
           {isDemoData(csvData) && <aside className="operations-planner__demo" aria-label={tr("가상 데이터 데모 안내", "Fictional demo data")}>
             <div><strong>{tr("가상 운영 데이터로 체험 중", "Exploring fictional operations data")}</strong>
-              <p>{tr("98일 이력 · 4개 캠페인. 기본은 최근 7일과 직전 7일 비교입니다. 후기 영상·기능 비교 이미지의 첫 관측과 캠페인 효율 변화를 확인하세요.", "98 days · 4 campaigns. Defaults to recent versus prior 7 days. Inspect first observations of new creatives and changing campaign efficiency.")}</p></div>
+              <p>{tr("98일 이력 · 4개 캠페인. 전체 이력의 변화와 액션을 함께 보고, 근거 보기에서 선택한 기간의 효율을 비교하세요.", "98 days · 4 campaigns. Inspect changes and actions across the full history, then compare selected periods in Evidence.")}</p></div>
             <button type="button" className="btn ghost" onClick={downloadDemo}>{tr("데모 원본 CSV", "Download demo CSV")}</button>
           </aside>}
-        </>}
-      </div>
-    </details>
+        <button type="button" className="btn secondary" onClick={() => setConditionsOpen(false)}>{tr("결과로 돌아가기", "Back to results")}</button>
+      </div></ModalDialog>
+    </section>
     <ModalDialog open={replaceSample} onClose={() => setReplaceSample(false)} ariaLabel={tr("예시 데이터로 교체", "Replace with sample data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
       <h2>{tr("현재 파일을 예시로 교체할까요?", "Replace the current file with the sample?")}</h2>
       <p>{tr("효율 도구에서 공유하는 현재 데이터가 바뀝니다. 내 파일을 다시 올리면 이어서 분석할 수 있습니다.", "This changes the dataset shared by efficiency tools. Upload your file again to continue its analysis.")}</p>
       <button className="btn primary" type="button" onClick={applyDemo}>{tr("예시로 교체", "Replace with sample")}</button>
       <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
     </ModalDialog>
-    {ready && <OperationsResults csvData={csvData} filter={filter} periods={periods} denomBasis={denomBasis} currency={sourceCurrencyOf(csvData)} locale={locale} />}
+    {ready && <OperationsResults {...{ csvData, sourceRows, grain, filter, periods, denomBasis, locale }} currency={sourceCurrencyOf(csvData)} onInspectMapping={inspectMapping} {...{ dataOpen, setDataOpen }} />}
   </ToolPageShell>;
 }

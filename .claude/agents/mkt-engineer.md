@@ -34,7 +34,7 @@ tools:
 
 # 현재 도구
 
-5-2 운영 대시보드 · 5-21 PVM 변동 · 5-22 포화도 진단 · 5-3 예산 배분 (여기까지 efficiency CSV 공유) · 5-4 실험 분석(A/B) · 5-23 증분 분석(홀드아웃 3방법) · 5-24 브랜드 증분(ITS) · 5-18 마케팅 반응 분석(카니발·MMM·회귀예측) · 5-20 핵심 가치 발굴(Aha) · 5-25 다중공선성 점검(VIF) · 5-26 ASA 키워드 · 5-27 ASO 스토어 전환 · 5-28 액션 생존·이탈 · 5-29 구성 변화 분석(분포·Mix/Rate·운영 지문·인과 확인) · 9-6 소재 분석 · 9-1 콘텐츠 요소 분석기 · 9-2·9-3·9-7 콘텐츠(hidden). 전 도구 free.
+5-31 운영 플래너(광고 운영 출발점) · 5-2 운영 대시보드 · 5-21 PVM 변동 · 5-3 예산 상세 설계(`?view=headroom` = 구 5-22 증액 여력, 목록·도구 수에서만 빠짐 — 목록은 `publishedToolIds`, 분석은 `analysisToolIds`) (여기까지 efficiency CSV 공유) · 5-4 실험 분석(A/B) · 5-23 증분 분석(홀드아웃 3방법) · 5-24 브랜드 증분(ITS) · 5-18 마케팅 반응 분석(카니발·MMM·회귀예측) · 5-20 핵심 가치 발굴(Aha) · 5-25 다중공선성 점검(VIF) · 5-26 ASA 키워드 · 5-27 ASO 스토어 전환 · 5-28 액션 생존·이탈 · 5-29 구성 변화 분석(분포·Mix/Rate·운영 지문·인과 확인) · 9-6 소재 분석 · 9-1 콘텐츠 요소 분석기 · 9-2·9-3·9-7 콘텐츠(hidden). 전 도구 free.
 
 **9-x는 퍼포먼스 엔진의 도메인 리라벨** — 수학 불변, 라벨팩(`utils/contentDomain.js`) 파라미터화. 복제 금지. **9-4 CMM은 드롭**(MMM 금액 스케일 vs 콘텐츠 편수 불일치 — 재시도 금지). 상세: AGENTS.md §4.2·§12.23.
 
@@ -48,7 +48,7 @@ tools:
 
 **레이아웃 스케일**(`app/layoutScale.test.js`): 브레이크포인트는 480·560·640·720·768·860·1000·1100 여덟 개뿐이고 그 밖의 경계를 새로 만들지 않는다(`max-width:760px`은 태블릿 세로 768px에 안 걸린다). 짝이 되는 `min-width`는 경계+1. 반경은 `--radius-sm(6)·md(8)·lg(10)·xl(16)·pill/full(999)` 5단뿐이고 **px 리터럴 금지**(`designTokenSingleSource.test.js`). 직교 차트는 x·y 축 제목 필수(`chartAxisTitle.test.js`).
 
-**사이트 디자인 계약**(2026-09-24): 상자는 한 겹(상자 안 상자 금지)·세로로 쌓인 형제 상자는 좌우 가장자리 일치·제목 위 12px 라벨 금지·굵기는 400/600/700만·왼쪽 색 막대+바탕 안내 상자 금지·떠 있는 버튼 금지(튜토리얼은 헤더). `e2e/design-rules.spec.js`가 렌더 결과로, `app/fontWeightScale.test.js`가 선언으로 막는다. 예외는 `data-design-exempt="규칙: 사유"`. 글자 네 단(h1 26·h2 20·h3/h4 16·본문 14~16, 폰은 12·13→14)·제목<본문 금지·가로 넘침 금지. 분석 후 매핑은 한 줄 + `ds/MappingEditorDialog`(결론 카드 위 선택상자 0), 매핑 칸은 질문 문장 + `추천/기타` 묶음, 예시 결과의 저장 단계는 `ds/DecisionReviewPreview`. 신뢰도·방법·분석 범위·실행 정보는 화면에 두지 않는다 — 확인할 점이 있을 때만 `ds/IssueMark`(빨간 `!`). 그림 이모지·CSS 대문자·숫자 고정폭 금지. 고정 표면 그림자·장식 그라디언트·hover 들림·누를 수 없는 알약·토큰 밖 글자색 금지(`design-rules`·`hoverLift.test.js`). 결과 화면의 "되는 분석"은 이 파일로 실제 계산된 것만 — 샘플도 판정을 덮지 않고 "예시로 열기"만 붙인다. 안 되는 줄은 `lib/toolDataNeeds.js` 한 문장(예시 결과 금지). 결과 그림은 분석별 variant(`assistant/ResultCharts.jsx`) — 막대에 variant가 없으면 `visualizationVariants.test.js`가 막는다. 그림 사양은 `lib/assistant/coreFigures.js` 한 곳 — 도구 화면은 `ToolCoreFigure`로 같은 그림(PNG는 `utils/figureImage` — 글자 요소에 폭 고정 금지; 받기 버튼은 캔버스 포함 전부 `ds/FigurePngButton`(캔버스는 받는 순간 배율 2~4로 다시 그림), 결과 화면 결론 밑엔 핵심 그림을 바로(+PNG); 증분 도구는 effect-interval 그림). 5-3 그리디는 `currentSpends`를 넘겨 지금 배분보다 예상 성과가 적은 안을 내지 않는다.
+**사이트 디자인 계약**(2026-09-24): 상자는 한 겹(상자 안 상자 금지)·세로로 쌓인 형제 상자는 좌우 가장자리 일치·제목 위 12px 라벨 금지·굵기는 400/600만(제목도 600, 위계는 크기)·왼쪽 색 막대+바탕 안내 상자 금지·떠 있는 버튼 금지(튜토리얼은 헤더). `e2e/design-rules.spec.js`가 렌더 결과로, `app/fontWeightScale.test.js`가 선언으로 막는다. 예외는 `data-design-exempt="규칙: 사유"`. 글자 네 단(h1 26·h2 20·h3/h4 16·본문 14~16, 폰은 12·13→14)·제목<본문 금지·가로 넘침 금지. 분석 후 매핑은 한 줄 + `ds/MappingEditorDialog`(결론 카드 위 선택상자 0), 매핑 칸은 질문 문장 + `추천/기타` 묶음, 예시 결과의 저장 단계는 `ds/DecisionReviewPreview`. 신뢰도·방법·분석 범위·실행 정보는 화면에 두지 않는다 — 확인할 점이 있을 때만 `ds/IssueMark`(빨간 `!`). 그림 이모지·CSS 대문자·숫자 고정폭 금지. 2026-11-09 Paper & Ink: 종이 바탕·잉크 상단 띠·흰 카드 대신 위쪽 머리카락 선의 열린 구획·사이드바 글자만·KPI 미니차트 없음, 글꼴은 고딕 하나(명조·고정폭 부분 적용은 누더기라 되돌림)(`globals.css` 끝 블록, design.md). 고정 표면 그림자·장식 그라디언트·hover 들림·누를 수 없는 알약·토큰 밖 글자색 금지(`design-rules`·`hoverLift.test.js`). 결과 화면의 "되는 분석"은 이 파일로 실제 계산된 것만 — 샘플도 판정을 덮지 않고 "예시로 열기"만 붙인다. 안 되는 줄은 `lib/toolDataNeeds.js` 한 문장(예시 결과 금지). 결과 그림은 분석별 variant(`assistant/ResultCharts.jsx`) — 막대에 variant가 없으면 `visualizationVariants.test.js`가 막는다. 그림 사양은 `lib/assistant/coreFigures.js` 한 곳 — 도구 화면은 `ToolCoreFigure`로 같은 그림(PNG는 `utils/figureImage` — 글자 요소에 폭 고정 금지; 받기 버튼은 캔버스 포함 전부 `ds/FigurePngButton`(캔버스는 받는 순간 배율 2~4로 다시 그림), 결과 화면 결론 밑엔 핵심 그림을 바로(+PNG); 증분 도구는 effect-interval 그림). 5-3 그리디는 `currentSpends`를 넘겨 지금 배분보다 예상 성과가 적은 안을 내지 않는다. 결과 화면은 임원 보고처럼 — 한 줄 결론(행동 → 지표 변화), 수치 3개, 조정안·확인할 점은 표와 증감 막대, 금액은 `fmtCurrencyCompact`, 나머지는 "자세히 보기"(5-3 `allocationActions`, 2026-10-22).
 
 **블로그 넛지 A~E**: 중간=A 예시 결과(`lib/blogExamples/data.json`, 엔진 결과 사본) 또는 D 30초 점검 · 끝=B 상황 확인(전 글) · C 하단 읽기 바 · E 도구 도착 줄(`store.blogArrival`). 커버리지는 `lib/blogChecks.test.js`.
 주간 집계의 환산 단위와 실제 관측 수·성숙도는 분리한다. 7개 가짜 관측으로 복제하지 않는다. 새 입력은 V1 매핑·V2 readiness·엔진 projection까지 같은 계약으로 확인한다.
@@ -64,7 +64,7 @@ tools:
 
 # 에이전트 전용 참고사항
 
-- 예시는 곧장 결과(`lib/toolDemo`, 안내 창 없음 — `e2e/example-straight-to-result.spec.js`). 링크로도 연다: 도구 URL `?example=1`(`lib/exampleLink` + `ds/useExampleLink`, 예시 버튼과 같은 핸들러를 라우트·기기 저장 부팅 뒤 한 번 — `e2e/example-link.spec.js`). 도구 제목은 목록 이름, 검색어형 이름은 제목 밑 한 줄(`toolDisplayTitle`). 원본 통화는 묻지 않고 기본값으로 채움(`lib/sourceCurrencyPreference`). 플랫폼 내보내기 파일(Meta·App Store Connect·Google Play) 목록은 `lib/platformExports.js`, 업로드 판정 셋(기존 계약·V2·자격)을 `platformExports.test.js`가 돌린다. 이름: 모아 보는 곳=내 프로젝트, 만드는 버튼=다음 마케팅 프로젝트로 만들기.
+- 예시는 곧장 결과(`lib/toolDemo`, 안내 창 없음 — `e2e/example-straight-to-result.spec.js`). 링크로도 연다: 도구 URL `?example=1`(`lib/exampleLink` + `ds/useExampleLink`, 예시 버튼과 같은 핸들러를 라우트·기기 저장 부팅 뒤 한 번 — `e2e/example-link.spec.js`). 도구 제목은 목록 이름, 검색어형 이름은 제목 밑 한 줄(`toolDisplayTitle`). 원본 통화는 묻지 않고 기본값으로 채움(`lib/sourceCurrencyPreference`). 플랫폼 내보내기 파일(Meta·App Store Connect·Google Play) 목록은 `lib/platformExports.js`, 업로드 판정 셋(기존 계약·V2·자격)과 결과 계산까지 `platformExports.test.js`가 돌린다. 효율 비교 단위(채널 없으면 캠페인)는 `lib/efficiencyUnits` 한 곳. 이름: 모아 보는 곳=내 프로젝트, 만드는 버튼=다음 마케팅 프로젝트로 만들기.
 - 도구 추가: `IA` → `routeMap` → `PageClient` 디스패치 → `TOOL_REQUIRED/OPTIONAL_FIELDS` → `toolGroups` → `TOOL_GUIDE` → `demoData` → 컴포넌트 → `sitemap` → 골든+스모크. 상세: §12.1.
 - 계산 게이트: `analyzedByGroup`/`isGroupAnalyzed` 뒤에서만 무거운 compute. 토글은 lookup만(§4.4).
 - 통계 표준: 순수 `*Math.js` + 골든 + 결정론(`Math.random` 금지, §8).
@@ -89,7 +89,9 @@ tools:
 - **소셜 카드는 `public/og-card.png` 한 장**(`scripts/build-og-card.mjs`로 재생성): 빌드 타임에 폰트를 받아 카드를 그리면 잘린 응답 하나로 배포 빌드가 죽는다. 화면 밖 자산은 **파일 실재를 테스트가 본다**(`app/ogCard.test.js`, §7).
 - **안 찍은 이벤트는 영영 답할 수 없는 질문이 된다**: "이 기능을 쓰는 사람이 몇인가"는 계측이 없으면 사후에 못 센다. 저장·완료처럼 여러 화면이 공유하는 행동은 **단일 통과 지점**에서 한 이름으로 찍고(표면별 이벤트와 합산 금지), 성공만이 아니라 실패도 범주형 코드로 찍을 것(원문 메시지엔 사용자 데이터가 섞인다).
 - **자동으로 스토어에 쓰는 코드는 부팅이 끝난 뒤에 돌릴 것**: 자식 effect는 부모의 `setCurrentRouteId`보다 먼저 돌고, 기기 저장 부팅(`initializeProjects`)은 비동기로 늦게 끝난다. 버튼은 사람이 누르는 사이 둘 다 끝나서(e2e도 클릭을 재시도해서) 안 보이지만, 링크 자동 실행은 21개 중 5~7개가 매번 다른 도구로 빈 화면이었다(§7).
-- **계측·광고 스크립트는 운영 호스트에서만**(`lib/analyticsHost.js`+`useAnalyticsEnabled`): 가드가 없으면 `npm run dev` 화면 확인이 운영 GA4에 쌓이고, `window.gtag` 하나를 제품 이벤트 44종이 공유하므로 퍼널 지표까지 부풀려진다. 정적 프리렌더라 **빌드타임 env로는 못 가른다** — 호스트로 판정할 것.
+- **계측·광고는 운영 호스트 정확일치로 제한**(`lib/analyticsHost.js`+`useAnalyticsEnabled`). 정적 HTML을 공유하므로 빌드타임 env·접미사 비교는 불충분하다.
+- **불투명 srcdoc도 부모 URL을 기본 주소로 상속한다**: referrer·DOM·저장소뿐 아니라 `document.baseURI`도 실제 브라우저로 검사한다. 광고 문서의 기본 주소는 공개 origin으로 고정한다(§7).
+- **SDK 설정의 소비·삭제도 검증한다**: `var atOptions`는 삭제 불가능하므로 `window.atOptions`로 할당한다. 테스트 SDK도 strict mode에서 설정을 읽고 삭제한 뒤 소재를 그려야 실제 호환성 오류를 잡는다(§7).
 
 # 마지막 체크 (모든 커밋 직전)
 

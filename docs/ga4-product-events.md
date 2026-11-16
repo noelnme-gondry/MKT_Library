@@ -12,8 +12,10 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 
 | 이벤트 | 시점 | 핵심 파라미터 |
 |---|---|---|
+| `ad_slot_view` | visible 문서에서 실제 광고 프레임의 50% 이상이 viewport에 들어온 첫 순간. 체류시간 조건 없음 | 실제 `ad_provider`, `ad_slot`, `ad_format`, `locale`, `page_path`, `ad_measurement_version=1` |
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
+| `operations_detail_clicked` | 운영 플래너 단계의 "자세히 보기"에서 상세 도구를 누름(product-ssot §5.1) | `tool_id`(도착 도구), `source_tool_id=5-31`, `placement=changes\|budget\|creative`, `locale` |
 | `blog_cta_viewed` | 글·용어·계산기의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|self_check\|situation_check\|calculator_result`, `locale` |
 | `blog_tool_cta_clicked` | 글·용어·계산기에서 연결 도구(또는 계산기) 선택. 도구 쪽 결과 이벤트에 30분간 `content_slug`가 이어진다. **`tool_id`는 실제 목적지**다 — 계산기로 가는 CTA는 `tool_id=calculator`이며 도구 귀속 창을 열지 않는다(2026-09-29 전에는 연결 도구 ID가 찍혔다) | `tool_id`, `content_slug`(계산기는 계산기 slug), `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_answer_calculator\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|situation_check\|calculator_result`, `locale` |
 | `blog_section_opened` | 상단·읽기 바·중간 패널에서 글 안 점검·예시로 이동 (도구 전환 아님). 중간 패널 "본문 데모 실습으로"(`placement=article_case_practice`)는 2026-09-29 전까지 `blog_tool_cta_clicked`로 세었다 | `content_slug`, `content_type`, `placement`, `locale` |
@@ -25,7 +27,10 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `blog_arrival_action` | 블로그 예시에서 도구로 넘어온 첫 줄(도착 줄)에서 선택 | `tool_id`, `content_slug`, `content_type`, `placement=blog_arrival`, `state=use_my_csv\|back_to_article`, `locale` |
 | `blog_bridge_dismissed` | 블로그 읽기 바를 닫음(그 방문 동안 다시 뜨지 않음) | `content_slug`, `content_type`, `interaction_source`, `placement=reading_bar`, `state=session`, `locale` |
 | `tool_view` | 분석 도구 URL 진입. 같은 도구·언어의 콘텐츠 CTA 클릭 후 30분 안이면 글과 클릭 위치를 연결 | `tool_id`, `interaction_source=route`, `locale`, 조건부 `content_slug`, `content_type`, `placement`(클릭한 CTA 위치) |
-| `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
+| `landing_data_start_clicked` | (2026-10-27 이전) 랜딩 주 버튼 선택 — 지금은 발생하지 않는다. 옛 기간 비교용으로 남긴다 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
+| `landing_situation_clicked` | 홈 첫 화면에서 상황 하나를 골라 분석 찾기로 이동 | `interaction_source=landing`, `placement=hero`, `section_id=<상황 id>`, `locale` |
+| `landing_finder_opened` | 홈 첫 화면에서 "분석 N개 모두 보기" 선택 | `interaction_source=landing`, `placement=hero_all`, `locale` |
+| `finder_situation_selected` · `finder_file_selected` · `finder_example_clicked` · `finder_tool_clicked` · `finder_prep_opened` | 분석 찾기(`/start`)에서 상황 선택 · 파일 종류 선택 · 예시 보고서 · 내 파일로 하기 · 준비 방법 창 | `interaction_source=analysis_finder`, `section_id`, `tool_id`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
 | `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
 | `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |
@@ -88,11 +93,39 @@ CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 
 콘텐츠 CTA 노출과 클릭은 동일 `content_slug`·`placement`·`locale`를 맞춘다. 이번 보완은 `tool_view`에 그 글과 클릭 위치를 이어 주며, 결과 카드의 기존 `placement=result_action_card`는 덮어쓰지 않는다. 이는 최근 CTA 클릭 연결이지 GA 유입 출처나 최초 랜딩을 바꾸는 기능이 아니다. 30분 만료·다른 도구·다른 언어·CTA 없는 직접 진입에는 연결하지 않는다. 기존 이벤트의 과거 값은 소급 생성하지 않는다.
 
+## 제휴 광고 영역 도달 (2026-10-29 구현, 2026-10-30 배치 보완)
+
+`ad_slot_view`는 광고 **영역 도달**이며 광고 네트워크의 유효 노출·클릭·구매나 소재 송출 성공이 아니다. iframe load/error, 부모 focus/blur로 송출·클릭을 추정하지 않는다. 제공자·배치 키·허용 규격은 `src/lib/partnerAds.js` 정본을 사용하며, 처음 유효하게 도달했을 때 실제 iframe 규격을 기록한다. 홈 `home-intro`는 푸터에서 주요 진입 구획 뒤로 이동한다. 분석 화면의 `site-rail`은 좁은 메인 영역에서 같은 슬롯의 compact로 대체되며 `analysis-bottom` 쿠팡은 유지한다. 새 슬롯 ID나 측정 버전은 만들지 않는다.
+
+중복 단위는 현재 **페이지 진입 × 슬롯**이다. `GaPageviews`의 pathname 전환에 맞춰 메모리 Set을 새로 만들고, A→B→A는 새 진입으로 센다. 같은 진입의 스크롤 재진입·리렌더·규격 변경·중복 마운트는 추가하지 않는다. query/fragment만 바뀐 것은 새 진입이 아니다. 사용자 식별자나 영속 저장 키를 만들지 않는다.
+
+`usePartnerAdView`는 실제 iframe을 IntersectionObserver로 관측한다. 숨김 레일·폭 부족·0 크기·CSS 숨김·숨은 문서는 제외한다. visible 복귀 시 관측기를 새로 만들고 이전 관측기의 늦은 콜백을 무시해 새 교차율로 판단한다. `mode=live` 및 기존 호스트·동의 조건을 렌더와 전송 직전에 모두 검사한다. 관측 API 미지원·관측 예외·gtag 호출 예외는 수집 불가이며 UI를 중단하지 않는다. 동의 철회·언마운트 때 observer/listener를 해제한다.
+
+기존 `trackProductEvent`/gtag 경로만 사용한다. 광고 이벤트는 계약 필드만 허용하고 `page_path`는 현재 pathname에서 가져온다. 자동 URL에도 원본 query/fragment가 섞이지 않도록 `page_location=origin+pathname`, `page_referrer=""`, `page_title=""`를 이벤트 단위로 지정한다. CSV·파일명·분석값·사용자 입력 및 기존 여정의 추가 필드는 보내지 않는다. 광고 전용 버전은 전역 `measurement_version`과 별개다.
+
+전송 함수의 성공은 **기존 gtag 큐가 호출을 수락했다는 뜻**이다. 차단된 SDK·네트워크 실패·GA 수신 여부를 이 반환값으로 알 수 없다. 배포 후 GA 속성 `542428327`의 실제 수신을 별도로 확인해야 하며, 과거 자료에 새 지면 값이 소급 생성되지 않는다.
+
+### GA4 맞춤 측정기준 확인과 설정안
+
+2026-10-29 내부 브라우저에서 Growth 속성의 맞춤 측정기준 15개 전체를 읽기 전용으로 확인했다. `locale`(이벤트 범위)은 있고 아래 네 항목은 없다. 아래 이름과 매개변수로 **이벤트 범위** 등록을 제안한다. 계정 설정 변경은 이번 작업에서 실행하지 않았다.
+
+| 표시 이름 / 이벤트 매개변수 | 목적 |
+|---|---|
+| `ad_provider` | 공급자별 도달 구분 |
+| `ad_slot` | 기존 배치 키별 도달 분석 |
+| `ad_format` | 첫 도달 시 실제 규격 비교 |
+| `ad_measurement_version` | 광고 측정 계약 변경 전후 구분 |
+
+`locale`은 기존 정의를 재사용하고 경로는 쿼리가 제거된 `page_location`의 기본 페이지 경로 측정기준을 우선 사용한다. 별도 `page_path` 맞춤 정의는 현재 없으며, 이 이벤트 매개변수 자체를 보고서에서 선택해야 할 때만 추가한다. 기존 `placement`는 제품 행동 위치로 유지하며 `ad_slot`과 합치지 않는다.
+
+로컬 검증: `partnerAdMeasurement.test.js`, `PartnerAdMeasurement.smoke.test.jsx`, `e2e/partner-ad-measurement.spec.js`. E2E는 운영 hostname을 로컬 서버에 매핑하고 모든 외부 요청을 차단해 실제 앱 렌더·IntersectionObserver·표준 gtag 큐를 검증한다. 실제 쿠팡 송출·GA 수신의 증거는 아니다.
+
 ## GA4에서 등록할 이벤트 범위
 
 Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 - `tool_id`
+- `tool_route_id`(5-18 하위 도구의 원래 공개 ID; 이벤트 범위)
 - `analysis_type`
 - `result_state`
 - `tab_name`
@@ -121,6 +154,8 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 ### 관리자 설정과 코드 검증의 경계
 
+2026-10-20부터 마케팅 응답 하위 도구는 기존 `tool_id=5-18` 집계를 유지하면서 `tool_route_id`에 정규화 전 공개 ID를 추가한다. `5-18-mmm`, `5-18-trend`, `5-18-paid-organic`, `5-18-cannibal`, `5-18-forecast`만 코드에서 파생하며 임의 입력은 허용하지 않는다. 기존 중복 제거와 활성화 정의는 유지하므로 이 차원을 실행 ID나 독립 실행 건수로 해석하지 않는다. GA 맞춤 측정기준 등록과 실제 수신은 배포 후 확인해야 한다.
+
 `journey_entry`, `visit_type`, `placement`, `result_state`, `data_continuity`, `tool_id`, `interaction_source`, `locale`를 이벤트 범위 맞춤 측정기준으로 확인한다. GA 탐색은 비연속 단계(중간 페이지 이동 허용), 실데이터 `interaction_source != demo`, 코드 완료와 화면 노출을 분리한 퍼널로 구성한다. 저장 핵심 이벤트는 사용자가 저장한 두 이벤트만 후보이며 자동 집계 저장이나 단순 방문은 포함하지 않는다.
 
 이벤트 호출·개인 데이터 미포함은 테스트로 검증한다. GA 관리 화면의 실제 수신, 맞춤 측정기준 등록, Enhanced Measurement/GTM 중복 여부는 별도 실측 대상이다. 관리 설정을 열지 못했다면 코드 테스트 통과만으로 수신 완료라고 보고하지 않는다.
@@ -130,7 +165,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
   - 노출 위치는 `placement`로 구분한다. 읽기 바의 샘플 실행은 `blog_example_started` → `blog_tool_cta_clicked`, 본문 점검으로의 스크롤은 `blog_section_opened`다. 두 동작을 클릭 전환으로 합산하지 않는다. 2026-09-27 이전 `reading_bar` 클릭은 본문 이동이므로 전후 비교 시 제외한다.
   - 샘플 체험: `blog_cta_viewed` → `blog_example_started` → `blog_tool_cta_clicked(interaction_source=demo)` → `blog_sample_result_viewed`. 마지막 이벤트는 같은 도구·언어·30분 귀속 범위의 실제 결과 표시에서만 파생하고, 글·도구·언어·결과 상태별로 중복 제거한다. 같은 샘플을 다른 글에서 다시 연 경우에도 해당 글의 조회는 남기되 일반 `analysis_result_viewed` 집계는 늘리지 않는다. `result_state=ready`와 보류 상태를 구분하고 실제 CSV 활성화와 합산하지 않는다.
   - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
-- 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
+- 랜딩→실데이터: `landing_situation_clicked`(또는 히어로 파일 놓기) → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 콘텐츠→계산기: `blog_tool_cta_clicked(tool_id=calculator)` → `journey_page_viewed(scope=calculator)` → `calculator_used` → `blog_tool_cta_clicked(content_type=calculator)` → `tool_view`. 콘텐츠 클릭의 `content_slug`는 글·용어, 사용 이벤트의 `content_slug`는 계산기다. 사용자·세션 순서를 기준으로 연결하고 이름이 같은 문자열끼리 합산하지 않는다. 입력 변경은 예시 조작일 수도 있으므로 실제 데이터 분석 활성화로 세지 않는다. 배포 후 실제 수신을 별도로 확인한다.
 - 핵심 검색 진입(`/compare`): 실제 보이는 질문별 CTA는 `blog_cta_viewed`, 도구 선택은 `blog_tool_cta_clicked`에 `content_type=compare`, `content_slug=marketing-analysis`, `placement=analysis_question`을 보낸다. 직접 선택한 도구·언어에만 기존 30분 귀속을 적용한다. 계산기·`/start` 경로를 도구의 직접 전환으로 세지 않는다.

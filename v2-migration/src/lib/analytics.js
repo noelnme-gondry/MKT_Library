@@ -1,8 +1,10 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 // 분석 이벤트에는 CSV 값·파일명·채널명 등 사용자 데이터를 절대 싣지 않는다.
 // GA4 탐색에서 미리 정의된 범주형/집계형 파라미터만 쓴다.
 import { PAYMENT_PRODUCT } from "./subscription/paymentProduct";
 import { journeySurface, withSiteJourney } from "./siteJourney";
 import { GA_MEASUREMENT_ID, isAnalyticsHost } from "./analyticsHost";
+import { currentPartnerAdMode, partnerAdEventParams } from "./partnerAds";
 
 const ALLOWED_PARAMS = new Set([
   "tool_id", "source", "column_count", "row_count", "mapped_count", "confidence_bucket",
@@ -92,6 +94,7 @@ export function productElapsedBucket(elapsedMs) {
 const SENT_ONCE_KEYS = new Set();
 
 const ANALYSIS_TYPE_BY_TOOL = {
+  ...advancedMap((tool) => tool.key),
   "5-31": "operations_planner",
   "5-2": "dashboard",
   "5-3": "budget_allocation",
@@ -127,9 +130,15 @@ export function productAnalysisType(toolId) {
 }
 
 export function sanitizeProductEventParams(params = {}, name) {
+  if (name === "ad_slot_view") return partnerAdEventParams(params) || {};
   const safe = Object.fromEntries(Object.entries(params)
     .filter(([key, value]) => ALLOWED_PARAMS.has(key) && value != null)
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
+  // 기존 5-18 family 시계열은 유지하고, 정규화로 사라지던 공개 하위 도구만 구분한다.
+  // 호출자가 보내는 임의 문자열은 받지 않고 위 정규화가 인정한 ID에서만 파생한다.
+  if (safe.tool_id === "5-18" && typeof params.tool_id === "string" && params.tool_id !== safe.tool_id) {
+    safe.tool_route_id = params.tool_id;
+  }
   if (safe.gate_reason && !["price", "identity", "trust", "refund", "later"].includes(safe.gate_reason)) delete safe.gate_reason;
   if (safe.method && !["google", "email_link", "password", "unknown"].includes(safe.method)) delete safe.method;
   // 다운로드 결과·실패 사유는 열거형만 통과시킨다(downloadTelemetry).
@@ -148,9 +157,20 @@ export function sanitizeProductEventParams(params = {}, name) {
   return safe;
 }
 
+// 운영 호스트가 아니어도 홈의 주 행동은 여정 시작으로 센다(테스트·미리보기에서 여정 계측을 확인하는 경로).
+// 홈 주 행동이 상황 고르기·전체 보기로 바뀌었으므로 그 이벤트도 함께 연다(product-ssot §5.1.1).
+const HOME_ENTRY_EVENTS = new Set(["landing_data_start_clicked", "landing_situation_clicked", "landing_finder_opened"]);
+
 export function trackProductEvent(name, params = {}) {
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && name === "analysis_result_viewed") window.dispatchEvent(new Event("gop:analysis-result-ready"));
   if (typeof window === "undefined") return false;
+  const isAdSlotView = name === "ad_slot_view";
+  if (isAdSlotView) {
+    if (currentPartnerAdMode() !== "live") return false;
+    // 호출자의 임의 URL 대신 현재 페이지의 pathname만 사용한다.
+    params = partnerAdEventParams({ ...params, page_path: window.location.pathname });
+    if (!params) return false;
+  }
   // 운영 호스트에서 GA 스크립트보다 먼저 마운트된 화면의 이벤트도 표준 큐에 넣는다.
   // 로컬·미리보기는 여전히 no-op. 광고 차단기를 우회하는 별도 전송은 하지 않는다.
   if (typeof window.gtag !== "function" && isAnalyticsHost(window.location?.hostname)) {
@@ -162,7 +182,7 @@ export function trackProductEvent(name, params = {}) {
   if (typeof window.gtag !== "function") return false;
   try {
     if (window.sessionStorage) {
-      if (isAnalyticsHost(window.location?.hostname) || name === "landing_data_start_clicked") withSiteJourney("journey_page_viewed", { scope: journeySurface(window.location?.pathname) }, window.sessionStorage);
+      if (isAnalyticsHost(window.location?.hostname) || HOME_ENTRY_EVENTS.has(name)) withSiteJourney("journey_page_viewed", { scope: journeySurface(window.location?.pathname) }, window.sessionStorage);
       params = withSiteJourney(name, params, window.sessionStorage);
     }
   } catch { /* 저장소 차단 시 기본 계측만 */ }
@@ -192,7 +212,13 @@ export function trackProductEvent(name, params = {}) {
     delete safeParams.source;
   }
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
-  window.gtag("event", name, safeParams);
+  if (isAdSlotView) {
+    // gtag가 자동으로 붙이는 현재 URL·referrer에도 쿼리/fragment를 남기지 않는다.
+    Object.assign(safeParams, { page_location: `${window.location.origin}${safeParams.page_path}`, page_referrer: "", page_title: "" });
+    try { window.gtag("event", name, safeParams); } catch { return false; }
+  } else {
+    window.gtag("event", name, safeParams);
+  }
   if (name === "analysis_result_viewed") {
     trackBlogSampleResult(params);
     trackRealResult(params);

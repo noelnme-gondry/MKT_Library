@@ -10,12 +10,16 @@ for (const locale of ["ko", "en"]) {
     await enablePaidReports(page);
     await page.goto(prefix || "/");
     await expect(page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true })).toBeHidden();
-    // Published tools are visible immediately in the approved home directory.
-    const tool = page.locator(`.dc-questions a[href="${prefix}/dashboard"]`);
-    await expect(tool).toBeVisible();
-    await tool.click();
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
-    await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+    // 대표 플래너 체험 외에 상황별 다른 분석 진입과 워크북 출력도 보존한다.
+    const situation = page.locator('.home-entry__situations li:not(.home-entry__all-tile) a').first();
+    await expect(situation).toBeVisible();
+    await situation.click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/start\\?situation=performance`));
+    // 운영 대시보드(5-2)는 같은 광고 성과 파일을 쓰는 운영 플래너 카드의 상세로 묶였다(product-ssot §5.1).
+    const card = page.locator('.finder-card[data-tool-id="5-31"]');
+    await expect(card.locator(".finder-card__data")).toBeVisible();
+    await expect(card.locator('.finder-card__members [data-tool-id="5-2"] a')).toHaveAttribute("href", `${prefix}/dashboard`);
+    await page.goto(`${prefix}/dashboard?example=1`);
     // A demo intentionally opens analyzed results immediately; do not invent an extra Analyze step.
     const result = page.locator(".dashboard-briefing .result-action-card");
     await expect(result).toBeVisible();

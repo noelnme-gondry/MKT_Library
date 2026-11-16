@@ -1,3 +1,4 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, SATURATION_AXIS_FIELDS } from "@/utils/csvConstants";
 import { getToolGuide } from "@/utils/toolGuide";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
@@ -10,6 +11,7 @@ import { deriveStatisticalStatus } from "./statisticalStatus";
 const RESPONSE_PANEL_BASE_CONTRACT = Object.freeze({ minRows: 1, minPeriods: 1 });
 
 export const ANALYSIS_CONTRACTS = {
+  ...advancedMap(() => ({ minRows: 1, minPeriods: 0, requiresDate: false, rawEngineValidation: true, priority: 100 })),
   "5-30": { minRows: 1, minPeriods: 0, requiresDate: false, priority: 20 },
   "5-18-cannibal-detail": { minRows: 2, minPeriods: 0, requiresDate: false, priority: 20 },
   "5-31": { minRows: 8, minPeriods: 14, entityFields: ["campaign_id", "campaign_name", "channel"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 0 },
@@ -312,7 +314,9 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     blockers.push({ code: "min_periods", required: requiredPeriodCount, current: eligiblePeriodCount });
   }
 
-  const unusableMetrics = metricKeys.filter((key) => {
+  // Unit-level experiments and ledgers permit zero outcomes and signed refunds.
+  // Their raw engines validate units and identify estimable quantities after the gate.
+  const unusableMetrics = contract.rawEngineValidation ? [] : metricKeys.filter((key) => {
     const stats = quality.metricStats[key];
     return stats && (stats.validCount === 0 || stats.zeroRate === 1);
   });

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { chooseDashboardView } from './support/dashboardView.js';
 
 for (const locale of ['ko', 'en']) {
   test(`chart height survives export controls and dashboard resizing (${locale}) ${locale === 'en' ? '@light-en' : ''}`, async ({ page }) => {
@@ -8,7 +9,7 @@ for (const locale of ['ko', 'en']) {
     await page.route('**/api/payments/access', route => route.fulfill({ json: { entitlement } }));
     await page.addInitScript(() => localStorage.setItem('mkt-library-source-survey-answered', '1'));
     await page.goto(`${locale === 'en' ? '/en' : ''}/dashboard?example=1`);
-    await page.locator('#dashboard-tab-viz').click();
+    await chooseDashboardView(page, 'viz');
     const plots = page.locator('.dashboard-supporting-chart__canvas');
     await expect(plots).toHaveCount(5);
     // Default plot height belongs to the plot, not to the heading/export row.

@@ -6,13 +6,41 @@
 // Step3 (§4 배분 비중 bar chart) so render-throw bugs in step-transition JSX
 // and Chart.js effects are caught (golden tests only cover pure math, §7).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOCATION_SPEC, allocationOptionValue } from "@/lib/recipe/allocationRecipe";
 import { foldSteps } from "@/lib/recipe/recipe";
 import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import BudgetAllocation, { buildAllocationChartCountries, buildAllocationChartPoints, buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
+
+// 조건은 "조건 바꾸기" 창 안에 있다. 실행안이 있으면 예산·지표도 그 창으로 접힌다(product-ssot §1.1c).
+// 창이 열려 있으면 바깥이 aria-hidden이므로, 바깥을 누를 때는 닫는다.
+function openConditions(locale = "ko") {
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change settings" : "조건 바꾸기" }));
+  return screen.getByRole("dialog");
+}
+function closeConditions(dialog, locale = "ko") {
+  fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Close" : "닫기", exact: true }));
+}
+function chooseBasis(name, locale = "ko", { keepOpen = false } = {}) {
+  const dialog = openConditions(locale);
+  fireEvent.click(within(dialog).getByRole("button", { name }));
+  if (!keepOpen) closeConditions(dialog, locale);
+  return dialog;
+}
+// 지표 선택은 접힘 여부에 따라 창 안이나 바깥에 있다 — 어느 쪽이든 하나만 렌더된다.
+const objectiveRadio = (name) => screen.getByRole("radio", { name, hidden: true });
+// 실행안이 있으면 지표 선택은 접힌 창 안에만 있다 — 창을 열어 읽고 닫는다(바깥을 계속 누를 수 있게).
+function objectiveChecked(name, locale = "ko") {
+  const inline = screen.queryByRole("radio", { name, hidden: true });
+  if (inline) return inline.getAttribute("aria-checked");
+  const dialog = openConditions(locale);
+  const checked = within(dialog).getByRole("radio", { name }).getAttribute("aria-checked");
+  closeConditions(dialog, locale);
+  return checked;
+}
+
 
 function seedWithData() {
   const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs", "Actions", "Revenue"];
@@ -28,13 +56,16 @@ function seedWithData() {
   };
   const raw = [];
   const channels = ["Google", "Meta", "TikTok"];
+  // 지출이 날마다 오르내리고 설치가 수확체감하는 곡선 — CPI가 지출과 무관하게 일정하면 곡선을 적합할 수
+  // 없어 모든 채널이 "신뢰도 낮음 · 유지"가 되고 배분안이 생기지 않는다(그때 보이던 증감은 유지 금액을
+  // 마지막 하루 지출로 잡던 버그였다, 2026-10-28).
   for (let d = 1; d <= 20; d++) {
     const date = `2026-01-${String(d).padStart(2, "0")}`;
-    for (const ch of channels) {
+    for (const [index, ch] of channels.entries()) {
       const base = ch === "Google" ? 100000 : ch === "Meta" ? 80000 : 40000;
-      const cost = base + d * 3000;
-      const divisor = ch === "Google" ? 5000 : ch === "Meta" ? 4200 : 6000;
-      const installs = Math.round(cost / divisor);
+      const cost = Math.round(base * (1 + 0.45 * Math.sin(d * 0.9 + index * 2.1)));
+      const scale = ch === "Google" ? 4.2 : ch === "Meta" ? 5.4 : 3.1;
+      const installs = Math.round(scale * Math.sqrt(cost));
       raw.push({
         Date: date,
         Country: "KR",
@@ -106,28 +137,59 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(barSection).toBeTruthy();
   });
 
-  it("진단은 확인 탭에서 읽고 총합 수치는 결론에 한 번만 표시한다", () => {
+  it("결론은 할 일·핵심 수치 3개로 끝나고, 근거는 자세히 보기 탭에만 있다", () => {
     render(<BudgetAllocation />);
-    const diagnosis = document.querySelector(".alloc-diag-card");
-    expect(diagnosis).toBeTruthy();
+    const card = document.querySelector(".result-action-card");
+    expect(card).toBeTruthy();
+    // 결론은 한 줄: 무엇을 얼마나 옮기는지 → 지표 변화.
+    const headline = card.querySelector(".result-action-card__headline").textContent;
+    expect(headline).toMatch(/일 ₩[\d.,]+(만|억)? (감액|증액)|현 배분 유지/);
+    expect(headline.length).toBeLessThanOrEqual(70);
+    // 줄은 방향별(감액·증액·효과), 줄 안은 끊기지 않는 덩어리 — 이름 중간에서 줄이 바뀌지 않는다.
+    const lines = [...card.querySelectorAll(".alloc-headline__line")];
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    for (const line of lines) expect(line.querySelectorAll(".alloc-headline__chunk").length).toBeGreaterThanOrEqual(1);
+    expect(headline).not.toMatch(/감액\S|증액\S/);
+    // 덩어리 사이 공백은 덩어리 밖(텍스트 노드)에 있어야 줄을 바꿀 자리가 생긴다.
+    for (const chunk of card.querySelectorAll(".alloc-headline__chunk")) expect(chunk.textContent).toBe(chunk.textContent.trim());
+    expect(lines[0].textContent).toMatch(/\S \S/);
+    expect(card.querySelectorAll(".result-action-card__stats > div")).toHaveLength(3);
+    const table = within(card).getByRole("table", { name: "채널별 조정안" });
+    const rows = table.querySelectorAll("tbody tr");
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThanOrEqual(6);
+    for (const row of rows) {
+      expect(row.querySelector(".alloc-plan__unit").textContent.trim()).not.toBe("");
+      expect(row.querySelector(".alloc-plan__delta strong").textContent).toMatch(/^[+−]₩/);
+      expect(row.querySelector(".alloc-plan__cpr").textContent).toMatch(/→/);
+      expect(row.querySelector(".alloc-plan__why").textContent.trim()).not.toBe("");
+    }
+    // 일반 방법 안내로 빨간 "!"를 띄우지 않는다. 지운 진단·점검 블록은 되살리지 않는다.
+    expect(card.querySelector(".issue-mark")).toBeNull();
+    expect(document.querySelector(".alloc-diag-card")).toBeNull();
+    expect(document.querySelector(".alloc-verify-strip")).toBeNull();
     expect(document.querySelector(".alloc-total-card")).toBeNull();
     expect(document.querySelectorAll(".result-action-card__stats")).toHaveLength(1);
-    expect(diagnosis.querySelector(".alloc-insight-summary").textContent).toMatch(/감액|증액|효율 점검/);
-    expect(diagnosis.closest('[role="tabpanel"]').hidden).toBe(true);
+    const status = document.querySelector(".planner-status");
+    expect(status.closest('[role="tabpanel"]').hidden).toBe(true);
     fireEvent.click(screen.getByRole("tab", { name: "확인", exact: true }));
-    expect(diagnosis.closest('[role="tabpanel"]').hidden).toBe(false);
-    expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeGreaterThan(0);
-    expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeLessThanOrEqual(3);
+    expect(status.closest('[role="tabpanel"]').hidden).toBe(false);
   });
 
   it("switches between named current/plan distribution and the full allocation table", () => {
     // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
     render(<BudgetAllocation />);
+    // 실행안이 있으면 결론이 먼저 오고, 예산은 조건 창에서 바꾼다.
+    expect(document.getElementById("prism-total-budget")).toBeNull();
+    expect(document.getElementById("s-controls").textContent).toContain("일예산");
+    const conditions = openConditions();
     const budgetSlider = document.getElementById("prism-total-budget");
     expect(budgetSlider).toBeTruthy();
     expect(() => {
       fireEvent.change(budgetSlider, { target: { value: budgetSlider.max } });
     }).not.toThrow();
+    expect(conditions.querySelector(".alloc-condition-dialog__preview").textContent).toContain("지금 결론");
+    closeConditions(conditions);
 
     const distribution = document.querySelector(".allocation-distribution");
     expect(distribution).toBeTruthy();
@@ -172,6 +234,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("PRISM은 전역 예산 슬라이더 하나만 렌더하고 채널 행을 직접 편집하지 않는다", () => {
     render(<BudgetAllocation />);
+    openConditions();
     const slider = document.getElementById("prism-total-budget");
     expect(slider).toBeTruthy();
     const sliders = document.querySelectorAll('input[type="range"]');
@@ -184,6 +247,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("일/월 전환은 같은 실제 일예산을 보존한다", () => {
     render(<BudgetAllocation />);
+    openConditions();
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: "100000" } });
     fireEvent.blur(exact);
@@ -196,6 +260,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   it("USD 전역 예산은 센트와 월/일 변환을 잃지 않는다", () => {
     useAppStore.setState({ displayCurrency: "USD" });
     render(<BudgetAllocation />);
+    openConditions();
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: "0.01" } });
     fireEvent.blur(exact);
@@ -209,17 +274,33 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("관측 상한을 넘는 정확 예산은 실행·저장 가능한 추천안으로 만들지 않는다", () => {
     render(<BudgetAllocation />);
+    const conditions = openConditions();
     const slider = document.getElementById("prism-total-budget");
     const exact = document.getElementById("prism-total-budget-exact");
     fireEvent.change(exact, { target: { value: String(Number(slider.max) * 2) } });
     fireEvent.blur(exact);
+    // 창을 연 채로는 컨트롤이 제자리에 남고, 창 위 결론 자리가 실행안이 없다고 말한다.
+    expect(within(conditions).getByText(/자동 실행안은 만들지 않았습니다/)).toBeTruthy();
+    expect(conditions.querySelector(".alloc-condition-dialog__preview").textContent).toContain("실행안이 없습니다");
+    expect(document.querySelector(".result-action-card")).toBeNull();
+    // 닫으면 고칠 입력과 사유가 본문에 그대로 펼쳐진다.
+    closeConditions(conditions);
+    expect(document.getElementById("prism-total-budget-exact")).toBeTruthy();
     expect(screen.getByText(/자동 실행안은 만들지 않았습니다/)).toBeTruthy();
-    expect(screen.queryByText(/결론 —/)).toBeNull();
+    // 본문 칸을 고치는 동안에는 실행안이 생겨도 칸이 사라지지 않고, 칸을 떠나면 한 줄로 접힌다.
+    const inline = document.getElementById("prism-total-budget-exact");
+    fireEvent.focus(inline);
+    fireEvent.change(inline, { target: { value: String(Math.round((Number(slider.min) + Number(slider.max)) / 2)) } });
+    expect(document.querySelector(".result-action-card")).toBeTruthy();
+    expect(document.getElementById("prism-total-budget-exact")).toBe(inline);
+    fireEvent.blur(inline);
+    expect(document.getElementById("prism-total-budget-exact")).toBeNull();
+    expect(document.getElementById("s-controls").textContent).toContain("일예산");
   });
 
   it("효율 목표 모드는 CPI/CPA/ROAS 중 현재 CSV에 있는 목표의 전역 슬라이더로 최대 안전 예산을 찾는다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
+    chooseBasis(/효율 목표/, "ko", { keepOpen: true });
     const sliders = document.querySelectorAll('input[type="range"]');
     expect(sliders).toHaveLength(1);
     const targetSlider = document.getElementById("prism-efficiency-target");
@@ -233,30 +314,31 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("달성 불가능한 효율 목표는 참고안만 보이고 실행·저장 가능한 결과를 만들지 않는다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
+    chooseBasis(/효율 목표/, "ko", { keepOpen: true });
     const targetSlider = document.getElementById("prism-efficiency-target");
     fireEvent.change(targetSlider, { target: { value: targetSlider.min } });
     expect(screen.getByText(/실행·저장할 수 없습니다/)).toBeTruthy();
-    expect(screen.queryByText(/결론 —/)).toBeNull();
+    expect(document.querySelector(".result-action-card")).toBeNull();
   });
 
   it("효율 목표에서 고른 KPI는 총 예산 모드에도 그대로 이어진다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
-    fireEvent.click(screen.getByRole("radio", { name: /ROAS/ }));
-    expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
+    const conditions = chooseBasis(/효율 목표/, "ko", { keepOpen: true });
+    fireEvent.click(objectiveRadio(/ROAS/));
+    expect(objectiveRadio(/ROAS/).getAttribute("aria-checked")).toBe("true");
+    closeConditions(conditions);
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     const finish = screen.getAllByRole("button", { name: /검증 완료 및 예산 배분/ })[0];
     fireEvent.click(finish);
-    fireEvent.click(screen.getByRole("button", { name: /총 예산/ }));
-    expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
+    chooseBasis(/총 예산/);
+    expect(objectiveChecked(/ROAS/)).toBe("true");
   });
 
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
-    expect(screen.getByRole("radio", { name: /CPI/ }).getAttribute("aria-checked")).toBe("true");
+    chooseBasis(/효율 목표/);
+    expect(objectiveChecked(/CPI/)).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
     fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
@@ -287,8 +369,9 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
   it("keeps the same global-driver behavior in English", () => {
     render(<BudgetAllocation locale="en" />);
-    expect(document.getElementById("prism-total-budget")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Efficiency target" }));
+    expect(document.getElementById("s-controls").textContent).toContain("Daily budget");
+    closeConditions(openConditions("en"), "en");
+    chooseBasis("Efficiency target", "en", { keepOpen: true });
     expect(document.getElementById("prism-efficiency-target")).toBeTruthy();
     expect(document.querySelector(".prism-driver__status")?.textContent).toMatch(/largest daily budget|observed maximum spend|observed-spend ceiling|No budget below the observed-spend ceilings/);
   });

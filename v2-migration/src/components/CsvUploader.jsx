@@ -5,7 +5,7 @@ import { applyAccountMappings } from "@/lib/account/mappingContract";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
-import React, { useState, useRef, useMemo, useEffect, useImperativeHandle } from "react";
+import React, { useState, useRef, useMemo, useEffect, useImperativeHandle, useId } from "react";
 import Papa from "papaparse";
 import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -34,8 +34,8 @@ import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/local
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
-import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
-import { csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
+import { XLSX_IMPORT_LIMITS, xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
+import { CSV_IMPORT_LIMITS, csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -43,7 +43,6 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } fro
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
-import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { sourceCurrencyOf } from "@/utils/format";
@@ -62,6 +61,7 @@ const STANDARD_FIELD_EN_LABELS = {
 function localizedStandardFieldLabel(key, locale) {
   if (locale !== "en") return STANDARD_FIELDS[key]?.label || key;
   if (STANDARD_FIELD_EN_LABELS[key]) return STANDARD_FIELD_EN_LABELS[key];
+  if (STANDARD_FIELDS[key]?.labelEn) return STANDARD_FIELDS[key].labelEn;
   const match = String(key || "").match(/^(revenue|pu|ret)_d(\d+)$/);
   if (match) {
     const prefix = { revenue: "Revenue", pu: "Purchases", ret: "Retention" }[match[1]];
@@ -81,7 +81,8 @@ const CSV_COPY = {
     emptyCsv: "파일이 비어 있거나 올바르지 않습니다.",
     parseError: "파일을 읽는 중 오류 발생: ",
     dropTitle: "CSV 또는 XLSX 파일 드래그 & 드롭",
-    dropSub: "또는 클릭하여 파일 선택 · XLSX는 25MB 이하",
+    dropSub: `또는 클릭하여 파일 선택 · CSV ${CSV_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB · XLSX ${XLSX_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB 이하`,
+    dropSizeHint: "파일이 크면 필요한 기간·채널만 내보내거나 쓰지 않는 컬럼을 제외해 주세요.",
     importing: "파일 구조를 읽는 중…",
     importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     entryDemoBtn: "예시 데이터로 먼저 보기",
@@ -163,13 +164,14 @@ const CSV_COPY = {
     workbookDesc: (count) => `${count}개의 데이터 시트를 찾았습니다. 한 번에 하나의 시트만 불러와 데이터가 섞이지 않도록 합니다.`,
     workbookSelectLabel: "시트",
     workbookImportBtn: "선택한 시트 불러오기",
-    starterTemplateBtn: "⬇ 기본 CSV 템플릿 받기",
+    starterTemplateBtn: "기본 CSV 템플릿 받기",
   },
   en: {
     emptyCsv: "This file is empty or invalid.",
     parseError: "Error reading file: ",
     dropTitle: "Drag & drop a CSV or XLSX file",
-    dropSub: "or click to choose a file · XLSX up to 25MB",
+    dropSub: `or click to choose a file · CSV up to ${CSV_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB · XLSX up to ${XLSX_IMPORT_LIMITS.maxFileBytes / (1024 * 1024)}MB`,
+    dropSizeHint: "For large files, export only the periods or channels you need, or remove unused columns.",
     importing: "Reading file structure…",
     importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     entryDemoBtn: "Preview with example data",
@@ -251,7 +253,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `Found ${count} data worksheets. Import one at a time so data from different sheets never gets mixed.`,
     workbookSelectLabel: "Worksheet",
     workbookImportBtn: "Import selected worksheet",
-    starterTemplateBtn: "⬇ Download starter CSV template",
+    starterTemplateBtn: "Download starter CSV template",
   },
 };
 
@@ -269,20 +271,20 @@ export default function CsvUploader({
   toolId,
   refreshRef = null,
   onAnalyzed = null,
+  scrollToTopAfterAnalysis = true,
   onLoadDemo = null,
   analyticsToolId = toolId,
   showToolGuide = true,
   locale = "ko",
   afterFileSummary = null,
   showMappingReview = false,
-  showMappingCoach = false,
-  mappingCoachLeaving = false,
   onMappingReviewConfirmed = null,
   mappingReviewActionLabel = "",
   mappingReviewFallbackLabel = "",
   mappingReviewStage = "combined",
   onMappingReviewNeedsSemanticFallback = null,
   entryVariant = "default",
+  entryActionsPosition = "below",
   analyticsPlacement = "uploader",
   sheetInitiallyOpen = false,
   onImportStart = null,
@@ -315,6 +317,7 @@ export default function CsvUploader({
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
   const isStale = useAppStore((s) => s.isGroupStale(toolId));
   const fileInputRef = useRef(null);
+  const fileHintId = useId();
   const mappingDetailsRef = useRef(null);
   const isHydrated = useClientReady();
   const [isDragging, setIsDragging] = useState(false);
@@ -348,6 +351,14 @@ export default function CsvUploader({
     return () => { window.removeEventListener("gop-account-changed", invalidate); window.removeEventListener("message", onLogin); };
   }, [locale]);
   const importTaskRef = useRef(0);
+  const importAbortRef = useRef(null);
+  const csvParserRef = useRef(null);
+  useEffect(() => () => {
+    importTaskRef.current += 1;
+    preparationRequestRef.current += 1;
+    importAbortRef.current?.abort();
+    csvParserRef.current?.abort();
+  }, []);
   const trackImportFailure = (source, state) => trackProductEvent("data_import_failed", {
     placement: analyticsPlacement,
     tool_id: eventToolId,
@@ -465,13 +476,21 @@ export default function CsvUploader({
     setImportAnnouncement("");
     setIsImporting(true);
     const taskId = ++importTaskRef.current;
+    preparationRequestRef.current += 1;
+    importAbortRef.current?.abort();
+    csvParserRef.current?.abort();
+    csvParserRef.current = null;
+    const controller = new AbortController();
+    importAbortRef.current = controller;
+    setPendingWorkbook(null);
+    setPendingWideImport(null);
     const isWorkbook = /\.xlsx?$/i.test(file.name);
     const source = isWorkbook ? "xlsx" : "csv";
     onImportStart?.({ fileName: file.name, source });
     trackProductEvent("data_import_start", { tool_id: eventToolId, source, placement: analyticsPlacement, locale });
     if (isWorkbook) {
       try {
-        const sheets = await parseXlsxFile(file);
+        const sheets = await parseXlsxFile(file, { signal: controller.signal });
         if (taskId !== importTaskRef.current) return;
         if (!sheets.length) {
           reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
@@ -499,23 +518,32 @@ export default function CsvUploader({
     try {
       parseInput = await prepareCsvParseInput(file);
     } catch (error) {
+      if (taskId !== importTaskRef.current) return;
       reportImportFailure({ message: csvImportErrorMessage(error?.code, locale), source, state: csvFailureState(error) });
       setIsImporting(false);
       return;
     }
-    // 취소는 아래 complete 콜백의 taskId 가드가 처리한다(여기서 조기 반환하면 취소 후
-    // 늦게 도착하는 워커 콜백 무시 경로가 사라진다).
+    if (taskId !== importTaskRef.current) return;
+    const parsedRows = [];
     Papa.parse(parseInput, {
       worker: true,
       skipEmptyLines: true,
+      chunkSize: 1024 * 1024,
+      chunk: (results, parser) => {
+        if (taskId !== importTaskRef.current) { parser.abort(); return; }
+        csvParserRef.current = parser;
+        for (const row of results.data || []) parsedRows.push(row);
+      },
       complete: async (results) => {
         if (taskId !== importTaskRef.current) return;
+        csvParserRef.current = null;
         try {
-          if (!results.data || results.data.length === 0) {
+          const table = parsedRows.length ? parsedRows : results?.data;
+          if (!table?.length) {
             reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
           }
-          const { headers, raw } = tableToRecords(results.data);
+          const { headers, raw } = tableToRecords(table);
           if (!headers.length || !raw.length) {
             reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
@@ -530,6 +558,7 @@ export default function CsvUploader({
       },
       error: (err) => {
         if (taskId !== importTaskRef.current) return;
+        csvParserRef.current = null;
         reportImportFailure({ message: T.parseError + err.message, source, state: "parse_error" });
         setIsImporting(false);
       },
@@ -583,6 +612,9 @@ export default function CsvUploader({
   const cancelActiveImport = () => {
     importTaskRef.current += 1;
     preparationRequestRef.current += 1;
+    importAbortRef.current?.abort();
+    csvParserRef.current?.abort();
+    csvParserRef.current = null;
     setIsImporting(false);
     setErrorMsg("");
     setImportAnnouncement("");
@@ -795,13 +827,27 @@ export default function CsvUploader({
   const semanticEligibility = evaluateV2Eligibility({ toolId, bindings: semanticBindings });
 
   if (!hasFile) {
+    const sheetEntry = <GoogleSheetConnect
+      onLoaded={handleSheetLoaded}
+      onImportStart={() => {
+        onImportStart?.({ source: "google_sheets" });
+        trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
+      }}
+      onError={handleSheetError}
+      locale={locale}
+      toolId={sheetSourceScope}
+      initialOpen={sheetInitiallyOpen}
+    />;
+    const templateEntry = toolId === "start-gate" && hasToolTemplate(toolId) && <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId)}>{T.starterTemplateBtn}</button>;
+    const helpEntry = !showGuide && <VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton>;
+    const actionsAbove = entryActionsPosition === "above";
     return (
       <div className={`csv-uploader ${entryVariant === "dochi" ? "csv-uploader--dochi" : ""}`} data-analysis-status={ANALYSIS_STATUS.EMPTY} data-hydrated={isHydrated ? "true" : "false"}>
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
         {showGuide && <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} helpAction={<VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton>} />}
-        {!showGuide && <div className="tutorial-upload-entry"><VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton></div>}
+        {!actionsAbove && helpEntry && <div className="tutorial-upload-entry">{helpEntry}</div>}
         {pendingWorkbook ? (
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
             <strong>{T.workbookTitle}</strong>
@@ -829,6 +875,7 @@ export default function CsvUploader({
           </section>
         ) : (
           <>
+        {actionsAbove && <div className="csv-upload-entry-toolbar">{sheetEntry}{templateEntry}{helpEntry}</div>}
         {/* 예시 데이터 진입점은 화면에 하나만 둔다. CsvGuide가 이미 같은 버튼을
             그리고 있으면 여기서 또 그리지 않는다 — 나란히 놓인 같은 동작의 버튼 둘은
             "무엇이 다른가"를 먼저 묻게 만든다(제품 SSOT §5.3 위계 없는 CTA). */}
@@ -849,6 +896,7 @@ export default function CsvUploader({
           onClick={() => fileInputRef.current?.click()}
           disabled={!isHydrated || isImporting}
           aria-busy={!isHydrated || isImporting}
+          aria-describedby={fileHintId}
         >
           <div className="csv-drop-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -860,24 +908,11 @@ export default function CsvUploader({
           <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
         </button>
+        <p id={fileHintId} className="csv-drop-sub">{T.dropSizeHint}</p>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} disabled={!isHydrated || isImporting} />
-        {toolId === "start-gate" && hasToolTemplate(toolId) && (
-          <div className="csv-upload-quick-actions">
-            <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId)}>{T.starterTemplateBtn}</button>
-          </div>
-        )}
+        {!actionsAbove && templateEntry && <div className="csv-upload-quick-actions">{templateEntry}</div>}
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
-        <GoogleSheetConnect
-          onLoaded={handleSheetLoaded}
-          onImportStart={() => {
-            onImportStart?.({ source: "google_sheets" });
-            trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
-          }}
-          onError={handleSheetError}
-          locale={locale}
-          toolId={sheetSourceScope}
-          initialOpen={sheetInitiallyOpen}
-        />
+        {!actionsAbove && sheetEntry}
           </>
         )}
         {errorMsg && <div role="alert" className="csv-upload-error">{errorMsg}</div>}
@@ -948,7 +983,7 @@ export default function CsvUploader({
           setGroupAnalyzed(toolId);
           setIsStartingAnalysis(false);
           onAnalyzed?.();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (scrollToTopAfterAnalysis) window.scrollTo({ top: 0, behavior: "smooth" });
         });
       });
     });
@@ -1168,9 +1203,8 @@ export default function CsvUploader({
       {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
       {(!isRouterMode || showMappingReview) && <section data-information-section=""
-        className={`csv-mapping-block${showMappingCoach ? " is-dochi-highlighted" : ""}`}
+        className="csv-mapping-block"
         ref={mappingDetailsRef}
-        aria-describedby={showMappingCoach ? "dochi-mapping-coach-title" : undefined}
       >
         <header data-information-heading="" className="csv-mapping-header">
           <div className="csv-mapping-heading">
@@ -1252,11 +1286,6 @@ export default function CsvUploader({
           })}
         </div>
       </section>}
-      {showMappingCoach && <DochiMappingCoach
-        locale={locale}
-        isLeaving={mappingCoachLeaving}
-        onReview={onMappingReviewConfirmed}
-      />}
       {mappingReviewActionLabel && onMappingReviewConfirmed && (
         <div className="csv-mapping-review-action">
           <button type="button" className="ab-button" onClick={handleMappingReviewAction} disabled={!shouldOfferSemanticFallback && analysisBlocked}>

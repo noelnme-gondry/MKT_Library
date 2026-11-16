@@ -1,6 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import { EMPTY_DESIGN, assessCausalDesign } from "@/lib/analysis-results/causalDesignEvidence";
+import DeclaredConditions from "./DeclaredConditions";
 
 export function useCausalDesign(scopeKey, requiresRandomization = false) {
   const [record, setRecord] = useState({ scopeKey, values: EMPTY_DESIGN });
@@ -21,17 +22,20 @@ export default function CausalDesignCheck({ design, locale = "ko" }) {
     ["concurrentChanges", en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", [["none", "확인했고 없었습니다", "Checked; none"], ["present", "있었습니다", "Yes"]]],
     ...(design.requiresRandomization ? [["independentCounts", en ? "Is each person counted once over the whole period?" : "기간 전체에서 한 대상을 한 번씩만 셌나요?", [["unique", "네, 중복 없이 셌습니다", "Yes, no duplicates"], ["repeated", "여러 번 셌을 수 있습니다", "They may repeat"]]]] : []),
   ];
-  return <section className="analysis-design-check" aria-label={en ? "Design conditions" : "설계 조건"}>
-    <h3>{en ? "Before you trust this result" : "이 결과를 믿기 전에"}</h3>
-    <p>{en ? "These are your declarations, not checks inferred from CSV totals. Changing the data or selected window resets them. Cluster assignment and repeated counts need uncertainty methods beyond the aggregate binomial model." : "CSV 합계에서 자동 확인한 사실이 아닌 입력자의 선언입니다. 데이터나 선택 기간을 바꾸면 초기화됩니다. 집단 배정·반복 집계에는 집계 이항모형과 다른 불확실성 검증이 필요합니다."}</p>
+  const answered = fields.filter(([key]) => design.values[key]).length;
+  return <DeclaredConditions className="declared-conditions--design" locale={locale}
+    title={en ? "Test design" : "실험 설계 확인"}
+    intro={en ? "These are your declarations, not checks inferred from CSV totals. Changing the data or selected window resets them. Cluster assignment and repeated counts need uncertainty methods beyond the aggregate binomial model." : "CSV 합계에서 자동 확인한 사실이 아닌 입력자의 선언입니다. 데이터나 선택 기간을 바꾸면 초기화됩니다. 집단 배정·반복 집계에는 집계 이항모형과 다른 불확실성 검증이 필요합니다."}
+    ready={design.ready} answered={answered} total={fields.length}
+    status={design.ready ? (en ? "Recorded — read the diagnostics too" : "기록함 — 모형 진단도 함께 보세요") : (en ? "Action withheld until confirmed" : "확인 전에는 행동 판단 보류")}
+    note={design.ready
+      ? (en ? "Declared conditions recorded. They do not independently prove causal validity; review the model diagnostics too." : "선언 조건을 기록했습니다. 인과 타당성을 독립적으로 검증한 것은 아니며 모형 진단도 함께 확인하세요.")
+      : (en ? "Action withheld: design or comparison conditions are unconfirmed or unsuitable. Numbers remain exploratory comparisons." : "행동 판단 보류: 설계·비교 조건이 미확인이거나 적합하지 않습니다. 수치는 탐색적 비교로만 읽으세요.")}>
     {fields.map(([key, label, options]) => <label key={key} htmlFor={`${id}-${key}`}>{label}
       <select id={`${id}-${key}`} value={design.values[key]} onChange={(event) => design.set(key, event.target.value)}>
         <option value="">{en ? "Not sure yet" : "아직 모름"}</option>
         {options.map(([value, ko, english]) => <option key={value} value={value}>{en ? english : ko}</option>)}
       </select>
     </label>)}
-    <p role="status">{design.ready
-      ? (en ? "Declared conditions recorded. They do not independently prove causal validity; review the model diagnostics too." : "선언 조건을 기록했습니다. 인과 타당성을 독립적으로 검증한 것은 아니며 모형 진단도 함께 확인하세요.")
-      : (en ? "Action withheld: design or comparison conditions are unconfirmed or unsuitable. Numbers remain exploratory comparisons." : "행동 판단 보류: 설계·비교 조건이 미확인이거나 적합하지 않습니다. 수치는 탐색적 비교로만 읽으세요.")}</p>
-  </section>;
+  </DeclaredConditions>;
 }

@@ -4,11 +4,21 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      full_browser_suite:
+        description: Run every browser viewport combination
+        type: boolean
+        default: true
 
 concurrency:
   # 새 커밋이 같은 PR 또는 main에 도착하면 오래된 검증은 결과로 쓰이지 않는다.
   group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# 저장소 읽기만 한다 — 토큰 권한을 최소로 둔다(CodeQL actions/missing-workflow-permissions).
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -36,16 +46,24 @@ jobs:
           cache: npm
           cache-dependency-path: v2-migration/package-lock.json
       - run: npm ci
+      - name: Check production dependency advisories
+        run: npm audit --omit=dev --audit-level=moderate
       - run: npm run test:all
         env:
           PAYMENTS_TEST_DATABASE_URL: postgresql://postgres:fixture@localhost:5432/payment_tests
       - run: npm run lint
       - run: npm run build
 
-  browser-quality:
-    # 전체 E2E는 PR에서 한 번만 수행한다. main에서는 validate가 병합본을 다시 확인한다.
-    if: github.event_name == 'pull_request'
+  # PR은 전체 데스크톱 기능 + 핵심 모바일 경로 + EN/라이트 검사로 중복 화면 조합을 줄인다.
+  # 전체 조합은 workflow_dispatch에서 실행한다. 머지 뒤 main에서는 validate만 다시 확인한다.
+  browser-shard:
+    if: github.event_name != 'push'
+    name: browser-quality shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: v2-migration
@@ -60,19 +78,25 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # 브라우저 테스트는 빌드본으로 돈다(dev 서버의 요청마다 컴파일을 없앤다).
       - run: npm run build
-      - name: Verify account mapping before the full browser suite
-        run: npx playwright test e2e/account-mappings.spec.js --project=desktop-1440
+      # account-mappings는 아래 전체 데스크톱 범위에 포함되므로 따로 중복 실행하지 않는다.
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
         env:
           E2E_SERVER: production
-      - run: npm run test:e2e
-        env:
-          E2E_SERVER: production
+          E2E_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.full_browser_suite && 'full' || 'representative' }}
       - name: Preserve browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-failure-evidence
+          name: browser-failure-evidence-${{ matrix.shard }}
           path: |
             v2-migration/test-results/
             v2-migration/playwright-report/
           retention-days: 7
+
+  browser-quality:
+    if: always() && github.event_name != 'push'
+    needs: browser-shard
+    runs-on: ubuntu-latest
+    steps:
+      - name: All browser shards passed
+        run: test "${{ needs.browser-shard.result }}" = "success"

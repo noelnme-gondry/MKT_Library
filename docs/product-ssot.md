@@ -8,6 +8,29 @@
 
 ## 0. 문서 지위와 다른 문서와의 관계
 
+### 운영 변화·액션 루프 (2026-11-04)
+
+- KO: 운영 플래너는 업로드한 전체 기간에서 관측 변화 후보를 찾고, 직접 기록한 액션을 같은 이력에서 출처·계획/실행 상태와 함께 보여 준다. 지출 변화는 실제 예산 설정 변경으로 확정하지 않는다. EN: Scan the entire uploaded history for observed change candidates and show manual actions alongside them with source and planned/executed state. Spend changes do not confirm budget-setting changes.
+- KO: 소재 투입·종료·교체의 CPRR 증감량을 예측하거나 약속하지 않는다. 소재는 대응 필요성을 제시한다. CPRR 설명은 관측된 성과 비중·개별 성과 단가의 변화 분해와 지출–단가 산점도 추세의 조건부 예측으로 한정한다. EN: Do not predict CPRR gains or losses from creative launches, removals or replacements. Creative signals indicate actions to consider. Explain CPRR through observed changes in outcome shares and individual unit costs, plus conditional spend–unit-cost trend predictions.
+- KO: 실행일·실제 변경량·검토일을 기록하고, 동일 대상·통화·지표·완전한 날짜 범위에서 후속 관측을 비교한다. 누락을 무지출로 채우지 않으며 과거 실측과 예측의 차이를 재배분 효과로 부르지 않는다. EN: Record execution date, actual change and review date; compare follow-up observations only with matching scope, currency, metric and complete dates. Missing observations are not zero spend; observed-to-predicted gaps are not reallocation effects.
+- KO: 주 행동은 액션 기록과 다음 검토다. 예산·성과 비중과 단가 변화·산점도 근거는 같은 화면의 선택 가능한 상세 보기로 보존하고 보고서 받기는 보조 행동으로 둔다. 기존 무료 분석·Pro 저장 계약은 유지한다. EN: Action recording and follow-up review are primary. Budget, outcome-share and unit-cost changes, and scatter evidence remain selectable on the same page; report downloads are secondary. Existing free-analysis and Pro-storage terms remain.
+- KO: 운영 플래너의 분해 라벨은 실제 대상·성과 기준으로 쓴다. 설치·소재 기준이면 ‘소재별 설치 비중 변화’와 ‘소재별 설치당 비용 변화’로 표시하며, 금액은 전체 CPI 변화에 더해진 몫임을 설명한다. 비중은 광고비 비중이 아니며 인과효과도 아니다. EN: Use the actual entity and outcome in decomposition labels: “Change in install share by creative” and “Change in cost per install by creative.” Values are contributions to the overall CPI change, not spend shares or causal effects.
+- KO: 산점도에는 실제 적합에 사용한 날짜·관측 수를 표시하고 이전 구간·제외 관측을 구분한다. 적합선은 같은 관측과 지출 범위에서 그린다. 예산 계산용 범위·곡선 보정값을 관측 적합선으로 표시하지 않는다. EN: Identify the dates and observations actually used for fitting; distinguish earlier and excluded observations. Draw the fitted trend over that observed spend range. Do not label range- or shape-adjusted budget predictions as the fitted trend.
+- KO: 아직 기록하지 않은 제안은 결과 상단의 ‘실행할 액션 고르기’ 표와 소재 목록이 소유한다. 실행·검토 목록은 기록한 액션만 ‘검토할 결과 / 진행 중 / 완료’로 다루고, 기록이 없으면 안내 한 줄만 둔다. 같은 제안을 다른 단위(기간 합계/하루)로 두 곳에 싣지 않는다(2026-11-05). 상태 안에서는 액션별로 묶고 그룹 제목은 구분선·글자 크기로 개별 대상과 구분한다. 한 페이지면 페이지 숫자를 표시하지 않는다. EN: Unrecorded proposals live in the “Choose the actions to run” table and the creative list. The execution list covers recorded actions only — review results, in progress and completed — and shows a single line when nothing is recorded. Never repeat a proposal in a second place or unit. Group by action type with distinct headings; omit pagination when all items fit on one page.
+- KO: 예산은 사람이 고른다(2026-11-05). 추천안을 미리 골라 두되 캠페인마다 실행 여부와 기간 예산을 바꿀 수 있고, 바뀐 선택은 추천안과 같은 모형으로 예상 성과(설치·가입, CPI·CPA)를 다시 계산한다. 고르지 않은 캠페인은 현재 지출 유지로 계산한다. 금액은 캠페인별 관측 지출 범위 안에서만 예측하며, 밖이면 범위를 보여 주고 합계·저장을 막는다. 저장은 고른 변경마다 기록 하나를 같은 계획 ID로 묶어 한 번에 남기고, 각 기록에 하루 계획 지출·예상 결과와 계획 전체 합계를 담는다. 변경 전 예산 설정값은 관측 지출과 다를 수 있어 비워 둔다. 실행일부터 같은 기간 데이터가 다 들어오면 예상과 실제(지출·결과·단가)를 나란히 보여 주고, 검토 기간을 바꾸거나 금액을 고친 기록은 예측과 비교하지 않는다. 진행 중인 예산 기록이 있는 캠페인은 다시 고를 수 없다. 소재 추가·교체·종료는 예상 성과를 계산하지 않고 이력만 남기며, 교체 검토 신호(피로·부진·14일 안 피로 예상)는 소재 목록에 표시한다. EN: People choose the budget. The recommendation is preselected, but each campaign's inclusion and period budget can change; the same model recalculates expected outcomes and unit cost. Unselected campaigns keep current spending. Amounts are forecast only within each campaign's observed spend range; otherwise the range is shown and totals and saving are blocked. Saving stores one record per chosen change, linked by a plan ID, each with daily planned spend, expected outcomes and the plan totals; the previous budget setting stays empty because observed spend may differ. Once data covers the same period from execution, expected and actual spend, outcomes and unit cost are shown side by side; records with a changed review window or amount are not compared with the forecast. Campaigns with an open budget record cannot be chosen again. Creative launches, replacements and stops record history without outcome forecasts; replacement signals (fatigue, underperformance, fatigue expected within 14 days) are flagged in the creative list.
+- KO: 홈의 저장된 운영 액션은 현재 프로젝트의 검토 예정·진행 건수를 요약하고 플래너로 연결한다. 같은 기록을 기존 결정 요약에 중복 표시하지 않는다. 실제 성과 판정은 플래너에서 데이터와 대조한다. 공개 미리보기는 ‘운영 액션’을 먼저 보여 주고 전체 이력의 가상 데이터에서 계산한 제안임을 밝힌다. 미리보기의 예산·성과는 플래너 기본 적용 기간(다음 7일) 합계로 보여 플래너에 도착했을 때와 같은 숫자다. 파일 업로드·상황 선택 입구는 유지한다. EN: Home summarizes due and in-progress operating actions for the current project and links to the planner without duplicating them in the general decision summary. Observed results are evaluated against data in the planner. The public preview starts with operating actions calculated from explicitly fictional full-history data, using the planner's default next-7-day totals so the numbers match on arrival, preserving the file and situation entry points.
+
+### 거래·행동·실험 확장 계약 (2026-10-21)
+
+- KO: 거래 분석은 환불 후 순매출·변동비와 같은 관측 기간의 고객 코호트를 사용한다. 미회수·미성숙·획득비 누락을 0이나 회수 성공으로 처리하지 않는다. EN: Transaction analysis uses refund-adjusted net revenue, variable costs and equal observation horizons; unrecovered, immature and missing-cost states remain explicit.
+- KO: 순서형 사용자 퍼널은 엄격한 이벤트 시각 순서, 리텐션은 UTC 날짜와 관측 완료 모수를 쓴다. EN: Ordered user funnels require strictly increasing timestamps; retention uses UTC calendar days and fully observed denominators.
+- KO: CUPED·프로모션·CRM 업리프트는 배정 단위, 무작위 배정 및 사전 정보 조건을 확인한다. 관측 차이와 개인 인과효과를 혼동하지 않는다. EN: CUPED, promotion and CRM uplift require declared assignment units, randomization and pre-treatment information; observed differences are not individual causal effects.
+- KO: BG/NBD·Gamma–Gamma 예측은 학습/평가 기간을 분리한다. 예상 평균의 모수 구간과 개인의 실제 미래 값 예측구간을 구분한다. EN: BG/NBD and Gamma–Gamma separate calibration from evaluation; parameter intervals for expected means are not individual predictive intervals.
+- KO: 지역 실험은 사전 학습·검증, 고정 합성 대조, 조건부 HAC 구간·위약 비교·검정력 근사를 제공한다. GeoLift 패키지와 동일한 구현이라고 주장하지 않는다. EN: Geo analysis provides pre-period training/validation, fixed synthetic controls, conditional HAC intervals, placebos and approximate power; it does not claim to reproduce GeoLift.
+- KO: B2B는 미종결·후퇴·재개와 첫 종결을 구분한다. 컨조인트는 선호와 시장 점유율을 구분하며 가격 계수 식별 실패 시 금액 교환가치를 보류한다. EN: B2B distinguishes open, regressed, reopened and first-closed deals. Conjoint preferences are not market shares; unidentified price effects withhold monetary trade-offs.
+- KO: 장바구니 연관은 인과효과가 아니다. 도달 경계는 신뢰구간이 아니며 공통 식별자 확인 없이 중복 제거 도달을 만들지 않는다. 트래픽 이상은 부정행위 확정이 아니다. EN: Basket association is not causal. Reach bounds are not confidence intervals; exact cross-platform deduplication requires verified common identity. Traffic anomalies do not establish fraud.
+- 공통: 원본·식별자·설정값은 브라우저 안에서만 처리한다. 오류 사유는 KO/EN으로 제공하고 서버 분석 이벤트에 원문 값을 보내지 않는다. 계산 불가 값은 빈 상태와 사유로 남긴다. 환율 변환 없이 CSV의 단일 통화 단위를 표시한다.
+
 이 문서는 **"무엇을 지켜야 하는가"(계약)** 를 소유한다. **"어떻게 구현하는가"(상세)** 는 기존 문서가 계속 소유한다. 같은 문장을 두 곳에 적지 않는다 — 계약이 바뀌면 여기만 고치고, 상세 문서는 여기를 참조한다.
 
 | 문서 | 소유 범위 | 이 문서와의 관계 |
@@ -34,18 +57,18 @@
 | 한국어 표기 | **Growth Opt Playbook**(원문 유지) | "그로스 최적화 플레이북"은 **설명 문구로만** 사용. 제품명 자리에 쓰지 않는다 |
 | 공식 도메인 | `https://growthoptplaybook.com` | `routeMap.js` `SITE_URL` |
 | 제품 범주 | 앱·웹 퍼포먼스 마케팅용 **브라우저 기반 분석·의사결정 지원 도구** | — |
-| 도구 수 표기 | **"22개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-31 운영 플래너가 추가됐다. 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
+| 도구 수 표기 | **"33개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-32~5-43 고객·실험·영업·상품 분석이 추가됐다. 증액 여력(5-22)은 예산 상세 설계(5-3)의 보기로 흡수돼 세지 않는다(§4.2a). 잠식 상세는 기존 잠식 진단의 보기로 도구 수에 중복 산입하지 않는다. 이 표와 라우트의 정합은 `src/lib/productSsotCatalog.test.js`가 강제한다. |
 
 **도구 수를 손으로 세지 말 것.** 화면 카피는 `PUBLISHED_TOOL_IDS`(`lib/toolIndex.js`)에서 파생한다(현재 `LandingPage.jsx`의 `T.questionDeck(PUBLISHED_TOOL_IDS.length)`). `brandFacts.getPublishedToolCount()`는 같은 수를 계산하는 두 번째 경로이므로 이제 그것을 재노출한다 — 세는 곳은 하나다. 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
 ### 1.1a 라이브러리 홈과 공용 탐색 (2026-09-09 승인)
 
-- KO/EN 공용 서체: 제목은 로컬 Pretendard(대표 제목 800, 섹션·카드 700), 본문·조작 UI는 Wanted Sans, 코드용 고정폭 서체는 기존 역할을 유지한다. 홈·분석·주간 리뷰·블로그·SOP·구독에서 같은 제목 위계를 사용한다.
+- KO/EN 공용 서체: 제목은 로컬 Pretendard(600 — 위계는 크기로), 본문·조작 UI는 Wanted Sans, 코드용 고정폭 서체는 기존 역할을 유지한다. 홈·분석·주간 리뷰·블로그·SOP·구독에서 같은 제목 위계를 사용한다. (2026-11-09: 재설계에서 명조·고정폭을 일부에만 입혔다가 한 화면에 글꼴 셋이 섞여 되돌렸다 — 글꼴은 고딕 하나, 숫자는 tabular-nums.)
 - KO 홈 제목: “성과는 왜 바뀌었고, 다음엔 뭘 해야 할까?” / EN: “Why did it change? What should you do next?”
 - 홈 설명: “실무 가이드로 기준을 잡고, 내 데이터로 확인하세요. 성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다.” / EN: “Build your baseline with practical guides and check your data. Connect performance analysis to next week’s decisions in one place.”
 - CSV가 있는 방문자는 “CSV로 가능한 분석 한 번에”, 파일이 없는 방문자는 “질문에서 시작하기” 또는 샘플 체험으로 진입한다. 가능한 기본 분석을 묶어 실행하며 모든 분석의 무조건 실행을 약속하지 않는다.
 - 블로그·실무 가이드(SOP)·통합 결과·주간 리뷰·프로젝트·저장 관리·구독은 공용 사이드바에서 도달 가능해야 한다. 기존 도구와 자료의 전체 목록, 언어·테마·검색·복원·다운로드 기능을 보존한다.
-- 도치 인사 안내는 데이터 준비 영역에서 요청해 열 수 있게 하며 홈을 자동으로 가리지 않는다. 업로드·매핑·실행 게이트와 동일 데이터 전달 계약은 그대로 유지한다.
+- 마스코트(도치)는 쓰지 않는다(2026-11-06 사용자 결정 — 인사 오버레이·데이터 접수처·말풍선·캐릭터 이미지 제거). 데이터 준비는 업로드·매핑·실행 게이트가 안내하며 동일 데이터 전달 계약은 그대로다. / No mascot: onboarding overlays, intake dock, speech bubbles and character art were removed; the upload, mapping and run gates guide data preparation.
 - EN has equivalent CSV, question and sample entry points, persistent content/workspace navigation and on-demand Dochi help. Existing data gates, storage, settings and exports remain available.
 
 ### 1.1b 검색 주제와 분석 진입 (2026-10-14)
@@ -56,6 +79,33 @@
 - `/blog/marketing-analysis-example`은 한 CSV의 합계·캠페인별 변화·판단 보류·다음 검토를 따라가는 마케팅 분석 실습 글이다. `/compare`의 방법 선택 및 퍼포먼스 마케팅 대표 글과 상호 연결하며, KO/EN에서 같은 공개 예제를 재현한다. / The marketing analysis walkthrough follows totals, campaign changes, withheld conclusions and a next review using the same public CSV in both languages.
 - 분석 입구는 질문 → 필요한 데이터 → 확인할 결과 → 해당 분석 순서로 보여 준다. 예시는 실제 계산값과 합성 데이터 표시를 함께 두고, 예시 보기와 내 CSV 분석을 구분한다. / Entry points connect a question, required data, expected output and the matching analysis; calculated synthetic examples remain distinct from analysis of the user's CSV.
 - ROAS 글에서는 광고비와 귀속 매출로 ROAS를 직접 계산한 뒤 채널별 예산 분석으로 연결한다. ROAS는 매출÷광고비이며 이익률·증분 효과가 아니다. 광고비 0이나 누락·음수·비정상 입력은 계산 불가다. / The ROAS article calculates attributed revenue divided by ad spend before linking to channel budget analysis; this is neither profit nor causal lift. Zero spend and missing, negative or invalid inputs are uncomputable.
+
+### 1.1c 찾기·준비·보고서 리빌딩 (2026-10-26 승인)
+
+사용자 결정: 아래 네 가지를 모두 추천안대로 확정했다. 근거는 2026-10-26 실측(같은 질문에 답하는 입구 7곳, 공개 분석 34개가 요구하는 데이터 그룹 25종, 예시 결과의 결론 카드가 데스크톱 585~947px·폰 694~1,100px에서 시작)이다. 단계는 0 계약 → 1 결과 보고서(상위 5개 도구) → 2 분석 찾기 → 3 데이터 준비 → 4 전 도구 확장 순이다. / Approved on 2026-10-26: all four recommended options. Phases: contract → report layout (top five tools) → single analysis finder → data preparation → remaining tools.
+
+| 결정 | 확정 | 적용 단계 |
+|---|---|---|
+| 입구 통합 범위 | 앱 안 입구(홈 목록·`/start`·분석 방법 둘러보기·`/data-guide`)를 **분석 찾기** 하나로 모은다. `/compare`·`/guide` 분석 지도·`/diagnose`는 검색 유입 페이지로 두고 분석 찾기로 연결만 한다. 기존 주소는 유지하거나 301로 보존한다. | 2 |
+| 홈 첫 화면 주 행동 | **운영 플래너로 할 수 있는 일 + 계산된 예시 체험**. 내 데이터 진입은 같은 도구로 연결하고, 상황별 분석 찾기와 공용 업로드는 아래에 둔다(2026-11-05 사용자 방향 적용). | 2 |
+| 고급 분석 12개(5-32~5-43) | 숨기지 않고 상황 안에 함께 두되, 같은 상황에서 광고 운영 분석 뒤에 놓는다. | 0 |
+| 결과 화면의 설정 블록 | 결과가 있으면 기간·지표·대상을 **맥락 한 줄 + `조건 바꾸기` 창**으로 접는다(`MappingEditorDialog`와 같은 방식). | 1 |
+
+**상황 분류(0단계 적용).** 공개 분석은 `TOOL_JOURNEY`의 7개 상황에 정확히 한 번씩 속한다: 성과가 흔들렸다, 왜? · 예산을 어디에 얼마나 · 광고가 진짜 효과가 있었나 · 광고와 오가닉이 겹치나 · 소재·스토어를 고치고 싶다 · 들어온 유저가 남고 돈이 되나 · 상품·가격·영업. 상황은 순서가 아니므로 화면에 “이전/다음 단계”로 표시하지 않는다. 이름표는 번호(01~07)만 쓰고 영어 대문자 이름표를 쓰지 않는다. / Every published analysis belongs to exactly one of seven situations; situations are not a sequence.
+
+**필요한 파일 표기(0단계 적용).** 필요한 데이터는 컬럼보다 먼저 **어디서 받는 파일인지**로 말한다. 데이터 그룹(`TOOL_GROUP`)마다 사용자용 파일 이름과 출처 묶음 6종(광고 매체·MMP 리포트, 직접 정리하는 집계표, 스토어 콘솔, 제품 이벤트·사용자 기록, 주문·고객·영업 기록, 실험·설문 결과)을 `src/lib/dataSources.js` 한 곳이 소유한다. 출처 묶음의 매체 이름은 실제로 그런 파일을 내보내는 곳의 예시이며, 그 매체의 내보내기 헤더를 자동 인식한다는 약속이 아니다(인식 범위는 `lib/platformExports.js`). / Name the source file before columns; platform names are examples, not a promise of automatic header recognition.
+
+**분석 카드 계약(2단계 화면).** 카드 한 장 = 쓰는 상황(사용자 말) · 받게 될 보고서의 결론 예시(예시 데이터의 실제 엔진 결과에서 파생, 지어낸 수치 금지) · 필요한 파일(이름 → 출처 → 필수 열 → 있으면 더 좋은 열) · `예시 보고서 보기`(주 행동)와 `내 파일로 하기` · 같은 파일로 되는 다른 분석. 방법 이름(CUPED·RFM·VIF 등)은 부제와 검색어로 남긴다.
+
+**결과와 행동의 틀(2026-11-05 사용자 확장 요청).** 맥락 한 줄 → 결론과 핵심 수치 → 지금 정할 액션과 검토 조건 → 그 판단의 그림·세부 근거 순으로 읽는다. 홈은 운영 플래너로 할 수 있는 예산 계획·소재 점검·실행 후 검토를 먼저 소개하고 예시로 바로 진입하게 한다. 내 파일·다른 분석 찾기는 함께 제공하되 같은 무게의 여러 시작 버튼으로 경쟁시키지 않는다. §5.5의 확인 N·XLSX·보류 계약은 유지한다. / Outcome and action first: context, conclusion and key figures, next action and review criteria, then supporting evidence. Home leads with the operations planner and a direct example; file entry and analysis discovery remain available.
+
+**1단계 적용(2026-10-27).** 맥락 줄과 창은 `ds/ReportContext` 하나다. 결과가 있을 때만 접고, 판단할 대상이 하나도 없으면 접지 않는다(바로 고쳐야 하는 상태). 분석 설정 입력창과 `분석 대상` 버튼은 머리에 남긴다 — 결과를 보며 바로 고쳐 보는 경로라 창에 넣으면 흐름이 끊긴다(§5.5a). 창에는 기간·지표·표시 기준과 (5-22) 파일·매핑이 들어간다. 해석을 바꾸는 기간 경고는 결과 위에 남긴다. 결론 문장은 한 문장이고 화면의 판정에서 파생한다: 5-21 `lib/report/pvmHeadline`(전체 변화와 **같은 방향** 중 최대 기여만 원인으로 지목), 5-22 `lib/report/saturationHeadline`. 5-31은 이미 이 틀(분석 조건 한 줄 + 변경)이다. 5-3은 실행안이 있을 때 예산·지표·실행 방식·비교 기준·금액 단위·데이터를 맥락 한 줄과 `조건 바꾸기` 창 하나로 접고(창 위에 지금 결론을 함께 보여 준다), 분석 기간·배분 대상은 머리에 남긴다. 실행안이 없으면 예산 칸과 사유를 본문에 펼치고, 그 칸을 고치는 동안에는 접지 않는다. 5-2는 폰(≤720px, 또는 터치 입력 ≤1000px)에서 하위 보기 9개를 `보기: 이름 ▾` 한 줄로 바꾸고, 누르면 묶음·한 줄 설명과 함께 모든 보기가 나온다(가로로 밀어 숨기지 않는다). 예시 데이터 안내는 머리 줄이 먼저 말하므로 결론 뒤로 옮겼다. 결론 문장이 첫 화면 안에 있는지는 `e2e/report-first-viewport.spec.js`가 5개 도구 × 3폭 × KO/EN으로 잰다(2026-10-27 사용자 결정: 추천안대로). / ReportContext folds periods, metrics and view options after a result; the command input and scope stay visible. Headlines derive from the on-screen verdicts. 5-3 folds all plan settings once a plan exists; the 5-2 phone view uses a one-line view picker.
+
+**3단계 적용(2026-10-27).** 데이터 준비는 두 입구와 한 판정이다. ① 업로드 전 분석 찾기에 `어떤 파일을 갖고 계세요?`(출처 묶음 6종, 주소 `?file=`)를 둔다 — 고르면 그 출처의 분석을 **파일별로** 묶어 보여 준다. 상황과 파일 종류는 서로 다른 입구라 하나를 고르면 다른 하나는 풀린다. ② 파일을 놓으면 맨 위 한 줄이 파일 · 행 수 · 실제 기간 · 확인된 내보내기 형식(`lib/platformExports`의 열 이름이 **전부** 있을 때만)을 말한다. ③ 분석은 세 칸이다: **바로 가능**(돌려서 판정을 냈다) · **조금만 더 채우면 되는 분석**(요구 열이 대부분 있고 한두 개만 빠졌으면 그 열과 그 열이 보통 있는 파일을, 열은 맞는데 행·기간·비교 대상이 모자라면 그 사유를) · **다른 파일이 필요한 분석**(접어 두고 파일별로 묶음, 위 두 칸이 비면 펴 둔다). 판정은 새로 하지 않는다 — 자격 판정과 실제 실행의 판정 불가 사유를 `lib/assistant/dataReadiness`가 나눌 뿐이다. 광고비는 grain에 따라 키가 둘(cost·spend)이라 자격 판정이 같은 열로 본다(그 전에는 소재 단위 광고 파일에서도 소재 피로도가 늘 막혀 있었다). 매체별 내보내기 메뉴 경로는 검증할 수 없어 적지 않는다(§8). / Data preparation: a file-type entry before upload; after upload a one-line file summary and three groups — ready, almost ready (which column or how much more data, and which file usually has it) and needs a different file (collapsed, grouped by file).
+
+**4단계 적용(2026-10-27 진행 중).** 보고서 틀을 나머지 도구로 넓힌다. ① 결론 예시가 없는 분석 카드는 "받게 될 결과"를 쉬운 말로 쓴다(`lib/finder/finderPlainCopy` — 원문은 검색어로 남고, 방법 약어가 카드에 남으면 테스트가 막는다). ② 5-4 실험 분석은 판독이 나오면 데이터·설계를 맥락 한 줄로 접고, 결론은 한 문장이다(`lib/report/abHeadline` — 유의하면 차이와 "우연으로 보기 어렵다", 아니면 "지금 표본으로는 우연과 구분되지 않는다", 배정 비율이 어긋나면 판단 보류). ③ 사용자가 선언하는 실험 설계·비교 조건(5-23·5-24·5-18 계열)은 결과 위에 선택칸을 펼치지 않고 **한 줄 요약(몇 개 답했는지·지금 상태) + `확인하기` 창**으로 둔다(`ds/DeclaredConditions`). 판단 규칙은 그대로다 — 조건이 갖춰지기 전에는 결론 문장이 숫자와 함께 "탐색용 수치"라고 말한다. ④ 분석 설정 입력창은 포커스가 없을 때 안내 문장을 숨긴다. ⑤ 입력(파일·행 수)은 한 번만 말한다 — 분석이 끝나면 맨 위 `현재 입력` 줄을 두지 않고 접힌 업로더 줄이나 맥락 줄이 말한다. ⑥ 결과가 나오면 결론 위의 요약·방법 소개(핵심 요약, 무엇을 가르나, VIF 해석, 소재 해석 한계)는 결론 뒤로 옮긴다. ⑦ 5-23은 결과가 나오면 샘플 안내·데이터 줄·차단 기간(또는 비교 설정)을 맥락 한 줄 + `조건 바꾸기` 창으로 접는다. 칸을 고르는 중에는 접지 않고, 창 안에서 바꾸다 결과가 잠시 비어도 창은 닫히지 않는다. ⑧ 5-26은 판정 기준(일 예산·목표 CPA·목표 CPT)을 맥락 한 줄로 접고, 전환 집계 질문은 선언 조건 한 줄이다. ⑨ 5-18 계열(추세·잠식·기여·예측)은 데이터·표시 통화를 맥락 한 줄로 접는다 — 환산이 일어나면 고정 환율 고지는 창 안이 아니라 그 줄에 남는다. 단독 도구 화면에서는 `마케팅 반응 분석 · 단계` 이름표를 다시 쓰지 않는다. 타깃이 하나뿐이면 상단 막대 없이 맥락 줄이 타깃을 말하고 분석 패키지는 그 줄 옆에 둔다. 단독 기여(MMM) 화면의 표시 기간·모델 선택(정보 prior)은 조건 바꾸기 창 안에 있고, 줄이 지금 값을 말한다. ⑩ 5-20 결과 평가 시점은 선언 조건 한 줄이다. ⑪ 5-29는 읽은 방식(날짜·인원·축)과 비교 기간·범위를 맥락 한 줄로 접고 `다르게 읽혔다면 고치기`는 그 줄 옆에 둔다. ⑫ 9-1은 결과가 나오면 샘플 안내·열 지정을 맥락 한 줄(성과 지표·요소 수)로 접는다. ⑬ 폰(≤480px)에서는 결론 문장을 16px로 쓴다 — 20px 한 문장이 5줄이 돼 첫 화면 밖으로 밀렸다. ⑭ 5-28은 결과가 나오면 관측 기준·이탈 정의·가치 계산을 맥락 한 줄로 접는다. ⑮ 5-18 유입 변화맵은 열 확인을 맥락 한 줄로 접고 결론 → 그림 → 정밀 진단 링크 순서로 둔다(카드가 같은 수치 셋을 말하므로 위 요약 칸은 없앴다). `e2e/report-first-viewport.spec.js`가 발행 도구 전부를 320·980·1440, KO·EN에서 잰다 — 2026-10-28에 남은 도구(`KNOWN_GAPS`)가 0이 됐다. 새 도구도 같은 검사를 받는다. / Phase 4: plain-language card outputs; 5-4 folds data and design into the context line with a one-sentence verdict; declared design and comparison conditions become a one-line summary plus an answer dialog; remaining tools are tracked by a derived known-gaps list.
+
+**공용 파일 업로드 전 안내.** 용량은 `CSV_IMPORT_LIMITS.maxFileBytes`·`XLSX_IMPORT_LIMITS.maxFileBytes`에서 파생해 파일 선택 전에 함께 보여 준다(현재 CSV 100MB·XLSX 25MB, 기존 1024²바이트 기준). KO: “또는 클릭하여 파일 선택 · CSV {csvMB}MB · XLSX {xlsxMB}MB 이하”, “파일이 크면 필요한 기간·채널만 내보내거나 쓰지 않는 컬럼을 제외해 주세요.” EN: “or click to choose a file · CSV up to {csvMB}MB · XLSX up to {xlsxMB}MB”, “For large files, export only the periods or channels you need, or remove unused columns.” 기존 용량 초과 차단·브라우저 처리·오류 후 재시도 경로는 유지한다. 파일을 줄여도 분석에 필요한 기간·컬럼 조건은 별도로 충족해야 한다.
 
 ### 1.2 승인 소개문 (그대로 복사해 사용)
 
@@ -119,8 +169,8 @@
 - 과거 결정의 기준 기간·통화·전환 기준이 현재 비교와 다르면 판정 보류한다. CPA 산술 분해의 믹스는 **결과 비중**이며 비용 비중이나 인과 원인으로 바꿔 설명하지 않는다. 보고서에는 실제 저장한 결정만 포함한다.
 - 공개 진단 글의 KO/EN CTA는 주간 리뷰로 연결할 수 있다. 집계 이벤트는 진입·업로드·매핑·분석 완료/차단·저장·복사/인쇄·비교 데이터 출처와 소요 시간 구간만 전달하며 파일명·캠페인명·프로젝트명·실제 지표값은 보내지 않는다.
 - 주간 리뷰의 프로젝트 기준·목표 차이·캠페인 비교는 같은 집계를 사용한다. KPI 또는 전환 기준을 바꿀 때 기존 목표를 새 지표의 목표로 재해석하지 않는다. KO: “목표와의 관측 차이이며, 절감 가능액이나 인과효과의 추정이 아닙니다.” EN: “This is an observed gap to your target, not an estimate of savings or causal impact.”
-- 도치에서 이미 확인한 캠페인 데이터를 주간 리뷰로 넘길 수 있다. 캠페인 비교표와 팀 공유 보고서는 사용자가 선택한 KPI·통화·기간 및 저장한 결정을 반영한다. 비교 불가·새 캠페인·이번 기간 관측 없음은 각각 표시하며 미관측을 0으로 채우지 않는다.
-- 도치는 첫 분석의 준비를 돕고, 주간 리뷰는 비교→결정 기록→다음 데이터로 재검토하는 반복 흐름이다. 홈의 두 진입점을 함께 노출한다. 리뷰는 공통 본문 여백·작업 표면·버튼 스타일을 사용하고 업로드 안내에 대시보드 전용 결과를 약속하지 않는다.
+- 결과 작업대에서 이미 확인한 캠페인 데이터를 주간 리뷰로 넘길 수 있다. 캠페인 비교표와 팀 공유 보고서는 사용자가 선택한 KPI·통화·기간 및 저장한 결정을 반영한다. 비교 불가·새 캠페인·이번 기간 관측 없음은 각각 표시하며 미관측을 0으로 채우지 않는다.
+- 결과 작업대는 첫 분석의 준비를 돕고, 주간 리뷰는 비교→결정 기록→다음 데이터로 재검토하는 반복 흐름이다. 홈의 두 진입점을 함께 노출한다. 리뷰는 공통 본문 여백·작업 표면·버튼 스타일을 사용하고 업로드 안내에 대시보드 전용 결과를 약속하지 않는다.
 - ‘유지’ 목표는 동등성 범위가 없으므로 저장 전에 자동 판정 불가를 안내한다. 판정 불가여도 계산 가능한 가드레일 관측은 보존한다. CPA 표시의 유효성은 비용이 아니라 전환 분모로 판별한다.
 
 ## 3. 제품 한계 카드 (L)
@@ -200,7 +250,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 **PR #696으로 관계가 뒤집혔다.** 이전에는 5-18(마케팅 반응 분석)이 정식 도구이고 그 아래 다섯 분석이 subtool이었다. 지금은 다섯 분석이 각각 정식 도구이고 **5-18 허브가 subtool**이다 — 사용자가 찾는 단위가 "마케팅 반응 분석"이 아니라 "잠식 진단"·"MMM 기여도"이기 때문이다. 내부 id(`5-18-*`)는 §4.1 규칙대로 불변이다.
 
-### 4.2 공개 분석 도구 22개
+### 4.2 공개 분석 도구 33개
 
 멀티터치 맵은 설치 raw의 관측된 클릭 contributor와 귀속 매체의 중복을 보여준다. 앱×AppsFlyer ID의 파일 내 가장 이른 설치를 기준으로 하며, 누락·제한된 contributor는 접촉이 없었다는 증거가 아니다. 최대 3개 contributor의 경로이며 전체 접촉이나 인과 기여율을 복원하지 않는다. CTIT는 유효한 귀속 클릭 시각에서 설치까지, probabilistic 비교는 같은 설치 분모의 contributor 포함 범위만 바꾼다. / The multi-touch map describes observed click contributors and the attributed install source. It uses the earliest installation per app × AppsFlyer ID in the file. Missing or restricted contributors are not evidence of no contact. Up to three contributors do not reconstruct a complete journey or causal credit. CTIT uses valid attributed-click timestamps; probabilistic comparisons retain the same installation denominator.
 
@@ -209,9 +259,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | ID | 도구 | URL |
 |---|---|---|
 | 5-2 | 마케팅 운영 대시보드 | `/dashboard` |
-| 5-3 | 예산 배분 시뮬레이터 | `/tools/budget-allocation` |
+| 5-3 | 예산 상세 설계 (배분 설계·증액 여력) | `/tools/budget-allocation` |
 | 5-21 | 캠페인 성과 변동 분석 | `/tools/campaign-variance` |
-| 5-22 | 캠페인 포화도 진단 | `/tools/campaign-saturation` |
 | 5-4 | A/B 테스트 분석 | `/tools/experiment-analysis` |
 | 5-18-paid-organic | Paid·Organic 변화맵 | `/tools/paid-organic-trend` |
 | 5-18-trend | 마케팅 추세 분석 | `/tools/marketing-trend` |
@@ -228,8 +277,26 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 5-28 | 핵심 액션 생존·이탈 분석 | `/tools/subscription-survival` (기존 URL 유지) |
 | 5-29 | 구성 변화 분석 | `/tools/segment-composition-change` |
 | 5-31 | 운영 플래너 | `/tools/operations-planner` |
+| 5-32 | 고객 수익성·RFM | `/tools/customer-economics` |
+| 5-33 | 사용자 퍼널·리텐션 | `/tools/user-funnel-retention` |
+| 5-34 | CUPED 실험 보정 | `/tools/cuped-experiment` |
+| 5-35 | 고객가치 예측 | `/tools/predictive-customer-value` |
+| 5-36 | 지역 실험·합성 대조 | `/tools/geo-experiment` |
+| 5-37 | CRM 업리프트 | `/tools/crm-uplift` |
+| 5-38 | B2B 파이프라인 | `/tools/b2b-pipeline` |
+| 5-39 | 컨조인트·가격 선호 | `/tools/conjoint-pricing` |
+| 5-40 | 프로모션 공헌이익 | `/tools/promotion-profit` |
+| 5-41 | 장바구니 연관 | `/tools/basket-association` |
+| 5-42 | 도달·빈도 | `/tools/reach-frequency` |
+| 5-43 | 트래픽 품질 | `/tools/traffic-quality` |
 | 9-1 | 콘텐츠 요소 분석 | `/content/element-analysis` |
 | 9-6 | 광고 소재 피로도 분석 | `/content/freshness` |
+
+### 4.2a 다른 도구의 보기로 흡수한 도구 (5-22, 2026-11-06)
+
+| ID | 옛 주소 | 지금 |
+|---|---|---|
+| 5-22 | `/tools/campaign-saturation` | 예산 상세 설계(5-3)의 **증액 여력 / Headroom** 보기(`/tools/budget-allocation?view=headroom`). 옛 주소는 KO·EN 모두 영구 이동(301)한다. 같은 효율 CSV·같은 곡선 엔진을 쓰는 예산 결정의 일부라 별도 도구로 두지 않는다(2026-11-06 사용자 결정 "한 번에 진행"). 내부 id `5-22`는 §4.1대로 불변이며 분석 엔진·레시피·저장한 결정 기록·결과 작업대 분석 이름이 계속 쓴다 — 옛 기록은 그대로 읽힌다. 도구 목록·사이트맵·도구 수에서는 빠진다. / Headroom is now a view of Budget detail (5-3). The old URL permanently redirects in KO and EN. The internal id stays for engines, recipes, saved records and workbench analyses; it leaves lists, the sitemap and tool counts. |
 
 ### 4.3 목록에서 내린 허브 (5-18)
 
@@ -239,13 +306,26 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 > **routeMap의 `component`는 파일 이름이 아닐 수 있다.** `5-18-trend`의 `component`는 `MarketingResponseTrend`지만 그런 파일은 없고, 실제 디스패치는 `PageClient`가 `routeId`로 한다. 컴포넌트 파일을 라우트에서 찾는 도구·테스트는 이 사실을 알아야 한다(`ds/downloadEscape.test.js`가 디스패치에서 파생한다).
 
+### 4.4 마케팅 분석 지도 (2026-10-20)
+
+- `/guide`·`/en/guide`에서 기존 SOP와 함께 분석 질문·필요 데이터·해석 한계·참고 문헌을 탐색한다. 분류와 설명은 `src/lib/marketingAnalysisLibrary.js`, 실행 도구의 이름·주소는 기존 `toolIndex`·`routeMap`에서 가져온다.
+- 상태는 **연결 도구 있음 / Tool linked**, **내부 가이드 / Internal guide**, **외부 참고 자료 / External reference**로 구분한다. 연결 도구는 카드에 명시한 범위만 지원한다. 외부 참고 문헌의 모든 방법을 구현했다는 뜻이 아니며 지도 항목 수를 제품의 도구 수에 더하지 않는다.
+- KO: “질문에 맞는 분석과 필요한 데이터를 찾으세요. 연결 도구의 지원 범위와 참고 자료를 구분해 안내합니다.”
+- EN: “Find analyses and data for your question. Tool capabilities are distinguished from reference material.”
+- KR/EN의 방법·참고 자료·실행 링크는 동등하게 제공한다. 분야·검색·상태 필터는 브라우저 안에서만 처리하고 검색어를 계측하지 않는다.
+- 새로운 통계 엔진·자동 실행·CSV 업로드 계약은 이 지도에 추가하는 것만으로 생성되지 않는다. 입력 단위, 식별 가정, 회귀 검증과 실제 사용자 경로를 구현한 뒤에만 실행 도구를 연결한다.
+
 ## 5. UX 계약
 
-### 제휴 광고 / Affiliate advertising (2026-10-14)
+### 제휴 광고 / Affiliate advertising (2026-11-02)
 
-- 쿠팡 파트너스 우측 배너는 160×600, 가로 배너는 가용 폭에 따라 728×90 또는 320×100 하나만 표시한다. 메인 폭 1180px 미만에서는 우측을 숨기며, 가로 소재가 들어가지 않으면 슬롯도 숨긴다. 블로그는 작성자 메타 다음, 홈은 하단 소개 다음, 분석 화면은 마지막 리뷰 이후, 나머지 페이지는 본문 끝에 가로 슬롯을 둔다. / Use a 160×600 right rail and one 728×90 or 320×100 horizontal unit according to available width. Hide the rail below 1180px main width and hide horizontal slots that cannot fit. Place horizontal ads after the blog byline, home introduction, final analysis review, or the end of other pages.
-- 광고는 운영 호스트에서만 호출하며 로컬은 규격 미리보기다. 광고 측정 거부 시 로드하지 않고, 기존 동의 배너 대상 방문자는 동의 후 로드한다. 쿠팡 공식 `widgets.html`을 앱과 출처가 다른 sandbox 프레임으로 직접 연다. 중간 data 문서·별도 SDK·크기 응답에 의존하지 않고 발급된 규격으로 표시한다. CSV·분석 결과·파일명·현재 페이지의 경로·쿼리는 프레임에 전달하지 않으며, referrer는 사이트 origin으로 제한한다. / Load live ads only on production hosts. Local pages show size previews. Do not load after opt-out or before consent for visitors covered by the existing consent prompt. Open the official Coupang `widgets.html` directly in a sandboxed frame on the partner origin, at the issued size, without a data-document wrapper, separate SDK or size handshake. Pass no CSV, analysis result, filename, current page path or query; restrict the referrer to the site origin.
-- KR 고지: “이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.” EN 고지: “This page contains Coupang Partners affiliate ads. We may receive a commission from qualifying purchases.” 페이지 첫 부분과 광고 옆에 표시한다. 쿠팡은 광고 노출·클릭 과정에서 방문·기기 정보를 처리할 수 있다. / Show the localized disclosure near the start of the page and beside ads. Coupang may process visit and device information when displaying or interacting with ads.
+- Pro 안내(`/subscription`)와 `/tools` 및 그 하위 분석 도구에서는 쿠팡 슬롯·공시를 렌더링하지 않는다. KR/EN과 모든 화면 폭에 적용한다. / Do not render Coupang slots or disclosures on About Pro (`/subscription`), `/tools`, or its child routes in either locale or at any width.
+- 우측·홈·블로그·페이지 하단·분석 결과 하단의 모든 지면에 쿠팡 파트너스 일반 다이나믹 배너를 사용한다. 발급된 배너 ID를 유지하며 한 슬롯에는 한 프레임만 표시한다. 기본 규격은 160×600·728×90·320×100이다. 홈의 넓은 가로 배너는 본문 가용 폭(728–1600px)×140, 홈 우측은 160×800으로 표시한다. 프레임 크기와 위젯 요청 크기를 일치시키며 CSS로 기존 소재를 늘리지 않는다. / All placements use the issued Coupang Partners dynamic-banner IDs, one frame per slot. Default sizes are 160×600, 728×90 and 320×100. On home only, the wide banner uses the available content width (728–1600px) × 140, and the rail uses 160×800. Match iframe and widget-request dimensions instead of stretching the creative with CSS.
+- 지면 도달은 실제 송출·클릭이 아니며 `ad_provider`는 `coupang`으로 기록한다. / Slot reach is not proof of delivery or clicks. Record `coupang` as the ad provider.
+
+- 메인 가용 폭 1180px 미만의 분석 경로에서만 같은 `site-rail`을 본문 뒤 320×100으로 대체한다. 한 논리 슬롯의 프레임은 하나이며 홈·블로그·일반 콘텐츠에는 이 대체 광고를 추가하지 않는다. 홈의 넓은 가로 배너와 우측 배너 외에는 기본 규격을 유지한다. 본문 여백 때문에 compact가 들어가지 않으면 광고만 메인 영역·스크롤바·safe-area 안의 안전 폭을 사용하고, 안전 폭 자체가 320px 미만이면 숨긴다. 홈 `home-intro`는 소개·주요 진입 영역 다음, 블로그는 작성자 메타 다음, 쿠팡 `analysis-bottom`은 마지막 리뷰 이후, 나머지는 본문 끝에 둔다. / Below 1180px available main width, only analysis routes replace the same `site-rail` with one 320×100 unit after the content. Never mount both formats together or add this fallback to home, blog or general content pages. Retain default sizes except for the home wide banner and rail. Ads may use the surrounding safe main area when content gutters prevent compact placement, excluding scrollbars and safe-area insets; hide when that safe width is below 320px. Place `home-intro` after the introduction and primary entry area, blog ads after the byline, Coupang `analysis-bottom` after the final review, and other ads at the end of the page.
+- 광고는 운영 호스트에서만 호출하며 로컬은 규격 미리보기다. 광고 측정 거부 시 로드하지 않고, 기존 동의 배너 대상 방문자는 동의 후 로드한다. 쿠팡 공식 `widgets.html`을 앱과 출처가 다른 sandbox 프레임으로 직접 연다. 중간 data 문서·별도 SDK·크기 응답에 의존하지 않고 위 지면별 규격으로 표시한다. CSV·분석 결과·파일명·현재 페이지의 경로·쿼리는 프레임에 전달하지 않으며, referrer는 사이트 origin으로 제한한다. / Load live ads only on production hosts. Local pages show size previews. Do not load after opt-out or before consent for visitors covered by the existing consent prompt. Open the official Coupang `widgets.html` directly in a sandboxed frame on the partner origin, at the placement dimensions above, without a data-document wrapper, separate SDK or size handshake. Pass no CSV, analysis result, filename, current page path or query; restrict the referrer to the site origin.
+- 쿠팡 지면의 KR 고지: “이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.” EN 고지: “This page contains Coupang Partners affiliate ads. We may receive a commission from qualifying purchases.” 각 광고 바로 위에 표시한다. 광고가 표시되는 블로그 글은 글 앞부분에도 고지를 유지한다. 쿠팡은 광고 노출·클릭 과정에서 방문·기기 정보를 처리할 수 있다. / Show the localized disclosure immediately above each ad. Retain the notice near the start of blog articles with ads. Coupang may process visit and device information when displaying or interacting with ads.
 
 - 홈 추세의 날짜별 값은 차트에 마우스를 올렸을 때 나오는 툴팁으로 확인한다. 차트 아래에 날짜 슬라이더·날짜 선택·별도 CPI 표시를 추가하지 않는다. 최근 28일/전체 이력 전환과 캠페인별 전후 비교 값은 유지한다. / Inspect daily values through the homepage chart’s hover tooltip. Do not add a date slider, date selector or separate CPI readout below the chart. Retain recent-28-day/full-history switching and campaign-level period comparisons.
 
@@ -255,12 +335,17 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 #### 독립 운영 플래너 / Standalone operations planner
 
-- 분석 전에는 데이터 준비를 펼친다. 결과가 있으면 적용 기간·파일/가상 예시·원본 행 수·지표·원본 통화·대상을 요약하고 업로드·매핑·필터·기간 설정은 기본 접힌 `분석 조건 / Analysis settings`에서 바꾼다. 결론·핵심 수치 다음의 행동 링크는 예산안·캠페인 변화·첫 관측 소재·주간 리뷰로 이동한다. 여섯 핵심 차트는 펼쳐 두고 전체 표와 단계별 지표는 `차트의 상세 데이터 / Data behind the charts`에서 연다. 저장 설정 적용·검토 알림과 실제 분석 게이트는 유지한다. / Keep data preparation open before analysis. With results, summarize applied periods, file/sample origin, source rows, metric, source currency and scope; edit data, mappings, filters and periods in collapsed Analysis settings. Action links after the verdict and key figures lead to budget, campaign changes, first-observed creatives and weekly review. Keep the six core charts visible; reveal complete tables and stage metrics in Data behind the charts. Retain saved-setup notices and the real analysis gate.
+- 분석 전에는 데이터 준비를 펼친다. 결과가 있으면 적용 기간·파일/가상 예시·원본 행 수·지표·원본 통화·대상을 요약하고 업로드·매핑·필터·기간 설정은 기본 접힌 `분석 조건 / Analysis settings`에서 바꾼다. 결과는 `지금 할 일 / Actions & reviews`, `전체 변화 이력 / Full change history`, `근거 살펴보기 / Explore evidence`로 묶는다. 첫 화면은 액션과 다음 검토이며 차트·전체 표·단계별 지표는 근거 보기에서 보존한다. 저장 설정 적용·검토 알림과 실제 분석 게이트는 유지한다. / Keep data preparation open before analysis. With results, summarize periods, file/sample origin, source rows, metric, source currency and scope; edit data, mappings, filters and periods in collapsed Analysis settings. Organize results into Actions & reviews, Full change history and Explore evidence. Prioritize actions and next reviews; retain charts, complete tables and stage metrics in the evidence view. Retain saved-setup notices and the real analysis gate.
 
-- `/tools/operations-planner`의 **운영 플래너 / Operations planner**는 독립 도구다. 홈 첫 화면의 내 데이터·예시 버튼에서 직접 연결하며 `/start`의 분석 목록에도 포함한다. 공용 셸·효율 CSV·기간·필터·지표·통화를 재사용한다. 동일 예산의 전후 배분·장기 실측 추세 → 캠페인별 전후 단가·단계/소재 분해 → 소재별 비용·단가·성과 → 선택한 변경의 주간 리뷰 순서로 읽는다. 핵심 근거는 차트와 해당 수치로 바로 표시하며 전체 상세 표를 보존한다. / Operations planner is a standalone tool linked from the homepage’s data and example actions and listed in Start. Reuse the shared shell, efficiency data, periods, filters, metric and source currency. Show before/after budgets and observed trends, campaign unit-cost comparisons and decompositions, creative spend/cost/outcomes, then weekly review of the chosen change. Display chart evidence directly and retain complete data tables.
-- 예산·캠페인·소재 차트의 검토 후보를 선택하면 대상·행동·관측 기준값·분석 기간·검토 질문을 기존 결정 저장 폼에 전달한다. 전체 예산의 기준값은 실측이며 모형 예측을 다음 기간의 기준 실적처럼 저장하지 않는다. 캠페인·소재는 대상별 자동 실제값 대조 계약이 없어 직접 재분석해 검토하며 전체 실적과 자동 비교하지 않는다. 주간 리뷰로 동일 세션의 데이터·저장된 결정을 이어간다. 예시는 선택·검토 내용을 보여주되 결정을 저장하지 않는다. 저장 권한·세션/기기 보관은 기존 제품 계약을 따른다. / Chart review candidates pass target, action, observed baseline, period and question to the existing decision editor. Portfolio baselines use actual observations, not forecasts. Campaign and creative decisions require manual reanalysis because automatic actual matching does not support those identifiers; never compare them against portfolio totals. Continue the same session’s data and saved decisions in Weekly review. Samples preview the selected review without saving decisions. Existing permission and retention contracts apply.
+- `/tools/operations-planner`의 **운영 플래너 / Operations planner**는 독립 도구다. 홈 첫 화면의 내 데이터·예시 버튼에서 직접 연결하며 `/start`의 분석 목록에도 포함한다. 공용 셸·효율 CSV·기간·필터·지표·통화를 재사용한다. 전체 이력의 변화 확인 → 예산·소재 액션 결정 → 실제 실행 기록 → 전후 관측 → 후속 액션으로 이어진다. 동일 예산의 배분·장기 실측 추세·캠페인별 단가·단계/소재 분해·소재별 비용/성과와 상세 표는 근거 보기에 보존한다. / Operations planner is a standalone tool linked from the homepage’s data and example actions and listed in Start. Reuse the shared shell, efficiency data, periods, filters, metric and source currency. Connect full-history changes to budget/creative decisions, actual execution, before/after observations and follow-up actions. Retain same-budget allocation, observed trends, campaign costs, decompositions, creative outcomes and detailed tables in the evidence view.
+- **운영 플래너는 광고 운영의 출발점이다**(2026-11-06 사용자 결정). 같은 광고 성과 파일을 쓰는 도구는 플래너 단계의 상세다: ① 무엇이 바뀌었나 → 성과 대시보드(주간 성과 점검 5-2)·성과 변동 원인(5-21) ② 예산 → 예산 상세 설계(5-3: 배분 설계·증액 여력) ③ 소재 → 소재 피로도(9-6, 별도 소재 파일). 플래너의 각 단계는 해당 상세 도구로 가는 `자세히 보기` 링크를 가지며, 같은 효율 CSV·공용 필터를 그대로 쓴다(9-6은 같은 파일을 소재 분석용으로 넘기고, 이미 올린 소재 파일이 있으면 덮지 않는다). 상세 도구는 제목 위 한 줄로 `운영 플래너 › 단계 상세`를 말하고 플래너로 돌아가는 링크를 둔다(예산 상세 설계는 같은 줄에서 `예산 배분 / 증액 여력` 보기를 고른다). 폰(≤720px)에서 결과가 나오면 결론이 첫 화면 안에 있어야 하므로 이 줄은 결과 뒤로 옮긴다. 프로젝트 저장(Pro)은 이 줄에 따로 적지 않는다 — 조건은 각 결과의 저장 행동 옆에 있다. 플래너의 예산 상세 링크 옆에는 예산 상세 설계가 국가·OS 계층과 요일까지 반영해 금액이 다를 수 있다고 적는다. 링크 이름은 도구 목록·화면 제목과 같은 레지스트리 이름이다. 검토 화면은 지금처럼 플래너 실행·검토 목록과 결정 검토함으로 따로 둔다. 분석 찾기는 같은 파일을 쓰는 도구를 한 카드로 묶는다: 광고 성과 파일 → 운영 플래너 카드(상세 3개), 주간 채널 패널 → 한 카드(분석 5개). / The operations planner is the starting point. Tools sharing the same ad-performance file are step details: changes → performance dashboard (5-2) and change drivers (5-21); budget → budget detail (5-3, allocation and headroom); creatives → creative fatigue (9-6, separate creative file). Each step links to its detail tool with the same efficiency data and filters (9-6 receives the same file prepared for creative analysis without overwriting an existing creative upload). Detail tools show a one-line planner context with a link back (Budget detail also switches between its Allocation and Headroom views there; on phones it moves below a shown result so the conclusion stays in the first screen); the Pro save condition stays beside each result's save action. The planner's budget link notes that Budget detail also models country/OS levels and weekdays, so amounts can differ. Link names match the registry names used in lists and page titles. Review surfaces stay separate. The finder groups tools that share a file into one card.
+- 예산·캠페인·소재의 검토 후보는 운영 액션 입력으로 연결한다. 계획과 실제 실행을 구분하고 확인한 예산·소재·실행일·검토 조건을 기존 결정 저장 경로에 보존한다. 모형 예측을 기준 실적이나 설정 예산으로 저장하지 않는다. 새 구조화 기록은 운영 플래너에서 저장한 대상·통화·성과 기준·실행일의 완전한 전후 관측을 대조한다. 소재 액션의 관측도 소속 캠페인 범위이며 소재의 인과효과가 아니다. 대상 조건 없는 이전 기록은 자동 대조하지 않는다. 주간 리뷰의 원본 도구 링크는 운영 플래너로 이어진다. 예시는 미리보기만 제공하며 저장 권한·세션/기기 보관은 기존 제품 계약을 따른다. / Review candidates open the operating action editor. Separate planned and executed states and persist confirmed budgets, creatives, execution dates and review criteria through the existing decision-saving flow. Do not save model forecasts as observed baselines or configured budgets. The planner compares complete before/after observations for the saved scope, currency, outcome and execution date. Creative actions also use their campaign scope; this is not a causal creative effect. Older records without scope are not automatically matched. Weekly review links back to the planner. Samples provide previews only; existing save permissions and retention contracts apply.
 - 개선치는 같은 이력 모형으로 계산한 유지안과 조정안의 조건부 예측 차이다. 최근 관측 단가와 모형 예측 단가를 구분하고, 모든 집행 대상에 대해 일별 관측·적합도·관측/안전 지출 범위가 확인될 때만 전체 개선치를 표시한다. 주간 집계·결측·성과 0·국가 혼합·낮은 적합도는 사유와 함께 보류한다. / Improvements compare conditional maintenance and revised predictions from the same historical models. Separate observed and predicted unit costs; show portfolio predictions only when daily coverage, model fit and safe observed spend ranges are verified for every active entity. Withhold weekly/incomplete data, zero outcomes, mixed countries and insufficient fit with reasons.
+- 운영 플래너의 `지표와 입력 근거 / Metrics and input evidence`는 현재 분석 기간·공용 필터·설치/가입 기준을 사용한다. 비용·성과·노출·클릭으로 계산 가능한 기존 지표만 연결하며, 지표를 선택하면 실제 원본 컬럼·합계·결측/음수/매핑 충돌·분모 0 사유를 확인한다. 누락을 0으로 대체하거나 매출·마진·소재 이미지를 생성하지 않는다. 매핑 수정은 기존 분석 조건으로 연결하며 결과 게이트를 유지한다. / Metrics and input evidence uses the current period, shared filters and outcome basis. Connect existing metrics from spend, outcomes, impressions and clicks; selecting a metric reveals source columns, totals and unavailable reasons, including missing/negative values, mapping conflicts and zero denominators. Never fill missing data with zero or invent revenue, margins or media. Mapping edits use existing analysis settings and retain the analysis gate.
+- 지표 선택 목록은 간결하게 두고 선택 결과·분자/분모 합계·표시 단위 배율을 계산식으로 연결한다. 실제 합계는 계산식에서, 원본 컬럼과 검증 상태는 이어지는 표에서 확인한다. `표시값은 반올림하며, 계산에는 원본 합계를 사용합니다. / Displayed values are rounded; calculations use the original totals.` / Keep the metric selector compact and connect the selected result to its numerator, denominator and display multiplier. Show totals in the equation and source columns and validation status in the following table.
+- `관측 검토 목록 / Observed review queue`는 기존 캠페인 비교의 단가 변화 순서를 사용하고 비교 기간·관측일·대상 범위를 함께 표시한다. 목록 선택은 같은 ID의 기존 캠페인 분석을 선택하며 예산 비교는 기존 동일 예산 조정안으로 연결한다. 목표 CPA·인과 원인·자동 중단 명령을 생성하지 않는다. / Observed review queue follows the existing campaign CPR-change order and shows periods, observed days and scoped identity. Selecting an entry opens the existing analysis for the same ID; budget comparison links to the existing same-budget plan. Do not invent target CPA, causes or automated pause commands.
 - 캠페인·소재 식별자는 국가·플랫폼·채널·유입 구분을 포함해 묶는다. 소재의 첫 관측은 업로드 이력 기준이며 생성·추가 시점은 미확인이다. 구성/효율 분해와 단계별 기여는 관측 단가 변화의 산술 설명이며 원인을 확정하지 않는다. / Scope campaign and creative identifiers by country, platform, channel and source. A creative’s first observation is within uploaded history; creation/addition dates are unverified. Mix/rate decomposition and stage contributions explain observed unit-cost changes arithmetically and do not establish causation.
+- 예산의 공통 조건·요약은 두 차트 위에 두고 추정 보류 시 실측 추세를 전체 폭으로 표시한다. 두 캠페인 분해가 모두 유효할 때만 나란히 배치한다. 소재 차트 옆에는 `선택한 소재 / Selected creative`의 실제 비용·성과·단가·관측일·`업로드 이력의 첫 관측일 / First observed in uploaded history`·가능한 `기존 소재 대비 / vs established creatives`를 표시하며 신규 소재 목록은 전체 폭에서 선택한다. 기존 소재에는 신규 대비 수치를 만들지 않는다. / Place shared budget conditions and summaries above the two charts; use full width for observed trends when forecasts are withheld. Show campaign decompositions side by side only when both are available. Pair the creative chart with the selected creative’s actual spend, outcomes, unit cost, observed days, first observation and available same-campaign reference; place the first-observed creative list at full width below. Never invent a new-versus-established comparison for an established creative.
 
 - 예시는 긴 일별 이력과 복수 캠페인·소재를 가진 결정적 가상 데이터다. 홈 미리보기·도구 내 예시·CSV 다운로드가 같은 원본을 사용한다. 클릭하면 실제 계산 결과로 연결되며 데모임을 표시한다. / Use one deterministic fictional daily history across the home preview, in-tool sample and CSV download. An explicit sample click opens actual calculated results, with a sample label.
 - 홈 첫 화면은 제목·짧은 설명과 내 데이터·데모·데이터 양식의 세 버튼, 운영 플래너 결과 미리보기 순서다. 내 데이터가 주 행동이며 버튼별 접근 가능한 설명을 제공한다. 미리보기는 캠페인·예산·소재를 동등한 보기 탭으로 전환한다. 같은 가상 원본과 직전·최근 7일로 캠페인 CPI, 동일 예산 유지/조정 모형 예상, 새로 관측된 소재 단가를 계산한다. 캠페인 추세의 단가 축은 0부터 시작하며 선택한 캠페인의 실제 값 범위에 맞춘다. 네 캠페인의 전후 값·변화율·비교 날짜는 함께 보존한다. 모형 예상과 실측을 구분하며 소재 관측일 수·동일 캠페인의 기존 소재 대비를 표시한다. 원인 분해와 세부 조건은 도구 결과에서 확인한다. / Order the home as a title and short explanation with three buttons (my data, demo, data requirements), then an operations preview. My data is primary; provide accessible descriptions. Switch between peer campaign, budget and creative views. Use the same fictional source and prior/recent seven-day windows for CPI, conditional maintenance/revised model predictions and first-observed creatives. Start the trend cost axis at zero and adapt its range to the selected campaign's observed values; retain all four before/after comparisons, changes and dates. Distinguish modeled predictions from observations, show creative observation days and same-campaign references, and leave decomposition and detailed settings in the tool.
@@ -295,16 +380,22 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 ### 5.1.0 결과 읽기와 보조 안내 (2026-09-23)
 
 - 결과는 결론 → 주요 지표 → 선택한 지표의 기간 비교 → 다음 행동 순서다. 지출 증감은 중립, CPA·CPI 상승은 악화로 표시하며 원본 통화를 환산하지 않는다. 노출·클릭 등은 전체 수치에서 확인한다. / Read conclusion, key metrics, selected-period comparison, then next action; spend changes are neutral and increasing CPA/CPI indicates deterioration. Preserve source currency.
-- 유입 설문은 첫 결과를 본 뒤 모서리에 표시한다. 답변·다시 묻지 않기는 영구 저장하고, 나중에·닫기는 세션 동안 다시 표시하지 않는다. / Show the source survey after a result, at the screen corner; persist answers/opt-out and suppress dismissals for the session.
+- 유입 설문은 첫 결과를 본 뒤 본문 아래의 일반 문서 흐름에 표시한다. 화면에 고정하거나 분석 결과·조작을 덮지 않으며 자동 스크롤·포커스 이동을 하지 않는다. 답변·다시 묻지 않기는 영구 저장하고, 나중에·닫기는 세션 동안 다시 표시하지 않는다. / Show the source survey in normal document flow below the content after a result. Never pin it over results or controls, auto-scroll or move focus. Persist answers/opt-out and suppress dismissals for the session.
 - 블로그 보조 안내는 **첫 번째 글부터 두 번 아래로 스크롤한 뒤** 표시한다. 연속 스크롤 이벤트는 한 동작으로 묶는다. 각 글에서 중앙 안내로 해당 글에 맞는 분석을 우선 연결하며 예제·준비 양식도 제공한다. 닫기는 해당 글에만 적용하고, 오늘 다시 보지 않기는 기기 현지 자정까지 모든 글을 숨긴다. / Each article shows a centered helper linking primarily to its relevant analysis, with practice and preparation links. Dismiss per article, or hide all helpers until local midnight.
 
 ### 5.1.1 홈 진입과 도구 탐색
 
 홈·분석 화면의 우하단은 **튜토리얼 / Tutorial** 물음표 버튼으로 안내한다. 업로드 전에도 **업로드 방법 보기 / How to upload** 진입점을 제공한다. 설문·동의·모달이 열린 동안 플로팅 버튼은 숨기며, 일반 버튼에 포커스가 있다는 이유만으로 숨기지 않는다. 실제 입력 조작과 겹치면 물러나고 업로드 영역의 안내는 유지한다.
 
-홈 제목은 §1.1a를 유지하며 소개는 긴 캠페인 이력의 운영 점검을 설명한다. 주 행동은 **내 데이터로 운영하기 / Plan operations with my data**, 보조 행동은 **데모 보기 / View demo**다. 두 행동은 독립 운영 플래너로 연결한다. **필요한 데이터 양식 확인 / Check data requirements**은 `/data-guide`와 `/en/data-guide`로 연결한다. 보고 싶은 질문에서 공개 분석을 선택하고 출처·행 단위·필수/추가 항목의 쓰임·가상 작성 예시·준비 주의사항·실제 빈 CSV 양식을 확인한다. 질문·도구 목록은 홈 레지스트리, 요구사항과 예시는 업로더, 다운로드는 기존 템플릿 계약에서 가져온다. 내부 도구 번호를 화면에 표시하지 않는다. / The data guide maps questions to analyses and explains sources, row structure, field purpose, fictional sample rows, preparation checks and compatible CSV templates using the existing registries. `/start`의 범용 파일 진입은 분석 목록·내비게이션에서 유지한다. 업로드 후 매핑을 확인하고 명시적으로 분석을 시작하며 결과 이후 입력은 편집 가능한 한 줄 요약으로 접힌다. / Link both homepage actions to the standalone operations planner, preserving the general Start entry in navigation and tool discovery. Confirm mappings and explicitly analyze uploaded data; summarize input after results. 저장된 결정의 상단 재진입은 유지한다.
+홈 제목은 §1.1a를 유지한다. 제목 아래 주 행동은 **상황 고르기 + 파일 놓기**다(§1.1c 결정 2, 2026-10-27 적용). 왼쪽 **어떤 상황인가요? / What is going on?**은 7개 상황(`TOOL_JOURNEY`)을 번호·이름·분석 수와 함께 보여 주고, 누르면 분석 찾기(`/start?situation=<id>#finder`)가 그 상황의 카드로 열린다. **분석 N개 모두 보기**는 전체 목록으로 간다. 오른쪽 **파일로 시작 / Start with a file**은 공용 업로더 하나이며, 놓은 파일로 되는 분석을 결과 작업대(`/dochi-result`)에서 계산한다. 예시는 **데모 보기 / View demo**(운영 플래너 예시) 텍스트 링크, 파일이 없을 때는 계산기·질문에서 시작 링크를 한 줄로 둔다. 운영 플래너 미리보기는 그 아래에 둔다. 히어로에 파란 주 버튼을 여럿 두지 않는다. 홈 아래쪽의 전체 분석 목록(구 `HomeToolFinder`)은 분석 찾기로 합쳤다. 내부 도구 번호를 화면에 표시하지 않는다. / Home's primary actions are a seven-situation picker and one file drop; situations open the finder filtered to that situation, the file opens the result workspace. The old home directory moved into the finder.
 
-**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 분류와 공개 도구를 처음부터 모두 보여준다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
+**분석 찾기(`/start`, 2026-10-27 적용).** 앱 안 입구 넷(홈 목록·내 데이터로 시작·분석 방법 둘러보기·`/data-guide`)을 한 화면으로 합쳤다. 위는 상황으로 찾기(7개 + 전체 + 저장한 분석) | 파일로 찾기(업로드 → 매핑 확인 → 명시적 분석하기, 결과 이후 입력은 편집 가능한 한 줄 요약), 아래는 검색과 상황별 분석 카드다. 카드는 §1.1c 분석 카드 계약을 따른다: 이름 · 질문 · 결론 예시(`lib/finder/finderExamples.json` — 도구 예시 데이터로 실제 엔진이 계산한 문장만, 없으면 "받게 될 결과" 한 줄) · 필요한 파일(이름 → 출처 묶음 → 필수 → 있으면 더 좋음) · `예시 보고서 보기`/`내 파일로 하기`/`준비 방법` · 같은 파일로 되는 다른 분석. `준비 방법` 창은 옛 `/data-guide` 상세(행 단위·출처·필요한 값과 쓰임·가상 예시·준비 주의·빈 CSV 양식·5-23 비교 방식)를 그대로 담고, 고른 비교 방식을 예시·도구 주소로 넘긴다. 카드마다 파란 주 버튼을 두지 않는다(이 화면의 주 행동은 파일 놓기). `/data-guide`·`/en/data-guide`는 `/start`로 영구 이동하고, `?view=methods`는 같은 화면이다. 사이드바 항목은 **분석 찾기 / Find an analysis** 하나다. / The finder merges four entries: situations | file drop on top, searchable situation-grouped cards below; the old data guide lives in each card's preparation dialog; old addresses redirect.
+
+
+
+분석 찾기가 한 열로 배치되는 화면에서는 ‘파일로 찾기’ 바로가기와 도구명·지표명 검색을 첫 화면에 둔다. 입력 중에는 검색 결과가 입력창 바로 아래에 나온다. / In the single-column finder, place the file shortcut and tool or metric search in the first viewport. Show matches directly under the input while searching.
+
+**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 상황 분류(§1.1c)와 공개 도구를 처음부터 모두 보여주고, 도구마다 필요한 파일 이름을 함께 표시한다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
 히어로에는 도구와 같은 가상 운영 이력의 기간별 CPI 비교와 변화율, 가상 데이터·기간·범위를 표시한다. 도구 다음에는 기록·재검토, 실제 발행 글·가이드, 이용 조건 순으로 배치한다. 기록 저장은 Pro 체험 포함, 보고서 다운로드는 구매 이용권 전용임을 구분한다. / Follow tool discovery with review, published reading and service terms; trial storage and purchased-pass downloads remain distinct.
 
@@ -394,6 +485,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ### 5.5 결과 카드 계약
 
+- 예산 상세 설계(5-3)의 결론 변화율·핵심 수치·대상별 효율·핵심 그림은 같은 곡선에서 현재 지출과 변경 지출을 평가한 **현재안(모형) → 변경안(모형)** 비교다. 실제 관측 성과는 `관측`으로 별도 표시하며 관측→예측 차이를 조정 효과로 부르지 않는다. 모형 비교가 불가능한 대상이 있으면 전체 비교 수치·변화율은 `추정 불가`로 둔다. / Budget detail design compares current and proposed spend on the same curve across the headline, key figures, target efficiencies and core visual. Label observations separately; observed-to-predicted gaps are not allocation effects. Withhold aggregate modeled outcomes and changes when any target lacks a model comparison.
+
 | 층위 | 필수 요소 | 작성 규칙 |
 |---|---|---|
 | 1층 | 평어 결론 한 문장 | 원인·효과를 과장하지 않고 판단 상태를 반영 |
@@ -402,13 +495,23 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 4층 | 다음 검토일 또는 검증 조건 | 언제·어떤 수치로 재검토할지 |
 | 상세 | 근거 차트·표·가정·제약 | 주요 그림은 결론 바로 뒤에, 추가 차트·표는 하단에 둔다. **분석 범위·분모·신뢰도·방법·실행 정보는 화면에 늘어놓지 않는다**(2026-09-24 사용자 결정) — 확인할 점이 있을 때만 결론 옆 중립적인 `확인 N` 버튼(`ds/IssueMark`, 2026-10-01 사용자 수정)가 어느 기간·열·칸이 문제인지 말하고, 전체 기록은 상세 워크북(XLSX)의 `00_README`·`04_SCOPE`에 남긴다 |
 
-- 순서: 머리(결론 + 확인할 점 버튼) → 핵심 수치·그림 → 다음 행동 → 검토·저장 → 보조 버튼 → 추가 근거. 핵심 그림은 결론과 같은 면에 두고, 그림이 이미 보여 주는 수치는 별도 타일로 반복하지 않는다. 신뢰도 라벨(`주의해서 해석` 등)은 쓰지 않는다 — 문제가 없으면 아무 표시도 없다. / Read the conclusion, key figures/visual, next action, review/save, then secondary actions and supporting detail. Keep the core visual on the same surface and avoid repeating its numbers in tiles.
+- 순서(2026-11-05): 머리(결론 + 확인할 점 버튼) → 핵심 수치 → 다음 행동·검토 조건 → 핵심 그림 → 세부 근거·기록·보조 기능. 다음 행동은 해당 도구가 실제로 계산한 제안에서 가져온다. 제안이 없으면 임의 추천을 채우지 않는다. 핵심 그림은 결론과 같은 면에 두고, 같은 문장·수치를 타일이나 불릿으로 반복하지 않는다. / Read the conclusion, key figures, next action and review criteria, core visual, then detailed evidence and record utilities. Actions come from the tool's actual proposal; absent proposals are not fabricated.
 - 요약에서 상세로 이동하면 실제 계산에 쓴 기간·지표·필터를 전달한다. 다른 비교 조건으로 조용히 전환하지 않는다. 날짜는 완전한 날짜 단위로 묶고 분석/비교 기간은 별도 행으로 표시한다. 결론과 행동은 의미상 다른 문단이며 화면 폭에 맞춘 강제 줄바꿈은 넣지 않는다. / Preserve calculated periods, metric and filters on drill-down. Keep dates intact, separate current/prior period rows, and use semantic paragraphs for conclusion and action.
 - 핵심 그림을 일부만 보여 주면 전체/표시 개수와 전체보기 동작을 제공한다. VIF는 심각도순이며 미계산 값을 정상으로 간주하지 않는다. PNG에도 표시 범위가 남는다. / Partial figures disclose shown/total counts and provide a full view; rank VIF by severity, keep unknowns explicit, and retain coverage in PNGs.
 - `/start`에서 분석할 수 있는 도구는 품질 검사·승인 단계 없이 `분석 열기` 한 번으로 연다. 확인할 점은 도구 결과의 확인 버튼가 말한다.
 - 예시 데이터 결과에서는 핵심 그림과 다음 행동 뒤에 **다음 기간 결과와 비교하기 / Review this decision next period**(`ds/DecisionReviewPreview`)를 둔다. 문구: **예시 결과는 저장되지 않습니다. 내 데이터로 분석하면 결론·핵심 수치·검토일을 저장할 수 있습니다. / Sample results are not saved. Analyze your own data to save the conclusion, key figures and review date.** 조건: **저장은 로그인과 Pro(7일 체험 포함)가 필요합니다. 분석은 무료입니다. / Saving requires sign-in and Pro, including the 7-day trial. Analysis is free.** `내 데이터로 분석하기`·`Pro 안내`를 제공하며 입력 폼은 두지 않는다(가짜 결정 금지).
 - 분석이 끝난 도구의 업로드·매핑은 **한 줄 요약 + `데이터·매핑 편집` 대화상자**(`ds/MappingEditorDialog`)로 고친다. 접기·펼치기가 아니라 이름 있는 편집 화면이다(§4). 결론 카드 위에 매핑 선택상자가 보이면 안 된다.
 - 결과 아래 '이어서 볼 수 있는 분석'은 지금 되는 것 3개 + `전체 분석 보기` 링크.
+- 첫 화면의 읽기 순서와 설정 블록 접기는 §1.1c **결과와 행동의 틀**을 따른다(2026-11-05 공용 결과 카드로 확대).
+
+#### 5.5.0 운영 플래너와 서비스 공통 적용 (2026-11-05)
+
+- 예산 계획은 유지·재배분 / 증액 / 감액을 구분한다. 증액안은 현재 지출보다 줄이는 캠페인 없이, 감액안은 늘리는 캠페인 없이 같은 예측 곡선과 관측 범위 안에서 계산한다. 총예산 변경을 포함한 예상 성과는 순수 재배분 효과라고 부르지 않는다. / Separate reallocation, increases and cuts, with direction constraints and a common model baseline.
+- 적용 기간·기간 총액과 캠페인별 금액을 함께 표시한다. 월은 실제 달력 일수이며, 실행 기록의 하루 환산액과 원래 기간·총액을 구분해 보관한다. 관측 지출은 확인된 예산 설정값이 아니다. / Show period and total together; preserve period context alongside daily execution equivalents.
+- 일·주·월 집계는 원본 날짜 형식으로 구분한다. 주·월 합계를 일별 관측으로 복제하지 않고 불완전한 구간은 추세 계산에서 제외한다. 월별 추세의 30일 환산과 실제 월 합계는 명시적으로 구분한다. / Respect source interval grain; never fabricate daily observations from aggregates.
+- 소재는 모든 항목을 선택할 수 있고, 우선 표시 이유·실제 성과 합산 기간·파일 첫 관측일을 구별한다. 성과 비중 변화는 예산을 더 배정한 효과가 아니다. 기존 소재의 성과 비중·단가, 새로 성과가 있는 소재·성과가 없어진 소재의 기여를 분리하되 투입·종료의 인과 효과나 예상 개선으로 해석하지 않는다. / Keep observation and causal claims distinct, including four-part creative contributions.
+- 공용 결과 수치는 바뀐 최종 값에만 짧게 전환한다. 가짜 중간 숫자, 장식용 무한 반복, 감소 모션 선호를 무시하는 움직임을 사용하지 않는다. 비분석 화면은 문서 찾기·계정 설정 등 원래 과업을 우선한다. / Animate changed final results only and respect reduced motion; preserve each non-analysis page's original task.
+- 이 흐름에서 실행·검토 영역, 선택한 소재의 상세, 관측 전후 값, 스크롤 가능한 캠페인 표는 목적이 다른 하위 구획으로 허용한다. 액션 종류 제목과 선택한 캠페인의 판단은 선택 행과 구별해 강조하고, 예상 성과·전체 예상 단가에는 지표 이름을 값 옆에 붙인다. 예외는 해당 요소의 사유 있는 DOM 표식으로 한정하며 정렬·겹침·대비 검사는 유지한다. / Allow task-specific subgroups for actions, selected-creative details, observed comparisons and scrollable campaign tables. Keep labels and emphasis meaningful; scoped DOM annotations do not waive alignment, overlap or contrast checks.
 
 #### 5.5.1 상세 XLSX 계약
 
@@ -448,7 +551,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - **단계별 단가 설명**(2026-09-30 사용자 수정): 노출 단가·노출→클릭·클릭→설치·설치→가입 중 현재 지표와 데이터로 식별 가능한 집계 비율을 보여준다. 각 단계는 직전/최근 값, 상대 변화율, CPI/CPA 변화에 대한 통화 기여를 함께 표시한다. 기여는 곱셈 항등식의 모든 단계 교체 순서에서 한계 차이를 평균한 값(Shapley)이다. 원래 PVM 채널별 Mix·Rate 분해와는 별도의 전체 집계 분해이며 합계는 같은 단가 변화에 일치한다. 누락·불완전·0인 중간 집계는 구간을 합치고 분리 불가를 알린다. 같은 기간 집계 비율을 동일 사용자의 퍼널 전환율로 부르지 않으며 인과 원인·교정 성공을 단정하지 않는다. / Show available aggregate funnel stages, previous/current rates, relative changes, and order-averaged monetary contributions. Identify merged steps, preserve the unit-cost identity, and disclose aggregate rather than tracked-cohort rates and non-causal interpretation.
 - **결과 하단**(5-21·5-22): 공유·보고서 추가는 같은 기준선의 보조 버튼 행이다. 하단은 연결 계약에서 파생한 다음 분석 최대 2개를 기본 노출한다. 분석 방법·FAQ·관련 링크는 명확한 버튼으로 여는 읽기 창에서 접근하며, 프로젝트 연결과 다른 분석 찾기는 보조 행동으로 제공한다. 중복 추천·전체 여정을 기본 화면에 다시 나열하지 않는다. / Align result utilities in one row. Show at most two next analyses; keep methods, FAQ and resources in an accessible reading dialog, with secondary project and analysis discovery actions.
 - **기존 분석의 밀도 유지**: 예시 화면을 복사하지 않는다. 기존 핵심 그림·성과 변화·계층별 분해표·포화도 지도·응답곡선과 해석은 유지하고 중복 제목·설정·설명의 위치와 정렬을 정리한다. 표의 열 편집은 추가하지 않는다. 결과 바로 옆에 필요한 조작을 두며, 날짜·버튼은 44px 이상 클릭 영역을 갖고 편집 중 적용 행동만 주로 강조한다. / Preserve existing evidence, charts, tables and interpretation; use the mockup's interaction principles rather than copying its reduced content. Do not add column editing. Keep relevant controls nearby and date targets at least 44px high.
-- **분석 화면의 콘텐츠 면**(2026-09-30 사용자 수정): 라이트 모드에서 주요 분석·검증·저장·다음 행동 구역은 흰색 콘텐츠 토큰(`--surface-container-lowest`)으로 회색 페이지와 구분한다. 제목·설명·차트·행동을 같은 면에 묶고 내부 패딩을 유지한다. 채널별 비교 카드, 선택 곡선의 근거, 사분면 요약처럼 소속을 전달하는 내부 그룹은 허용한다. 기존 ‘모든 섹션은 투명·상자 한 겹’ 규칙은 이 목적 있는 면 구분을 막는 근거로 쓰지 않는다. / In light mode, major analysis, validation, saving and next-action sections use white content surfaces against the gray page. Keep related headings, evidence and actions on the same padded surface. Purposeful entity/evidence grouping inside a surface is allowed; dark mode uses the same semantic tokens.
+- **분석 화면의 구획**(2026-11-09 사용자 결정, 2026-09-30 흰 면 규칙 대체): 페이지는 따뜻한 종이(`--paper`), 주요 분석·검증·저장·다음 행동 구역은 흰 상자가 아니라 투명 바탕 + 위쪽 머리카락 선의 열린 구획이다. 결론 카드는 잉크색 윗선, KPI 줄은 세로 구분선. 제목·설명·차트·행동은 같은 구획에 묶는다. 채널 비교·분석 찾기 카드처럼 소속을 전달하는 내부 그룹은 허용한다. 상단 띠는 잉크색, 사이드바 메뉴는 글자만(아이콘 없음), 홈 히어로에 장식 곡면 없음. / Pages sit on warm paper; major sections are open, transparent regions opened by a hairline rule instead of white cards. The conclusion has an ink top rule; KPI rows are divided by vertical hairlines. The top band is ink, sidebar menus are text-only and the home hero has no decorative artwork.
 - **5-22 평균·한계 비교의 읽기 기준**: 평균·한계 값은 각각 점 바로 아래 표시하며 근접 시 라벨만 다른 줄로 배치한다. 각 카드의 두 값에 맞춘 0 시작 X축 범위와 하단 눈금을 모바일에서도 유지한다. 카드마다 범위가 다름을 명시하고, 대상 간 비교는 선 길이가 아닌 실제 수치·포화지수로 한다. 평균은 채운 회색 점, 한계는 파란 빈 원으로 범례·그림·값의 의미를 일치시킨다. 판정 색은 상태에 사용하고 점의 종류를 바꾸지 않는다. / Label each average and marginal marker directly below it, staggering nearby labels without moving data points. Use a zero-based bottom axis fitted to each pair, including on mobile. Disclose that ranges differ between cards; compare entities using values and saturation indices, not line lengths. Keep filled gray average and hollow blue marginal markers consistent with the legend; status color stays separate.
 - **5-22 관측 효율 지도**: 비용 축은 실제 금액의 선형 눈금이며 값 범위에 맞는 간격·자릿수를 사용한다. 비용 중앙값과 가중 효율 기준은 실제 위치의 점선으로 구분하고 정확한 기준값을 함께 표시한다. 사분면 설명은 플롯 밖에 배치해 축 라벨과 겹치지 않는다. / Use a linear cost axis with readable tick spacing and precision. Dashed references retain the actual median cost and blended efficiency, with explicit values. Keep quadrant captions outside the plot and tick labels.
 - **5-3 예산 배분 작업 흐름**: 성과 지표는 예산·목표 입력에서 한 번 선택한다. 날짜 자체에서 곡선 적합에 사용할 분석 기간을 편집하고 최근 N일 기준은 그 기간 내 현재 지출·KPI의 일평균에 사용한다. 배분 대상은 버튼과 명명된 선택 패널에서 검토·적용하며 기존 국가 단일 제약과 곡선 검증 경로를 유지한다. 계획 입력 → 현재·변경안 → 효율·추세선 산점도 → 상세 배분 → 비중·시나리오·응답곡선 → 기간/모형 검증 순서로 흰색 콘텐츠 면 안에 정렬한다. 계산식은 명명된 대화상자에서, 다음 분석은 연결 계약에 따른 소수 후보로 제공한다. 핵심 예산 비교는 대상별로 현재·변경 금액과 직접 라벨 막대, 증액/감액 상태, 하루 변화액을 묶는다. 금액 비교를 위한 공통 축척을 고지하며 0은 길이 0으로 표현한다. 순지출 차이의 절댓값은 ‘총지출 변화’로 표시하며 채널 간 이동액으로 부르지 않는다. / Select the objective once beside budget/target inputs. Edit the analysis dates directly; fit curves over that period and use the recent-day window for the current daily-average spend and KPI. Apply scope through a named panel, preserving the single-country rule and curve verification path. Order content as planning input, current/plan comparison, efficiency/trend scatterplot, detailed allocation, shares/scenarios/response, then period/model checks. Use distinct content surfaces, a named formula dialog, and a small set of contract-derived next analyses. Group current/plan amounts, directly labeled bars, increase/decrease status, and daily change by entity. State the shared currency scale and render zero with zero length. Label the absolute net spend difference as total spend change, not money moved between channels.
@@ -654,7 +757,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 | 상자 안 상자 (2026-09-24) | 위계가 흐려지고 가장자리가 어긋난다 | 바깥 상자 하나, 안쪽은 선으로 구분 |
 | 세로로 쌓인 형제 상자의 좌우 가장자리 불일치 | 어디는 튀어나오고 어디는 좁아 보인다 | 같은 폭·같은 가장자리 |
 | 제목 바로 위 12px 라벨(eyebrow·kicker) | 폰에서 안 읽히고 제목과 경쟁한다 | 제목 한 줄에 합치거나 제목 아래 본문으로 |
-| 굵기 400·600·700 밖의 값 | 사이값은 구분되지 않고 위계만 흐린다 | 본문 400 · 라벨·버튼 600 · 제목 700 |
+| 굵기 400·600 밖의 값 | 사이값은 구분되지 않고 위계만 흐린다. 굵은 제목(700+)은 화면마다 소리쳐 생성형 UI 티로 읽힌다(2026-11-09) | 본문 400 · 제목·라벨·버튼 600, 위계는 크기·색으로 |
 | 왼쪽 굵은 색 막대 + 바탕 안내 상자 | 전형적인 생성형 UI 모양, 모든 안내가 경고처럼 보인다 | 얇은 네 변 테두리 또는 본문 글자 |
 | 본문 위에 떠 있는 버튼(고정 위치) | 스크롤 위치마다 결과·CTA를 덮는다 | 헤더·본문 흐름 안에 둔다(읽기 바처럼 대상이 보이면 숨는 예외만) |
 | 본문(14~16px)보다 작은 제목 | 위계가 뒤집힌다(12px 소제목이 실제로 있었다) | 글자 네 단: h1 26 · h2 20 · h3/h4 16 · 본문 14~16. 폰에서는 12·13px 단이 14px로 오른다 |
@@ -689,7 +792,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 | 버튼 대비 | `src/app/buttonContrast.test.js` | `--on-primary` 사용·라이트/다크 대비 |
 | 타이포 하한 | `src/app/typographyFloor.test.js` | 9.5px 하한 · 1차 표면 12px 하한(CSS + JSX 인라인, 스케일 토큰을 값으로 풀어 검사) |
 | 크기·반경 스케일 | `src/app/typeScale.test.js`·`designTokenSingleSource.test.js` | 글자 `--fs-xs`~`--fs-3xl` 8단·모서리 `--radius-*` 5단 밖 px 금지, 토큰 중복 정의 금지, 표면 재질 위계 |
-| 굵기 3단 | `src/app/fontWeightScale.test.js` | CSS·인라인 굵기는 400·600·700만(`@font-face` 범위 제외) |
+| 굵기 2단 | `src/app/fontWeightScale.test.js` | CSS·인라인 굵기는 400·600만(`@font-face` 범위 제외) |
 | 렌더 디자인 규칙 | `e2e/design-rules.spec.js` | 겹침·고정 요소 가림·상자 안 상자·가장자리 불일치·제목 위 라벨·굵기·색 막대 상자·**본문보다 작은 제목·가로 넘침**을 3개 폭·정적/예시 결과 화면에서 측정, 예시 결과는 **결론 카드 위 매핑 선택상자 0개**(예외는 `data-design-exempt="규칙: 사유"`) |
 | 차트 축 | `src/app/chartAxisTitle.test.js` | 직교 좌표 차트의 x·y 축 제목(예외는 `CHART_AXIS_TITLE_EXEMPT` 표식 + 사유) |
 | 앱 셸 시맨틱 | `src/app/appShellSemantics.test.js` | 랜드마크·셸 구조 |
@@ -791,7 +894,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 | ID | 항목 | 완료 정의 |
 |---|---|---|
 | ~~D-09~~ | 탭 ARIA·키보드 계약 | ✅ **2026-08-19 완료**. 5개 tablist 중 **9-6 하나만** 계약이 통째로 빠져 있었다(화살표 키·`aria-controls`·로빙 tabindex·panel 연결 전부 없음) — 나머지 넷이 완비돼 있어 "탭은 되어 있다"로 보였다. 배선 후 `app/tabContract.test.js`가 전수로 강제한다 |
-| 🟡 D-10 | 모바일 실기기 검증 증거 부재 | **자동화 가능한 부분 완료(2026-08-19)**: `app/mobileTaskIntegrity.test.js`가 `@media (max-width ≤820px)` 블록에서 핵심 조작 셀렉터가 `display:none`으로 사라지지 않는지 CSS에서 파생해 검사한다(셀렉터의 **마지막 복합 선택자만** `:not()` 제거 후 대조 — `.dc-action-route:not(…) > span` 같은 오탐을 걸렀다). **남음**: 320/768/1440 실기기 회귀 체크는 릴리스 체크리스트 항목으로 사람이 한다. Playwright는 새 라이브러리라 확인 없이 추가하지 않았다(§11) |
+| 🟡 D-10 | 모바일 실기기 검증 증거 부재 | **현재 자동화**: `app/mobileTaskIntegrity.test.js`의 핵심 조작 CSS 가드와 `playwright.config.js`의 브라우저 검사가 있다. CI는 Chromium에서 첫 진입·업로드·결과·키보드·디자인 계약을 검사한다. 브라우저 뷰포트 에뮬레이션은 실기기 검증이 아니다. **남음**: Safari/iOS 등 실제 기기·보조기술의 조작·표시·저장소 동작을 릴리스 시 확인한다. 과거(2026-08-19)의 Playwright 미도입 결정은 현재 상태가 아니다. |
 | 🟡 D-11 | AEO/GEO 측정 | 대상은 `scripts/aeo-prompts.mjs`에서 파생한다(2026-09-14: KO 24 + EN 24). `docs/aeo-runs/README.md`에서 실행 원문·누락·보고서별 집계 계약을 관리한다. 실제 AI 응답과 Search Console Generative AI 보고서는 확보 전까지 미측정이다. 접근 가능 여부를 실제 인용 성과로 기록하지 않는다. |
 | ~~D-12~~ | 문서 드리프트 | ✅ **2026-08-19 완료**. `ARCHITECTURE.md`의 "단일 파일"은 `globals.css` 얘기라 드리프트가 아니었고, `worklog.md`의 index.html 언급도 과거 기록으로서 정확하다. 실제 위험은 **복사해 실행하라고 만든 핸드오프 프롬프트** 한 블록이 "단일 index.html SPA"를 현재형으로 말하던 것 — 시점 경고와 현재 진입점을 붙였다 |
 
@@ -925,7 +1028,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 - 예제 CSV가 있는 글은 본문 밖에 ‘읽기 전 준비 / Before you read’를 표시한다. 안내는 ‘데모를 받아두거나, 본문 실습에서 바로 열어 확인해 보세요. / Download the demo or open it directly in the practice section.’이며 ‘학습용 합성 데이터 · CSV / Synthetic practice data · CSV’를 명시한다. ‘데모 CSV 받기 / Download demo CSV’와 ‘본문 실습으로 / Jump to practice’를 제공한다.
 - 도입부에 재현 절차를 끼워 넣지 않는다. 관련 개념을 설명한 뒤 ‘선택 실습 / Optional practice’ 영역에서 ‘데모로 분석 도구를 바로 열거나 CSV를 선택하세요. 파일은 이 브라우저에서 처리합니다. / Open the analysis with demo data or choose a CSV. Files are processed in this browser.’라고 안내한다. 상세 순서는 ‘실습 안내와 해석 범위 / Steps and interpretation’로 접어 둔다.
 - ‘데모로 분석 열기 / Open analysis with demo’는 등록된 합성 예제만 상세 도구의 분석 전 상태로 전달한다. 기존 데이터 교체는 확인을 거치며, 프로젝트가 바뀌거나 요청이 취소되면 쓰지 않는다. 다운로드·업로드·본문 실습 경로는 유지한다.
-- 블로그 JSON-LD의 citation은 본문 또는 본문 직후 접힌 ‘출처·검토 / Sources and review’ 영역에서 실제 링크로 확인할 수 있어야 한다. 검토자·검토일은 명시된 메타데이터만 표시한다.
+- 블로그 저자 이름은 신기훈이며 발행자는 Growth Opt Playbook이다. 저자 표기·소개·JSON-LD는 같은 저자 정보를 사용한다. 블로그 JSON-LD의 citation은 본문 또는 본문 직후 ‘출처·검토 / Sources and review’ 영역에서 실제 링크로 확인할 수 있어야 한다. 명시된 검토일은 표시하고 글쓴이와 같은 검토자 이름은 반복하지 않는다. / Identify 신기훈 as the author and Growth Opt Playbook as the publisher. Use the same author information in the byline, profile and JSON-LD. Show citation links in or directly after the article, preserve explicit review dates and omit the duplicate name for self-review.
 - 예산 포화도 예제는 채널별 관측 부족, ASO 예제는 소스 구성 변화, ASA 예제는 전환 성숙도 확인 전후를 다룬다. 분석 보류를 오류나 정상 판정으로 바꾸지 않는다. ASA 성숙도 선언은 상세 도구에서만 가능하며, 실습용 선언을 실제 계정 데이터에 그대로 적용하도록 안내하지 않는다. 수치의 검증 기준은 기존 editorialExamples.test.js와 합성 CSV를 유지한다.
 - CSV 실습 대상은 발행 글의 `blogInsightRegistry` 배치에서 파생한다. 개별 재현 예제가 없는 글은 해당 분석 도구의 기존 합성 데모를 브라우저에서 CSV로 생성한다. 단순 집계가 글의 모형 결과처럼 보이지 않도록 새 실습은 상세 도구의 매핑·분석 조건 확인으로 이어진다. 설정·커리어 등 CSV 부적합 사유가 있는 글에는 데모 안내를 만들지 않는다.
 - 공통 안내: ‘데모를 바로 열거나 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요. / Open the demo or choose a CSV, then check the columns and analysis settings in the full tool.’, ‘예제는 분석 흐름을 익히기 위한 합성 데이터입니다. 글의 수치나 실제 계정의 효과를 재현하는 자료가 아닙니다. / This synthetic example teaches the analysis workflow. It does not reproduce the article’s figures or effects in a real account.’ 도구별 질문·결과 항목은 `toolIndex`의 기존 문구를 재사용한다.
@@ -960,7 +1063,7 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 
 ## 데이터 작업대 개편 (2026-09-22)
 
-- 데이터로 적용하기: 내 데이터로 시작 / 분석 방법 둘러보기. 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
+- 데이터로 적용하기: 분석 찾기(2026-10-27, 옛 내 데이터로 시작·분석 방법 둘러보기를 합침). 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
 - 파일·시트 업로드 → 매핑 확인 → 명시적 분석하기. 실행 후 입력은 요약 카드로 줄이고 수정 시 이전 결과를 무효화한다.
 - 분석 목록은 한 번만 표시한다. 선택한 카드에 근거·그래프·한계·다음 행동을 제공한다. 내부 번호·대기열·결정 테이프는 공개하지 않는다.
 - 추천 행동과 근거를 프로젝트로 추적한다. 근거 없는 증액률·목표를 생성하지 않는다.

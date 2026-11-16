@@ -4,6 +4,16 @@
 > 규칙·함정·레시피는 루트 `../AGENTS.md`(정경). 이 파일은 "어디에 있나"만 답한다.
 > **새 도구·엔진·경로·상태 슬라이스를 추가/이동/삭제하면 같은 작업에서 이 파일도 갱신**(AGENTS.md §15).
 
+## 고객·실험·커머스 확장 (2026-10-21)
+
+- `lib/advanced-marketing/registry.js`: 5-32~5-43 도구·라우트·그룹·입력·설정 정본. `fields.js` 입력/의미 역할, `catalog.js` 검색·가이드·여정, `demo.js` 합성 예시.
+- `lib/advanced-marketing/reading.js`: 도구별 방법·해석·입력 설명. `workedExamples.compute.js` → `workedExamples.json`·`guideSummaries.json`: 기존 데모·엔진의 계산 예제와 공용 안내용 첫 문장. `workedExamples.test.js`에서 재계산 일치 검증(UPDATE_ADVANCED_EXAMPLES=1로 갱신). 전체 해설은 해당 도구·서버 템플릿에서 읽는다.
+- `components/tools/AdvancedMarketingAnalysis.jsx`: 공용 업로더 → 명시 분석 → 취소 가능한 worker → 결과 카드·상세표·다운로드. `advanced-marketing/AdvancedFigure.jsx` 결과 표에서 파생한 SVG.
+- `lib/advanced-marketing/{input,execute,analysis.worker,errors}.js`: 원본 셀 보존, 엔진 디스패치, 작업 격리, KO/EN 오류. 기존 수학 엔진은 사용 경로를 변경하지 않음.
+- `utils/advanced-marketing/`: 거래·RFM(`transactionMath`), 순서 퍼널(`eventMath`), CUPED/프로모션/CRM(`experimentMath`), BG/NBD·Gamma–Gamma(`clvMath`), 지역 합성 대조(`geoMath`), B2B(`pipelineMath`), 조건부 로짓(`conjointMath`), 장바구니/도달/품질(`commerceMath`). `commonMath`는 새 엔진 전용 엄격 파서·추정 도구.
+- `lib/analysis-export/svgSnapshots.js`: 내보내기 시 명시된 SVG만 브라우저에서 PNG로 변환. 설정과 전체 결과는 XLSX 계산 시트에 보존.
+- 검증: `utils/advanced-marketing/engines.test.js`, `lib/advanced-marketing/catalog.test.js`, `AdvancedMarketingAnalysis.smoke.test.jsx`, `e2e/advanced-marketing.spec.js`.
+
 ## 1. 디렉토리 트리 (핵심)
 
 결제 기간 migration: `scripts/payment-periods.sql` ← `scripts/migrate-payment-periods.mjs` (npm prestart). 계정 연장 구간: `gop_paid_until` SQL 함수. 운영 알림: `src/instrumentation.js` → `lib/account/accountMailWorker.js` → `accountMail.js`.
@@ -29,7 +39,7 @@ v2-migration/
 │  ├─ workers/                      # dataPreparation·xlsxParse·dashboardVerdict·forecastSelection
 │  └─ components/
 │     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
-│     ├─ assistant/                  # 홈 전용 도치 데이터 접수·작업대 handoff UI (분석 엔진/원본 데이터 소유 안 함)
+│     ├─ assistant/                  # 결과 작업대 UI(구 도치 — 마스코트는 2026-11-06 제거) (분석 엔진/원본 데이터 소유 안 함)
 │     ├─ VideoTutorialHelp.jsx       # RootDocument 공용 영상 도움말 + CsvUploader/Sheets 인라인 진입. lib/videoTutorials.js → 문구·주제·자막 SSOT, scripts/tutorials/ → 실제 UI 시연·정적 영상 생성
 │     ├─ tools/                     # route별 도구 1 컴포넌트
 │     ├─ dashboard/                 # 5-2 운영 대시보드 + 필터바 + 커스텀차트
@@ -55,12 +65,12 @@ v2-migration/
 
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
-| `/` | home | LandingPage → CSV·샘플 진입 + landing/HomeResultPreview(동일 픽스처 CPA 비교) + ds/HomeToolFinder(전체 toolIndex·TOOL_JOURNEY, 검색·savedTools) + HomeReading(서버 발행 글) |
-| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsBrief · operationsDemo |
+| `/` | home | LandingPage → 상황 고르기(`lib/finder` 7개 상황 → `/start?situation=`) + 파일 놓기(CsvUploader dochi 변형 → `/dochi-result`) + landing/OperationsSamplePreview + HomeReading(서버 발행 글) |
+| `/tools/operations-planner` | 5-31 | OperationsPlanner → lib/operations/operationsIntervals · operationsScenario(추천안) · operationsSelection(사람이 고른 실행안·예측·저장 초안) · operationLoop(기록·검토·예측 대조) · actionContract(기록 계약) → OperationsPlanBoard · OperationsPlanSaveDialog · OperationsDecisionEvidence · OperationsActionLoop/Queue · OperationsForecastCheck · OperationsMetricEvidence |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
-| `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |
-| `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx |
+| `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx · `?view=headroom` → tools/MarketingEfficiency.jsx(증액 여력, 내부 id 5-22 — 옛 `/tools/campaign-saturation`은 301). 보기 판정 `routeMap.resolveBudgetView`, 흡수 판정 `absorbedToolIds`·`analysisToolIds`·`hostToolId` |
+| (운영 플래너 흐름) | — | `lib/operationsFlow`(단계↔상세 도구 표) · 상세 도구 제목 위 `ds/OperationsFlowNav`(PageClient KO/EN, 5-3 보기 고르기) · 플래너 단계의 `tools/OperationsDetailLinks`(9-6은 소재 그룹으로 넘기되 올린 소재 파일은 덮지 않음) · 분석 찾기 묶음 카드 `lib/finder/analysisFinder` `FINDER_CARD_GROUPS` |
 | `/tools/experiment-analysis` | 5-4 (+5-7·5-15 legacy) | tools/AbTestHoldout.jsx (A/B) |
 | `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (통제군·전후 on/off) |
 | `/tools/brand-campaign-incrementality` | 5-24 | tools/BrandCampaignIncrementality.jsx (ITS·AR(1)) |
@@ -76,7 +86,7 @@ v2-migration/
 | `/content/killer-content` | 9-2 | tools/KillerContentFinder.jsx → AhaMomentFinder `domain="content"` |
 | `/content/traffic-variance` | 9-3 | tools/ContentTrafficVariance.jsx → CampaignPvm `domain="content"` |
 | `/content/dashboard` | 9-7 | tools/ContentDashboard.jsx → Dashboard `domain="content"` |
-| `/start` | start-gate | StartGate.jsx (업로드 → 가능한 분석 추천) |
+| `/start` | start-gate | StartGate.jsx = 분석 찾기: finder/AnalysisFinder(상황·파일 종류(`?file=`)·검색·카드·저장, 카드의 준비 방법 창 = finder/AnalysisDataPrep) + 업로드 → 제출 뒤 파일 한 줄(`lib/data-import/uploadSummary`) + AssistantWorkspace 세 칸(`lib/assistant/dataReadiness` → `ds/ToolIndex nearInfo`). `/data-guide`는 301 |
 | `/guide` | guide-index | GuideIndex.jsx |
 | `/guide/<kebab>` | 1-x~4-x·8-1 | sops/SopContent.jsx |
 | `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·유효 Pro·프로젝트 선택; 첫 체험은 선택한 초안 메모의 계정 보관 동의 후 시작) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |
@@ -97,8 +107,9 @@ v2-migration/
 ## 3. 도메인 매핑 (도구 UI ↔ 순수 엔진)
 | 도구 (UI) | 엔진 (`utils/`) | 비고 |
 |---|---|---|
-| BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) · `allocationObservations` · `allocationModels` · `allocationRegime` · `allocationDeltaPlan` · `allocationConfidence` | 주간/D7·최근 구간·기존 유지 비교. `analysis-export/allocationCostWorkbook` → Cost 입력 수식 예측 |
+| BudgetAllocation.jsx | 배분 엔진 = `lib/budgetPlanner/allocationAdapter`(→ `runBudgetPlanner`) · 관측·곡선 그림은 `allocationObservations` · `allocationModels` · `allocationRegime` · `allocationConfidence` | 실행 방식(이번 실행안/목표 배분)·주간/D7·최근 구간·기존 유지 비교. 플래너 근거 구역 `tools/AllocationPlannerPanels.jsx`(결론 카드 `AllocationActionSummary` · 자세히 보기의 예측·상태·분해·소재). 조건은 한 줄 + "조건 바꾸기" 창. `analysis-export/allocationCostWorkbook` → Cost 입력 수식 예측 |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
+| (계층형 예산 플래너 — 5-3 엔진) | `lib/budgetPlanner/*` 준비 `preparePlanner`·배분 `allocatePlanner` · 5-3 연결 `allocationAdapter` · 시나리오·경고 `plannerScenarios` · 결론 카드 할 일·확인할 점 `allocationActions` · 계획 대비 실적 `planReview`(직렬화 `planSnapshot` — 결정 기록 v16 `allocationPlan`) · 화면 이름 `plannerLabels` · 규칙 SSOT `plannerConfig` | 요일 백피팅 곡선·범위 적합성·신규 소재 수명주기·PVM 연결·원인 판정·제약 배분·예측/백테스트. 결과 작업대 5-3 카드도 어댑터를 쓴다. `/weekly-review`가 `planReview`로 저장 배분안을 효율 CSV와 대조. 기존 ALLOC_MATH·PVM_MATH·CREATIVE_* 재사용, 수정 없음. 스펙 `docs/hierarchical-budget-planner-spec.md` |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup. 별도 `efficiencyStages.js`가 집계 CPM·클릭·설치·가입 비율의 순서 평균 단가 기여를 계산하고 `PvmEfficiencyStages.jsx`가 단계별 전후 값·변화·기여를 표시 |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` + `creativePredictiveModel.js` + `lib/analysis/webr/randomForest.js`·`svm.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA). 독립 소재 grain으로 집계한 뒤 표본·변수 조건을 충족할 때만 RF/SVM을 같은 5-fold에서 비교하고, 채널 통제 후 전역 Shapley R²를 속성별로 배분한다. RF 중요도와 Shapley R²는 예측/설명력이며 방향·인과·개별 소재 SHAP이 아님 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve·`fisherExact2x2`(저전환 구간에서 판정 기준을 정확검정으로 이동)·`holmAdjust` |
@@ -141,18 +152,20 @@ v2-migration/
 ## 5. 글로벌 스타일 (CSS/테마)
 - **`src/app/globals.css`** — 전 디자인 시스템, 단일 파일. **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).
 - **토큰**: `:root{--bg-1·--text-muted·--border·--primary…}`, 다크/라이트는 **`body.light-mode` 오버라이드**. `layout.js` 초기 스크립트가 첫 페인트 전 테마 반영, `refreshMountedChartThemes()`가 마운트된 canvas 갱신.
-- **타입**: DM Sans(body)+Space Grotesk(display)+JetBrains Mono(data), `next/font` 변수만.
+- **타입**: 자체 호스팅 — 본문 Wanted Sans·제목 Pretendard(`app/korean-fonts.css`), 코드만 JetBrains Mono. 계약은 `app/typographyFontContract.test.js`.
+- **Paper & Ink 재설계**(2026-11-09): `globals.css` 맨 끝(레이어 밖) "2026-11 Paper & Ink" 블록이 종이/잉크 토큰·잉크 상단 띠·열린 구획(`.app #content :is(...)`)을 소유한다. 옛 흰 면 `!important` 규칙은 원 자리에서 열린 구획 값으로 바뀌었다.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만이고, 글자는 `toolIndex.toolDisplayTitle`(목록 이름, 검색어형 이름은 제목 밑 `.tool-instrument-header__alias`) — Dashboard(5-2)·PaidOrganicTrend도 같은 헬퍼(`e2e/tool-title-consistency.spec.js`).
-- **첫 방문자 인사 오버레이**: KR/EN 홈만 `assistant/DochiWelcomeOverlay`를 mount한다(상시 접수처 `DochiAssistant`와 별개, 둘 다 렌더됨). 도치가 2단계 대사(사이트 설명+데이터 처리 위치 → 데이터 요청)를 말하고 마지막 단계에서 `CsvUploader`(toolId `start-gate`)로 CSV·공개 Google Sheets를 바로 받아 `/dochi-result`로 넘긴다. 노출 판정 SSOT는 `lib/dochiWelcome.js` — 영구 옵트아웃은 localStorage, 같은 방문 안의 반복 노출 차단은 sessionStorage다. 저장된 작업이 있는 기존 사용자도 노출하되 IndexedDB 복원 뒤 마지막 단계에서 시작하며, 가져오기를 시작한 뒤 닫거나 건너뛰어도 완료 시 결과 화면으로 이동한다. 서버 스냅샷이 항상 닫힘이라 프리렌더 HTML에는 오버레이가 없다. 모바일(≤700px)에서는 전면 대신 하단 시트로 내려간다.
-- **홈 전용 도치 데이터 접수**: KR/EN 랜딩만 `assistant/DochiAssistant`를 mount한다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤에만 `/start` 통합 작업대로 handoff한다(현재 매핑으로 안전한 light baseline만 자동 실행, 매핑 변경 시 결과 stale). 포즈는 `public/assets/dochi/` PNG 세트를 `assistant/DochiSprite`가 고르며 `prefers-reduced-motion`에서 장거리 이동·wipe를 생략한다. 도구 화면에는 도치가 남지 않는다(도구별 보조는 `ToolAssistRail`).
+- **마스코트 없음**: 도치 인사 오버레이·접수처·분석 도크·매핑 말풍선·스프라이트는 2026-11-06 제거됐다(AGENTS §12.29b). 결과 작업대 `/dochi-result`와 `dochi-workspace` 클래스는 기능이라 유지.
+- **홈 데이터 접수**: 랜딩 히어로의 "파일로 시작"이 `CsvUploader entryVariant="dochi"`(이름만 남은 변형)를 쓴다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤 `/dochi-result` 결과 작업대로 보낸다.
 - **응답 패널 다섯 분석**: `5-18-trend`·`-paid-organic`·`-cannibal`·`-mmm`·`-forecast`가 각각 도구(모두 `MarketingResponse`를 `isolated`로 렌더). CSV·매핑은 `response` 그룹 하나를 공유하고, 목록에 없는 `5-18`(publication="subtool")이 업로드·매핑 허브다. 필드 계약은 `csvConstants`의 `RESPONSE_PANEL_TOOL_IDS`가 5-18에서 파생.
 - **유입 경로 서베이**: `assistant/SourceSurveyPopup`을 `GlobalModals`가 렌더하므로 어느 페이지로 처음 들어와도(홈·블로그·용어·가이드·도구) 같은 질문을 한 번 받는다. 주관식 한 칸이고 화면 가운데 뜨되 뒤를 덮는 백드롭이 없다(바깥은 계속 조작 가능). 판정·정규화 SSOT `lib/survey/sourceSurvey.js`(영구 차단 localStorage / 세션 반복 차단 sessionStorage), 다른 안내와의 겹침 방지 `lib/assistant/overlayPresence.js`. 저장은 `POST /api/survey/source` → `lib/survey/sourceSurveyServer.js` → `gop_source_survey`(답변·언어·분류된 진입면만, IP·계정·URL 없음). 스키마 `v2-migration/scripts/source-survey-schema.sql`은 앱 시작 마이그레이션에서 멱등 적용하며, 조회는 `v2-migration/scripts/source-survey-report.mjs`로 한다. 운영 DB 적용 여부는 배포 후 별도로 확인한다.
 - **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.
-- **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개(점검·추세잠식·예산·요소·유입·검증·기여도) — 사이드바 분석 섹션도 같은 배열을 그린다. 결과 화면의 "안 되는 분석" 줄은 `lib/toolDataNeeds.js`(도구별 필요한 값 한 문장, 발행 도구 파생 가드)를 쓴다.
+- **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → 업로드 전 `/start`는 `lib/finder/analysisFinder`(카드: 결론 예시 `finderExamples.json` = 블로그 예시 엔진 결과 중 도구 데모로 계산한 것의 파생본·필요한 파일·같은 파일 분석), 업로드 뒤 작업대는 `ds/ToolIndex` grid. 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개 상황(성과·예산·효과 검증·겹침·소재·스토어·유저·상품 — product-ssot §1.1c). 필요한 파일 이름·출처 묶음은 `lib/dataSources.js`(데이터 그룹별, 분석 찾기 "준비 방법"의 출처 안내 포함). 결과 화면의 "안 되는 분석" 줄은 `lib/toolDataNeeds.js`(도구별 필요한 값 한 문장, 발행 도구 파생 가드)를 쓴다.
 - **예시 링크**: 도구 URL `?example=1` → `lib/exampleLink.js`(`exampleHref`, 발행 도구만) + `ds/useExampleLink`(예시 버튼과 같은 핸들러를 라우트 설정·기기 저장 부팅이 끝난 뒤 한 번). 예시 버튼을 그리는 CsvGuide·AbTestHoldout·PaidOrganicTrend가 쓰고 템플릿 카드가 링크한다. `e2e/example-link.spec.js`.
 - **하단 마감**: 분석 아래는 `ToolPageOutro` 한 덩어리(`.tool-outro` 박스 + `.tool-outro__section` 구분선). 자식(`ToolConnections`·`ToolLongform`·`ToolEvidenceLinks`)은 자기 테두리·경계선을 그리지 않는다. 타이포 하한 9.5px는 `app/typographyFloor.test.js`가 강제(§12.30).
   - **5-21 파일럿**: `ToolNextStepPanel` → `ToolConnections compact`의 다음 분석 최대 2개만 펼친다. 방법·FAQ·관련 자료는 `ModalDialog` 안에서 기존 `ToolLongform`·`ToolEvidenceLinks`를 재사용하고 프로젝트 연결도 별도 명시적 버튼으로 연다. 공용 이동 계약과 기존 도구의 하단은 유지한다.
+- 결과 위 맥락 줄 + 조건 바꾸기 창 `ds/ReportContext`(5-21·5-22·5-2, product-ssot §1.1c), 결론 문장 `lib/report/pvmHeadline`·`saturationHeadline`, 맨 위 "현재 입력" 줄을 그릴지(`setupBarShowsInput`) `lib/report/reportContextTools`. 5-23 결과 위 데이터·기간 한 줄은 `Incrementality` 안 `useSetupFocus`(포커스가 떠난 뒤·창이 닫힌 뒤 접기). `ReportContext`의 `onOpenChange`(창이 열린 동안 접힌 채 유지)·`actions`(줄 옆 산출물 버튼). 단독 MMM의 표시 기간·모델 선택은 `MarketingResponse` 안 `mmmPeriodControl`·`mmmModelControls`(허브는 막대, 단독은 창). 5-4 결론 `lib/report/abHeadline`. 선언 조건(실험 설계·비교 조건) 한 줄 + 확인 창 `ds/DeclaredConditions`(`CausalDesignCheck`·`ComparisonConditions`가 사용, 테스트 헬퍼 `src/test/declaredConditions`). 분석 카드 쉬운 말 `lib/finder/finderPlainCopy`(`toolIndex`가 읽음). 공용 필터 막대의 기간만 `DashboardFilterBar dateOnly`.
 - 최종 결과는 `ds/ResultActionCard`(결론·근거·다음 행동) 공용 계약. 읽기 전용 기간은 `ds/ComparisonPeriods`로 표시한다. 5-21은 `ds/ResultPeriodPicker` 두 개로 분석·비교 기간을 각각 편집하고, 5-22는 같은 부품으로 분석 기간만 편집한다. UI 날짜 검증·직전 같은 길이·겹침/길이 차이 안내는 `lib/analysisPeriod.js`. `DashboardFilterBar compact`는 대상 필터를 필요할 때만 열며 기존 일반 모드는 보존한다. 핵심 그림은 `coreFigure` 슬롯으로 행동·저장보다 먼저 렌더한다. 예시 데이터면 그 뒤에 `ds/DecisionReviewPreview`(저장 안 함·조건만). 분석 후 매핑 수정은 `ds/MappingEditorDialog`(+`AnalyzedDataLine` 한 줄) — `CsvUploader`(`collapseWhenAnalyzed`)·5-20·5-24·5-29가 공유. `store.lastToolRouteId`(휘발)는 빈 프로젝트 화면의 '방금 본 분석 다시 열기'. 확인할 점 표시는 `ds/IssueMark`(`AnalysisBasisBar` tooltip·`AnalysisDetails`·`AnalysisScopeEvidence`·`EvidenceStatusBadge`가 모두 이것으로 그린다 — 문제 없으면 null). 세그먼트 컨트롤은 `ds/PillGroup`(radiogroup+Arrow/Home/End) — `.ab-pillgroup` 생마크업 신규 추가 금지. 접근성: 실제 `h1/h2`·`tablist/tab/tabpanel`·Cmd-K combobox·CSV live semantics·`:focus-visible`. 라우트별 error boundary + `global-error.js`.
 
 ## 5.1 콘텐츠 SEO·전환 경로
@@ -178,6 +191,7 @@ v2-migration/
 
 ## 7. 내비게이션 팁
 - **사이드바 접기 → `src/lib/sidebarCollapse.js`**. **기본값은 항상 펼침**이고 접는 시점은 사용자가 정한다(헤더 ◧ 토글, 선택은 localStorage에 저장). 상태는 `body.is-sidebar-collapsed` 한 곳에 두어 셸을 렌더하는 10여 개 레이아웃을 각각 고치지 않는다. 접은 사용자에게만 `RootDocument`의 부팅 인라인 스크립트가 첫 페인트 전에 적용한다. **접힌 상태에서는 `.app`을 1열로 선언해야 한다** — 사이드바가 흐름에서 빠지면 남은 자식이 첫 트랙에 배치돼 본문 폭이 0이 된다.
+- **효율 비교 단위 → `src/lib/efficiencyUnits.js`** (채널 → 캠페인 → 국가 중 파일에 있는 것. 결과 작업대 어댑터 5-21·5-22·5-3과 5-3 화면(`useAllocationRecipe`)이 같은 순서로 고른다 — 채널 열 없는 단일 매체 내보내기는 캠페인끼리 비교).
 - **결론 금액 환산 → `src/utils/efficiencyImpactMath.js`** (효율 변화 × 관측 전환량 → 창/일/N일 환산. 예측이 아니라 산술 환산이며 호출부가 그 사실을 문구로 말한다. 소비처: `utils/dashboardVerdict.js` 5-2 결론).
 - **주간 리뷰 엔진 → `src/lib/weekly-review/`** (순수 함수, 골든): `period.js` 기간 판정(요일 맞춤) ·
   `significance.js` 유의미성(크기+변동성+표본) · `snapshot.js` 주×캠페인 집계 · `router.js` 분석 라우터 ·
@@ -200,6 +214,7 @@ v2-migration/
 - **CSV 매핑/필드 스키마 → `src/utils/csvConstants.js` + `src/lib/data-import/*` + `src/components/CsvUploader.jsx`**.
 - **CSV 그룹/슬라이스 → `src/lib/toolGroups.js` + store `csvGroups`**.
 - **퍼널 이벤트 → `src/lib/analytics.js`**: 허용된 구조 메타데이터만 GA4로. 파일명·원본 행·실제 지표값 금지.
+- **광고 영역 도달 → `components/ads/usePartnerAdView.js` + `lib/partnerAdMeasurement.js`**: `partnerAds.js` 배치·규격·동의 정본에서 파생, 실제 프레임 50%/visible 조건, pathname 진입×슬롯 중복 제거. 기존 `analytics.js`로 계약 필드와 쿼리 없는 URL만 보낸다. 송출·클릭·GA 수신 여부는 추정하지 않는다(`docs/ga4-product-events.md`).
 - **분석 품질 게이트**: `lib/analysis-router/executionPreflight.js`는 추천 핸드오프·도치 실행 직전의 기존 자격 검증을 공유한다. `utils/experimentQuality.js`(SRM·선택 동등성), `utils/asaRecommendationQuality.js`(성숙도·표본), `utils/ahaObservationWindow.js`(행동/결과 시간창), `lib/analysis-results/mmmDecisionQuality.js`(기존 건강도 통합)는 원래 수학 엔진 출력과 분리된 판단 보류 계층이다.
 - **5-22 결과 화면**: `MarketingEfficiency`는 비고정 `ToolPageShell(stickyHeader=false)` 안에서 한 곳의 `CsvUploader`를 유지한다(매핑 편집 중 분석 게이트가 닫혀도 대화상자 마운트 유지). 결론 → `MarginalEfficiencyGapChart` → 상세 순위/곡선 → 관측 `ScaleDecisionMap` → `PeriodSensitivityPanel(variant="saturation")` 순서다. 곡선의 예산/관측 범위/R²는 선택된 기존 엔진 행에서 읽고 수학은 바꾸지 않는다. 5-21·5-22 하단은 `ToolNextStepPanel`로 다음 분석 두 개와 선택적 참고 자료 창을 제공한다. 나머지 도구의 기본 셸/하단/기간 검증 표현은 유지한다.
 - **기간 민감도**: `lib/analysis-results/periodSensitivity.js`와 `ds/PeriodSensitivityPanel`은 명시 실행으로 날짜 전·후반을 나누고 기존 포화도/예산 계산을 재사용한다. 같은 예산·설정으로 비교하며 불충분한 관측·범위·제약은 보류한다. 별도 CSV는 화면 결과에서 직접 생성한다.

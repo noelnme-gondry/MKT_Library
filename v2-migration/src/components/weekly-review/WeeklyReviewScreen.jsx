@@ -524,7 +524,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       </nav>
 
       {/* ── 1. 결론 ─────────────────────────────── */}
-      <section className="wr-card" aria-labelledby="wr-verdict">
+      <section className="wr-card wr-card--verdict" aria-labelledby="wr-verdict">
         <h2 className="wr-card__title" id="wr-verdict">{t.verdictHead}</h2>
         <div className="wr-verdict">
           <p className={`wr-verdict__big ${kpiAssessment?.significant ? (kpiAssessment.outcome === "worse" ? "is-bad" : "is-good") : "is-flat"}`}>
@@ -544,9 +544,10 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
             )}
           </p>
         </div>
+        {recommended && !unknown && <div className="result-next-action"><div><span className="result-next-action__label">{locale === "en" ? "Next action to review" : "검토할 다음 액션"}</span><h3>{recommended.label}</h3><p>{locale === "en" ? "Use the campaign evidence below to choose the target and review criteria." : "아래 캠페인 근거를 확인하고 실행 대상과 다음 검토 기준을 정하세요."}</p></div></div>}
         <div className="wr-verdict-actions">
-          <button type="button" className="btn primary" onClick={() => copyReview(true)}>{locale === "en" ? "Copy summary" : "요약 복사"}</button>
-          <a className="btn" href="#wr-next">{locale === "en" ? "Record the next decision" : "다음 결정 기록"}</a>
+          <button type="button" className="btn secondary" onClick={() => copyReview(true)}>{locale === "en" ? "Copy summary" : "요약 복사"}</button>
+          <a className="btn primary" href="#wr-next">{locale === "en" ? "Record the next decision" : "다음 결정 기록"}</a>
           <span>{locale === "en" ? "Free copy · paste into Slack or Notion" : "무료 복사 · Slack·Notion에 붙여넣기"}</span>
         </div>
         {copyStatus?.key === resultEventKey && copyStatus.summary && <p className="wr-note" role="status">{copyStatus.message}</p>}

@@ -5,6 +5,7 @@ import { useSavedToolInput } from '@/lib/analysis-settings/useSavedToolInput';
 import { useAppStore } from '@/store/useDataStore';
 import { partitionForSync } from './recipe';
 import { recipeVocabularyFor } from './toolVocabulary';
+import { withDeclared } from "@/test/declaredConditions";
 
 const fixture = vi.hoisted(() => ({ recipes: [], canApply: true, save: vi.fn() }));
 vi.mock('./useAccountRecipes', () => ({ useAccountRecipes: () => ({ status: 'ready', ...fixture }) }));
@@ -119,8 +120,12 @@ it('restores Aha segment inputs and shows a saved outcome day without re-confirm
     useAppStore.setState({ activeProjectId: 'aha-project', savedSetupAppliedProject: 'aha-project', savedSetupAppliedTool: '5-20', savedSetupApplied: 1, savedSetupAppliedInputs: { segmentColumn: 'country', segmentValue: 'KR', outcomeStartDay: '14' } });
   });
   render(<ToolRecipeWorkspace toolId="5-20"><Aha/></ToolRecipeWorkspace>);
-  expect(screen.getByLabelText('전환 평가를 시작하는 가입 후 일수').value).toBe('14');
-  expect(screen.getByRole('button', { name: '저장한 평가 시작일을 이 데이터에 적용' })).toBeTruthy();
-  expect(screen.getByText(/평가창 미선언/)).toBeTruthy();
+  // 평가 시작일은 결과 위 한 줄 + 확인 창이다(ds/DeclaredConditions) — 창 안에서 확인한다.
+  expect(screen.getByRole('region', { name: '결과 평가 시점' }).textContent).toMatch(/미선언/);
+  withDeclared(() => {
+    expect(screen.getByLabelText('전환 평가를 시작하는 가입 후 일수').value).toBe('14');
+    expect(screen.getByRole('button', { name: '저장한 평가 시작일을 이 데이터에 적용' })).toBeTruthy();
+    expect(screen.getByText(/평가창 미선언/)).toBeTruthy();
+  });
   await waitFor(() => expect(useAppStore.getState().viewConfig['analysis-inputs:5-20'].segmentValue).toBe('KR'));
 });

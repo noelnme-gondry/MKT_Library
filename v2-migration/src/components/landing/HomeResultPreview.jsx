@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import Image from "next/image";
 import { compareSamplePerformance } from "@/utils/sampleSpendPreview";
 import { buildDemoCsv } from "@/utils/demoData";
 import { buildSampleJourney } from "@/lib/sampleJourney";
@@ -40,7 +39,6 @@ export default function HomeResultPreview({ locale, onTrySample }) {
         <dl><dt>{en ? "CPA change" : "CPA 변화"}</dt><dd>{percent(lead.cpaChange)}</dd></dl>
         <p>{en ? `${money(Math.round(lead.recent.cpa) - Math.round(lead.prior.cpa))} more per conversion` : `전환 1건에 ${money(Math.round(lead.recent.cpa) - Math.round(lead.prior.cpa))} 더 들었습니다`}</p>
       </div>
-      <Image src="/assets/dochi/dochi-present-results.png" width={72} height={72} alt="" />
     </div>
     {driver && <p className="home-sample-trace">
       <span>{en ? "Largest contribution to the change" : "변화 기여가 가장 큰 채널"}</span>

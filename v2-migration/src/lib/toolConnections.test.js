@@ -8,13 +8,18 @@ import {
   getNextTools,
   localizedTool,
 } from "@/lib/toolConnections";
-import { EN_READY_TOOL_IDS, ROUTES, idToSlug, isRoutePublished } from "@/lib/routeMap";
+import { EN_READY_TOOL_IDS, ROUTES, absorbedToolIds, idToSlug, isRoutePublished } from "@/lib/routeMap";
 import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
 import { isNumberedDocItem } from "@/store/useDataStore";
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 
 describe("connected tool workflow", () => {
   it("covers every published tool exactly once in the landing journey", () => {
-    const toolIds = Object.keys(CONNECTED_TOOLS);
+    // 흡수된 도구(5-22 → 5-3의 보기)는 여정·목록에 없고, 저장한 기록의 이름·링크를 위해서만 연결 표에 남는다.
+    const absorbed = absorbedToolIds();
+    expect(absorbed).toContain("5-22");
+    expect(absorbed.every((id) => CONNECTED_TOOLS[id] && !TOOL_JOURNEY.some((stage) => stage.tools.includes(id)))).toBe(true);
+    const toolIds = Object.keys(CONNECTED_TOOLS).filter((id) => !absorbed.includes(id));
     const journeyIds = TOOL_JOURNEY.flatMap((stage) => stage.tools);
     const publishedToolIds = ROUTES
       .filter((route) => /^(5|9)-/.test(route.id) && !route.legacy && isRoutePublished(route))
@@ -72,7 +77,9 @@ describe("connected tool workflow", () => {
     const dashboardNext = getNextTools("5-2", "ko");
     expect(dashboardNext.every((tool) => tool.isSameData)).toBe(true);
     const saturationNext = getNextTools("5-22", "ko");
-    expect(saturationNext.find((tool) => tool.id === "5-3").isSameData).toBe(true);
+    expect(saturationNext.find((tool) => tool.id === "5-31").isSameData).toBe(true);
+    // 운영 플래너가 출발점이고 예산 상세 설계(5-3)는 그 예산 단계의 상세다(2026-11-06 사용자 결정, lib/operationsFlow).
+    expect(getNextTools("5-31", "ko").map(tool => tool.id)).toContain("5-3");
     expect(saturationNext.find((tool) => tool.id === "9-6").isSameData).toBe(false);
   });
 
@@ -91,21 +98,61 @@ describe("connected tool workflow", () => {
           }
         }
       }
-      expect([...seen].sort()).toEqual([...toolIds].sort());
+      // 흡수된 도구는 다른 도구의 보기라 다음 단계로 가리키지 않는다 — 발행 도구 전부에 닿으면 된다.
+      expect([...seen].filter((id) => !absorbedToolIds().includes(id)).sort()).toEqual(toolIds.filter((id) => !absorbedToolIds().includes(id)).sort());
     }
   });
 
-  it("exposes bidirectional stage navigation and loops learning back to monitoring", () => {
-    const creative = getJourneyContext("9-6", "ko");
-    expect(creative.previous.map((tool) => tool.id)).toEqual(["5-22", "5-3"]);
-    expect(creative.alternatives.map((tool) => tool.id)).toEqual(["9-1", "5-20"]);
-    expect(creative.next.map((tool) => tool.id)).toEqual(["5-26", "5-27"]);
-
-    const learning = getJourneyContext("5-18-mmm", "en");
-    expect(learning.isCycleRestart).toBe(true);
-    const monitorStage = TOOL_JOURNEY.find((stage) => stage.id === "monitor");
-    expect(learning.next.map((tool) => tool.id)).toEqual(monitorStage.tools.slice(0, learning.next.length));
-    expect(learning.next.length).toBeGreaterThan(0);
-    expect(learning.previous.every((tool) => tool.href.startsWith("/en/"))).toBe(true);
+  // 상황 분류(product-ssot §1.1c, 2026-10-26 승인). 상황은 순서가 아니므로 앞뒤 단계가
+  // 아니라 같은 상황·같은 파일로 잇는다.
+  it("groups tools by situation and links the same situation and the same file", () => {
+    const variance = getJourneyContext("5-21", "ko");
+    expect(variance.stage.id).toBe("performance");
+    expect(variance.alternatives.map((tool) => tool.id)).not.toContain("5-21");
+    expect(variance.alternatives.every((tool) => variance.stage.tools.includes(tool.id))).toBe(true);
+    // 효율 CSV 하나로 되는 예산 분석은 다른 상황이지만 같은 파일로 이어진다.
+    expect(variance.sameFile.map((tool) => tool.id)).toEqual(expect.arrayContaining(["5-31", "5-3"]));
+    for (const toolId of TOOL_JOURNEY.flatMap((stage) => stage.tools)) {
+      const context = getJourneyContext(toolId, "en");
+      expect(context, toolId).toBeTruthy();
+      expect(context).not.toHaveProperty("previous");
+      expect(context).not.toHaveProperty("next");
+      for (const tool of context.sameFile) {
+        expect(context.stage.tools).not.toContain(tool.id);
+        expect(groupForRoute(tool.id)).toBe(groupForRoute(toolId));
+        expect(tool.href.startsWith("/en/")).toBe(true);
+      }
+    }
   });
+
+  it("names every situation in plain Korean and English without stage codes", () => {
+    expect(TOOL_JOURNEY.length).toBeGreaterThanOrEqual(5);
+    TOOL_JOURNEY.forEach((stage, index) => {
+      // 이름표는 번호만. 예전 "01 · CHECK"처럼 영어 대문자 이름표를 붙이지 않는다.
+      expect(stage.label).toEqual({ ko: String(index + 1).padStart(2, "0"), en: String(index + 1).padStart(2, "0") });
+      for (const key of ["title", "homeQuestion", "description"]) {
+        expect(/[가-힣]/.test(stage[key].ko), `${stage.id}.${key}`).toBe(true);
+        expect(/[가-힣]/.test(stage[key].en), `${stage.id}.${key}`).toBe(false);
+      }
+      // 한 상황에 하나뿐이면 축이 아니고, 너무 많으면 다시 잡동사니가 된다(§12.31).
+      expect(stage.tools.length, stage.id).toBeGreaterThanOrEqual(2);
+      expect(stage.tools.length, stage.id).toBeLessThanOrEqual(6);
+    });
+    const descriptions = TOOL_JOURNEY.map((stage) => stage.description.ko);
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+
+  it("keeps advanced analyses after ad-operations analyses within a situation", () => {
+    // 고급 분석(5-32~5-43)은 숨기지 않되 같은 상황에서 뒤에 둔다(§1.1c 결정 3).
+    const isAdvanced = (id) => Object.prototype.hasOwnProperty.call(advancedMap(() => true), id);
+    let advancedCount = 0;
+    for (const stage of TOOL_JOURNEY) {
+      const firstAdvanced = stage.tools.findIndex(isAdvanced);
+      if (firstAdvanced < 0) continue;
+      advancedCount += stage.tools.filter(isAdvanced).length;
+      expect(stage.tools.slice(firstAdvanced).every(isAdvanced), stage.id).toBe(true);
+    }
+    expect(advancedCount).toBeGreaterThan(0);
+  });
+
 });

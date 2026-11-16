@@ -89,8 +89,10 @@ describe("Dashboard render smoke", () => {
     const { unmount } = render(<Dashboard />);
     // 제목 위 작은 영문 라벨은 두지 않는다(2026-09-24).
     expect(screen.queryByText("SAMPLE DATA")).toBeNull();
-    expect(screen.getByText("지금 보는 수치는 예시입니다")).toBeTruthy();
-    expect(screen.getByText("내 CSV로 바꾸기")).toBeTruthy();
+    // 예시라는 사실은 머리 줄이 말하고, 교체는 같은 줄의 편집 버튼이 맡는다(교체 안내 띠는 중복이라 뺐다).
+    expect(screen.getByText("예시 데이터")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "데이터·매핑 편집" })).toBeTruthy();
+    expect(screen.queryByText("내 CSV로 바꾸기")).toBeNull();
     unmount();
     cleanup();
 
@@ -102,8 +104,32 @@ describe("Dashboard render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-2");
     render(<Dashboard locale="en" />);
-    expect(screen.getByText("These numbers are an example")).toBeTruthy();
-    expect(screen.getByText("Use my CSV")).toBeTruthy();
+    expect(screen.getByText("Sample data")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit data and mappings" })).toBeTruthy();
+    expect(screen.queryByText("Use my CSV")).toBeNull();
+  });
+
+  it("shows the interactive charts before sample review and layout utilities", () => {
+    const demo = buildDemoCsv("efficiency", "ko");
+    useAppStore.setState({ csvGroups: { ...useAppStore.getState().csvGroups, efficiency: demo }, csvData: demo });
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    const { container } = render(<Dashboard />);
+    const panel = container.querySelector("#dashboard-tabpanel");
+    const review = container.querySelector(".decision-review-preview");
+    const chart = container.querySelector("#s-charts");
+    const toolbar = container.querySelector(".dashboard-workspace-toolbar");
+    const downloads = container.querySelector(".result-action-card > .result-action-card__controls");
+    expect(container.querySelectorAll("#dashboard-tabpanel")).toHaveLength(1);
+    expect(review).toBeTruthy();
+    expect(chart).toBeTruthy();
+    expect(toolbar).toBeTruthy();
+    expect(downloads).toBeTruthy();
+    expect(panel.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chart.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panel.compareDocumentPosition(downloads) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^CPI/ }));
+    expect(screen.getByRole("img", { name: "CPI 추이 차트" })).toBeTruthy();
+    expect(screen.getByText("예시 결과는 저장되지 않습니다.")).toBeTruthy();
   });
 
   for (const tab of TABS) {
@@ -167,6 +193,28 @@ describe("Dashboard render smoke", () => {
     expect(container.querySelector(".dashboard-shell__toc")).toBeNull();
     expect(container.querySelector(".dashboard-tabs__divider")).toBeNull();
     expect(container.querySelectorAll(".dashboard-tabs__items")).toHaveLength(3);
+  });
+
+  for (const locale of ["ko", "en"]) it(`phone view picker lists every view with a description and switches the tab (${locale})`, () => {
+    // 폰에서는 탭 대신 한 줄 버튼(CSS가 가른다). 창은 탭과 같은 목록·같은 순서를 설명과 함께 보여야 한다.
+    const en = locale === "en";
+    seedWithData();
+    const { container } = render(<Dashboard locale={locale} />);
+    const tabs = [...container.querySelectorAll('.dashboard-tabs [role="tab"]')];
+    expect(tabs.length).toBeGreaterThan(0);
+    const picker = container.querySelector(".dashboard-view-picker__button");
+    expect(picker.textContent).toContain(en ? `1 of ${tabs.length}` : `${tabs.length}개 중 1`);
+    fireEvent.click(picker);
+    const sheet = screen.getByRole("dialog", { name: en ? "Choose a view" : "보기 고르기" });
+    const options = [...sheet.querySelectorAll(".dashboard-view-sheet__group button")];
+    expect(options.map((option) => option.querySelector("strong").firstChild.textContent)).toEqual(tabs.map((tab) => tab.textContent.trim()));
+    for (const option of options) expect(option.querySelector("small").textContent.trim().length).toBeGreaterThan(4);
+    if (en) for (const option of options) expect(/[가-힣]/.test(option.textContent)).toBe(false);
+    expect(options[0].getAttribute("aria-current")).toBe("true");
+    fireEvent.click(options[options.length - 1]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(tabs[tabs.length - 1].getAttribute("aria-selected")).toBe("true");
+    expect(picker.textContent).toContain(tabs[tabs.length - 1].textContent.trim());
   });
 
   it("edits analyzed mappings in a separate dialog without pushing results down", () => {

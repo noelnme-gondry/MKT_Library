@@ -4,6 +4,9 @@ import { useAppStore } from "@/store/useDataStore";
 import { activePro } from "@/test/proEntitlement";
 import { saveProjectReview } from "./saveReview";
 import * as repository from "./repository";
+import { createOperationRecord, reviewOperationRecord } from "@/lib/operations/operationLoop";
+import { readOperationAction } from "@/lib/operations/actionContract";
+import { appendDecisionEpisode, decisionEpisodeList } from "@/lib/decisionReview";
 
 beforeEach(async () => {
   vi.stubGlobal("indexedDB", new IDBFactory());
@@ -28,6 +31,19 @@ it("resolves only after the edited record can be read from disk", async () => {
   await useAppStore.getState().commitDecisionRecord("d1", { actual: "200" });
   expect((await repository.readProject("default")).decisions[0].actual).toBe("200");
   expect(useAppStore.getState().decisionRecords[0].actual).toBe("200");
+});
+
+it("restores operating execution scope and review history after a durable save", async () => {
+  const draft = { kind: "budget", target: { unit: "campaign", country: "KR", platform: "iOS", channel: "Meta", campaignId: "c1" },
+    plannedDate: "2026-10-08", executedDate: "2026-10-09", state: "executed", beforeBudget: 100, afterBudget: 200, reviewDays: 7, metric: "installs", currency: "KRW" };
+  const record = createOperationRecord({ draft, today: "2026-11-04" });
+  await useAppStore.getState().commitDecisionRecord("d1", { ...record, ...appendDecisionEpisode({}, { actual: "Observed CPI 10 → 20", learning: "Review rollback; causation unverified" }), status: "reviewed" });
+  useAppStore.setState({ decisionRecords: [] });
+  const stored = (await repository.readProject("default")).decisions[0];
+  expect(readOperationAction(stored.operationAction)).toMatchObject({ state: "executed", executedDate: "2026-10-09", target: { campaignId: "c1", platform: "iOS" } });
+  expect(stored.reviewDate).toBe("2026-10-16");
+  expect(decisionEpisodeList(stored)[0].learning).toBe("Review rollback; causation unverified");
+  expect(reviewOperationRecord(stored, [], { metric: "installs", currency: "USD", today: "2026-11-04" }).state).toBe("scope");
 });
 
 it("creates the first project and imported record in one committed write", async () => {

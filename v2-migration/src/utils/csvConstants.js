@@ -1,9 +1,12 @@
+import { ADVANCED_FIELDS } from "@/lib/advanced-marketing/fields";
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 import { MULTITOUCH_FIELDS, WEEKLY_MOVEMENT_FIELDS } from "@/lib/attributionReports/fields";
 
 export const SATURATION_AXIS_FIELDS = Object.freeze(["channel", "campaign_name", "platform", "country"]);
 
 export const STANDARD_FIELDS = {
+              ...ADVANCED_FIELDS,
               ...Object.fromEntries(Object.entries({ ...WEEKLY_MOVEMENT_FIELDS, ...MULTITOUCH_FIELDS }).filter(([key]) => !["date", "country", "platform", "channel", "campaign_name"].includes(key)).map(([key, field]) => [key, key === "count" ? { ...field, aliases: ["cnt", "count"] } : field])),
               date: {
                 label: "날짜",
@@ -652,6 +655,10 @@ export const STANDARD_FIELDS = {
                   "ad_group",
                   "ad_group_name",
                 ],
+                // 위 별칭은 캠페인명 필드가 없는 소재 도구(5-6·9-6·9-3)용이다. campaign_name과 같은 스코프
+                // (5-21·5-31·진입 화면)에서는 ID 헤더만 받는다 — Meta 내보내기의 "캠페인 이름"이 두 필드에
+                // 동점이 되고 "Ad set name"이 캠페인으로 확정되던 문제(2026-10-28, platformExports.test).
+                scopedAliases: { when: "campaign_name", aliases: ["campaign id", "campaign_id", "캠페인id", "캠페인 id"] },
                 type: "string",
                 required: false,
                 group: "Creative",
@@ -662,6 +669,9 @@ export const STANDARD_FIELDS = {
                 // Meta 등 소재 성과 export의 실제 표시 헤더. `cost`에도 같은 별칭이
                 // 있지만 도구 스코프가 9-6의 spend를 선택해 기존 엔진 키를 보존한다.
                 aliases: ["광고비", "spend", "creative spend", "amount spent", "지출 금액", "cost", "비용"],
+                // cost와 같은 스코프(5-21)에서는 "지출 금액"이 두 필드에 동점이 되어 필수 열이 "확인 필요"로
+                // 남는다. 둘은 같은 열이고 getMappedRows가 양쪽을 채우므로 그때는 이름이 spend인 헤더만 받는다.
+                scopedAliases: { when: "cost", aliases: ["spend", "creative spend"] },
                 type: "number",
                 required: false,
                 group: "Creative",
@@ -1212,6 +1222,7 @@ export const STANDARD_FIELDS = {
             };
 
 export const TOOL_REQUIRED_FIELDS = {
+              ...advancedMap((tool) => tool.required),
               "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => field.required).map(([key]) => key),
               "5-18-cannibal-detail": ["channel", "count"],
               // /start는 첫 업로드에서 효율 CSV의 기본 역할만 판별한다. 필드 스코프가
@@ -1368,6 +1379,7 @@ export const TOOL_REQUIRED_FIELDS = {
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              ...advancedMap((tool) => tool.optional.map((key) => ({ key, note: ADVANCED_FIELDS[key]?.label || key }))),
               "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
               "5-18-cannibal-detail": Object.entries(WEEKLY_MOVEMENT_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
               // /start의 매핑은 효율 슬라이스에 그대로 저장돼 사이드바로 진입한
@@ -1436,7 +1448,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "arm_id", unlocks: "다변형 대량검정 (Variant A/B/C…)" },
                 { key: "date", unlocks: "기간 표기 (선택)" },
               ],
-              "5-31": ["campaign_id", "campaign_name", "channel", "creative_id", "platform", "country", "source", "impressions", "clicks", "installs", "actions"].map(key => ({ key, unlocks: "운영 범위와 캠페인·소재·단계별 근거" })),
+              "5-31": ["daily_budget", "campaign_id", "campaign_name", "channel", "creative_id", "platform", "country", "source", "impressions", "clicks", "installs", "actions"].map(key => ({ key, unlocks: "운영 범위와 캠페인·소재·단계별 근거" })),
               "5-2": [
                 { key: "snapshot_date", unlocks: "리텐션 Dn 마감 판정 — 데이터 추출 기준일" },
                 { key: "source", unlocks: "광고/오가닉(소스) 필터 — 유료·자연 유입 분리" },
@@ -1481,8 +1493,11 @@ export const TOOL_OPTIONAL_FIELDS = {
                   unlocks: "ROAS 시뮬레이션 + 분배 후 예상 매출 계산",
                 },
                 { key: "pu_d7", unlocks: "결제건수 기준 분배 (대안 metric)" },
-                { key: "impressions", unlocks: "노출 기반 시뮬레이션" },
-                { key: "clicks", unlocks: "클릭 기반 시뮬레이션" },
+                { key: "impressions", unlocks: "노출 기반 시뮬레이션 · 단가 변화의 노출 단가·클릭률·전환율 분해" },
+                { key: "clicks", unlocks: "클릭 기반 시뮬레이션 · 단가 변화의 클릭률·전환율 분해" },
+                { key: "adgroup_name", unlocks: "광고그룹까지 단가 변화 분해" },
+                { key: "creative_id", unlocks: "소재 상태(신규 학습·노출 확대·정체·판정·피로)와 소재별 단가 변화 분해" },
+                { key: "daily_budget", unlocks: "예산 변경 시점을 설정값으로 감지해 원인 진단 정확도 향상" },
               ],
               "5-22": [
                 {

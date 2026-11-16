@@ -38,17 +38,24 @@ describe("selectLowConfidenceHolds", () => {
       ["thin_no_spend", wrapper(0.1, 10)],
     ]);
     const holds = selectLowConfidenceHolds(modelsMap, {
-      good: { latestCost: 5000 },
-      thin: { latestCost: 3000 },
-      thin_no_spend: { latestCost: 0 },
+      good: { totalCost: 5000 },
+      thin: { totalCost: 3000 },
+      thin_no_spend: { totalCost: 0 },
     });
     expect(holds).toEqual({ thin: 3000 });
   });
 
   // 0으로 고정하면 채널을 끄는 것이 된다. 판단 보류가 중단 지시가 되면 안 된다.
   it("never turns a channel off by holding it at zero", () => {
-    const holds = selectLowConfidenceHolds(new Map([["thin", wrapper(0.05, 9)]]), { thin: { latestCost: 0 } });
+    const holds = selectLowConfidenceHolds(new Map([["thin", wrapper(0.05, 9)]]), { thin: { totalCost: 0 } });
     expect(Object.keys(holds)).toEqual([]);
+  });
+
+  // "유지"는 배분표의 "현재"(최근 기간 일평균)와 같은 값이어야 한다. 마지막 하루 지출로 고정하면
+  // 유지라고 적힌 대상이 표에서 증액·감액으로 보인다.
+  it("holds at the same baseline the plan calls current, not the last day's spend", () => {
+    const holds = selectLowConfidenceHolds(new Map([["thin", wrapper(0.1, 10)]]), { thin: { totalCost: 140000, latestCost: 200000 } });
+    expect(holds).toEqual({ thin: 140000 });
   });
 
   it("returns nothing without a model map", () => {
@@ -63,7 +70,7 @@ describe("holds reach the allocation engine", () => {
       ["good", wrapper(0.85, 10)],
       ["thin", wrapper(0.1, 10)],
     ]);
-    const holds = selectLowConfidenceHolds(modelsMap, { good: { latestCost: 4000 }, thin: { latestCost: 3000 } });
+    const holds = selectLowConfidenceHolds(modelsMap, { good: { totalCost: 4000 }, thin: { totalCost: 3000 } });
     const withHold = calculateAllocationModeC({
       modelsMap, totalBudget: 10000, overrides: holds, metric: "installs", historyByCh: {},
     });

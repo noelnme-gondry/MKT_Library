@@ -5,7 +5,7 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import { periodProblem, periodDays, previousPeriod } from "@/lib/analysisPeriod";
 
 // 날짜 자체가 조작 대상이다. Radix가 Escape·외부 클릭·포커스 복귀를 담당한다.
-export default function ResultPeriodPicker({ label, range, onApply, previousOf, minDate, maxDate, locale = "ko" }) {
+export default function ResultPeriodPicker({ label, range, onApply, previousOf, minDate, maxDate, locale = "ko", compact = false }) {
   const en = locale === "en";
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -35,7 +35,7 @@ export default function ResultPeriodPicker({ label, range, onApply, previousOf, 
       <Popover.Trigger asChild>
         <button type="button" className="result-period-picker__trigger" aria-labelledby={`${id}-label ${id}-value`}>
           <CalendarDays size={16} aria-hidden="true" />
-          <span id={`${id}-value`}>{range?.start && range?.end ? <><time dateTime={range.start}>{range.start}</time><span aria-hidden="true"> – </span><time dateTime={range.end}>{range.end}</time></> : (en ? "Choose dates" : "날짜 선택")}</span>
+          <span id={`${id}-value`}>{range?.start && range?.end ? <><time dateTime={range.start}>{range.start}</time><span aria-hidden="true"> – </span><time dateTime={range.end}>{compact && range.start.slice(0, 4) === range.end.slice(0, 4) ? range.end.slice(5) : range.end}</time></> : (en ? "Choose dates" : "날짜 선택")}</span>
           <ChevronDown size={14} aria-hidden="true" />
         </button>
       </Popover.Trigger>

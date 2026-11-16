@@ -34,8 +34,8 @@ export const DIAGNOSE_OPTIONS = {
 const TOOL_COPY = {
   "5-2": { href: "/dashboard", ko: ["운영 대시보드", "추세·코호트·퍼널을 한 화면에서 기준선으로 확인"], en: ["Operations dashboard", "Establish the baseline across trends, cohorts, and the funnel"] },
   "5-21": { href: "/tools/campaign-variance", ko: ["성과 변동 분석", "CPA 변화를 물량·믹스·효율 요인으로 무잔차 분해"], en: ["Performance variance", "Decompose CPA change into volume, mix, and efficiency"] },
-  "5-22": { href: "/tools/campaign-saturation", ko: ["캠페인 포화도 진단", "예산 확대 구간의 한계 CPA·ROAS 확인"], en: ["Campaign saturation", "Check marginal CPA and ROAS at the scaled spend level"] },
-  "5-3": { href: "/tools/budget-allocation", ko: ["예산 배분", "확인된 효율과 지출 여력으로 다음 예산 시뮬레이션"], en: ["Budget allocation", "Simulate the next budget with efficiency and headroom"] },
+  "5-22": { href: "/tools/budget-allocation?view=headroom", ko: ["증액 여력 진단", "예산 확대 구간의 한계 CPA·ROAS 확인"], en: ["Headroom check", "Check marginal CPA and ROAS at the scaled spend level"] },
+  "5-3": { href: "/tools/budget-allocation", ko: ["예산 상세 설계", "확인된 효율과 지출 여력으로 다음 예산 시뮬레이션"], en: ["Budget detail", "Simulate the next budget with efficiency and headroom"] },
   "5-18-cannibal": { href: "/tools/cannibalization-diagnosis", ko: ["잠식 진단", "유료 광고가 오가닉 성과를 잠식하는지 네 신호로 점검"], en: ["Cannibalization diagnosis", "Check four signals that paid may displace organic outcomes"] },
   "5-23": { href: "/tools/incrementality", ko: ["증분 효과 분석", "홀드아웃 또는 전후 데이터로 순수 증분 추정"], en: ["Incrementality analysis", "Estimate incremental outcomes with holdout or pre/post data"] },
   "9-6": { href: "/content/freshness", ko: ["소재 피로도 분석", "CTR·CVR 하락이 소재 피로에서 왔는지 확인"], en: ["Creative fatigue", "Check whether CTR or CVR loss is driven by creative fatigue"] },

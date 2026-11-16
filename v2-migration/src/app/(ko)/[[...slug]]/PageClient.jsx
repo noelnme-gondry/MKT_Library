@@ -1,4 +1,6 @@
 "use client";
+import { ADVANCED_BY_ID } from "@/lib/advanced-marketing/registry";
+
 import ToolRecipeWorkspace from "@/components/ds/ToolRecipeWorkspace";
 import AnalysisSetupBar from "@/components/ds/AnalysisSetupBar";
 import { use, useLayoutEffect } from "react";
@@ -8,21 +10,16 @@ import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
-import SopContent from "@/components/sops/SopContent";
+import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
 import GuideAnswer from "@/components/GuideAnswer";
-import GuideIndex from "@/components/GuideIndex";
-import StartGate from "@/components/StartGate";
-import AnalysisDataGuide from "@/components/AnalysisDataGuide";
-import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
-import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
-import MyAccountPage from "@/components/MyAccountPage";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
+import StartGateIntroduction from "@/components/StartGateIntroduction";
 import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import { isAnalysisAdRoute } from "@/lib/partnerAds";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
@@ -31,6 +28,12 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
 // 초기 로딩이 느렸음. 각 도구는 해당 라우트 진입 시에만 청크 로드.
 const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>로딩 중…</div> });
+const GuideIndex = dyn(() => import("@/components/GuideIndex"));
+const StartGate = dynamic(() => import("@/components/StartGate"), { loading: () => <StartGateIntroduction pending /> });
+const ProjectsPage = dyn(() => import("@/components/ProjectsPage"));
+const WorkspaceStoragePage = dyn(() => import("@/components/WorkspaceStoragePage"));
+const MyAccountPage = dyn(() => import("@/components/MyAccountPage"));
+const AdvancedMarketingAnalysis = dyn(() => import("@/components/tools/AdvancedMarketingAnalysis"));
 const OperationsPlanner = dyn(() => import("@/components/tools/OperationsPlanner"));
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
@@ -40,6 +43,8 @@ const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse
 const PaidOrganicTrend = dyn(() => import("@/components/tools/PaidOrganicTrend"));
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
+// SOP 본문(15편, 압축 약 40KB)은 SOP 화면에서만 받는다 — 정적 import면 홈·도구 첫 JS에 실려 예산을 넘는다(EN과 같은 방식).
+const SopContent = dyn(() => import("@/components/sops/SopContent"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
 const BrandCampaignIncrementality = dyn(() => import("@/components/tools/BrandCampaignIncrementality"));
 const MulticollinearityChecker = dyn(() => import("@/components/tools/MulticollinearityChecker"));
@@ -59,7 +64,8 @@ const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResul
 const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
-import { resolveSlugToId } from "@/lib/routeMap";
+import { resolveSlugToId, resolveBudgetView } from "@/lib/routeMap";
+import OperationsFlowNav from "@/components/ds/OperationsFlowNav";
 import { resolveResponseStage } from "@/lib/responseStage";
 
 export default function PageClient({ params, evidenceLinks = [], reading }) {
@@ -70,6 +76,10 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
   const searchParams = useSearchParams();
   const responseStage = resolveResponseStage(searchParams.get("stage"));
   const isResponseSubtoolRoute = isResponseSubtool(routeId);
+  // 예산 상세 설계(5-3)는 ?view=headroom이면 증액 여력(내부 id 5-22) 화면을 연다(product-ssot §4.2a).
+  // 스토어의 현재 라우트는 주소의 5-3 그대로 두고(예시 링크·CSV 그룹 판정), 설정·마감 영역만 보기의 도구 id를 쓴다.
+  const budgetView = routeId === "5-3" ? resolveBudgetView(searchParams.get("view")) : null;
+  const viewToolId = budgetView === "headroom" ? "5-22" : routeId;
 
   // Unknown URL -> 404 (must run before any dispatch that assumes a valid id).
   if (routeId === null) notFound();
@@ -96,8 +106,9 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
             {/* 블로그 예시에서 넘어온 방문의 첫 줄(시안 E) — 모달 대신 출처와 두 갈래만. */}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <BlogArrivalStrip routeId={routeId} locale="ko" />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" slot="context" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <BlogArrivalStrip routeId={viewToolId} locale="ko" />}
+            <OperationsFlowNav toolId={routeId} view={budgetView || undefined} locale="ko" />
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={viewToolId} locale="ko" slot="context" />}
             {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
@@ -106,18 +117,17 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "home" && <><LandingPage reading={reading} /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
-            {routeId === "data-guide" && <AnalysisDataGuide locale="ko" />}
             {routeId === "projects" && <ProjectsPage locale="ko" />}
             {routeId === "subscription" && <SubscriptionPage locale="ko" />}
             {routeId === "storage" && <WorkspaceStoragePage />}
             {routeId === "account" && <MyAccountPage locale="ko" />}
             {routeId === "dochi-result" && <DochiResultWorkspace />}
 
+            {ADVANCED_BY_ID[routeId] && <AdvancedMarketingAnalysis key={routeId} toolId={routeId} locale="ko" />}
             {routeId === "5-31" && <OperationsPlanner locale="ko" />}
             {routeId === "5-2" && <Dashboard />}
-            {routeId === "5-3" && <BudgetAllocation />}
+            {routeId === "5-3" && (budgetView === "headroom" ? <MarketingEfficiency /> : <BudgetAllocation />)}
             {routeId === "5-21" && <CampaignPvm />}
-            {routeId === "5-22" && <MarketingEfficiency />}
             {routeId === "5-4" && <ToolRecipeWorkspace toolId="5-4" locale="ko"><AbTestHoldout /></ToolRecipeWorkspace>}
             {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} initialStage={responseStage} isolated={responseStage !== "hub"} />}
             {routeId === "5-18-paid-organic" && <ToolRecipeWorkspace toolId="5-18-paid-organic" locale="ko"><PaidOrganicTrend /></ToolRecipeWorkspace>}
@@ -147,7 +157,6 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId !== "home" &&
              routeId !== "guide-index" &&
              routeId !== "start-gate" &&
-             routeId !== "data-guide" &&
              !["storage", "projects", "subscription", "account"].includes(routeId) &&
              routeId !== "dochi-result" &&
              !routeId.startsWith("5-") &&
@@ -160,15 +169,18 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             )}
             {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
                 결과와 같은 층위로 흐르지 않게(§12.30). */}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" slot="actions" />}
+            {/* 폰에서 결과가 나오면 위쪽 단계 줄 대신 이 줄이 보인다(결론을 첫 화면에 두기 위해). */}
+            <OperationsFlowNav toolId={routeId} view={budgetView || undefined} locale="ko" placement="end" />
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={viewToolId} locale="ko" slot="actions" />}
             {/* 설정 저장·보관함은 결과 뒤에 둔다. 분석 전에 "설정 저장"을 물을
                 이유가 없고, 맨 위에 있으면 결론을 본 사용자에게는 화면 밖이다. */}
             {routeId !== "dochi-result" && !["storage", "projects", "subscription", "account"].includes(routeId) && <ToolPageOutro
-              toolId={routeId}
+              toolId={viewToolId}
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />}
             {isAnalysisAdRoute(routeId) && <PartnerAdSlot placement="analysis-bottom" />}
+            <SourceSurveyPopup />
             </article>
           </main>
         </div>

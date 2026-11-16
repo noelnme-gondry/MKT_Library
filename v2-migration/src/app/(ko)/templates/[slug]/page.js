@@ -94,7 +94,7 @@ export default async function Page({ params }) {
 
       <h2>작성할 때 주의할 점</h2>
       <ul className="template-detail__rules">
-        <li>날짜는 <code>YYYY-MM-DD</code> 형식으로 통일하세요. 형식이 섞이면 기간 비교가 어긋납니다.</li>
+        <li>{page.exactTime ? <>이벤트 시각은 <code>2026-01-01T09:00:00+09:00</code>처럼 시간대까지 포함하세요. 날짜만 있는 값은 이벤트 순서를 판정할 수 없어 분석이 중단됩니다.</> : <>날짜는 <code>YYYY-MM-DD</code> 형식으로 통일하세요. 형식이 섞이면 기간 비교가 어긋납니다.</>}</li>
         <li>금액·수치 컬럼에는 천단위 콤마와 <code>₩</code>·<code>$</code>·<code>KRW</code>·<code>USD</code>·<code>원</code> 같은 통화 표기가 있어도 됩니다. 그 밖의 글자가 섞이면 읽지 않으므로 숫자만 두는 편이 가장 안전합니다.</li>
         <li>필수 값의 결측·오류는 도구에 따라 해당 행을 제외하거나 분석을 중단합니다. 표시된 행·컬럼 진단을 확인하세요. 0과 빈칸은 다르게 처리됩니다.</li>
         <li>컬럼을 더 넣어도 됩니다. 이 도구가 쓰지 않는 컬럼은 무시됩니다.</li>

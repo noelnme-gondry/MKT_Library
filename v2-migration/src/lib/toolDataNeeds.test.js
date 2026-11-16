@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publishedToolIds } from "@/lib/routeMap";
+import { analysisToolIds, publishedToolIds } from "@/lib/routeMap";
 import { TOOL_DATA_NEED_IDS, toolDataNeed } from "./toolDataNeeds";
 
 describe("도구별 필요한 데이터 한 문장", () => {
@@ -14,7 +14,8 @@ describe("도구별 필요한 데이터 한 문장", () => {
   });
 
   it("발행되지 않은 도구 문장을 남겨 두지 않는다", () => {
-    expect(TOOL_DATA_NEED_IDS.filter((id) => !published.includes(id))).toEqual([]);
+    // 흡수된 보기(5-22)는 결과 작업대·기록이 같은 문장을 읽는다(product-ssot §4.2a).
+    expect(TOOL_DATA_NEED_IDS.filter((id) => !analysisToolIds().includes(id))).toEqual([]);
   });
 
   it("컬럼 이름 표기(괄호 속 기술 용어·슬래시 나열)를 쓰지 않는다", () => {

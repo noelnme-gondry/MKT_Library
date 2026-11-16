@@ -5,6 +5,7 @@ import Link from "next/link";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { VIDEO_TUTORIALS, TUTORIAL_STEP_SECONDS, tutorialIdsForPath, tutorialMedia } from "@/lib/videoTutorials";
 import { trackProductEvent } from "@/lib/analytics";
+import { CircleHelp, CirclePlay } from "lucide-react";
 
 const OPEN_EVENT = "gop:video-tutorial";
 let pendingOpen = null;
@@ -18,7 +19,7 @@ export function VideoHelpButton({ topic, locale = "ko", className = "tutorial-in
     // Streaming hydration can make the uploader interactive before the root host.
     pendingOpen = { topic, trigger, pathname: window.location.pathname };
     window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: pendingOpen }));
-  }}><span aria-hidden="true">▷</span> {children || (locale === "en" ? "Video guide" : "영상으로 보기")}</button>;
+  }}><CirclePlay size={16} strokeWidth={1.5} aria-hidden="true" /> {children || (locale === "en" ? "Video guide" : "영상으로 보기")}</button>;
 }
 
 // 튜토리얼 진입은 헤더에 둔다. 예전에는 화면 오른쪽 아래에 떠 있는 버튼이었는데,
@@ -32,7 +33,7 @@ export function TutorialHeaderButton({ locale = "ko" }) {
   return <button type="button" disabled={!ready} className="btn ghost tutorial-launcher no-print" aria-label={en ? "Tutorial" : "튜토리얼"} aria-haspopup="dialog" onClick={event => {
     pendingOpen = { trigger: event.currentTarget, pathname: window.location.pathname };
     window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: pendingOpen }));
-  }}><span className="tutorial-launcher__icon" aria-hidden="true">?</span><span className="tutorial-launcher__label">{en ? "Tutorial" : "튜토리얼"}</span></button>;
+  }}><CircleHelp className="tutorial-launcher__icon" aria-hidden="true" size={16} strokeWidth={1.5} /><span className="tutorial-launcher__label">{en ? "Tutorial" : "튜토리얼"}</span></button>;
 }
 
 function TutorialLauncher({ pathname, locale }) {
@@ -96,7 +97,7 @@ function TutorialLauncher({ pathname, locale }) {
           </div>
           <nav className="tutorial-topics" aria-label={en ? "Tutorial topics" : "영상 안내 주제"}>{[...new Set([...ids, ...VIDEO_TUTORIALS.map(item => item.id)])].map(id => {
             const item = VIDEO_TUTORIALS.find(entry => entry.id === id);
-            return <button key={id} type="button" aria-current={topic === id ? "true" : undefined} onClick={() => select(id)}><span aria-hidden="true">▷</span>{item[locale]}</button>;
+            return <button key={id} type="button" aria-current={topic === id ? "true" : undefined} onClick={() => select(id)}><CirclePlay size={16} strokeWidth={1.5} aria-hidden="true" />{item[locale]}</button>;
           })}</nav>
         </div>
       </>}

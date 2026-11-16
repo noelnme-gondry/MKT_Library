@@ -65,10 +65,11 @@ for (const locale of ["ko", "en"]) {
     expect(deckBox.width).toBeLessThanOrEqual(36 * fontSize + 1);
     expect(deckBox.x).toBeGreaterThanOrEqual(messageBox.x - 1);
     expect(deckBox.x + deckBox.width).toBeLessThanOrEqual(messageBox.x + messageBox.width + 1);
-    const entryBox = await page.locator(".dc-hero__entry").boundingBox();
+    const entryBox = await page.locator(".home-entry").boundingBox();
     // 나란한 두 열 또는 위아래 두 행이어야 하며 서로 침범하지 않는다.
     expect(entryBox.x >= messageBox.x + messageBox.width - 1 || entryBox.y >= messageBox.y + messageBox.height - 1).toBe(true);
-    await expect(page.locator(".dc-hero__actions a")).toHaveCount(3);
+    // 입구는 상황 7개 + "모두 보기" 한 칸(product-ssot §5.1.1).
+    await expect(page.locator(".home-entry__situations a")).toHaveCount(8);
     const conditions = page.locator(".dc-hero__assurance > span");
     await expect(conditions).toHaveCount(2);
     // Paid download conditions remain visible in the dedicated service terms.
@@ -130,7 +131,8 @@ for (const locale of ["ko", "en"]) {
     await practice.getByRole("button", { name: blogConversionFor("weekly-marketing-report-template", locale).action, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/tools/campaign-variance`));
     await expect(page.getByRole("banner")).toContainText("weekly-report-three-weeks.csv");
-    await expect(page.locator(".analysis-setup__context")).toContainText(en ? "42 source rows" : "42 원본 행");
+    // 결과가 나오면 입력 요약은 맥락 한 줄로 접힌다(§12.26b).
+    await expect(page.locator(".report-context__line")).toContainText(en ? "42 rows" : "42행");
     const campaign = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) });
     // The guide describes the later follow-up, but the main CTA starts at the
     // article's first comparison: A's 350,000/350 → 420,000/280 CPI.

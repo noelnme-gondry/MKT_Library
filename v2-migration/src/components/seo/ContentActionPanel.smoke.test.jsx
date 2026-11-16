@@ -9,7 +9,7 @@ import { TOOL_GROUP } from "@/lib/toolGroups";
 import { PRIMARY_CALCULATOR_MAPS, primaryToolForContent } from "@/lib/contentToolRegistry";
 import { idToSlug } from "@/lib/routeMap";
 import { getCalculator } from "@/lib/calculators";
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { templatePageForTool } from "@/lib/templateCatalog";
 
 const TARGET_POSTS = [
   ["ad-performance-diagnosis", "5-21", "/tools/campaign-variance"],
@@ -26,7 +26,7 @@ describe("all published article journeys", () => {
     window.sessionStorage.clear();
     const en = locale === "en";
     const toolId = primaryToolForContent(slug, "blog");
-    const template = TEMPLATE_PAGES.find(page => page.toolId === toolId);
+    const template = templatePageForTool(toolId);
     const practice = BLOG_INSIGHT_PLACEMENTS[slug];
     render(<ContentActionPanel post={{ slug }} locale={locale} />);
     expect(template).toBeTruthy();

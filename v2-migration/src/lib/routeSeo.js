@@ -1,8 +1,6 @@
+import { advancedMap } from "@/lib/advanced-marketing/registry";
 export const ROUTE_SEO = {
-  "data-guide": {
-    ko: { title: "분석별 필요한 데이터·CSV 양식 안내", description: "보고 싶은 내용에 맞는 마케팅 분석을 찾고, 데이터 출처·행 단위·필수 항목과 작성 예시를 확인하세요. 분석별 CSV 양식도 받을 수 있습니다." },
-    en: { title: "Data Requirements and CSV Templates by Analysis", description: "Find marketing analyses by question. Check data sources, row structure, required information and sample tables, then download a CSV template." },
-  },
+  ...advancedMap((tool) => ({ ko: { title: tool.name.ko, description: tool.answer.ko }, en: { title: tool.name.en, description: tool.answer.en } })),
   "dochi-result": {
     ko: { title: "분석 결과", description: "업로드한 데이터의 분석 결과와 다음 확인 항목을 살펴보세요." },
     en: { title: "Analysis Results", description: "Review analysis results and next checks for your uploaded data." },
@@ -17,27 +15,27 @@ export const ROUTE_SEO = {
   },
   "guide-index": {
     ko: {
-      title: "퍼포먼스 마케팅 실무 가이드 | UAC·Meta·MMP",
-      description: "MMP 연동, 이벤트 택소노미, UAC·Meta 운영, 소재 규격, 코호트 리텐션을 단계별 체크리스트로 정리했습니다.",
+      title: "마케팅 분석 지도·실무 가이드",
+      description: "성과·실험·리텐션·CRM·가격·B2B 분석의 질문, 데이터와 한계를 살펴보세요. 실행 도구·내부 가이드·공식 참고 자료를 구분해 안내합니다.",
     },
     en: {
-      title: "Performance Marketing Playbooks",
-      description: "Step-by-step playbooks for MMP tracking, event taxonomy, Google and Meta campaign operations, creative, cohorts, and retention analysis.",
+      title: "Marketing Analysis Map and Playbooks",
+      description: "Explore performance, experiments, retention, CRM, pricing and B2B: questions, data and limits, with linked tools, guides and primary references.",
     },
   },
   "start-gate": {
     ko: {
-      title: "무료 마케팅 CSV 분석 | 가능한 분석 자동 추천",
-      description: "캠페인 CSV나 Google Sheets를 가져오면 브라우저에서 구조를 진단하고 가능한 분석을 추천합니다.",
+      title: "분석 찾기 | 상황·파일로 고르는 무료 마케팅 분석",
+      description: "상황을 고르거나 캠페인 CSV를 놓으면 분석마다 받게 될 결론 예시와 준비할 파일을 보여 줍니다. 파일은 브라우저에서만 처리합니다.",
     },
     en: {
-      title: "Free Marketing CSV Analyzer",
-      description: "Import a campaign CSV or Google Sheet to profile its structure in your browser and find the dashboard, PVM, budget, MMM, or experiment analysis it supports.",
+      title: "Find an Analysis | Free Marketing CSV Analyzer",
+      description: "Pick a situation or drop a campaign CSV to see each analysis's example conclusion and the file to prepare. Files are processed only in your browser.",
     },
   },
   "5-31": {
-    ko: { title: "운영 플래너 | 캠페인 예산·성과·소재", description: "긴 캠페인 이력으로 최근 효율 변화와 신규 소재를 확인하고, 동일 예산 조정안과 조건부 예상 개선을 계산합니다." },
-    en: { title: "Operations Planner: Budget, Campaigns and Creatives", description: "Review recent campaign efficiency and newly observed creatives, then calculate same-budget adjustments and conditional improvements from historical data." },
+    ko: { title: "운영 플래너 | 캠페인 예산·성과·소재", description: "전체 캠페인 이력의 변화와 기록한 액션을 모아 예산 조정·소재 교체를 결정하고, 실행 이력과 다음 검토를 연결합니다." },
+    en: { title: "Operations Planner: Budget, Campaigns and Creatives", description: "Review full-history changes, plan budget and creative actions, and connect execution records to follow-up reviews with scoped before-and-after evidence." },
   },
   "5-2": {
     ko: {
@@ -101,12 +99,12 @@ export const ROUTE_SEO = {
   },
   "5-3": {
     ko: {
-      title: "예산 배분 시뮬레이터 | 목표 CPI·CPA·ROAS",
-      description: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분을 계산합니다.",
+      title: "예산 배분·증액 여력 시뮬레이터 | 목표 CPI·CPA·ROAS",
+      description: "목표 CPI·CPA·ROAS나 총예산으로 관측 지출 안의 배분을 계산하고, 한계 CPA로 더 늘릴 수 있는 채널을 확인합니다.",
     },
     en: {
-      title: "Budget Allocation for CPI, CPA & ROAS",
-      description: "Set a total budget or target CPI, CPA, or ROAS to calculate a recommended budget and automatic channel allocation without exceeding observed maximum spend.",
+      title: "Budget Allocation & Headroom for CPI, CPA & ROAS",
+      description: "Set a total budget or target CPI, CPA, or ROAS to allocate within observed spend, and compare marginal with average CPA to see which channels can still scale.",
     },
   },
   "5-4": {
@@ -297,11 +295,11 @@ export const ROUTE_SEO = {
   "3-2": {
     ko: {
       title: "매체별 광고 소재 규격 | 사이즈·세이프존",
-      description: "매체별 소재 사이즈 매트릭스, 플레이어블 5MB 제약, 영상 세이프존을 정리한 규격 문서입니다.",
+      description: "매체·게재 위치별 제출 조건, 플레이어블 용량·로딩 검수, 영상 세이프존 확인 순서를 정리했습니다.",
     },
     en: {
       title: "Ad Creative Specs by Network",
-      description: "The size matrix, 5MB playable constraint, and video safe zones per network, so creatives never get rejected or auto-cropped mid-message.",
+      description: "Check submission requirements by network and placement, validate playable size and loading, and inspect video safe zones before delivery.",
     },
   },
   "3-3": {

@@ -114,7 +114,6 @@ export default function Header({ locale = "ko" }) {
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
   const isCompare = cleanPath === "/compare" || cleanPath.startsWith("/compare/");
   const isDiagnose = cleanPath === "/diagnose";
-  const isDataGuide = cleanPath === "/data-guide";
   const isWeeklyReport = cleanPath === "/weekly-report";
   const isWeeklyReview = cleanPath === "/weekly-review";
   // 용어사전도 동일 패턴(§glossary) — 이제 EN 있음(content/glossary-en), 블로그처럼
@@ -187,7 +186,6 @@ export default function Header({ locale = "ko" }) {
           {isTemplates && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Templates" : "템플릿"}</span></>}
           {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Metric calculators" : "지표 계산기"}</Link></>}
           {isCompare && <><span className="sep">/</span><Link href={locale === "en" ? "/en/compare" : "/compare"} className="current current--section">{locale === "en" ? "Marketing analysis" : "마케팅 분석"}</Link></>}
-          {isDataGuide && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Data requirements" : "필요한 데이터 양식"}</span></>}
           {isDiagnose && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Diagnosis" : "문제 진단"}</span></>}
           {(isWeeklyReport || isWeeklyReview) && (
             <><span className="sep">/</span><span className="current current--section">

@@ -2,7 +2,12 @@ const median = values => { const a = [...values].sort((x, y) => x - y); const m 
 export const ALLOCATION_REGIME_POLICY = Object.freeze({ minimumSide: 6, minimumOverlap: 3, minimumRelativeShift: 0.25, noiseMultiplier: 3 });
 
 /** Operational change candidate, not a causal or significance test. Compare at overlapping costs. */
-export function selectAllocationRegime(points, { regimeMode = "all", regimeStart = "" } = {}) {
+/**
+ * @param {{regimeMode?:string, regimeStart?:string, regimeCandidateDates?:string[]}} options
+ *   regimeCandidateDates: 운영 이벤트 날짜(예: 큰 신규 소재 출시일). 촘촘하지 않은 탐색 간격에 걸려
+ *   빠지지 않도록 그 날짜의 경계도 같은 기준으로 평가한다. 비어 있으면 결과는 이전과 같다.
+ */
+export function selectAllocationRegime(points, { regimeMode = "all", regimeStart = "", regimeCandidateDates = [] } = {}) {
   const sorted = [...points].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   if (regimeMode === "manual") {
     const kept = sorted.filter(point => point.date >= regimeStart);
@@ -13,7 +18,14 @@ export function selectAllocationRegime(points, { regimeMode = "all", regimeStart
   const policy = ALLOCATION_REGIME_POLICY;
   const count = sorted.length - policy.minimumSide * 2 + 1;
   const stride = Math.max(1, Math.ceil(count / 32));
-  for (let i = policy.minimumSide; i <= sorted.length - policy.minimumSide; i += stride) {
+  const indexes = new Set();
+  for (let i = policy.minimumSide; i <= sorted.length - policy.minimumSide; i += stride) indexes.add(i);
+  const eventIndexes = new Set();
+  for (const date of regimeCandidateDates || []) {
+    const i = sorted.findIndex(point => String(point.date) >= String(date));
+    if (i >= policy.minimumSide && i <= sorted.length - policy.minimumSide) { indexes.add(i); eventIndexes.add(i); }
+  }
+  for (const i of [...indexes].sort((a, b) => a - b)) {
     if (!sorted[i].date || sorted[i].date === sorted[i - 1].date) continue;
     const before = sorted.slice(0, i), after = sorted.slice(i);
     const low = Math.max(Math.min(...before.map(p => p.x)), Math.min(...after.map(p => p.x)));
@@ -34,7 +46,7 @@ export function selectAllocationRegime(points, { regimeMode = "all", regimeStart
     const shift = median(deltas), noise = median(deltas.map(value => Math.abs(value - shift)));
     if (Math.abs(shift) < Math.max(policy.minimumRelativeShift, policy.noiseMultiplier * noise)) continue;
     const meanShift = deltas.reduce((sum, value) => sum + value, 0) / deltas.length;
-    candidates.push({ index: i, start: sorted[i].date, relativeShift: shift, score: Math.abs(meanShift) * Math.sqrt(left.length * deltas.length / (left.length + deltas.length)) });
+    candidates.push({ index: i, start: sorted[i].date, relativeShift: shift, score: Math.abs(meanShift) * Math.sqrt(left.length * deltas.length / (left.length + deltas.length)), ...(eventIndexes.has(i) ? { event: true } : {}) });
   }
   const candidate = candidates.sort((a, b) => b.score - a.score)[0] || null;
   return candidate ? { kept: sorted.slice(candidate.index), start: candidate.start, excluded: candidate.index, candidate } : { kept: points, start: "", excluded: 0, candidate: null };

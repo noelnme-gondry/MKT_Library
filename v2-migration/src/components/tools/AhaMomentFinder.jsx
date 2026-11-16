@@ -17,7 +17,9 @@ import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import InfoPopover from "@/components/ds/InfoPopover";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import DeclaredConditions from "@/components/ds/DeclaredConditions";
 import DownloadHub from "@/components/ds/DownloadHub";
+import { csvBody } from "@/utils/download";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -164,10 +166,6 @@ function ahaSegmentColumns(colMap) {
  * 신뢰(자동선택 지점)라 여기선 학습셋 기준으로 통일(차트·드릴다운 구간표와 동일 기준).
  * (index.html downloadAhaCsv 계열: BOM + CRLF + text/csv;charset=utf-8, §7) */
 function downloadAhaCsv(sorted, cache) {
-  const q = (s) => {
-    s = String(s);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
   const header = [
     "action",
     "window",       // d1 / d7 / all
@@ -182,7 +180,7 @@ function downloadAhaCsv(sorted, cache) {
     "gated",        // 표본 부족으로 게이팅됐는지
     "is_optimal",   // 자동 선택된 최적(윈도우·k) 지점이면 1
   ];
-  const lines = [header.join(",")];
+  const lines = [header];
   const baseRate = cache?.baseRate || 0;
   const canSweep = cache && Array.isArray(cache.targets) && Array.isArray(cache.trainIdx);
   for (const r of sorted) {
@@ -209,15 +207,13 @@ function downloadAhaCsv(sorted, cache) {
             lift == null ? "" : lift.toFixed(4),
             s.gated ? "1" : "0",
             isOpt ? "1" : "0",
-          ]
-            .map(q)
-            .join(","),
+          ],
         );
       }
     }
   }
   const fileName = `aha_moment_${new Date().toISOString().slice(0, 10)}.csv`;
-  const content = "﻿" + lines.join("\r\n");
+  const content = csvBody(lines[0], lines.slice(1));
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1193,28 +1189,31 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         ) : (
           <div style={{ marginTop: "12px", background: "transparent", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
-            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>▶ {tr("분석하기", "Analyze")}</button>
+            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 600, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
       </RecipeBlock>
       </></MappingEditorDialog>
 
-      <section className="block analysis-design-check">
+      {/* 평가 시작일은 사용자가 선언하는 조건이다 — 결과 위에 펼치지 않고 한 줄 + 확인 창(product-ssot §1.1c 4단계). */}
+      <DeclaredConditions locale={locale} className="declared-conditions--outcome"
+        title={tr("결과 평가 시점", "Outcome window")}
+        answered={temporalScope.confirmed ? 1 : 0} total={1} ready={temporalScope.confirmed}
+        status={temporalScope.confirmed
+          ? tr(`가입 후 ${activeOutcomeStartDay}일부터 평가 · 제외 ${temporalScope.excluded.length}개`, `Evaluated from day ${activeOutcomeStartDay} · ${temporalScope.excluded.length} excluded`)
+          : tr("미선언 — 탐색 연관만, 행동 결정 보류", "Undeclared — exploratory only, decisions held")}
+        intro={tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}
+        note={temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}>
         <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
           <input type="number" min="1" step="1" value={outcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
         </label>
         {outcomeStartDay && outcomeWindowSource !== csvData.raw && <button type="button" className="btn" onClick={() => { setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }}>{tr("저장한 평가 시작일을 이 데이터에 적용", "Apply the saved outcome start day to this data")}</button>}
-        <p>{tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}</p>
-        <p role="status">{temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}</p>
-      </section>
+      </DeclaredConditions>
       {showResults && (
         <>
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "-4px", marginBottom: "14px" }}>
-              {C.heroSub}
-            </p>
             <ResultActionCard
               toolId={domain === "content" ? "9-2" : "5-20"}
               locale={locale}
@@ -1297,6 +1296,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </InfoPopover>
             </div>
             </ResultActionCard>
+            {/* 무엇을 찾았는지 설명은 결론 뒤에 — 결론 문장이 첫 화면을 차지한다(§1.1c 4단계). */}
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "14px 0 0" }}>{C.heroSub}</p>
           </section>
 
           {/* ── §1 칸반 그룹핑 — 신호 세기별 3버킷(배지 반복 대신 칼럼 헤더가 곧 상태) ── */}
@@ -1314,7 +1315,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const c = AHA_TONE[key];
               return (
                 <div data-design-exempt="nested: one signal category groups comparable action candidates (product-ssot purpose grouping)" style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
-                  <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
+                  <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                   {list.length ? list.map((r) => (
                     <button type="button" key={r.action} onClick={() => setDrilldownAction(r.action)} aria-pressed={r.action === drillTarget}
                       className="analysis-choice-card"
@@ -1366,7 +1367,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const metric = (q, ans, help, tech) => (
                 <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px" }}>
                   <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
-                  <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
+                  <div style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
                   <div style={{ fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>{help}</div>
                   <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tr("통계 원값(전문가용)", "Raw statistic (expert)")}>{tech}</div>
                 </div>
@@ -1374,7 +1375,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               return (
                 <>
                   <div style={{ padding: "12px 0", borderBottom: "1px solid var(--border)", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", color: c.color, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", color: c.color, fontWeight: 600, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
                     <div style={{ flex: 1, minWidth: "240px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)", lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{
@@ -1448,7 +1449,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                                 style={{
                                   background: `rgba(122,162,247,${((intensity / 100) * 0.45).toFixed(2)})`,
                                   outline: isBest ? "2px solid #7aa2f7" : undefined,
-                                  fontWeight: isBest ? 700 : undefined,
+                                  fontWeight: isBest ? 600 : undefined,
                                 }}
                               >
                                 {cell.F1.toFixed(2)}
@@ -1519,7 +1520,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               <p className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "14px" }}>{tr("윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.", "The window is auto-selected from the grid. k is chosen on the training set and re-evaluated on the holdout to reduce optimism bias (overfitting).")}</p>
 
               <div className="figure-head">
-                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
+                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
                 <FigurePngButton title={locale === "en" ? "Relationship between actions and long-term value" : "행동과 장기 가치의 관계"} target={chartRef} fileName="aha_scatter" locale={locale} />
               </div>
               <p className="muted aha-scatter-intro">{tr(
@@ -1575,8 +1576,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </section>
 
               <div className="figure-head">
-                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
-                <button className="ab-pill" onClick={() => requirePaidExport() && downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title={tr("액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점", "Long-format: every action × window (D1/D7) × threshold (k) combination — is_optimal=1 marks the optimal point")}>⬇ CSV</button>
+                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
+                <button className="ab-pill" onClick={() => requirePaidExport() && downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title={tr("액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점", "Long-format: every action × window (D1/D7) × threshold (k) combination — is_optimal=1 marks the optimal point")}>CSV</button>
               </div>
               <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr(
                 <><strong>체크박스</strong> = 위 산점도에 표시 · <strong>행(▸) 클릭</strong> = 달성률 구간별 상세 펼치기. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심). 색 = 산점도 이벤트 색.</>,
@@ -1644,7 +1645,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                                         </thead>
                                         <tbody>
                                           {bks.map((b) => (
-                                            <tr key={b.k} style={{ background: b.isOptimal ? "rgba(250,204,21,0.14)" : undefined, fontWeight: b.isOptimal ? 700 : undefined }}>
+                                            <tr key={b.k} style={{ background: b.isOptimal ? "rgba(250,204,21,0.14)" : undefined, fontWeight: b.isOptimal ? 600 : undefined }}>
                                               <td className="tnum">{b.isOptimal ? "★ " : ""}{(b.allPct * 100).toFixed(0)}%</td>
                                               <td className="tnum">≥{b.k}</td>
                                               <td className="tnum">{(b.allSupport || 0).toLocaleString()}{tr("명", "")}</td>

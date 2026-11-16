@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import ResultActionCard from "./ResultActionCard";
 import { useAppStore } from "@/store/useDataStore";
 
@@ -91,6 +91,19 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(stats.querySelector(".is-primary")).toBeTruthy();
     expect(points.querySelector(".is-structured")).toBeTruthy();
     expect(points.textContent).toContain("CPI +₩22.6");
+  });
+
+  it.each(["ko", "en"])("puts the calculated action before the figure and opens its real editor (%s)", locale => {
+    const { container } = render(<ResultActionCard toolId="5-3" locale={locale} headline="Result" analysisBasis={false}
+      stats={[{ label: "Outcome", value: "12", emphasis: "primary" }]}
+      decisionPrefill={{ action: "Review campaign A", reviewQuestion: "Check spend next week" }}
+      points={[{ text: "Review campaign A" }, { text: "Observed evidence" }]}
+      coreFigure={<figure data-testid="core-figure">Actual figure</figure>} />);
+    const action = container.querySelector(".result-next-action");
+    expect(action.compareDocumentPosition(screen.getByTestId("core-figure")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector(".result-action-card__points").textContent).toBe("Observed evidence");
+    fireEvent.click(within(action).getByRole("button"));
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
   it("keeps evidence in downstream findings when its screen presentation changes", () => {

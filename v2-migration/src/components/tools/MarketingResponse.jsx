@@ -47,11 +47,11 @@ import { mmmControlFitRows } from "@/utils/mmmControlContract";
 import MmmControlFitTable from "@/components/tools/MmmControlFitTable";
 import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
-import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
+import ReportContext from "@/components/ds/ReportContext";
 import PillGroup from "@/components/ds/PillGroup";
 import ForecastBudgetControls from "./ForecastBudgetControls";
 import FixedRateNote from "@/components/ds/FixedRateNote";
-import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact, fmtCurrency } from "@/utils/format";
+import { CURRENCY_SYMBOLS, USD_KRW_RATE, convertCurrency, fmtCompact, fmtCurrency, isCurrencyConverted, sourceCurrencyOf } from "@/utils/format";
 import { allocateFixedMmmGroupTotals, buildMmmAggregateMediaPanel, buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
 import { resolveResponseStage } from "@/lib/responseStage";
@@ -3463,8 +3463,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 borderRadius: "12px", padding: "11px 14px", cursor: "pointer", transition: "all .15s",
               }}
             >
-              <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: ".04em", color: on ? "#adc6ff" : "var(--text-2)" }}>{d.no}</div>
-              <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)", marginTop: "1px" }}>{d.icon} {d.title}</div>
+              <div style={{ fontSize: "var(--fs-xs)", fontWeight: 600, letterSpacing: ".04em", color: on ? "#adc6ff" : "var(--text-2)" }}>{d.no}</div>
+              <div style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)", marginTop: "1px" }}>{d.icon} {d.title}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-2)", marginTop: "2px", lineHeight: 1.35 }}>{d.desc}</div>
             </button>
           );
@@ -3861,11 +3861,103 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (packageStatusTimerRef.current) clearTimeout(packageStatusTimerRef.current);
     packageStatusTimerRef.current = setTimeout(() => setPackageDownloadStatus("idle"), 2500);
   };
+  const packageButton = mmm && !mmm.empty ? (
+    <>
+      <button type="button" className={`ab-pill response-package-button ${packageDownloadStatus}`} onClick={handlePackageDownload}>
+        {packageDownloadStatus === "done"
+          ? tx("✓ 저장됨", "✓ Saved")
+          : packageDownloadStatus === "error"
+            ? tx("다시 시도", "Try again")
+            : tx("분석 패키지", "Analysis package")}
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {packageDownloadStatus === "done" ? tx("분석 패키지 저장이 시작되었습니다.", "The analysis package download has started.") : packageDownloadStatus === "error" ? tx("분석 패키지를 저장하지 못했습니다.", "The analysis package could not be saved.") : ""}
+      </span>
+    </>
+  ) : null;
+  // 단독 도구에서 고를 것이 없는 상단 막대(타깃 하나·플랫폼·나눠보기 없음·기여 화면 아님)는
+  // 따로 두지 않는다 — 타깃은 맥락 줄이 말하고 분석 패키지는 그 줄 옆에 둔다(§1.1c 4단계).
+  const hasScopeChoices = availTargets.length > 1 || platformTags.length > 0 || Boolean(segmentSel && segmentSel.values.length > 0);
+  const showControlBar = !isolated || hasScopeChoices;
+  // 기여(MMM) 화면의 표시 기간·모델 선택은 분석 조건이다. 단독 도구에서는 결과 위 맥락 줄의
+  // "조건 바꾸기" 창으로 옮기고(§1.1c 4단계), 허브 화면에서는 막대에 그대로 둔다. 같은 노드를 한 곳에만 그린다.
+  const mmmConditionsInline = !isolated;
+  const mmmPeriodControl = contributionFilterDates.length > 0 && stage === "mmm" ? (
+    <div className="mmm-date-range">
+      <span>{tx("표시 기간", "View period")}</span>
+      <IsoDateInput locale={locale} value={contributionViewStart || contributionFilterDates[0]?.start || ""} min={contributionFilterDates[0]?.start} max={contributionFilterDates.at(-1)?.start} step="7" onChange={(event) => {
+        const nextStart = weekBoundaryDate(event.target.value, mmmWeekStart, "start") || "";
+        setContributionViewStart(nextStart);
+        if (contributionViewEnd && nextStart && nextStart > contributionViewEnd) setContributionViewEnd("");
+      }} aria-label={tx("기여 표시 시작일", "Contribution view start date")} title={tx(`${mmmWeekStart === "monday" ? "월요일" : "일요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Mondays" : "Sundays"} are accepted.`)} />
+      <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>~</span>
+      <IsoDateInput locale={locale} value={contributionViewEnd || contributionFilterDates.at(-1)?.end || ""} min={contributionFilterDates[0]?.end} max={contributionFilterDates.at(-1)?.end} step="7" onChange={(event) => {
+        const nextEnd = weekBoundaryDate(event.target.value, mmmWeekStart, "end") || "";
+        setContributionViewEnd(nextEnd);
+        if (contributionViewStart && nextEnd && nextEnd < contributionViewStart) setContributionViewStart("");
+      }} aria-label={tx("기여 표시 종료일", "Contribution view end date")} title={tx(`${mmmWeekStart === "monday" ? "일요일" : "토요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Sundays" : "Saturdays"} are accepted.`)} />
+      {(contributionViewStart || contributionViewEnd) && <button className="ab-pill" onClick={() => { setContributionViewStart(""); setContributionViewEnd(""); }}>{tx("전체", "All")}</button>}
+      <HelpTip label={tx("표시 기간 필터 설명", "About the date filter")}>{tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")}</HelpTip>
+    </div>
+  ) : null;
+  const mmmModelControls = (
+    <>
+      {stage === "mmm" && mmm && !mmm.empty && (
+        <div className="ab-pillgroup" style={{ margin: 0 }}>
+          <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
+          <span className="mmm-controls__model-name">{tx("Bayesian + WebR 자동 비교", "Bayesian + WebR auto comparison")}</span>
+        </div>
+      )}
+      {/* T1: Bayesian 모드 정보 prior 토글 + 적합도 신뢰 칩 (모델 차이 비교) */}
+      {stage === "mmm" && mmm && !mmm.empty && mmmMode === "bayesian" && (
+        <PillGroup
+          style={{ margin: 0 }}
+          label={<>{tx("정보 prior", "Informative prior")} ⓘ</>}
+          labelTitle={tx(
+            "지출점유 기반 약정보 prior입니다. 관측이 약한 채널을 지출비중 쪽으로 수축하고, 데이터가 충분하면 likelihood가 지배합니다. 실험·국가 prior와 병합됩니다. 인과·증분 효과 보장이 아닙니다.",
+            "A spend-share weakly-informative prior. It shrinks weakly-observed channels toward their spend share; with enough data the likelihood dominates. It merges with experiment/country priors. Not causal or incremental proof.",
+          )}
+          value={bayesianUsePrior ? "on" : "off"}
+          onChange={(next) => {
+            const wantPrior = next === "on";
+            if (wantPrior !== bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(wantPrior));
+          }}
+          options={[
+            { value: "on", label: tx("켜기", "On") },
+            { value: "off", label: tx("끄기 (평면 OLS)", "Off (flat OLS)") },
+          ]}
+          extra={mmm.health && (() => {
+            const r2 = Number(mmm.health.r2);
+            const wmape = Number(mmm.health.wmape);
+            const cov = Number(mmm.health.coverage90);
+            const high = r2 >= 0.8 && wmape <= 15 && cov >= 0.8 && cov <= 0.98;
+            const low = r2 < 0.5 || wmape > 35 || cov < 0.7;
+            const level = high ? "high" : low ? "low" : "med";
+            const label = high ? tx("높음", "High") : low ? tx("낮음", "Low") : tx("보통", "Med");
+            const color = high ? "var(--success, #5ad19a)" : low ? "var(--danger, #f0917e)" : MUTED;
+            return (
+              <span
+                className="ab-pill"
+                style={{ cursor: "help", borderColor: color, color }}
+                title={tx(
+                  `적합도 신뢰: R²=${isFinite(r2) ? r2.toFixed(2) : "—"} · WMAPE=${isFinite(wmape) ? wmape.toFixed(1) + "%" : "—"} · 90% 밴드 커버리지=${isFinite(cov) ? (cov * 100).toFixed(0) + "%" : "—"}. 모델이 과거를 얼마나 잘 설명하는지일 뿐, 인과·증분 보장이 아닙니다(확정은 홀드아웃 5-15 전용).`,
+                  `Fit confidence: R²=${isFinite(r2) ? r2.toFixed(2) : "—"} · WMAPE=${isFinite(wmape) ? wmape.toFixed(1) + "%" : "—"} · 90% band coverage=${isFinite(cov) ? (cov * 100).toFixed(0) + "%" : "—"}. This reflects how well the model explains the past, not causal or incremental proof (confirm via holdout, 5-15).`,
+                )}
+              >{tx("적합도", "Fit")}: {label}</span>
+            );
+          })()}
+        />
+      )}
+    </>
+  );
+  const mmmInDialog = !mmmConditionsInline && stage === "mmm" && Boolean(mmm && !mmm.empty);
+  const hasReportDialog = Boolean(isDemo || selectedSourceCurrency) || mmmInDialog;
   const controlBar = () => (
     <div className={`analysis-local-controls__inner ${stage === "mmm" ? "mmm-controls" : ""}`}>
-      <span className="analysis-local-controls__label">
+      {/* 단독 도구 화면에서는 제목이 이미 분석 이름을 말한다 — 같은 이름을 결론 위에 한 번 더 두지 않는다. */}
+      {!isolated && <span className="analysis-local-controls__label">
         {tx("마케팅 반응 분석", "Marketing Response Analysis")} <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
-      </span>
+      </span>}
       <div className={stage === "mmm" ? "mmm-controls__scope" : undefined} style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         {availTargets.length === 1 && (
           <div className="response-target-context">
@@ -3923,86 +4015,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             extra={segmentSel.truncated ? <span style={{ fontSize: "var(--fs-xs)", color: "var(--warning)" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span> : null}
           />
         )}
-        {contributionFilterDates.length > 0 && stage === "mmm" && (
-          <div className="mmm-date-range">
-            <span>{tx("표시 기간", "View period")}</span>
-            <IsoDateInput locale={locale} value={contributionViewStart || contributionFilterDates[0]?.start || ""} min={contributionFilterDates[0]?.start} max={contributionFilterDates.at(-1)?.start} step="7" onChange={(event) => {
-              const nextStart = weekBoundaryDate(event.target.value, mmmWeekStart, "start") || "";
-              setContributionViewStart(nextStart);
-              if (contributionViewEnd && nextStart && nextStart > contributionViewEnd) setContributionViewEnd("");
-            }} aria-label={tx("기여 표시 시작일", "Contribution view start date")} title={tx(`${mmmWeekStart === "monday" ? "월요일" : "일요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Mondays" : "Sundays"} are accepted.`)} />
-            <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>~</span>
-            <IsoDateInput locale={locale} value={contributionViewEnd || contributionFilterDates.at(-1)?.end || ""} min={contributionFilterDates[0]?.end} max={contributionFilterDates.at(-1)?.end} step="7" onChange={(event) => {
-              const nextEnd = weekBoundaryDate(event.target.value, mmmWeekStart, "end") || "";
-              setContributionViewEnd(nextEnd);
-              if (contributionViewStart && nextEnd && nextEnd < contributionViewStart) setContributionViewStart("");
-            }} aria-label={tx("기여 표시 종료일", "Contribution view end date")} title={tx(`${mmmWeekStart === "monday" ? "일요일" : "토요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Sundays" : "Saturdays"} are accepted.`)} />
-            {(contributionViewStart || contributionViewEnd) && <button className="ab-pill" onClick={() => { setContributionViewStart(""); setContributionViewEnd(""); }}>{tx("전체", "All")}</button>}
-            <HelpTip label={tx("표시 기간 필터 설명", "About the date filter")}>{tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")}</HelpTip>
-          </div>
-        )}
+        {mmmConditionsInline && mmmPeriodControl}
       </div>
       <div className={stage === "mmm" ? "mmm-controls__model" : undefined} style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        {stage === "mmm" && mmm && !mmm.empty && (
-          <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-            <span className="mmm-controls__model-name">{tx("Bayesian + WebR 자동 비교", "Bayesian + WebR auto comparison")}</span>
-          </div>
-        )}
-        {/* T1: Bayesian 모드 정보 prior 토글 + 적합도 신뢰 칩 (모델 차이 비교) */}
-        {stage === "mmm" && mmm && !mmm.empty && mmmMode === "bayesian" && (
-          <PillGroup
-            style={{ margin: 0 }}
-            label={<>{tx("정보 prior", "Informative prior")} ⓘ</>}
-            labelTitle={tx(
-              "지출점유 기반 약정보 prior입니다. 관측이 약한 채널을 지출비중 쪽으로 수축하고, 데이터가 충분하면 likelihood가 지배합니다. 실험·국가 prior와 병합됩니다. 인과·증분 효과 보장이 아닙니다.",
-              "A spend-share weakly-informative prior. It shrinks weakly-observed channels toward their spend share; with enough data the likelihood dominates. It merges with experiment/country priors. Not causal or incremental proof.",
-            )}
-            value={bayesianUsePrior ? "on" : "off"}
-            onChange={(next) => {
-              const wantPrior = next === "on";
-              if (wantPrior !== bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(wantPrior));
-            }}
-            options={[
-              { value: "on", label: tx("켜기", "On") },
-              { value: "off", label: tx("끄기 (평면 OLS)", "Off (flat OLS)") },
-            ]}
-            extra={mmm.health && (() => {
-              const r2 = Number(mmm.health.r2);
-              const wmape = Number(mmm.health.wmape);
-              const cov = Number(mmm.health.coverage90);
-              const high = r2 >= 0.8 && wmape <= 15 && cov >= 0.8 && cov <= 0.98;
-              const low = r2 < 0.5 || wmape > 35 || cov < 0.7;
-              const level = high ? "high" : low ? "low" : "med";
-              const label = high ? tx("높음", "High") : low ? tx("낮음", "Low") : tx("보통", "Med");
-              const color = high ? "var(--success, #5ad19a)" : low ? "var(--danger, #f0917e)" : MUTED;
-              return (
-                <span
-                  className="ab-pill"
-                  style={{ cursor: "help", borderColor: color, color }}
-                  title={tx(
-                    `적합도 신뢰: R²=${isFinite(r2) ? r2.toFixed(2) : "—"} · WMAPE=${isFinite(wmape) ? wmape.toFixed(1) + "%" : "—"} · 90% 밴드 커버리지=${isFinite(cov) ? (cov * 100).toFixed(0) + "%" : "—"}. 모델이 과거를 얼마나 잘 설명하는지일 뿐, 인과·증분 보장이 아닙니다(확정은 홀드아웃 5-15 전용).`,
-                    `Fit confidence: R²=${isFinite(r2) ? r2.toFixed(2) : "—"} · WMAPE=${isFinite(wmape) ? wmape.toFixed(1) + "%" : "—"} · 90% band coverage=${isFinite(cov) ? (cov * 100).toFixed(0) + "%" : "—"}. This reflects how well the model explains the past, not causal or incremental proof (confirm via holdout, 5-15).`,
-                  )}
-                >{tx("적합도", "Fit")}: {label}</span>
-              );
-            })()}
-          />
-        )}
-        {mmm && !mmm.empty && (
-          <>
-            <button type="button" className={`ab-pill response-package-button ${packageDownloadStatus}`} onClick={handlePackageDownload}>
-              {packageDownloadStatus === "done"
-                ? tx("✓ 저장됨", "✓ Saved")
-                : packageDownloadStatus === "error"
-                  ? tx("다시 시도", "Try again")
-                  : tx("⬇ 분석 패키지", "⬇ Analysis package")}
-            </button>
-            <span className="sr-only" role="status" aria-live="polite">
-              {packageDownloadStatus === "done" ? tx("분석 패키지 저장이 시작되었습니다.", "The analysis package download has started.") : packageDownloadStatus === "error" ? tx("분석 패키지를 저장하지 못했습니다.", "The analysis package could not be saved.") : ""}
-            </span>
-          </>
-        )}
+        {mmmConditionsInline && mmmModelControls}
+        {packageButton}
       </div>
     </div>
   );
@@ -4116,12 +4133,32 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       {/* 브레드크럼(타깃·플랫폼 토글)+통화 토글 — 페이지 맨 위 sticky(스테이지 카드보다
           위, top:48px 고정)로 이동. 예전엔 스테이지 카드·데모 배너 아래 본문에 있어
           "제일 위로 가야 한다"는 요청 반영(§유저 리포트, 스크롤 시 안 가려짐도 겸함). */}
-      {(!panelEmpty || availTargets.length > 0) && (
+      {showControlBar && (!panelEmpty || availTargets.length > 0) && (
         <div className={`page-sticky-bar ${stage === "mmm" ? "mmm-controls-panel" : ""}`}>
           <div className="page-sticky-row1">{controlBar()}</div>
-          {(isDemo || selectedSourceCurrency) && <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} currencyMode="convert" showBasis={stage !== "mmm"} /></AnalysisControlBar>}
         </div>
       )}
+      {/* 결과가 나오면 데이터·표시 기준은 맥락 한 줄 + 조건 바꾸기 창으로 접는다(product-ssot §1.1c 4단계).
+          환산이 일어나면 고정 환율 고지는 창 안이 아니라 이 줄에 남긴다(AGENTS §7 고정 상수 환산). */}
+      <ReportContext locale={locale} actions={showControlBar ? null : packageButton} dialogTitle={tx("데이터와 표시 기준", "Data and display settings")} parts={[
+        { text: isDemo ? tx("예시 데이터", "Sample data") : (csvData?.fileName || tx("업로드한 데이터", "Uploaded data")), emphasis: true },
+        { text: tx(`${(csvData?.raw?.length || 0).toLocaleString()}행`, `${(csvData?.raw?.length || 0).toLocaleString()} rows`) },
+        ...(!showControlBar && effectiveTarget ? [{ text: tx(`타깃 ${targetLabel(effectiveTarget)}`, `target ${targetLabel(effectiveTarget)}`) }] : []),
+        ...(mmmInDialog && mmmPeriodControl ? [{ text: contributionViewStart || contributionViewEnd
+          ? tx(`표시 ${contributionViewStart || contributionFilterDates[0]?.start} ~ ${contributionViewEnd || contributionFilterDates.at(-1)?.end}`, `showing ${contributionViewStart || contributionFilterDates[0]?.start} to ${contributionViewEnd || contributionFilterDates.at(-1)?.end}`)
+          : tx("전체 기간 표시", "all weeks shown") }] : []),
+        ...(mmmInDialog && mmmMode === "bayesian" ? [{ text: bayesianUsePrior ? tx("정보 prior 켜짐", "informative prior on") : tx("정보 prior 꺼짐", "informative prior off") }] : []),
+        // 표시 통화와 환산 고지는 한 덩어리로 — 환산이 일어나면 고정 환율을 이 줄에 남긴다(창 안에 숨기지 않는다).
+        ...((isDemo || selectedSourceCurrency) ? [{ text: isCurrencyConverted(sourceCurrencyOf(csvData), displayCurrency)
+          ? tx(`${displayCurrency} 표시(고정 환율 ₩${USD_KRW_RATE.toLocaleString("en-US")}/$1 환산)`, `${displayCurrency} at a fixed ₩${USD_KRW_RATE.toLocaleString("en-US")}/$1`)
+          : tx(`${displayCurrency} 표시`, `${displayCurrency}`) }] : []),
+      ]}>
+        {hasReportDialog ? <>
+          {(isDemo || selectedSourceCurrency) && <BasisCurrencyToggleBar locale={locale} currencyMode="convert" showBasis={stage !== "mmm"} />}
+          {mmmInDialog && mmmPeriodControl}
+          {mmmInDialog && <div className="mmm-controls__model">{mmmModelControls}</div>}
+        </> : null}
+      </ReportContext>
       {renderTabs()}
       {isObservationalComparison && <ComparisonConditions conditions={comparisonConditions} locale={locale} />}
       {(() => {
@@ -4512,7 +4549,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   const c = BADGE_TONE[tone];
                   return (
                     <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
-                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
+                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                       {list.length ? list.map((r) => (
                         <button type="button" key={r.key} onClick={() => setCannibChannel(r.key)} aria-pressed={r.key === activeCannibCh}
                           className="analysis-choice-card"
@@ -4589,7 +4626,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   return (
                     <button onClick={() => setCannibQuestion(key)} style={{ background: cannibQuestion === key ? "rgba(122,162,247,0.10)" : "var(--bg-2)", border: `1px solid ${cannibQuestion === key ? "rgba(122,162,247,0.65)" : "var(--border)"}`, borderRadius: "10px", padding: "12px 14px", textAlign: "left", color: "inherit", cursor: "pointer", minHeight: "142px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{num} {q}</div>
-                      <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: vv.c, margin: "8px 0 4px" }}>{vv.t}</div>
+                      <div style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: vv.c, margin: "8px 0 4px" }}>{vv.t}</div>
                       <div style={{ fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>{help}</div>
                       <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tx("통계 원값(전문가용)", "Raw statistics (for specialists)")}>{tech}</div>
                     </button>
@@ -4635,7 +4672,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       {signal("lag", "④", tx("광고비가 몇 주 뒤 성과를 끌어내리나?", "Does spend pull outcome down weeks later?"), tx("광고 충격 뒤의 주별·누적 반응을 봅니다.", "Shows weekly and cumulative response after a spend shock."), cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN", g ? tx(`1~${g.spend_to_organic.lag}주 시차 함께 검정 · p=${g.spend_to_organic.p}`, `Lags 1–${g.spend_to_organic.lag}wk tested jointly · p=${g.spend_to_organic.p}`) : tx("데이터 부족", "Insufficient data"))}
                     </div>
                     <div style={{ marginTop: "12px" }}>
-                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)", marginBottom: "3px" }}>
+                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", marginBottom: "3px" }}>
                         {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
                       </div>
                       <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? (activeIrf?.cumLo
@@ -4663,11 +4700,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
                     <button className="ab-pill" title={tx("채널 × 3-state 투표 + 게이트·탄력성·커버리지·그랜저 → CSV", "Channel × 3-state vote + gate/elasticity/coverage/Granger → CSV")}
                       onClick={() => requirePaidExport({ locale }) && cannib && csvDownload(`mmm_cannib_${mmm.target}_${_today()}.csv`, buildCannibCsv(cannib, mmm.effects, mmm.target))}>
-                      {tx("⬇ 채널별 카니발 CSV", "⬇ Per-channel cannibalization CSV")}
+                      {tx("채널별 카니발 CSV", "Per-channel cannibalization CSV")}
                     </button>
                     <button className="ab-pill" title={tx("주별 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분 원자료", "Weekly target/channel ln(1+spend), detrended residuals, first-difference raw data")}
                       onClick={() => requirePaidExport({ locale }) && csvDownload(`mmm_cannib_series_${mmm.target}_${_today()}.csv`, buildCannibSeriesCsv(mmm.panel, mmm.target))}>
-                      {tx("⬇ 검정 원자료 CSV", "⬇ Test raw-data CSV")}
+                      {tx("검정 원자료 CSV", "Test raw-data CSV")}
                     </button>
                   </div>
 
@@ -5326,8 +5363,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {decisionCandidates.map((s, i) => (
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: !isRankingAmbiguous && i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: !isRankingAmbiguous && i === 0 ? "var(--primary)" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
-                        <span style={{ flex: 1, fontSize: "var(--fs-base)", fontWeight: !isRankingAmbiguous && i === 0 ? 700 : 400 }}>{s.label}</span>
+                        <span style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: !isRankingAmbiguous && i === 0 ? "var(--primary)" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
+                        <span style={{ flex: 1, fontSize: "var(--fs-base)", fontWeight: !isRankingAmbiguous && i === 0 ? 600 : 400 }}>{s.label}</span>
                         <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--success)" }}>{targetValueLabel(s.curMarg, { sign: true })} <small style={{ color: MUTED, fontWeight: 400 }}>[{targetValueLabel(s.marginalCi[0])} ~ {targetValueLabel(s.marginalCi[1])}]</small></span>
                         <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{spendReferenceLabel} {spendLabel(s.recentMean || 0)}/주</span>
                       </div>
@@ -5472,7 +5509,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "var(--surface-container-lowest)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                         <div>
-                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tx("집행 시점 비교", "Spend timing overlap")}</div>
+                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{tx("집행 시점 비교", "Spend timing overlap")}</div>
                           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0", lineHeight: 1.45 }}>{tx(
                             "같이 켜진 브랜드·퍼포먼스 채널을 찾습니다. 채널별 절대 규모 대신 각자의 최대 집행 대비 강도를 맞춰 비교합니다.",
                             "Find channels that were active together. Compare intensity relative to each channel's own peak, not absolute scale.",
@@ -5492,7 +5529,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <Card style={{ marginTop: "10px", borderColor: "rgba(245,158,11,.45)", background: "rgba(245,158,11,.045)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                         <div>
-                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>⚠ {tx("함께 움직이는 채널 입력값", "Channel inputs moving together")}</div>
+                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>⚠ {tx("함께 움직이는 채널 입력값", "Channel inputs moving together")}</div>
                           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0", lineHeight: 1.5 }}>
                             {tx(`${selectedCollinearPair.series[0].label} · ${selectedCollinearPair.series[1].label}의 상관은 ${selectedCollinearPair.corr.toFixed(2)}입니다. 두 값을 따로 나눠 기여를 정하기 어려울 수 있습니다.`, `${selectedCollinearPair.series[0].label} · ${selectedCollinearPair.series[1].label} have correlation ${selectedCollinearPair.corr.toFixed(2)}. Separating their contributions can be difficult.`)}
                           </p>
@@ -5536,7 +5573,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             } }).catch(() => {});
                           }}
                         >
-                          {tx("⬇ 차트 데이터 CSV", "⬇ Chart data CSV")}
+                          {tx("차트 데이터 CSV", "Chart data CSV")}
                         </button>
                       </div>
                       <p className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "6px", lineHeight: 1.5 }}>
@@ -5639,7 +5676,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={s.week}>
                                       <td>
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                                          {noteNum > 0 && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", borderRadius: "50%", background: "var(--warning)", color: "var(--on-warning)", fontSize: "var(--fs-xs)", fontWeight: 700, flexShrink: 0 }}>{noteNum}</span>}
+                                          {noteNum > 0 && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", borderRadius: "50%", background: "var(--warning)", color: "var(--on-warning)", fontSize: "var(--fs-xs)", fontWeight: 600, flexShrink: 0 }}>{noteNum}</span>}
                                           <b style={{ fontSize: "var(--fs-xs)" }}>{lbl != null ? String(lbl) : tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</b>
                                         </span>
                                         {lbl != null && <span style={{ fontSize: "var(--fs-xs)", color: MUTED, display: "block" }}>{tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</span>}
@@ -6001,7 +6038,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             <thead><tr><th>{tx("학습 기간", "Training window")}</th><th>{tx("검증 선택 경로", "Validated route")}</th><th>{tx("선택용 과거 OOS", "Selection-history OOS")}</th><th>{tx("전체 라이브 OOS", "Full live OOS")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th></tr></thead>
                             <tbody>
                               {(forecast.structuralLookbackCandidates || []).map((candidate) => (
-                                <tr key={candidate.trainingWindow} style={candidate.trainingWindow === forecast.structuralSelectedSpec?.trainingWindow ? { fontWeight: 700 } : undefined}>
+                                <tr key={candidate.trainingWindow} style={candidate.trainingWindow === forecast.structuralSelectedSpec?.trainingWindow ? { fontWeight: 600 } : undefined}>
                                   <td>{candidate.trainingWindow}{tx("주", " weeks")}</td>
                                   <td>{candidate.available ? candidate.route === "direct-total" ? "Direct Total" : "Android + iOS" : tx("근거 부족", "Insufficient evidence")}</td>
                                   <td className="tnum">{candidate.available ? forecastPct(candidate.developmentPooledWmape) : "—"}</td>
@@ -6143,7 +6180,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={`${metric.platform}-${metric.component}`}>
                                       <td>{metric.platform}</td>
                                       <td>{{ organic: "Organic", paid: "Paid", total: "Total" }[metric.component]}</td>
-                                      <td className="tnum" style={metric.passed ? { color: "var(--success)" } : { color: "var(--danger)", fontWeight: 700 }}>
+                                      <td className="tnum" style={metric.passed ? { color: "var(--success)" } : { color: "var(--danger)", fontWeight: 600 }}>
                                         {forecastPct(metric.wmape, 1)} · {metric.passed ? tx("통과", "Pass") : tx("미달", "Fail")}
                                       </td>
                                     </tr>
@@ -6450,7 +6487,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             <p className="muted" style={{ margin: "0 0 8px", fontSize: "var(--fs-xs)" }}>{tx("최소 이력·독립 검증 조건을 지키면서 전체 이력보다 충분히 나은 기간은 찾지 못했습니다. 임의로 과거를 버리지는 않습니다.", "No shorter period improved enough while meeting minimum-history and independent-validation rules. Earlier history will not be removed arbitrarily.")}</p>
                           )}
                           {!regimeWindowScan.calculationFailed && <div className="table-wrap"><table className="data" style={{ fontSize: "var(--fs-xs)" }}><thead><tr><th>{tx("학습 시작", "Training starts")}</th><th>{tx("학습 기간", "Training period")}</th><th>{tx("선택용 OOS", "Development OOS")}</th><th>{tx(`봉인 ${fcHorizon}주 감사`, `Sealed ${fcHorizon}-week audit`)}</th><th>{tx("적격", "Eligible")}</th></tr></thead><tbody>
-                            {regimeWindowScan.candidates.map((candidate) => <tr key={candidate.trainingWeeks} style={candidate.trainingWeeks === regimeWindowScan.recommended?.trainingWeeks ? { fontWeight: 700 } : undefined}><td>{candidate.startLabel || "—"}</td><td>{candidate.trainingWeeks}{tx("주", " wk")}</td><td className="tnum">{candidate.developmentWmape == null ? "—" : `${candidate.developmentWmape.toFixed(1)}%`}</td><td className="tnum">{candidate.latestWmape == null ? "—" : `${candidate.latestWmape.toFixed(1)}%`}</td><td>{candidate.decisionEligible ? tx("통과", "Pass") : tx("보류", "Hold")}</td></tr>)}
+                            {regimeWindowScan.candidates.map((candidate) => <tr key={candidate.trainingWeeks} style={candidate.trainingWeeks === regimeWindowScan.recommended?.trainingWeeks ? { fontWeight: 600 } : undefined}><td>{candidate.startLabel || "—"}</td><td>{candidate.trainingWeeks}{tx("주", " wk")}</td><td className="tnum">{candidate.developmentWmape == null ? "—" : `${candidate.developmentWmape.toFixed(1)}%`}</td><td className="tnum">{candidate.latestWmape == null ? "—" : `${candidate.latestWmape.toFixed(1)}%`}</td><td>{candidate.decisionEligible ? tx("통과", "Pass") : tx("보류", "Hold")}</td></tr>)}
                           </tbody></table></div>}
                         </div>
                       )}
@@ -6542,17 +6579,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     >
                       {forecast.isStructural
                         ? forecast.structuralEligible
-                          ? tx("⬇ 예측 분해 CSV (Organic·Perf)", "⬇ Forecast decomposition CSV (Organic · Perf)")
+                          ? tx("예측 분해 CSV (Organic·Perf)", "Forecast decomposition CSV (Organic · Perf)")
                           : forecast.structuralShortTermEligible
-                            ? tx(`⬇ 단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `⬇ ${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
-                            : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
+                            ? tx(`단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
+                            : tx("OOS 진단 CSV (예측 사용 불가)", "OOS diagnostic CSV (forecast unavailable)")
                         : forecast.isPaidOrganicSplit
                           ? forecastHasExactFormulaModels(forecast)
-                            ? tx("⬇ 살아있는 예측 CSV (OS·Cost 수식)", "⬇ Live forecast CSV (OS · Cost formulas)")
-                            : tx("⬇ 예측 분해 CSV (OS·Organic·Paid)", "⬇ Forecast decomposition CSV (OS · Organic · Paid)")
+                            ? tx("살아있는 예측 CSV (OS·Cost 수식)", "Live forecast CSV (OS · Cost formulas)")
+                            : tx("예측 분해 CSV (OS·Organic·Paid)", "Forecast decomposition CSV (OS · Organic · Paid)")
                           : forecast.isAnnualAnalog
-                            ? tx("⬇ 자동 선택 예측 CSV (고정 스냅샷)", "⬇ Auto-selected forecast CSV (fixed snapshot)")
-                          : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
+                            ? tx("자동 선택 예측 CSV (고정 스냅샷)", "Auto-selected forecast CSV (fixed snapshot)")
+                          : tx("살아있는 예측 CSV (수식·실측·예측)", "Live forecast CSV (formulas/actual/forecast)")}
                     </button>
                   </div>
                   <div className={`forecast-component-grid ${forecast.steps?.length ? "" : "forecast-component-grid--no-regimes"}`}>

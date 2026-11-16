@@ -72,7 +72,7 @@ updated: "2026-10-14"
 |---|---|---|---|
 | 일별 비용·전환 | 지금 어디가 흔들렸나 | [운영 대시보드](/dashboard) | 채널·기간 범위 좁히기 |
 | 전후 기간의 캠페인 성과 | 왜 CPA·ROAS가 바뀌었나 | [성과 변동 분해](/tools/campaign-variance) | 물량·효율·믹스 구분 |
-| 채널별 지출이 여러 수준으로 변한 일별 데이터 | 어디까지 증액해도 되나 | [포화도 진단](/tools/campaign-saturation) | [예산 배분](/tools/budget-allocation) |
+| 채널별 지출이 여러 수준으로 변한 일별 데이터 | 어디까지 증액해도 되나 | [증액 여력 진단](/tools/budget-allocation?view=headroom) | [예산 배분](/tools/budget-allocation) |
 | 대조군·실험군 집계 | 어느 안이 이겼나 | [A/B 실험 분석](/tools/experiment-analysis) | 승자 적용 후 재측정 |
 | 광고를 끈 지역·기간 또는 대조군 | 광고가 순증을 만들었나 | [증분 분석](/tools/incrementality) | 순증 기준 예산 판단 |
 | 52주 이상 주차별 채널 지출·성과 | 장기 채널 반응은 어떤가 | [VIF 진단](/tools/vif-multicollinearity) | 공선성 통과 후 MMM |

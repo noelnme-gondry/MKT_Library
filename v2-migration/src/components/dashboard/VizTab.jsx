@@ -10,7 +10,7 @@ import { getMonFilteredRows, aggregateByKey, buildRetentionCurve, calculateKPIs,
 import { useRouter } from "next/navigation";
 import { idToPath } from "@/lib/routeMap";
 import { sourceCurrencyOf } from "@/utils/format";
-import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
+import { CHART_FONT_STACK, CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
@@ -22,6 +22,43 @@ import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
 import { alignEventsToAxis } from "@/utils/storeEvents";
 import FigurePngButton from "@/components/ds/FigurePngButton";
+
+// 한 차트에 강조색은 하나(unslop 감사, 2026-11-06): 짚어야 할 계열만 주색을 쓰고 나머지는
+// 비교색(회색)의 단계로 낮춘다. 같은 계열의 막대를 막대마다 다른 색으로 칠하지 않는다.
+const QUIET_ALPHAS = ["", "CC", "A6", "8C", "73", "5C"];
+const quietColor = (index) => CHART_THEME.comparison + QUIET_ALPHAS[index % QUIET_ALPHAS.length];
+
+// 비중 막대 끝에 "비중 · 금액"을 직접 적는다 — 범례·색 대조 없이 값이 막대 옆에 있다.
+const shareValueLabels = {
+  id: "dashboardShareLabels",
+  afterDatasetsDraw(chart, _args, options) {
+    const meta = chart.getDatasetMeta(0);
+    const { ctx } = chart;
+    ctx.save();
+    ctx.font = `12px ${CHART_FONT_STACK}`;
+    ctx.fillStyle = CHART_THEME.text;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    meta.data.forEach((bar, index) => {
+      const label = options?.labels?.[index];
+      if (!label) return;
+      const width = typeof ctx.measureText === "function" ? ctx.measureText(label).width : label.length * 7;
+      // 막대 끝 바깥에 둘 자리가 없으면(폰) 막대 안쪽 끝에 대비색으로 적는다.
+      const fitsOutside = bar.x + 8 + width <= chart.width - 2;
+      const fitsInside = bar.x - bar.base > width + 16;
+      if (!fitsOutside && fitsInside) {
+        ctx.textAlign = "right";
+        ctx.fillStyle = getCssVar("--on-primary") || "#ffffff";
+        ctx.fillText(label, bar.x - 8, bar.y);
+        ctx.textAlign = "left";
+        ctx.fillStyle = CHART_THEME.text;
+      } else {
+        ctx.fillText(label, bar.x + 8, bar.y);
+      }
+    });
+    ctx.restore();
+  },
+};
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
@@ -174,9 +211,9 @@ const VIZ_DASH_COPY_EN = {
     tsTitle: (basis) => `Daily Cost & ${basis === "actions" ? "Actions" : "Installs"}`,
     tsSub: (basis) => `Line · left: cost / right: ${basis === "actions" ? "actions" : "installs"}`,
     donutTitle: "Cost Share by Channel",
-    donutSub: "Donut · total cost",
+    donutSub: "Horizontal bar · share of total cost",
     cpiTitle: (acq) => `${acq} by Channel`,
-    cpiSub: (basis) => `Horizontal bar · cost / ${basis === "actions" ? "actions" : "installs"}`,
+    cpiSub: (basis) => `Horizontal bar · cost / ${basis === "actions" ? "actions" : "installs"} · highest channel highlighted`,
     kpiCostLabel: "Total Cost",
     kpiCostDelta: "Total cost",
     kpiCtrLabel: "CTR",
@@ -192,9 +229,9 @@ const VIZ_DASH_COPY_EN = {
     tsTitle: (basis) => `Daily Cost & ${basis === "actions" ? "Subscriptions" : "Visits"}`,
     tsSub: (basis) => `Line · left: cost / right: ${basis === "actions" ? "subscriptions" : "visits"}`,
     donutTitle: "Cost Share by Source",
-    donutSub: "Donut · total cost",
+    donutSub: "Horizontal bar · share of total cost",
     cpiTitle: (acq) => `${acq} by Source`,
-    cpiSub: (basis) => `Horizontal bar · cost / ${basis === "actions" ? "subscriptions" : "visits"}`,
+    cpiSub: (basis) => `Horizontal bar · cost / ${basis === "actions" ? "subscriptions" : "visits"} · highest source highlighted`,
     kpiCostLabel: "Total Cost",
     kpiCostDelta: "Total cost",
     kpiCtrLabel: "Engagement rate (CTR)",
@@ -441,16 +478,18 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
   // 차트 메타(plain const — React Compiler가 자동 메모이즈). 콘텐츠는 매출/결제 전제
   // 차트(퍼널·코호트 매출)를 제외하고 트래픽 차트 3종만 노출(§정직성).
   const chartMetaBase = [
-    { k: "ts", title: D.tsTitle(effBasis), sub: D.tsSub(effBasis), full: false },
-    { k: "donut", title: D.donutTitle, sub: D.donutSub, full: false },
-    { k: "cpi", title: D.cpiTitle(acqLabel), sub: D.cpiSub(effBasis), full: false },
-    { k: "funnel", title: T.funnelTitle, sub: effBasis === "actions" ? T.funnelSubActions : T.funnelSubInstalls, full: false },
-    { k: "cohort", title: T.cohortTitle, sub: T.cohortSub, full: true },
+    // size: 같은 크기 2×2 대신 시계열·퍼널은 넓게, 막대 목록(비중·단가)은 좁게(2026-11-06).
+    // 순서를 바꾸거나 숨겨도 빈칸이 생기지 않게 격자가 dense로 채운다(DashboardBoard.css).
+    { k: "ts", title: D.tsTitle(effBasis), sub: D.tsSub(effBasis), size: "wide" },
+    { k: "donut", title: D.donutTitle, sub: D.donutSub, size: "narrow" },
+    { k: "cpi", title: D.cpiTitle(acqLabel), sub: D.cpiSub(effBasis), size: "narrow" },
+    { k: "funnel", title: T.funnelTitle, sub: effBasis === "actions" ? T.funnelSubActions : T.funnelSubInstalls, size: "wide" },
+    { k: "cohort", title: T.cohortTitle, sub: T.cohortSub, size: "full" },
   ];
   const chartMeta = isContent ? chartMetaBase.filter((c) => ["ts", "donut", "cpi"].includes(c.k)) : chartMetaBase;
   // 커스텀 차트 메타를 기본 5종 뒤에 붙여 표시/순서 편집 대상에 포함.
   const customChartMetas = customChartDefs.map((def) => ({
-    k: def.id, custom: true, full: false,
+    k: def.id, custom: true, size: "half",
     title: def.name,
     sub: `${locale === "en" ? ({ bar: "Bar", line: "Line", scorecard: "Scorecard" })[def.type] || def.type : CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : locale === "en" ? `${dimLabelOf(def.dim)} · ${metricLabelOf(def.metric)}` : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
   }));
@@ -496,7 +535,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
       labels: dates,
       datasets: [
         { label: locale === "en" ? "Total" : "전체", data: valuesFor(null), borderColor: CHART_THEME.primary, backgroundColor: CHART_THEME.primary + "14", borderWidth: 2.5, pointRadius: 2, tension: 0.28, fill: false },
-        ...channels.slice(0, 6).map((channel, index) => ({ label: channel, data: valuesFor(channel), borderColor: CHART_THEME.series[index % CHART_THEME.series.length], borderWidth: 1.5, pointRadius: 0, tension: 0.28, fill: false })),
+        ...channels.slice(0, 6).map((channel, index) => ({ label: channel, data: valuesFor(channel), borderColor: quietColor(index), backgroundColor: quietColor(index), borderWidth: 1.5, pointRadius: 0, tension: 0.28, fill: false })),
       ],
     };
   }, [activeMetric, customMetrics, filteredRows, selectedCohort, effBasis, locale, metricValue]);
@@ -546,6 +585,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
   // 3. Chart Rendering Effect
   useEffect(() => {
     const instances = chartsRef.current;
+    const compactTick = (value) => Number(value).toLocaleString(locale, { notation: "compact", maximumFractionDigits: 1 });
 
     // Destroy existing charts + 삭제된 커스텀 차트의 stale 키 정리(다시 생성).
     Object.keys(instances).forEach((k) => {
@@ -576,8 +616,8 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
               label: trendOutcomeLabel,
               data: dailyAgg.map((d) => (effBasis === "actions" ? d.actions : d.installs)),
               yAxisID: "y1",
-              borderColor: CHART_THEME.secondary,
-              backgroundColor: CHART_THEME.secondary + "0D",
+              borderColor: CHART_THEME.comparison,
+              backgroundColor: CHART_THEME.comparison,
               tension: 0.3,
               fill: false,
               pointRadius: 0,
@@ -589,15 +629,26 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           ...chartCommonOpts(),
           plugins: { ...chartCommonOpts().plugins, eventMarkers: { events: dailyMarkerEvents } },
           scales: {
-            x: { ...chartCommonOpts().scales.x },
+            x: {
+              ...chartCommonOpts().scales.x,
+              ticks: {
+                ...chartCommonOpts().scales.x.ticks, autoSkipPadding: 24, maxTicksLimit: 3,
+                callback(value) {
+                  const label = this.getLabelForValue(value);
+                  return /^\d{4}-\d{2}-\d{2}$/.test(label) ? [label.slice(0, 4), label.slice(5)] : label;
+                },
+              },
+            },
             y: {
               ...chartCommonOpts().scales.y,
               position: "left",
-              title: { display: true, text: T.costLabel, color: CHART_THEME.muted, font: { size: 10 } },
+              ticks: { ...chartCommonOpts().scales.y.ticks, callback: compactTick },
+              title: { display: true, text: `${T.costLabel} (${dataCurrency})`, color: CHART_THEME.muted, font: { size: 10 } },
             },
             y1: {
               ...chartCommonOpts().scales.y,
               position: "right",
+              ticks: { ...chartCommonOpts().scales.y.ticks, callback: compactTick },
               title: { display: true, text: trendOutcomeLabel, color: CHART_THEME.muted, font: { size: 10 } },
               grid: { display: false },
             },
@@ -606,30 +657,58 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
       });
     }
 
-    // 2) Channel Donut Chart
+    // 2) 채널별 비용 비중 — 도넛 대신 한 색 가로 막대(2026-11-06). 조각 각도보다 막대 길이가
+    //    비교하기 쉽고, 비중·금액을 막대 끝에 직접 적어 범례와 색을 맞춰 볼 필요가 없다.
+    //    차트 키("donut")는 저장된 표시·순서 설정과 맞물려 있어 그대로 둔다.
     if (canvasRefs.current.donut) {
-      const sortedCh = [...byChannel].sort((a, b) => b.cost - a.cost);
+      const sortedCh = [...byChannel].filter((c) => c.cost > 0).sort((a, b) => b.cost - a.cost);
+      const totalCost = sortedCh.reduce((sum, c) => sum + c.cost, 0);
+      const shares = sortedCh.map((c) => (totalCost > 0 ? c.cost / totalCost : 0));
+      // 막대 끝 글자 폭만큼 오른쪽을 비운다. 폰처럼 좁으면 금액을 빼고 비중만 막대 안에 적는다 —
+      // 오른쪽을 비우면 Chart.js가 세로축 칸을 줄여 긴 채널 이름 앞이 잘렸다(금액은 툴팁에 남는다).
+      const narrow = (canvasRefs.current.donut.parentElement?.clientWidth || 0) < 360;
+      const shareLabels = sortedCh.map((c, i) => narrow
+        ? `${(shares[i] * 100).toFixed(1)}%`
+        : `${(shares[i] * 100).toFixed(1)}% · ${fmtCurrencyCompact(c.cost, dataCurrency, locale)}`);
+      const measure = canvasRefs.current.donut.getContext("2d");
+      if (measure) measure.font = `12px ${CHART_FONT_STACK}`;
+      const textWidth = (label) => (typeof measure?.measureText === "function" ? measure.measureText(label).width : label.length * 7);
+      const labelWidth = Math.ceil(Math.max(0, ...shareLabels.map(textWidth))) + 14;
       instances.donut = new Chart(canvasRefs.current.donut.getContext("2d"), {
-        type: "doughnut",
+        type: "bar",
+        plugins: [shareValueLabels],
         data: {
           labels: sortedCh.map((c) => c._key),
           datasets: [{
-            data: sortedCh.map((c) => c.cost),
-            backgroundColor: sortedCh.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]),
-            borderColor: "transparent",
-            borderWidth: 2,
+            label: locale === "en" ? "Cost share" : "비용 비중",
+            data: shares,
+            backgroundColor: CHART_THEME.primary,
+            borderRadius: 4,
+            barThickness: 18,
           }],
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "62%",
-          plugins: {
-            legend: {
-              position: "right",
-              labels: { color: CHART_THEME.text, font: { family: "Inter", size: 11 }, usePointStyle: true, padding: 12 },
+          ...chartCommonOpts(),
+          indexAxis: "y",
+          layout: { padding: { right: narrow ? 8 : labelWidth } },
+          scales: {
+            x: {
+              ...chartCommonOpts().scales.x,
+              min: 0,
+              max: Math.min(1, Math.max(0.1, Math.ceil((Math.max(0, ...shares)) * 10) / 10)),
+              ticks: { ...chartCommonOpts().scales.x.ticks, callback: (value) => `${Math.round(Number(value) * 100)}%` },
+              title: { display: true, text: locale === "en" ? "Share of total cost" : "전체 비용 중 비중", color: CHART_THEME.muted, font: { size: 10 } },
             },
-            tooltip: chartCommonOpts().plugins.tooltip,
+            y: { ...chartCommonOpts().scales.y, grid: { display: false } },
+          },
+          plugins: {
+            ...chartCommonOpts().plugins,
+            legend: { display: false },
+            dashboardShareLabels: { labels: shareLabels },
+            tooltip: {
+              ...chartCommonOpts().plugins.tooltip,
+              callbacks: { label: (context) => `${(Number(context.parsed.x) * 100).toFixed(1)}% · ${fmtCurrencyCompact(sortedCh[context.dataIndex]?.cost, dataCurrency, locale)}` },
+            },
           },
         },
       });
@@ -652,7 +731,8 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           datasets: [{
             label: acqLabel,
             data: cpiData.map((d) => d.cpi),
-            backgroundColor: cpiData.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]),
+            // 가장 비싼 채널 하나만 주색 — 오름차순 정렬이라 마지막 막대다.
+            backgroundColor: cpiData.map((_, i) => (i === cpiData.length - 1 ? CHART_THEME.primary : CHART_THEME.comparison)),
             borderRadius: 4,
             barThickness: 18,
           }],
@@ -673,7 +753,6 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
       const funnelData = effBasis === "actions"
         ? [totals.impressions, totals.clicks, totals.installs, totals.actions, totals.pu_d7]
         : [totals.impressions, totals.clicks, totals.installs, totals.pu_d7];
-      const funnelColors = funnelLabels.map((_, index) => CHART_THEME.series[index % CHART_THEME.series.length]);
       instances.funnel = new Chart(canvasRefs.current.funnel.getContext("2d"), {
         type: "bar",
         data: {
@@ -681,7 +760,7 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
           datasets: [{
             label: T.countLabel,
             data: funnelData,
-            backgroundColor: funnelColors,
+            backgroundColor: CHART_THEME.primary,
             borderRadius: 4,
           }],
         },
@@ -700,21 +779,26 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
     // 5) Cohort Line Chart
     if (canvasRefs.current.cohort) {
       const topCh = [...byChannel].sort((a, b) => (b.revenue_d7 || 0) - (a.revenue_d7 || 0)).slice(0, 6);
-      const datasets = topCh.map((c, i) => {
-        // 전역 분모 기준(설치/가입) — ARPU 분모도 다른 차트와 동일하게 전환(§12.18).
+      // 전역 분모 기준(설치/가입) — ARPU 분모도 다른 차트와 동일하게 전환(§12.18).
+      const curves = topCh.map((c) => {
         const denom = effBasis === "actions" ? c.actions : c.installs;
+        return [denom ? c.revenue_d0 / denom : 0, denom ? c.revenue_d7 / denom : 0, denom ? c.revenue_d14 / denom : 0];
+      });
+      // D14 누적 ARPU가 가장 높은 채널만 주색, 나머지는 비교색 단계.
+      const leader = curves.reduce((best, curve, i) => (curve[2] > (curves[best]?.[2] ?? -Infinity) ? i : best), 0);
+      let quietIndex = 0;
+      const datasets = topCh.map((c, i) => {
+        const color = i === leader ? CHART_THEME.primary : quietColor(quietIndex++);
         return {
           label: c._key,
-          data: [
-            denom ? c.revenue_d0 / denom : 0,
-            denom ? c.revenue_d7 / denom : 0,
-            denom ? c.revenue_d14 / denom : 0,
-          ],
-          borderColor: CHART_THEME.series[i % CHART_THEME.series.length],
-          backgroundColor: CHART_THEME.series[i % CHART_THEME.series.length],
+          data: curves[i],
+          borderColor: color,
+          backgroundColor: color,
           tension: 0.1,
-          borderWidth: 2,
-          pointRadius: 4,
+          borderWidth: i === leader ? 2.5 : 1.5,
+          // 주 계열은 실선 — 공용 표현층은 계열이 4개 이상이면 순서대로 점선을 입힌다.
+          ...(i === leader ? { borderDash: [] } : {}),
+          pointRadius: i === leader ? 4 : 3,
         };
       });
 
@@ -787,36 +871,19 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
     // 변경, filteredRows=데이터 변경 시 재생성. customChartDefs/buildCustomChartConfig는
     // 매 렌더 새 참조지만 위 sig가 실질 변경을 모두 커버(매 렌더 재실행 방지).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyAgg, byChannel, totals, dailyMarkerEvents, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale]);
+  }, [dailyAgg, byChannel, totals, dailyMarkerEvents, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale, dataCurrency]);
 
-  // KPI 카드는 빠른 스캔용 미니 차트이자 아래 탐색 차트의 지표 선택기다. PVM 결과를
-  // 여기서 재계산하지 않으므로 원인 대신 관찰 가능한 추세만 보여준다.
+  // KPI 카드는 아래 탐색 차트의 지표 선택기다. PVM 결과를 여기서 재계산하지 않으므로
+  // 원인 대신 관찰 가능한 추세 문장만 보여준다. 카드 안 미니 차트는 2026-11-09 재설계에서
+  // 뺐다 — 추세 모양은 바로 아래 큰 탐색 차트가 축과 함께 보여 준다.
   const explorerCard = (key, label, value, { unavailable = false } = {}) => {
     const trend = metricTrend(key);
-    // 카드 안에서는 최근 28개 시점의 "모양"을 읽는다. 절대값/max 방식은 값이
-    // 1,300→1,360처럼 움직일 때 선이 위쪽에 눌려 거의 평평해 보이므로, 카드별
-    // min-max로 세로 범위를 정규화한다. 정확한 값·축 비교는 아래 큰 차트가 담당한다.
-    const sparkValues = dailyKpis.map((d) => metricValue(key, d.kpi)).filter((v) => Number.isFinite(v)).slice(-28);
-    const min = sparkValues.length ? Math.min(...sparkValues) : 0;
-    const max = sparkValues.length ? Math.max(...sparkValues) : 0;
-    const range = max - min;
-    const sparkY = (v) => range ? 25 - ((v - min) / range) * 19 : 15;
-    const points = sparkValues.length > 1
-      ? sparkValues.map((v, index) => `${(index / (sparkValues.length - 1)) * 100},${sparkY(v)}`).join(" ")
-      : "0,15 100,15";
-    const lastY = sparkValues.length ? sparkY(sparkValues[sparkValues.length - 1]) : 15;
     const isSelected = activeMetric === key;
-    const tone = unavailable ? "neutral" : trend.statusKey === "warning" ? "warning" : trend.statusKey === "improving" ? "improving" : "stable";
     return (
       <button key={key} type="button" className={`kpi-card kpi-card--explorer${isSelected ? " is-selected" : ""}`} aria-pressed={isSelected} onClick={() => setSelectedMetric(key)}>
         <span className="kpi-card__select-state">{isSelected ? (locale === "en" ? "Selected" : "선택됨") : ""}</span>
         <span className="label">{label}</span>
         <strong className="value tnum">{unavailable ? (locale === "en" ? "Data needed" : "리텐션 데이터 필요") : value}</strong>
-        <svg className={`kpi-sparkline is-${tone}`} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
-          <polygon points={`0,30 ${points} 100,30`} />
-          <polyline points={points} />
-          <circle cx="100" cy={lastY} r="2.5" />
-        </svg>
         <span className={`delta ${trend.statusKey === "warning" ? "down" : ""}`}>{unavailable ? (locale === "en" ? "— Data needed" : "— 데이터 필요") : trend.status}</span>
         <span className="kpi-card__note">{unavailable ? (locale === "en" ? "Map a ret_dN column" : "ret_dN 컬럼을 매핑하세요") : trend.note}</span>
       </button>
@@ -961,7 +1028,6 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
         {kpiEditMode && (
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
-        {!kpiEditMode && <p className="kpi-grid__hint">{locale === "en" ? "Showing the five core KPIs. Enable the rest in Edit." : "핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다."}</p>}
         {allKpiCards.length === 0 ? (
           <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noKpi}</p>
         ) : (
@@ -981,8 +1047,8 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
         <div className="dashboard-explorer__head figure-head">
           <div>
             <h2 className="section-title">{activeMetricLabel} {locale === "en" ? "trend" : "추이"}</h2>
+            <span className="dashboard-explorer__status">{activeTrend.status}</span>
           </div>
-          <span className="dashboard-explorer__status">{activeTrend.status}</span>
           {!isCustomActive && <FigurePngButton title={`${activeMetricLabel} ${locale === "en" ? "trend" : "추이"}`} target={detailCanvasRef} fileName="dashboard_trend" locale={locale} />}
         </div>
         {isCustomActive ? (
@@ -1016,7 +1082,6 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
             <button className="ab-pill dashboard-legacy-edit" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>{locale === "en" ? "Use the ready-made charts or add your own, then edit visibility and order." : "기본 차트를 바로 사용하거나 새 차트를 추가하고, 표시 여부와 순서를 편집할 수 있습니다."}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는
@@ -1027,9 +1092,9 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
         ) : (
           <div className="chart-grid cols-2">
             {orderedCharts.map((c) => (
-              <div key={c.k} className="chart-card" data-design-exempt="nested: independent chart title, plot and export action grouped inside the supporting-chart surface (design.md §2)" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
+              <div key={c.k} className="chart-card" data-design-exempt="nested: independent chart title, plot and export action grouped inside the supporting-chart surface (design.md §2)" data-size={c.size}>
                 <div className="dashboard-supporting-chart__head figure-head">
-                  <div><div className="chart-title">{c.title}</div><div className="chart-sub">{c.sub}</div></div>
+                  <div><h3 className="chart-title">{c.title}</h3><div className="chart-sub">{c.sub}</div></div>
                   {!customScorecardFor(c.k) && <FigurePngButton title={c.title} target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} />}
                 </div>
                 {customScorecardFor(c.k) ? (
