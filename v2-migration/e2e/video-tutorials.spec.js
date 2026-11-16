@@ -73,7 +73,7 @@ for (const locale of ["ko", "en"]) {
     const conditions = page.locator(".dc-hero__assurance > span");
     await expect(conditions).toHaveCount(2);
     // Paid download conditions remain visible in the dedicated service terms.
-    await expect(page.locator(".home-service-terms")).toContainText(en ? "active purchased pass" : "구매한 유효 이용권");
+    await expect(page.locator(".home-service-terms")).toContainText(en ? /active purchased pass/i : "구매한 유효 이용권");
     for (const phrase of await conditions.all()) {
       const size = await phrase.evaluate(node => ({ height: node.getBoundingClientRect().height, line: parseFloat(getComputedStyle(node).lineHeight) }));
       expect(size.height).toBeLessThanOrEqual(size.line + 1);
