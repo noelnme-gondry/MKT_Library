@@ -191,6 +191,8 @@ for (const variant of [
     await page.goto(prefix || "/");
     await expect(page.locator(".home-hero-capabilities li")).toHaveCount(3);
     await page.evaluate(() => document.fonts.ready);
+    // Railway PR 호스트는 운영으로 301 이동한다. CI 빌드의 변경 화면을 직접 검토할 증거다.
+    await page.locator(".dc-hero").screenshot({ path: testInfo.outputPath("entry-review-home.png"), animations: "disabled" });
     await page.goto(`${prefix}/start`);
     await expect(page.locator(".finder-preview").first()).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
@@ -215,5 +217,6 @@ for (const variant of [
     expect(labelOverlaps).toEqual([]);
     const audit = await new AxeBuilder({ page }).include(".analysis-finder").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(audit.violations).toEqual([]);
+    await page.locator(".analysis-finder__results").screenshot({ path: testInfo.outputPath("entry-review-finder.png"), animations: "disabled" });
   });
 }
