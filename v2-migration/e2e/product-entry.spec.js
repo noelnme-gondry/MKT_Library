@@ -192,7 +192,7 @@ for (const variant of [
     await expect(page.locator(".home-hero-capabilities li")).toHaveCount(3);
     await page.evaluate(() => document.fonts.ready);
     // Railway PR 호스트는 운영으로 301 이동한다. CI 빌드의 변경 화면을 직접 검토할 증거다.
-    await page.locator(".dc-hero").screenshot({ path: testInfo.outputPath("entry-review-home.png"), animations: "disabled" });
+    await page.screenshot({ path: testInfo.outputPath("entry-review-home.png"), fullPage: true, animations: "disabled" });
     await page.goto(`${prefix}/start`);
     await expect(page.locator(".finder-preview").first()).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
@@ -215,8 +215,13 @@ for (const variant of [
       return label.right > value.left - 3 ? [row.textContent] : [];
     }));
     expect(labelOverlaps).toEqual([]);
+    if (variant.width > 860) {
+      const orphanWidths = await page.locator(".analysis-finder__cards > .finder-card:last-child:nth-child(odd)").evaluateAll(cards => cards.map(card => Math.abs(card.getBoundingClientRect().width - card.parentElement.getBoundingClientRect().width)));
+      expect(orphanWidths.length).toBeGreaterThan(0);
+      for (const difference of orphanWidths) expect(difference).toBeLessThanOrEqual(1);
+    }
     const audit = await new AxeBuilder({ page }).include(".analysis-finder").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(audit.violations).toEqual([]);
-    await page.locator(".analysis-finder__results").screenshot({ path: testInfo.outputPath("entry-review-finder.png"), animations: "disabled" });
+    await page.screenshot({ path: testInfo.outputPath("entry-review-finder.png"), fullPage: true, animations: "disabled" });
   });
 }
