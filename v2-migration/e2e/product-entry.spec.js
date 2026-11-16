@@ -92,6 +92,7 @@ for (const locale of ["ko", "en"]) {
       await expect(page.locator(".operations-sample-preview__body > section")).toHaveCount(4);
       await expect(page.getByRole("tabpanel")).toHaveCount(1);
       await expect(page.locator(".operations-sample-budget__moves > div")).toHaveCount(4);
+      await expect(page.locator(".home-budget-pair__bars i")).toHaveCount(8);
       await expect(page.locator(".operations-sample-creatives > li")).toHaveCount(2);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await expect(page.locator(".operations-sample-campaigns > li")).toHaveCount(4);
@@ -172,5 +173,47 @@ for (const locale of ["ko", "en"]) {
         }
       }
     }
+  });
+}
+
+// 승인한 시각적 진입의 실제 빌드 배치를 검사한다. 폭·테마·언어를 대표 조합으로 분산한다.
+for (const variant of [
+  { locale: "ko", project: "mobile-320", light: false, width: 320 },
+  { locale: "ko", project: "desktop-1440", light: true, width: 1440 },
+  { locale: "en", project: "tablet-768", light: false, width: 980 },
+  { locale: "en", project: "desktop-light-en", light: true, width: 1440, tag: "@light-en" },
+]) {
+  test(`operations home preview and finder visual review (${variant.locale}, ${variant.width}) ${variant.tag || ""}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== variant.project, "Representative visual review combination");
+    await page.setViewportSize({ width: variant.width, height: 1000 });
+    await page.addInitScript(light => localStorage.setItem("mkt-library-theme", light ? "light" : "dark"), variant.light);
+    const prefix = variant.locale === "en" ? "/en" : "";
+    await page.goto(prefix || "/");
+    await expect(page.locator(".home-hero-capabilities li")).toHaveCount(3);
+    await page.evaluate(() => document.fonts.ready);
+    await page.goto(`${prefix}/start`);
+    await expect(page.locator(".finder-preview").first()).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    // All figure types must stay inside their own card, including long EN labels and signed intervals.
+    const geometry = await page.locator(".finder-preview").evaluateAll(figures => figures.flatMap(figure => {
+      const outer = figure.closest(".finder-card").getBoundingClientRect();
+      return [figure, ...figure.querySelectorAll("strong, li, .finder-preview__interval-track, .finder-preview__parts, .finder-preview__count-grid")].flatMap(node => {
+        const box = node.getBoundingClientRect();
+        return box.width && (box.left < outer.left - 1 || box.right > outer.right + 1) ? [node.className || node.tagName] : [];
+      });
+    }));
+    expect(geometry).toEqual([]);
+    const design = await measureDesignRules(page);
+    expect(design.overlaps).toEqual([]);
+    expect(design.horizontalOverflow).toBeLessThanOrEqual(1);
+    // Label and value must not overlap even when a label wraps to multiple lines.
+    const labelOverlaps = await page.locator(".finder-preview__row-label").evaluateAll(rows => rows.flatMap(row => {
+      if (row.children.length < 2) return [];
+      const label = row.children[0].getBoundingClientRect(), value = row.children[1].getBoundingClientRect();
+      return label.right > value.left - 3 ? [row.textContent] : [];
+    }));
+    expect(labelOverlaps).toEqual([]);
+    const audit = await new AxeBuilder({ page }).include(".analysis-finder").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    expect(audit.violations).toEqual([]);
   });
 }
