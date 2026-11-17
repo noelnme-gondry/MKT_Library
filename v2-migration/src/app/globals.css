@@ -13414,3 +13414,40 @@ body, body.light-mode { background: var(--paper); }
 .app .home-entry__situations .home-entry__all-tile a :is(strong, .home-entry__no) { color: var(--paper); }
 .app .home-entry__situations li { display: flex; }
 .app .home-entry__situations li > a { flex: 1; }
+
+/* Project-owned conditions: sentence inputs, observed trend, independent rows. */
+.performance-alerts { border-top: 1px solid var(--rule-2, var(--border)); padding-top: 24px; margin-top: 32px; min-width: 0; }
+.performance-alerts h2 { font-size: var(--fs-xl); font-weight: 600; margin: 0 0 8px; }
+.performance-alerts h3, .performance-alerts h4 { font-size: var(--fs-md); font-weight: 600; margin: 0 0 8px; }
+.performance-alerts p { margin: 8px 0 16px; }
+.performance-alerts__heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.performance-alerts label { display: flex; gap: 8px; flex-direction: column; min-width: 0; max-width: 100%; font-size: var(--fs-sm); }
+.performance-alerts input, .performance-alerts select { max-width: 100%; min-width: 0; min-height: 44px; background: var(--bg-1); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font: inherit; }
+.performance-alerts__sentence { display: flex; align-items: baseline; gap: 10px 8px; flex-wrap: wrap; font-size: var(--fs-xl); line-height: 1.8; margin: 24px 0 16px; }
+.performance-alerts__sentence label { display: inline-flex; font-size: inherit; }
+.performance-alerts__sentence select, .performance-alerts__sentence input { font-size: var(--fs-xl); font-weight: 600; border-width: 0 0 1px; border-radius: var(--radius-sm); background: transparent; padding: 4px 8px; color: var(--text-primary); }
+.performance-alerts__sentence input { width: 7ch; }
+.performance-alerts__sentence select { max-width: min(100%, 360px); }
+.performance-alerts__actions { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 16px 0; }
+.performance-alerts__note { color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.7; }
+.performance-alerts__trend { margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--border); min-width: 0; }
+.performance-alerts__trend figcaption { font-size: var(--fs-lg); font-weight: 600; overflow-wrap: anywhere; }
+.performance-alerts__canvas { height: 340px; width: 100%; min-width: 0; }
+.performance-alerts__periods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.performance-alerts__periods > div { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+.performance-alerts__periods strong { font-size: var(--fs-xl); font-weight: 600; font-variant-numeric: tabular-nums; }
+.performance-alerts small { display: block; color: var(--text-secondary); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.performance-alerts__verdict { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; padding: 12px 0; }
+.performance-alerts__verdict strong { font-weight: 600; white-space: nowrap; }
+.performance-alerts__saved { margin-top: 32px; }
+.performance-alerts__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 20px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.performance-alerts__row .performance-alerts__actions { align-self: start; justify-content: flex-end; max-width: 280px; margin: 0; }
+.performance-alerts__notice { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--border); margin-bottom: 20px; }
+@media (max-width: 768px) {
+  .performance-alerts__row { grid-template-columns: minmax(0, 1fr); }
+  .performance-alerts__row .performance-alerts__actions { justify-content: flex-start; max-width: 100%; }
+  .performance-alerts__sentence { font-size: var(--fs-lg); gap: 8px 4px; }
+  .performance-alerts__sentence select, .performance-alerts__sentence input { font-size: var(--fs-lg); }
+  .performance-alerts__canvas { height: 280px; }
+  .performance-alerts__periods { grid-template-columns: minmax(0, 1fr); }
+}
