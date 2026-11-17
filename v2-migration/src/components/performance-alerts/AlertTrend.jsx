@@ -35,7 +35,7 @@ export default function AlertTrend({ rule, locale = "ko", isDemo = false }) {
         ctx.save();
         dates.forEach((date, index) => {
           const left = Math.max(area.left, x.getPixelForValue(index) - step / 2), right = Math.min(area.right, left + step);
-          if (date >= currentStart || date >= previousStart) {
+          if (date >= currentStart || (rule.comparison === "previous" && date >= previousStart)) {
             ctx.fillStyle = date >= currentStart ? `${CHART_THEME.primary}18` : `${CHART_THEME.comparison}12`;
             ctx.fillRect(left, area.top, right - left, area.height);
           }
