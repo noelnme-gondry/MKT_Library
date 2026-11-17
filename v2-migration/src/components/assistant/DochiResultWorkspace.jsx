@@ -1,4 +1,5 @@
 "use client";
+import PerformanceAlertNotice from "@/components/performance-alerts/PerformanceAlertNotice";
 import ComparisonPeriods from "@/components/ds/ComparisonPeriods";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -141,6 +142,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
       />
     </>}
     {phase === "results" && <>
+      <PerformanceAlertNotice locale={locale} />
       {/* 결과 요약은 흰 면 하나다(제목·입력 한 줄 → 결론·수치·버튼 → 공통 설정 한 줄).
           예전에는 상자를 벗긴 줄들이 배경에 흩어져 있고 결론만 상자 없이 떠서, 더 약한
           하단 안내 상자가 결론보다 먼저 눈에 들어왔다. 면은 한 겹이고 안쪽은 선으로만 나눈다. */}
