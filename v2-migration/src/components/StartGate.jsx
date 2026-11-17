@@ -1,4 +1,5 @@
 "use client";
+import PerformanceAlertNotice from "@/components/performance-alerts/PerformanceAlertNotice";
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -163,6 +164,7 @@ function StartGateContent({ locale = "ko" }) {
         </p>
       </div>
       {hasSubmitted && <div ref={workspaceRef}>
+        <PerformanceAlertNotice locale={locale} />
         {isEligibilityCurrent && eligibleIds.length === 0 && <section role="status" className="callout warn">
           <div><h2>{locale === "en" ? "No analysis is ready for this file" : "이 파일로 실행할 수 있는 분석이 없습니다"}</h2>
           <p>{locale === "en" ? "The file was read, but the required columns are not connected. Review the mapping or choose a template for your analysis below." : "파일은 읽었지만 분석에 필요한 컬럼이 연결되지 않았습니다. 매핑을 수정하거나 분석 목적에 맞는 템플릿을 선택하세요."}</p>

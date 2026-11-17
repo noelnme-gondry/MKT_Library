@@ -63,7 +63,7 @@ export async function updateProject(id, patch, shouldSave = () => true, entitlem
     const changes = typeof patch === "function" ? patch(existing) : patch;
     // Expiry must not prevent reading or deleting a user's own saved records.
     const removalsOnly = Object.entries(changes).every(([field, value]) =>
-      ["decisions", "savedAnalyses"].includes(field) && Array.isArray(value)
+      ["decisions", "savedAnalyses", "performanceAlerts"].includes(field) && Array.isArray(value)
       && value.length <= (existing[field] || []).length && new Set(value.map(item => item.id)).size === value.length
       && value.every(item => (existing[field] || []).some(saved => JSON.stringify(saved) === JSON.stringify(item))));
     if (!hasPaidAccess(entitlement) && !removalsOnly) throw new Error("PRO_REQUIRED");

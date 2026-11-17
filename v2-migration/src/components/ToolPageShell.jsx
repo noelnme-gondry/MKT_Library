@@ -1,4 +1,5 @@
 "use client";
+import PerformanceAlertNotice from "./performance-alerts/PerformanceAlertNotice";
 import React, { useId } from "react";
 import ToolBrief from "@/components/ds/ToolBrief";
 import JourneyProgress from "@/components/ds/JourneyProgress";
@@ -69,6 +70,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
           </div>
         )}
 
+        <PerformanceAlertNotice locale={locale} />
         {children}
       </div>
 
