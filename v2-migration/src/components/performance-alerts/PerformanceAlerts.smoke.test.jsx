@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { IDBFactory } from "fake-indexeddb";
 import { activePro } from "@/test/proEntitlement";
 import { useAppStore } from "@/store/useDataStore";
-import { readProject } from "@/lib/project/repository";
+import { createProjectRecord, readProject } from "@/lib/project/repository";
 import { shiftDay } from "@/lib/performance-alerts/rules";
 import PerformanceAlerts from "./PerformanceAlerts";
 vi.mock("./AlertTrend", () => ({ default: ({ rule }) => <figure aria-label="Observed chart">{rule.history.length} days</figure>, alertNumber: (_rule, value) => String(value ?? "—") }));
@@ -70,4 +70,16 @@ it("keeps fictional samples preview-only without offering a save submission", as
   expect(screen.getByRole("button", { name: "프로젝트 만들고 조건 저장" }).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "현재 CSV로 미리보기" }));
   expect(screen.getByRole("figure", { name: "Observed chart" })).not.toBeNull();
+});
+
+it("names the upload-created default project and saves its first rule without clearing the source", async () => {
+  await createProjectRecord("default", "", activePro());
+  await useAppStore.getState().refreshProjects();
+  const raw = useAppStore.getState().csvData.raw;
+  render(<PerformanceAlerts />);
+  fireEvent.change(screen.getByRole("textbox", { name: "새 프로젝트 이름", exact: true }), { target: { value: "Named upload project" } });
+  fireEvent.click(screen.getByRole("button", { name: "프로젝트 만들고 조건 저장" }));
+  await waitFor(async () => expect((await readProject()).performanceAlerts).toHaveLength(1));
+  expect((await readProject()).name).toBe("Named upload project");
+  expect(useAppStore.getState().csvData.raw).toBe(raw);
 });
