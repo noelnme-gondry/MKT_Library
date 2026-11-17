@@ -16,6 +16,10 @@ export async function saveAlertRule({ projectId, projectName, rule, entitlement,
       if (projects.length || !projectName.trim()) throw new Error("PROJECT_REQUIRED");
       project = { ...migrateLegacyProject(null, [], [], Date.now()), name: projectName.trim().slice(0, 120), id: DEFAULT_PROJECT_ID, key: projectMetaKey(DEFAULT_PROJECT_ID) };
     }
+    if (!project.name?.trim()) {
+      if (!projectName.trim()) throw new Error("PROJECT_NAME_REQUIRED");
+      project = { ...project, name: projectName.trim().slice(0, 120) };
+    }
     const existing = project.performanceAlerts || [];
     if (!existing.some(item => item.id === rule.id) && existing.length >= MAX_ALERT_RULES) throw new Error("ALERT_LIMIT");
     const previous = existing.find(item => item.id === rule.id);
