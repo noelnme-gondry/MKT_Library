@@ -627,6 +627,14 @@ PNG 버튼의 표시 문구는 `PNG`, 접근 가능한 이름은 `PNG 받기` / 
 
 ---
 
+### 프로젝트 성과 알림 / Project performance alerts
+
+- 운영 플래너에서 문장형 조건을 만들고 내 프로젝트에서 여러 조건을 관리한다. 효율 CSV의 전체 또는 한 채널, CPR(비용 합계÷선택한 설치/가입 합계) 또는 선택한 숫자 컬럼의 합계/행 평균을 지원한다. 최근 3·7·14·28일을 바로 앞의 같은 길이 기간 또는 고정 목표와 비교한다. 상대 변화율은 기준값이 양수일 때만 계산한다. / Create sentence-based conditions in Operations Planner and manage multiple conditions in My projects. Efficiency CSV rules cover all rows or one channel, CPR (total cost divided by selected installs/actions), or a numeric column total/row average. Compare the latest 3/7/14/28 days with the adjacent equal-length period or a fixed target. Relative changes require a positive reference.
+- 로그인·유효 Pro(체험 포함)·기기 저장을 켠 프로젝트가 저장 조건이다. 이 기기의 브라우저(IndexedDB)에 프로젝트별로 저장되며, 다른 기기·브라우저와 자동 동기화되지 않는다. 조건 최대 20개, 조건별 일별 집계 최대 366일을 보관하며 프로젝트 백업·삭제·90일 미사용 정리 계약을 따른다. / Saving requires sign-in, active Pro (including trial), and a project with device storage enabled. Conditions are stored per project in this browser’s IndexedDB and do not automatically sync across devices or browsers. Keep up to 20 rules and 366 daily aggregates per rule; project backup, deletion and 90-day inactivity cleanup apply.
+- 실제 효율 CSV의 매핑을 확인하고 분석할 때 현재 프로젝트의 활성 조건을 검사한다. 데모는 미리보기만 가능하다. 공용 화면 필터와 별개로 조건에 명시한 채널 및 업로드 전체 행을 사용한다. 일별 집계 이력의 겹치는 업로드 기간은 최신 파일로 교체하며 빠진 날짜를 이전 값으로 메우지 않는다. 원본 CSV·컬럼·채널·집계는 서버로 보내지 않는다. / Check enabled rules in the current project after a real efficiency CSV’s mapping is confirmed for analysis. Demo supports preview only. Rules use their explicit channel scope over all uploaded rows, independently of view filters. Replace the overlapping upload interval in daily history; never fill missing dates from old values. Do not send CSV rows, columns, channel values or aggregates to a server.
+- 저장한 원본 헤더 집합·역할 매핑·통화가 같아야 이력을 잇는다. 계열의 실제 동일성은 파일만으로 보장할 수 없으므로 같은 프로젝트에는 같은 데이터 계열을 업로드하도록 안내한다. 날짜 누락·주/月 집계·모호한 날짜·무효 숫자·음수·분모 0·없는 채널·기준 0은 확인 불가이며 알림 미발생과 구분한다. 기준일은 업로드의 마지막 관측일이다. / Continue history only with matching source headers, role mappings and currency. Files alone cannot establish dataset identity; instruct users to upload the same data series within a project. Missing days, weekly/monthly grain, ambiguous dates, invalid or negative values, zero denominators, absent channels and zero references are unavailable, distinct from no trigger. Anchor windows to the latest uploaded observation.
+- 84일 추세를 기본으로 28·56·84일 표시, 주 단위 구획과 직전/최근 기간·기간 집계·최근 구간의 임계선을 함께 보여준다. 그래프는 실측이며 알림은 기간 집계로 판정한다. 새 CSV를 분석할 때 화면에서 확인하는 기능이며 이메일·푸시·백그라운드 감시는 제공하지 않는다. / Default to an 84-day observed trend with 28/56/84-day views, weekly divisions, prior/current windows, period aggregates and a threshold limited to the current window. Evaluate period aggregates. Checks happen on screen when a new CSV is analyzed, with no email, push or background monitoring.
+
 ## 6. 접근성 계약
 
 준수 목표는 **WCAG 2.2 AA**. 단 Focus Appearance(AAA)는 제품 기본 규칙으로 채택한다.
