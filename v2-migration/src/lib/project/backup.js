@@ -1,3 +1,4 @@
+import { sanitizeAlertRules } from "@/lib/performance-alerts/rules";
 import { validateSavedAnalyses } from "./savedAnalyses";
 import { sanitizeEventMarkers } from "./eventMarkers";
 import { validateProjectFile } from "./projectSchema";
@@ -70,6 +71,7 @@ export function parseProjectBackup(text) {
   if (settings && (!["cpa", "cpi", "roas", "conversions"].includes(settings.metric) || !["actions", "installs"].includes(settings.basis) || !["USD", "KRW"].includes(settings.currency))) throw new Error("BACKUP_SETTINGS_INVALID");
   const project = { name: String(payload.project.name || "").slice(0, 120), settings: settings ? { name: String(settings.name || "").slice(0, 120), metric: settings.metric, basis: settings.basis, currency: settings.currency, target: String(settings.target || "").slice(0, 30), period: normalizePeriodPreference(settings.period) } : null, snapshots, decisions: sanitizeDecisionReviewRecords(payload.project.decisions), branding: null, report: null };
   project.eventMarkers = sanitizeEventMarkers(payload.project.eventMarkers);
+  project.performanceAlerts = sanitizeAlertRules(payload.project.performanceAlerts).map(rule => ({ ...rule, issue: "unconfirmed", checkedAt: null }));
   project.savedAnalyses = validateSavedAnalyses(payload.project.savedAnalyses);
   if (payload.project.configuration) project.configuration = validateProjectFile(payload.project.configuration);
   // 백업으로 권한을 가져오지 않는다. 로고와 보고서는 허용된 타입만 복원한다.
