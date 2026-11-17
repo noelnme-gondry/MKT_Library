@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getMappedRows, getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { fmtCurrency, fmtNum, fmtPct, sourceCurrencyOf } from "@/utils/format";
 import { useAppStore } from "@/store/useDataStore";
+import PerformanceAlerts from "@/components/performance-alerts/PerformanceAlerts";
 import ToolPageShell from "@/components/ToolPageShell";
 import ModalDialog from "@/components/ds/ModalDialog";
 import CsvUploader from "@/components/CsvUploader";
@@ -247,7 +248,7 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const inspectMapping = () => {
     setConditionsOpen(true);
   };
-  return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} showJourney={false} chips={ready ? <button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button> : null}>
+  return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} showJourney={false} chips={ready ? <><a className="btn ghost" href="#performance-alerts">{tr("성과 알림 만들기", "Create performance alert")}</a><button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button></> : null}>
     <section className="ops-analysis-context" aria-label={tr("분석 조건", "Analysis settings")}>
       <div id="ops-analysis-settings" tabIndex={-1} className="ops-section-heading">
         <span className="operations-planner__context">
@@ -286,5 +287,6 @@ export default function OperationsPlanner({ locale = "ko" }) {
       <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
     </ModalDialog>
     {ready && <OperationsResults {...{ csvData, sourceRows, grain, filter, periods, denomBasis, locale }} currency={sourceCurrencyOf(csvData)} onInspectMapping={inspectMapping} {...{ dataOpen, setDataOpen }} />}
+    <PerformanceAlerts key={`alerts:${useAppStore.getState().activeProjectId}`} locale={locale} />
   </ToolPageShell>;
 }
