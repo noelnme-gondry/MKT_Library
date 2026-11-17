@@ -61,3 +61,13 @@ it("adopts the new default project after storage was cleared from a different pr
   expect(useAppStore.getState().csvData.raw).toBe(raw);
   expect((await readProject()).performanceAlerts).toHaveLength(1);
 });
+
+it("keeps fictional samples preview-only without offering a save submission", async () => {
+  const data = useAppStore.getState().csvData;
+  useAppStore.getState().setCsvData({ ...data, importSource: "demo" });
+  useAppStore.getState().setGroupAnalyzed("5-31");
+  render(<PerformanceAlerts />);
+  expect(screen.getByRole("button", { name: "프로젝트 만들고 조건 저장" }).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "현재 CSV로 미리보기" }));
+  expect(screen.getByRole("figure", { name: "Observed chart" })).not.toBeNull();
+});

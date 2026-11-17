@@ -59,10 +59,10 @@ export default function PerformanceAlerts({ locale = "ko", manage = false }) {
     if (busy || switching || !canPreview) return;
     setBusy(true); setMessage("");
     try {
+      if (isDemoData(data)) throw new Error("DEMO");
       const account = await refreshAccount();
       if (!account?.account || !hasPaidAccess(useAppStore.getState().entitlement)) { setGate(true); return; }
       if (!useAppStore.getState().decisionPersistenceEnabled) throw new Error("STORAGE_REQUIRED");
-      if (isDemoData(data)) throw new Error("DEMO");
       const rule = checkAlert(makeRule(), data);
       const sourceRaw = data.raw;
       const saved = await saveAlertRule({ projectId: project?.id, projectName, rule, sourceData: data, entitlement: useAppStore.getState().entitlement,
@@ -103,7 +103,7 @@ export default function PerformanceAlerts({ locale = "ko", manage = false }) {
       </div>
       <p className="performance-alerts__note">{t("효율 CSV 전체 행 기준 · 화면 필터와 별개 · 마지막 관측일 기준 · 같은 프로젝트에는 같은 데이터 계열을 올려주세요.", "All efficiency CSV rows · Independent of view filters · Anchored to the latest observed date · Upload the same data series within a project.")}</p>
       {!project && <label>{t("새 프로젝트 이름", "New project name")}<input value={projectName} maxLength={120} onChange={event => setProjectName(event.target.value)} /></label>}
-      <div className="performance-alerts__actions"><button className="btn" type="button" disabled={!canPreview || busy} onClick={showPreview}>{t("현재 CSV로 미리보기", "Preview with current CSV")}</button><button className="btn primary" disabled={!canPreview || busy || switching || (!editingId && rules.length >= MAX_ALERT_RULES)}>{busy ? t("저장 중…", "Saving…") : editingId ? t("이 조건 변경 저장", "Save changes to this condition") : project ? t("조건 추가 저장", "Save another condition") : t("프로젝트 만들고 조건 저장", "Create project and save condition")}</button>{isDemoData(data) && <span>{t("가상 예시 · 저장은 실제 CSV에서", "Fictional sample · Save with a real CSV")}</span>}</div>
+      <div className="performance-alerts__actions"><button className="btn" type="button" disabled={!canPreview || busy} onClick={showPreview}>{t("현재 CSV로 미리보기", "Preview with current CSV")}</button><button className="btn primary" disabled={!canPreview || isDemoData(data) || busy || switching || (!editingId && rules.length >= MAX_ALERT_RULES)}>{busy ? t("저장 중…", "Saving…") : editingId ? t("이 조건 변경 저장", "Save changes to this condition") : project ? t("조건 추가 저장", "Save another condition") : t("프로젝트 만들고 조건 저장", "Create project and save condition")}</button>{isDemoData(data) && <span>{t("가상 예시 · 저장은 실제 CSV에서", "Fictional sample · Save with a real CSV")}</span>}</div>
     </form>}
     {!manage && !canPreview && <p>{t("효율 CSV를 분석하면 채널·지표·기간을 문장으로 선택해 조건을 만들 수 있습니다.", "Analyze an efficiency CSV to choose a channel, metric and period in a sentence.")}</p>}
     <p className="performance-alerts__note">{t("로그인·유효 Pro·기기 저장을 켠 프로젝트에서 저장할 수 있습니다. 이 기기의 브라우저(IndexedDB)에 프로젝트별로 저장되며, 다른 기기·브라우저와 자동 동기화되지 않습니다.", "Saving requires sign-in, active Pro and a project with device storage enabled. Stored per project in this browser’s IndexedDB; not automatically synced across devices or browsers.")}{!storage && <> <Link href={`${en ? "/en" : ""}/projects#project-management`}>{t("기기 저장 설정", "Device storage settings")}</Link></>}</p>
