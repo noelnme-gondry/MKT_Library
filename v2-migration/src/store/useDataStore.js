@@ -1118,7 +1118,7 @@ export const useAppStore = create(persist((set, get) => ({
       csvData: data,
       // A real file can have the sample's filename, row count and headers.
       // Its mapping still needs confirmation; demo approval is not transferable.
-      analyzedByGroup: isDemoData(state.csvGroups[g]) && !isDemoData(data)
+      analyzedByGroup: (state.csvGroups[g]?.raw !== data.raw && computeAnalyzeSig(state.csvGroups[g]) === computeAnalyzeSig(data)) || (isDemoData(state.csvGroups[g]) && !isDemoData(data))
         ? { ...state.analyzedByGroup, [g]: null }
         : state.analyzedByGroup,
       csvClearedByGroup,
