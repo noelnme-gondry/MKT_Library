@@ -81,3 +81,7 @@ it("withholds conflicting role mappings instead of choosing the first source col
   const data = fixture(), rule = bind(data);
   expect(checkAlert(rule, { ...data, mapping: { ...data.mapping, Custom: "cost" } }).issue).toBe("columns");
 });
+
+it("requires a custom column to still exist when editing against another schema", () => {
+  expect(() => bind(fixture(), { metric: "sum", valueHeader: "Old column" })).toThrow("ALERT_MAPPING_REQUIRED");
+});

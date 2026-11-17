@@ -54,7 +54,7 @@ export function bindAlertRule(draft, data, id) {
     valueHeader: draft.metric === "cpr" ? sourceHeader(data, "cost") : draft.valueHeader,
     denominatorHeader: draft.metric === "cpr" ? sourceHeader(data, draft.basis) : "",
     history: [], checkedAt: null, end: null, issue: "unconfirmed" };
-  if (!rule.dateHeader || !rule.valueHeader || (rule.metric === "cpr" && !rule.denominatorHeader)
+  if (!rule.dateHeader || !rule.valueHeader || !(data.headers || []).includes(rule.valueHeader) || (rule.metric === "cpr" && !rule.denominatorHeader)
     || (rule.channel && !rule.channelHeader)) throw new Error("ALERT_MAPPING_REQUIRED");
   return sanitizeAlertRules([rule])[0];
 }
