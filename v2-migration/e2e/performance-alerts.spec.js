@@ -16,7 +16,7 @@ async function upload(page, en, rise = true) {
   await expect(page.locator("#ops-plan-title")).toBeVisible();
 }
 for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only" }, { en: true, tag: " @light-en" }]) {
-  test(`project performance alerts: save multiple, chart, replace CSV and isolate project${scenario.tag}`, async ({ page }, info) => {
+  test(`project performance alerts: save multiple, chart, replace CSV and persist project${scenario.tag}`, async ({ page }, info) => {
     const { en } = scenario, prefix = en ? "/en" : "";
     await enableReviewLogin(page);
     const errors = []; page.on("pageerror", error => errors.push(error.message));
@@ -39,6 +39,7 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     await manager.scrollIntoViewIfNeeded();
     const overflow = await manager.evaluate(element => ({ width: element.clientWidth, scroll: element.scrollWidth, document: document.documentElement.scrollWidth, viewport: innerWidth }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.width + 1); expect(overflow.document).toBeLessThanOrEqual(overflow.viewport + 1);
+    await manager.screenshot({ path: info.outputPath(`entry-review-alerts-detail-${en ? "en" : "ko"}-${info.project.name}.png`) });
     await page.screenshot({ path: info.outputPath(`entry-review-alerts-${en ? "en" : "ko"}-${info.project.name}.png`), fullPage: true });
     const paused = manager.getByRole("article").filter({ has: page.getByRole("heading", { name: "Meta second condition", exact: true }) });
     await paused.getByRole("button", { name: en ? "Pause" : "일시 중지", exact: true }).click();
