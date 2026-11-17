@@ -1,4 +1,5 @@
 "use client";
+import PerformanceAlerts from "./performance-alerts/PerformanceAlerts";
 import Link from "next/link";
 import DecisionHistoryList from "./weekly-review/DecisionHistoryList";
 import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
@@ -24,9 +25,9 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
   const active = projects.find(project => project.id === activeId);
   useEffect(() => {
     const hash = () => {
-      setView(window.location.hash === "#project-management" ? "manage" : initialView);
+      setView(window.location.hash === "#project-management" ? "manage" : window.location.hash === "#performance-alerts" ? "review" : initialView);
       const hash = window.location.hash;
-      const nextMode = ["#wr-upload", "#wr-next", "#weekly-performance"].includes(hash) ? "weekly" : hash === "#wr-history" || hash.startsWith("#decision-") ? "decisions" : modeRef.current;
+      const nextMode = hash === "#performance-alerts" ? "alerts" : ["#wr-upload", "#wr-next", "#weekly-performance"].includes(hash) ? "weekly" : hash === "#wr-history" || hash.startsWith("#decision-") ? "decisions" : modeRef.current;
       if (nextMode !== modeRef.current && !confirmReviewExit(useAppStore.getState().activeProjectId, locale)) {
         window.history.replaceState(null, "", modeRef.current === "weekly" ? "#weekly-performance" : "#wr-history");
         return;
@@ -76,10 +77,10 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
       : "프로젝트를 열었습니다. 저장된 파일은 복원되지만, 결과는 각 도구에서 ‘분석하기’를 다시 눌러야 나옵니다(컬럼 매핑을 다시 확인합니다)."}</p>}
     <div hidden={view !== "review" || switching}>
       <nav className="project-review-workspace__tools" aria-label={en ? "Review task" : "리뷰 작업"}>
-        {["decisions", "weekly"].map(next => <button key={next} disabled={!ready} className="btn ghost" aria-pressed={mode === next} onClick={() => { if (next !== mode && confirmReviewExit(activeId, locale)) { setMode(next); window.history.replaceState(null, "", next === "weekly" ? "#weekly-performance" : "#wr-history"); } }}>{next === "decisions" ? (en ? "Decision review" : "결정 검토") : (en ? "Compare weekly performance" : "주간 성과 비교")}</button>)}
+        {["decisions", "weekly", "alerts"].map(next => <button key={next} disabled={!ready} className="btn ghost" aria-pressed={mode === next} onClick={() => { if (next !== mode && confirmReviewExit(activeId, locale)) { setMode(next); window.history.replaceState(null, "", next === "alerts" ? "#performance-alerts" : next === "weekly" ? "#weekly-performance" : "#wr-history"); } }}>{next === "alerts" ? (en ? "Performance alerts" : "성과 알림") : next === "decisions" ? (en ? "Decision review" : "결정 검토") : (en ? "Compare weekly performance" : "주간 성과 비교")}</button>)}
         <Link className="btn ghost" onClick={event => { if (!confirmReviewExit(activeId, locale)) event.preventDefault(); }} href={en ? "/en/start" : "/start"}>{en ? "Start a new analysis" : "새 분석 시작"}</Link>
       </nav>
-      {mode === "decisions" ? <><ProjectReviewPortfolio key={`portfolio:${activeId}`} locale={locale} /><DecisionHistoryList key={`history:${activeId}`} locale={locale} /></> : <section id="weekly-performance" tabIndex={-1} ref={weeklyStartRef} aria-label={en ? "Compare weekly performance" : "주간 성과 비교"}><WeeklyReviewScreen key={activeId} locale={locale} embedded /></section>}
+      {mode === "alerts" ? <PerformanceAlerts key={`alerts:${activeId}`} locale={locale} manage /> : mode === "decisions" ? <><ProjectReviewPortfolio key={`portfolio:${activeId}`} locale={locale} /><DecisionHistoryList key={`history:${activeId}`} locale={locale} /></> : <section id="weekly-performance" tabIndex={-1} ref={weeklyStartRef} aria-label={en ? "Compare weekly performance" : "주간 성과 비교"}><WeeklyReviewScreen key={activeId} locale={locale} embedded /></section>}
     </div>
     {view === "manage" && <section id="project-management"><ProjectsPage locale={locale} embedded onReview={() => show("review")} /></section>}
   </div>;
