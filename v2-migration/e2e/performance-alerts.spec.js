@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { enableReviewLogin } from "./support/reviewSave";
 const csv = (rise = true) => {
@@ -39,7 +40,16 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     await manager.scrollIntoViewIfNeeded();
     const overflow = await manager.evaluate(element => ({ width: element.clientWidth, scroll: element.scrollWidth, document: document.documentElement.scrollWidth, viewport: innerWidth }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.width + 1); expect(overflow.document).toBeLessThanOrEqual(overflow.viewport + 1);
-    await manager.screenshot({ path: info.outputPath(`entry-review-alerts-detail-${en ? "en" : "ko"}-${info.project.name}.png`) });
+    const reviewImage = await manager.screenshot({ path: info.outputPath(`entry-review-alerts-detail-${en ? "en" : "ko"}-${info.project.name}.png`) });
+    // This branch's visual review can also read the same synthetic capture via
+    // job logs when artifact downloads are unavailable. No user CSV is used.
+    // Other PRs and main retain only the normal screenshot artifact.
+    if (process.env.CI && process.env.GITHUB_HEAD_REF === "feat/project-performance-alerts" && info.retry === 0) {
+      const encoded = reviewImage.toString("base64");
+      console.log(`ALERT_REVIEW_START ${info.project.name} ${reviewImage.length} ${createHash("sha256").update(reviewImage).digest("hex")}`);
+      for (let offset = 0; offset < encoded.length; offset += 4000) console.log(`ALERT_REVIEW_DATA ${info.project.name} ${offset / 4000} ${encoded.slice(offset, offset + 4000)}`);
+      console.log(`ALERT_REVIEW_END ${info.project.name}`);
+    }
     await page.screenshot({ path: info.outputPath(`entry-review-alerts-${en ? "en" : "ko"}-${info.project.name}.png`), fullPage: true });
     const paused = manager.getByRole("article").filter({ has: page.getByRole("heading", { name: "Meta second condition", exact: true }) });
     await paused.getByRole("button", { name: en ? "Pause" : "일시 중지", exact: true }).click();
