@@ -8,7 +8,10 @@ export const HISTORY_DAYS = 366;
 export const ALERT_WINDOWS = [3, 7, 14, 28];
 const dayMs = 86400000;
 export const shiftDay = (date, amount) => new Date(Date.parse(`${date}T00:00:00Z`) + amount * dayMs).toISOString().slice(0, 10);
-export const sourceHeader = (data, role) => Object.entries(data?.mapping || {}).find(([, value]) => value === role)?.[0] || "";
+export const sourceHeader = (data, role) => {
+  const matches = Object.entries(data?.mapping || {}).filter(([, value]) => value === role);
+  return matches.length === 1 ? matches[0][0] : "";
+};
 const fingerprint = data => JSON.stringify([...(data?.headers || [])].sort());
 const short = value => typeof value === "string" && value.length <= 250;
 const validDay = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && parseDateValue(value)?.isoDate === value;

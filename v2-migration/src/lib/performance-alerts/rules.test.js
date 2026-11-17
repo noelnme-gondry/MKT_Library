@@ -76,3 +76,8 @@ it("invalid numeric replacements cannot resurrect older values as the next basel
   rule = checkAlert(rule, fixture("2026-08-15", 7));
   expect(evaluateAlert(rule)).toMatchObject({ status: "unavailable", issue: "coverage" });
 });
+
+it("withholds conflicting role mappings instead of choosing the first source column", () => {
+  const data = fixture(), rule = bind(data);
+  expect(checkAlert(rule, { ...data, mapping: { ...data.mapping, Custom: "cost" } }).issue).toBe("columns");
+});
