@@ -29,7 +29,7 @@
     "js-yaml": "^4.3.2",
     "lucide-react": "^1.34.0",
     "marked": "^18.0.11",
-    "next": "16.4.2",
+    "next": "16.4.5",
     "nodemailer": "10.1.7",
     "papaparse": "^5.7.0",
     "pg": "^8.23.0",
