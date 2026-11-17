@@ -46,6 +46,8 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     await expect(paused.getByText(en ? "Paused" : "일시 중지됨", { exact: true })).toBeVisible();
     // Replacing identical filename and row count must require a new confirmation.
     await page.getByRole("button", { name: en ? "File, scope & metric" : "파일·대상·지표 변경", exact: true }).click();
+    await page.getByRole("button", { name: en ? "Change data or mapping" : "데이터·매핑 바꾸기", exact: true }).click();
+    await page.getByRole("button", { name: en ? "⟳ Change CSV" : "⟳ CSV 변경", exact: true }).click();
     await upload(page, en, false);
     await page.keyboard.press("Escape");
     const first = manager.getByRole("article").filter({ has: page.getByRole("heading", { name: "Meta CPR rise", exact: true }) });
