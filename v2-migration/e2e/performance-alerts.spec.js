@@ -33,6 +33,18 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     await manager.getByRole("combobox", { name: en ? "Alert channel" : "알림 채널", exact: true }).selectOption("Meta");
     await manager.getByRole("button", { name: en ? "Preview with current CSV" : "현재 CSV로 미리보기" }).click();
     await expect(manager.locator("canvas")).toBeVisible();
+    const metric = manager.getByRole("combobox", { name: en ? "Alert metric" : "알림 지표", exact: true });
+    const preview = manager.getByRole("button", { name: en ? "Preview with current CSV" : "현재 CSV로 미리보기" });
+    const note = manager.locator(".performance-alerts__trend .performance-alerts__note");
+    for (const [mode, formula] of [["sum", en ? "sum of the selected column" : "선택한 컬럼의 합계"], ["mean", en ? "number of rows" : "행 수"]]) {
+      await metric.selectOption(mode);
+      await preview.click();
+      await expect(note).toContainText(formula);
+      await expect(note).not.toContainText("CPR");
+    }
+    await metric.selectOption("cpr");
+    await preview.click();
+    await expect(note).toContainText("CPR");
     await manager.getByRole("button", { name: en ? "Create project and save condition" : "프로젝트 만들고 조건 저장" }).click();
     await expect(manager.getByRole("heading", { name: firstName, exact: true })).toBeVisible();
     await manager.getByRole("button", { name: en ? "New condition" : "새 조건", exact: true }).click();
@@ -45,6 +57,7 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     await expect(manager.locator("canvas")).toBeVisible();
     await manager.getByRole("combobox", { name: en ? "Chart history" : "차트 표시 기간" }).selectOption("56");
     await expect(manager.locator("canvas")).toHaveAttribute("aria-label", /56/);
+    await expect(manager.locator("canvas")).toHaveAccessibleName(en ? /target/i : /목표/);
     await manager.getByRole("combobox", { name: en ? "Chart history" : "차트 표시 기간" }).selectOption("84");
     await manager.scrollIntoViewIfNeeded();
     const overflow = await manager.evaluate(element => ({ width: element.clientWidth, scroll: element.scrollWidth, document: document.documentElement.scrollWidth, viewport: innerWidth }));

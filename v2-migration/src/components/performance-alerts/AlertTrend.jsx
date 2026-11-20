@@ -12,6 +12,14 @@ export default function AlertTrend({ rule, locale = "ko", isDemo = false }) {
   const en = locale === "en", canvas = useRef(null);
   const [days, setDays] = useState(84);
   const unit = rule.metric === "cpr" ? `${rule.currency} / ${rule.basis === "installs" ? (en ? "install" : "설치") : (en ? "action" : "가입")}` : rule.valueHeader;
+  const aggregation = {
+    cpr: en ? "CPR = total cost ÷ total outcomes." : "CPR = 비용 합계 ÷ 성과 합계.",
+    sum: en ? "The period value is the sum of the selected column." : "기간 값은 선택한 컬럼의 합계입니다.",
+    mean: en ? "The period value is the column total divided by the number of rows." : "기간 값은 선택한 컬럼의 합계를 행 수로 나눈 값입니다.",
+  }[rule.metric];
+  const comparisonLabel = rule.comparison === "target"
+    ? (en ? "target" : "목표값")
+    : (en ? "prior period" : "직전 기간");
   const result = useMemo(() => evaluateAlert(rule), [rule]);
   const config = useMemo(() => {
     if (!rule.end) return null;
@@ -52,8 +60,8 @@ export default function AlertTrend({ rule, locale = "ko", isDemo = false }) {
   }, [config]);
   return <figure className="performance-alerts__trend">
     <div className="performance-alerts__heading"><FigureHead level={3} title={`${rule.name} · ${rule.channel || (en ? "All channels" : "전체 채널")}`} target={canvas} locale={locale} fileName="performance-alert-trend" context={figureExportContext({ title: rule.name, locale, scope: { dateStart: rule.end ? shiftDay(rule.end, 1 - days) : null, dateEnd: rule.end, caption: `${unit} · ${rule.channel || (en ? "All channels" : "전체 채널")}` }, source: { importSource: isDemo ? "demo" : "csv" } })} /><label>{en ? "Chart history" : "차트 표시 기간"}<select value={days} onChange={event => setDays(Number(event.target.value))}>{[28, 56, 84].map(value => <option key={value} value={value}>{value}{en ? " days" : "일"}</option>)}</select></label></div>
-    {config ? <div className="chart-container performance-alerts__canvas"><canvas ref={canvas} role="img" aria-label={en ? `${days}-day observed trend with weekly divisions and comparison windows` : `${days}일 실측 추세, 주별 구획과 직전·최근 기간 비교`} /></div> : <p>{en ? "Analyze a matching daily CSV to see the trend." : "조건과 일치하는 일별 CSV를 분석하면 추세를 볼 수 있습니다."}</p>}
+    {config ? <div className="chart-container performance-alerts__canvas"><canvas ref={canvas} role="img" aria-label={en ? `${days}-day observed trend, recent period compared with ${comparisonLabel}` : `${days}일 실측 추세, 최근 기간과 ${comparisonLabel} 비교`} /></div> : <p>{en ? "Analyze a matching daily CSV to see the trend." : "조건과 일치하는 일별 CSV를 분석하면 추세를 볼 수 있습니다."}</p>}
     <div className="performance-alerts__periods"><div><span>{rule.comparison === "target" ? (en ? "Target" : "목표") : (en ? "Prior period" : "직전 기간")}</span><strong>{alertNumber(rule, rule.comparison === "target" ? rule.target : result.reference)}</strong><small>{rule.comparison === "previous" ? `${result.previousStart || "—"} — ${result.previousEnd || "—"}` : unit}</small></div><div><span>{en ? "Recent period" : "최근 기간"}</span><strong>{alertNumber(rule, result.value)}</strong><small>{result.currentStart || "—"} — {rule.end || "—"}</small></div></div>
-    <p className="performance-alerts__note">{en ? "Weekly divisions · Missing days break the line. Alerts use period aggregates, not daily crossings. CPR = total cost ÷ total outcomes." : "주별 구획 · 빠진 날짜는 선을 끊습니다. 알림은 일별 돌파가 아닌 기간 집계로 판정합니다. CPR = 비용 합계 ÷ 성과 합계."}</p>
+    <p className="performance-alerts__note">{en ? "Weekly divisions · Missing days break the line. Alerts use period aggregates, not daily crossings." : "주별 구획 · 빠진 날짜는 선을 끊습니다. 알림은 일별 돌파가 아닌 기간 집계로 판정합니다."} {aggregation}</p>
   </figure>;
 }

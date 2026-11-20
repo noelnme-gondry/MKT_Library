@@ -12,11 +12,22 @@ export const CALCULATOR_ORDER = [
   "cpa-roas-converter",
   "required-cvr",
   "budget-pacing",
+  "cohort-retention",
   "uplift",
   "roas",
 ];
 
 const COMMON = {
+  "cohort-retention": {
+    toolId: "5-2",
+    toolHref: "/dashboard",
+    inputs: [
+      { id: "priorSize", type: "people", defaultValue: 200 },
+      { id: "priorReturned", type: "people", defaultValue: 40 },
+      { id: "currentSize", type: "people", defaultValue: 150 },
+      { id: "currentReturned", type: "people", defaultValue: 36 },
+    ],
+  },
   roas: {
     toolId: "5-3",
     toolHref: "/tools/budget-allocation",
@@ -112,6 +123,21 @@ const COMMON = {
 
 const COPY = {
   ko: {
+    "cohort-retention": {
+      name: "코호트 리텐션 계산기", title: "D1·D7·D30 리텐션 계산기 | 두 가입 코호트 비교", eyebrow: "가입 코호트 비교",
+      description: "두 코호트의 가입자 수와 같은 경과일에 돌아온 인원을 입력해 최근 코호트의 리텐션과 이전 대비 차이를 계산하세요.",
+      summary: "같은 경과일에 같은 행동을 한 고유 사용자를 비교합니다.",
+      labels: { priorSize: "이전 코호트 가입자", priorReturned: "이전 코호트 복귀자", currentSize: "최근 코호트 가입자", currentReturned: "최근 코호트 복귀자" },
+      primaryLabel: "최근 코호트 리텐션", secondaryLabel: "이전 코호트와의 차이",
+      formula: "리텐션 = 해당 일자 복귀자 ÷ 가입자 · 차이 = 최근 비율 − 이전 비율",
+      exampleNote: "예시는 가입 7일째에 200명 중 40명, 다음 코호트에서는 150명 중 36명이 돌아온 경우입니다. 내 D1·D7·D30 중 하나를 골라 네 숫자를 바꿔 보세요.",
+      inputError: "가입자와 복귀자를 정수로 입력하세요. 가입자는 1명 이상이고 복귀자는 0명부터 가입자 수까지입니다.",
+      guideTitle: "복귀자가 줄어도 리텐션이 오를 수 있습니다",
+      guide: [["가입자 수가 달라졌을 때", "예시에서 복귀자는 40명에서 36명으로 줄었지만 가입자 중 복귀 비율은 20%에서 24%로 4%p 올랐습니다."], ["차이를 더 살펴보려면", "같은 유입 채널끼리 나눠도 차이가 남는지 확인하세요. 유입 구성이 달라지면 전체 비율이 바뀔 수 있습니다."]],
+      faq: [["어제 가입한 그룹의 D7은 어떻게 넣나요?", "두 그룹 모두 가입 후 7일째 집계가 끝날 때까지 비교를 미루세요. 관측 전인 값을 0으로 넣으면 차이가 왜곡됩니다."]],
+      caveat: "정확히 해당 일자의 복귀를 비교합니다. 관측 차이만으로 기능 변경의 효과를 판단할 수 없습니다.",
+      toolCta: "대시보드에서 내 CSV로 코호트 살펴보기",
+    },
     roas: {
       name: "ROAS 계산기", title: "ROAS 계산기 | 광고비와 매출로 광고 수익률 계산", eyebrow: "광고 수익률",
       description: "광고비와 귀속 매출을 입력해 ROAS를 %와 배수로 계산하세요. 가입이나 파일 없이 확인하고 채널별 예산 분석으로 이어갑니다.",
@@ -325,6 +351,21 @@ const COPY = {
     },
   },
   en: {
+    "cohort-retention": {
+      name: "Cohort retention calculator", title: "D1, D7 and D30 retention calculator for two signup cohorts", eyebrow: "Signup cohorts",
+      description: "Enter signups and returning users for two cohorts at the same age to calculate recent retention and the percentage-point change.",
+      summary: "Count unique users who took the same return action on the same day after signup.",
+      labels: { priorSize: "Earlier cohort signups", priorReturned: "Earlier cohort returners", currentSize: "Recent cohort signups", currentReturned: "Recent cohort returners" },
+      primaryLabel: "Recent cohort retention", secondaryLabel: "Difference from the earlier cohort",
+      formula: "Retention = users returning on that day ÷ signups · Difference = recent rate − earlier rate",
+      exampleNote: "In this D7 example, 40 of 200 users returned in the earlier cohort and 36 of 150 in the recent cohort. Replace the four counts with your D1, D7 or D30 totals.",
+      inputError: "Enter whole numbers. Each cohort needs at least one signup and between zero and that many returners.",
+      guideTitle: "Fewer returners can still mean higher retention",
+      guide: [["When cohort sizes change", "In the example, returners fell from 40 to 36 while retention rose from 20% to 24%, a gain of 4 percentage points."], ["Investigating the difference", "Compare cohorts within the same acquisition channel. A change in channel mix can move the overall rate."]],
+      faq: [["Can I enter D7 for yesterday’s signups?", "Wait until the seventh day has been fully observed for both cohorts. Entering zero before then distorts the comparison."]],
+      caveat: "These are exact-day return rates. An observed difference alone cannot establish the effect of a product change.",
+      toolCta: "Explore cohorts with my CSV in the dashboard",
+    },
     roas: {
       name: "ROAS calculator", title: "ROAS calculator | Ad spend and attributed revenue", eyebrow: "Advertising returns",
       description: "Calculate ROAS as a percentage and multiple from ad spend and attributed revenue, then continue to channel budget analysis. No file or signup required.",
@@ -513,6 +554,18 @@ export function calculateMarketingMetric(slug, values = {}) {
     const secondary = revenue > 0 ? cost / revenue : null;
     if (!Number.isFinite(primary) || (secondary !== null && !Number.isFinite(secondary))) return null;
     return { primary, secondary, primaryFormat: "roas", secondaryFormat: "percent" };
+  }
+  if (slug === "cohort-retention") {
+    const result = calculateObservedUplift({
+      treatmentUsers: values.currentSize, treatmentConversions: values.currentReturned,
+      controlUsers: values.priorSize, controlConversions: values.priorReturned,
+    });
+    return result && {
+      primary: result.treatmentRate,
+      secondary: result.absoluteLift,
+      primaryFormat: "percent",
+      secondaryFormat: "percentagePoints",
+    };
   }
   if (slug === "uplift") {
     const result = calculateObservedUplift(values);
