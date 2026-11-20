@@ -12,6 +12,17 @@ describe("marketing calculators", () => {
     expect(calculateMarketingMetric("roas", { adSpend: 0, revenue: 500 })).toBeNull();
     expect(calculateMarketingMetric("roas", { adSpend: 1e-300, revenue: 1e300 })).toBeNull();
   });
+  it("compares exact-day cohort rates with different denominators", () => {
+    const values = { priorSize: 200, priorReturned: 40, currentSize: 150, currentReturned: 36 };
+    const compare = (changes = {}) => calculateMarketingMetric("cohort-retention", { ...values, ...changes });
+    expect(compare().primary).toBeCloseTo(0.24);
+    expect(compare().secondary).toBeCloseTo(0.04);
+    expect(compare({ currentReturned: 0 }).secondary).toBe(-0.2);
+    expect(compare({ priorReturned: 0 }).secondary).toBe(0.24);
+    for (const changes of [{ currentSize: 0 }, { priorReturned: 201 }, { currentReturned: "" }, { currentSize: 2.5 }]) {
+      expect(compare(changes)).toBeNull();
+    }
+  });
   it("keeps every calculator indexable in both locales", () => {
     expect(CALCULATOR_ORDER.length).toBeGreaterThan(0);
     expect(new Set(CALCULATOR_ORDER).size).toBe(CALCULATOR_ORDER.length);

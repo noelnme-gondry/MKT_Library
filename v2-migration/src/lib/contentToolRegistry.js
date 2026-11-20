@@ -206,6 +206,8 @@ export const PUBLISHED_BLOG_GLOSSARY_MAP = BLOG_RELATED_GLOSSARY;
  * 파생 검사한다.
  * ============================================================ */
 const GLOSSARY_PRIMARY_CALCULATOR = {
+  retention: "cohort-retention",
+  cohort: "cohort-retention",
   // 관측 전환율 차이부터 계산하고, 인과 해석·불확실성은 증분 분석에서 확인한다.
   uplift: "uplift",
   incrementality: "uplift",
@@ -235,6 +237,7 @@ export const inlineCalculatorForBlog = slug => BLOG_INLINE_CALCULATOR[slug] || n
 
 const BLOG_PRIMARY_CALCULATOR = {
   ...BLOG_INLINE_CALCULATOR,
+  "cohort-analysis-guide": "cohort-retention",
   "uplift-holdout-guide": "uplift",
   "incrementality-measurement": "uplift",
   "performance-marketing-metrics": "cpa-roas-converter",

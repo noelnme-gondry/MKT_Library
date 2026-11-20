@@ -87,7 +87,7 @@ Here's an example. CPA is low — meaning you're generating conversions cheaply.
 
 Low CPA alongside low ROAS is a reason to inspect order value and purchase conversion. Conversion definitions, revenue windows, delayed outcomes, audience mix, and missing tracking can produce the same pattern, so acquisition problems are not ruled out.
 
-When CPA and ROAS look good but LTV:CAC is low, check repeat purchase and retention alongside cohort mix, margins, acquisition-cost scope, and lifetime-value assumptions. These three metrics alone cannot establish a retention problem.
+When CPA and ROAS look good but LTV:CAC is low, check repeat purchase and retention alongside cohort mix, margins, acquisition-cost scope, and lifetime-value assumptions. These three metrics alone cannot establish a retention problem. To compare D7 across two signup weeks, enter signups and day-seven returners for each week in the [cohort retention calculator](/en/calculator/cohort-retention).
 
 Narrowing the cause down by asking "which link is flashing red" — that's the decisive difference from looking at metrics one at a time.
 
