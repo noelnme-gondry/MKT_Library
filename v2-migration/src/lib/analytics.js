@@ -67,7 +67,8 @@ function withEditorialJourney(name, params) {
       const age = Date.now() - journey.createdAt;
       if (!Number.isFinite(age) || age < 0 || age > EDITORIAL_JOURNEY_TTL) {
         storage.removeItem(EDITORIAL_JOURNEY_KEY);
-      } else if (journey.tool_id === params.tool_id && journey.locale === params.locale) {
+      } else if (journey.tool_id === params.tool_id && journey.locale === params.locale
+        && (!params.content_slug || params.content_slug === journey.content_slug)) {
         return {
           ...params, content_slug: journey.content_slug, content_type: journey.content_type,
           // 도착 이벤트에서만 클릭 위치를 잇는다. 결과 카드의 placement는 보존한다.
