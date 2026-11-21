@@ -562,6 +562,7 @@ export function calculateMarketingMetric(slug, values = {}) {
     });
     return result && {
       primary: result.treatmentRate,
+      priorRate: result.controlRate,
       secondary: result.absoluteLift,
       primaryFormat: "percent",
       secondaryFormat: "percentagePoints",

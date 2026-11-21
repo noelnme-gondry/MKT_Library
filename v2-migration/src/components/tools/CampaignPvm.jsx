@@ -28,12 +28,13 @@ import { figureHeaderFor, figureSourceLine } from "@/lib/analysis-export/exportO
 import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import CampaignMixExample from "./CampaignMixExample";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import { buildComparisonRange } from "@/components/ds/DateRangePicker";
 import ToolPageShell from "@/components/ToolPageShell";
 import ReportContext from "@/components/ds/ReportContext";
-import { pvmDriverLine, pvmHeadline } from "@/lib/report/pvmHeadline";
+import { pvmDriverLine, pvmHeadline, pvmNextAction } from "@/lib/report/pvmHeadline";
 import { sourceCurrencyOf } from "@/utils/format";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
 import { sharedRecipeFilters } from "@/lib/recipe/sharedFilters";
@@ -859,6 +860,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           title={C.title}
         >
           <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
+            {domain === "performance" && <CampaignMixExample locale={locale} />}
             <CsvUploader toolId={C.uploaderToolId} locale={locale} />
           </section>
         </ToolPageShell>
@@ -917,21 +919,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const pvmMixTotal = ready ? cache.layer1.reduce((sum, row) => sum + (Number(row.mix) || 0), 0) : null;
   const pvmRateTotal = ready ? cache.layer1.reduce((sum, row) => sum + (Number(row.rate) || 0), 0) : null;
   const decisionCause = pvmConclusion?.lead ? cache.layer1[pvmConclusion.lead.index] : null;
-  const decisionCauseKind = decisionCause && Math.abs(decisionCause.mix || 0) >= Math.abs(decisionCause.rate || 0)
-    ? tr("믹스 이동", "mix shift")
-    : tr("단가 변화", "rate change");
   const isDecisionCauseAdverse = (decisionCause?.contribution || 0) > 0;
-  const decisionAction = decisionCause
-    ? isDecisionCauseAdverse
-      ? tr(
-        `${decisionCause.key || unspec}의 ${decisionCauseKind} 구성요소를 점검하고 한 가지 교정만 시험한다`,
-        `Inspect the ${decisionCauseKind} component for ${decisionCause.key || unspec} and test one corrective change`,
-      )
-      : tr(
-        `${decisionCause.key || unspec}의 유리한 관측 기여와 함께 있었던 운영 조건을 기록하고 다음 기간에 재현되는지 확인한다`,
-        `Record the operating conditions observed alongside ${decisionCause.key || unspec}'s favorable contribution and check whether it repeats next period`,
-      )
-    : tr("다음 비교기간에도 같은 기준으로 변동을 다시 분해한다", "Run the same decomposition again for the next comparison window");
+  const decisionAction = pvmNextAction({ row: decisionCause, label: decisionCause?.key || unspec, metric: ml, formatMoney: fmtResultMoney, locale });
   const pvmDeltaPct = ready && cache.CPA1
     ? (cache.deltaCpa / cache.CPA1) * 100
     : null;
@@ -1469,6 +1458,11 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               />
             )}
           />
+          {decisionCause && cache.campaignMapped && channelKeys.includes(decisionCause.key) && sectionVisible("s-pvm-campaigns") && (
+            <a className="btn" href="#s-pvm-campaigns" onClick={() => setDrillChannel(decisionCause.key)}>
+              {tr(`${decisionCause.key || unspec} · ${C.levelCampaign}별 기여 확인`, `Inspect ${C.levelCampaign.toLowerCase()} contributions for ${decisionCause.key || unspec}`)}
+            </a>
+          )}
           {downloadError && <div className="required-banner" role="alert"><p>{downloadError}</p></div>}
         </> : (
           <div className="callout warn" style={{ marginTop: "12px" }}>

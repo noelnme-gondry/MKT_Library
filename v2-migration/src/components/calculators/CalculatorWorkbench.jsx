@@ -1,5 +1,6 @@
 "use client";
 
+import PeriodBars from "@/components/ds/PeriodBars";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -103,10 +104,18 @@ export default function CalculatorWorkbench({ slug, locale = "ko", entry = null,
         
         {result ? (
           <>
-            <div className="calculator-result__primary">
+            {slug === "cohort-retention" ? <PeriodBars
+              title={isEn ? "Return rates at the same cohort age" : "같은 경과일의 코호트 복귀율"}
+              max={1}
+              note={isEn ? "Shared scale: 0–100% · returners / cohort size" : "공통 척도 0~100% · 복귀자 / 가입자"}
+              rows={[
+                { label: isEn ? "Previous" : "이전", value: result.priorRate, display: formatValue(result.priorRate, "percent", locale), detail: `${values.priorReturned} / ${values.priorSize}` },
+                { label: isEn ? "Recent" : "최근", value: result.primary, display: formatValue(result.primary, "percent", locale), detail: `${values.currentReturned} / ${values.currentSize}` },
+              ]}
+            /> : <div className="calculator-result__primary">
               <small>{calculator.primaryLabel}</small>
               <strong>{formatValue(result.primary, result.primaryFormat, locale)}</strong>
-            </div>
+            </div>}
             <div className="calculator-result__secondary">
               <small>{calculator.secondaryLabel}</small>
               <strong>{result.secondary === null && calculator.unavailableSecondary

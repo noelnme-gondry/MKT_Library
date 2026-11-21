@@ -13,10 +13,11 @@ export default function BlogExampleChart({ example, locale = "ko" }) {
   const bars = example?.bars || [];
   if (!bars.length) return null;
   const max = Math.max(...bars.map((bar) => Math.abs(bar.value))) || 1;
-  return <ul className="blog-example__bars" aria-label={en ? "Example result by item" : "항목별 예시 결과"}>
+  const diverging = bars.some(bar => bar.value < 0);
+  return <ul className={`blog-example__bars${diverging ? " blog-example__bars--signed" : ""}`} aria-label={en ? "Example result by item" : "항목별 예시 결과"}>
     {bars.map((bar) => <li key={text(bar.label)} className={bar.highlight ? "is-highlight" : undefined}>
       <span className="blog-example__label">{text(bar.label)}</span>
-      <span className="blog-example__track" aria-hidden="true"><span style={{ width: `${Math.max(2, (Math.abs(bar.value) / max) * 100)}%` }} /></span>
+      <span className="blog-example__track" aria-hidden="true"><span style={{ width: `${Math.abs(bar.value) / max * (diverging ? 50 : 100)}%`, ...(diverging && (bar.value < 0 ? { right: "50%" } : { left: "50%" })) }} /></span>
       <span className="blog-example__value">{text(bar.display)}{bar.suffix ? ` (${bar.suffix})` : ""}</span>
     </li>)}
   </ul>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pvmDriverLine, pvmHeadline } from "./pvmHeadline";
+import { pvmDriverLine, pvmHeadline, pvmNextAction } from "./pvmHeadline";
 import { subjectParticle } from "@/lib/vocabulary/hangulMatch";
 
 const won = (value) => `${Math.round(value * 100) / 100}원`;
@@ -74,5 +74,16 @@ describe("pvmDriverLine — mix versus rate", () => {
   it("speaks in the analysis unit the user chose", () => {
     expect(pvmDriverLine({ mix: 1, rate: 9, unit: "캠페인", formatMoney: won })).toBe("캠페인 안의 단가 변화(+9원)가 캠페인 비중 변화(+1원)보다 컸습니다.");
     expect(pvmDriverLine({ mix: 9, rate: 1, unit: "Campaign", formatMoney: (v) => `$${v}`, locale: "en" })).toBe("The shift in campaign share moved it more (+$9) than unit costs within each campaign (+$1).");
+  });
+});
+
+describe("pvmNextAction", () => {
+  const fmt = v => v.toFixed(0) + "원";
+  const row = { mix: 12, rate: -4, s1: .2, s2: .4, result1: 20, result2: 40, cost1: 800, cost2: 1200 };
+  const action = (changes, locale = "ko") => pvmNextAction({ row: { ...row, ...changes }, label: "A", metric: "CPI", formatMoney: fmt, locale });
+  it("compares outcome shares for mix and denominated unit costs for rate", () => {
+    expect(action({})).toContain("20.0% → 40.0%");
+    expect(action({ rate: -22 })).toContain("40원 → 30원");
+    expect(action({ result2: 0 }, "en")).toContain("stopped recording outcomes");
   });
 });

@@ -102,9 +102,19 @@ export function evaluateAlert(rule) {
   const previousEnd = shiftDay(currentStart, -1), previousStart = shiftDay(currentStart, -rule.days);
   const take = (start, end) => rule.history.filter(point => point.date >= start && point.date <= end);
   const current = take(currentStart, rule.end), previous = take(previousStart, previousEnd);
-  const periods = { currentStart, currentEnd: rule.end, previousStart, previousEnd };
-  if (current.length !== rule.days || (rule.comparison === "previous" && previous.length !== rule.days)) return { ...periods, status: "unavailable", issue: "coverage" };
-  const value = pointValue(rule, current), reference = rule.comparison === "target" ? rule.target : pointValue(rule, previous);
+  const value = current.length === rule.days ? pointValue(rule, current) : null;
+  const reference = rule.comparison === "target" ? rule.target : previous.length === rule.days ? pointValue(rule, previous) : null;
+  const periods = {
+    currentStart, currentEnd: rule.end, previousStart, previousEnd,
+    value: Number.isFinite(value) ? value : null,
+    reference: Number.isFinite(reference) ? reference : null,
+  };
+  if (current.length !== rule.days || (rule.comparison === "previous" && previous.length !== rule.days)) {
+    const observed = new Set(rule.history.map(point => point.date));
+    const starts = rule.comparison === "previous" ? [previousStart, currentStart] : [currentStart];
+    const missingDates = starts.flatMap(start => Array.from({ length: rule.days }, (_, i) => shiftDay(start, i))).filter(date => !observed.has(date));
+    return { ...periods, status: "unavailable", issue: "coverage", missingDates };
+  }
   if (value === null || reference === null || reference <= 0) return { ...periods, status: "unavailable", issue: "denominator" };
   if (!Number.isFinite(value) || !Number.isFinite(reference)) return { ...periods, status: "unavailable", issue: "numbers" };
   const change = (value / reference - 1) * 100;
@@ -112,7 +122,7 @@ export function evaluateAlert(rule) {
   if (!Number.isFinite(change) || !Number.isFinite(threshold)) return { ...periods, status: "unavailable", issue: "numbers" };
   const roundoff = Number.EPSILON * 8 * Math.max(1, Math.abs(value), Math.abs(threshold));
   const met = rule.direction === "up" ? value >= threshold - roundoff : value <= threshold + roundoff;
-  return { ...periods, status: met ? "triggered" : "clear", value, reference, change, threshold };
+  return { ...periods, status: met ? "triggered" : "clear", change, threshold };
 }
 
 export function applyAlertDays(rule, collected, now = Date.now()) {
