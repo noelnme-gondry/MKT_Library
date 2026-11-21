@@ -22,7 +22,7 @@ const byTool = {
   "5-25": evidence("tool-core-figure-vif-by-entity", "채널별 지출 중복과 판정 기준 확인", "Inspect channel VIFs and interpretation thresholds"),
 };
 const byDashboardTab = {
-  viz: evidence("s-charts", "기간별 추이에서 변동 날짜 확인", "Locate the change on the time series"),
+  viz: evidence("s-charts", "두 주의 설치당 비용과 일별 추이 확인", "Inspect the two weeks of cost per install and the daily trend"),
   cohort: evidence("s-retention", "경과일별 복귀율과 분모 확인", "Inspect retention and its denominator by cohort age"),
   ltv: evidence("s-table", "채널별 회수기간과 실측 범위 비교", "Compare payback and observation horizons by channel"),
   funnel: evidence("s-funnel-wow", "지난주보다 전환율이 떨어진 단계 확인", "Find stages that declined week over week"),

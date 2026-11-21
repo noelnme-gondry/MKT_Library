@@ -4,6 +4,7 @@ import { useDashboardSetting, useDashboardAction, useDashboardFilter, useDashboa
 import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import HelpTip from "@/components/ds/HelpTip";
 import Chart from "@/utils/chartGlobals";
+import { blogDashboardTab } from "@/lib/blogInsightRegistry";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, buildRetentionCurve, calculateKPIs, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
@@ -497,7 +498,10 @@ export default function VizTab({ domain = "performance", locale = "ko", hideSupp
   // 관리한다. 위 KPI 탐색 차트와 설정 scope는 분리되어 서로 덮어쓰지 않는다.
   const orderedCharts = applyMetricView([...chartMeta, ...customChartMetas], chartCfg, (c) => c.k);
   const visibleChartKeys = orderedCharts.map((c) => c.k).join(",");
-  const activeMetric = selectedMetric || recommendedMetric;
+  const arrival = useAppStore(state => state.blogArrival);
+  const articleCpi = !isContent && csvData?.importSource === "demo" && arrival?.toolId === "5-2" &&
+    arrival.source === "demo" && arrival.fileName === csvData.fileName && blogDashboardTab(arrival.slug) === "viz";
+  const activeMetric = selectedMetric || (articleCpi ? "acq" : recommendedMetric);
   const activeTrend = metricTrend(activeMetric);
   const activeMetricLabel = activeMetric === "outcome"
     ? D.kpiOutcomeLabel(effBasis)

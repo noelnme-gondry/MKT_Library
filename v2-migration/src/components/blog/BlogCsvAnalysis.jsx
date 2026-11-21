@@ -7,6 +7,7 @@ import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import { groupForRoute } from "@/lib/toolGroups";
 import { idToSlug } from "@/lib/routeMap";
+import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import { blogDashboardTab } from "@/lib/blogInsightRegistry";
 import { blogMapping, blogMappingToolId, descriptiveBlogResult, runBlogAdapter, strictMetric } from "@/lib/blogInsightRunner";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -157,7 +158,14 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
       if (config.toolId === "5-2") {
         const tab = blogDashboardTab(slug);
         state.setDashboardTab(tab);
-        if (sample && (tab === "ltv" || tab === "cohort")) state.setDenomBasis("installs");
+        if (sample && tab === "viz") {
+          const { current, previous } = dashboardPeriods(candidate);
+          if (previous.start && current.end) state.setDashboardFilter({
+            dateStart: current.start, dateEnd: current.end, compareEnabled: true,
+            comparisonStart: previous.start, comparisonEnd: previous.end, comparisonPreset: "custom",
+          });
+        }
+        if (sample && tab !== "funnel") state.setDenomBasis("installs");
         if (sample && tab === "cohort") state.setMatureCohortOnly(true);
       }
     }

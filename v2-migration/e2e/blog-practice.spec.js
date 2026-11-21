@@ -228,3 +228,13 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator("#wide-ret-curve")).toBeVisible();
   });
 }
+
+test("weekly CPI article opens the same seven-day metric and comparison", async ({ page }) => {
+  await page.goto("/blog/performance-marketing-analysis-order");
+  await page.locator(".blog-conversion-entry button").click();
+  await page.locator('.blog-arrival__evidence[href="#s-charts"]').click();
+  await expect(page.locator("#s-kpi button[aria-pressed=true]")).toContainText("CPI");
+  await expect(page.locator("#s-charts h2").first()).toContainText("CPI");
+  await expect(page.locator("#s-charts canvas").first()).toBeVisible();
+  await expect(page.locator(".result-action-card").first()).toContainText("14.1%");
+});
