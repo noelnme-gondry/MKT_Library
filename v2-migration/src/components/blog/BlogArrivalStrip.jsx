@@ -1,11 +1,11 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { blogEvidenceFor } from "@/lib/blogEvidence";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { scheduleDataPrepFocus } from "@/lib/dataPrepFocus";
-import { trackProductEvent } from "@/lib/analytics";
+import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
 // 시안 E — 블로그 예시 결과에서 도구로 넘어온 방문의 첫 줄.
 // 데모 안내 모달·유입 설문 대신 "무엇을 보고 있고 어디서 왔는지"를 한 줄로 말하고,
@@ -23,9 +23,29 @@ function subscribeToSections(notify) {
   observer.observe(document.querySelector("main") || document.body, { childList: true, subtree: true });
   return () => observer.disconnect();
 }
-function EvidenceLink({ target, locale }) {
-  const available = useSyncExternalStore(subscribeToSections, () => Boolean(document.getElementById(target.id)), () => false);
-  return available ? <a className="btn primary blog-arrival__evidence" href={`#${target.id}`}>{target[locale === "en" ? "en" : "ko"]}</a> : null;
+function EvidenceLink({ target, slug, routeId, locale }) {
+  const section = useSyncExternalStore(subscribeToSections, () => document.getElementById(target.id), () => null);
+  // Dashboard empty states have the same section ID. Wait for an actual chart or data row.
+  const result = useSyncExternalStore(subscribeToSections, () => target.resultSelector
+    ? section?.querySelector(target.resultSelector) ?? null : section, () => null);
+  useEffect(() => {
+    if (!result || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || entry.intersectionRatio <= 0) return;
+      const params = { content_slug: slug, content_type: "blog", tool_id: routeId, locale, source: "demo", section_id: target.id };
+      if (target.resultSelector) {
+        trackProductEventOnce("blog_sample_result_viewed", productEventKey(slug, routeId, locale, "ready"), { ...params, result_state: "ready" });
+      }
+      trackProductEventOnce("blog_evidence_viewed", productEventKey(slug, routeId, locale, target.id), params);
+      observer.disconnect();
+    }, { threshold: [0, 0.01] });
+    observer.observe(result);
+    return () => observer.disconnect();
+  }, [result, slug, routeId, locale, target]);
+  return result ? <a className="btn primary blog-arrival__evidence" href={`#${target.id}`}
+    onClick={() => trackProductEvent("blog_arrival_action", { content_slug: slug, content_type: "blog", tool_id: routeId, locale, placement: "blog_arrival", state: "inspect_evidence", section_id: target.id })}>
+    {target[locale === "en" ? "en" : "ko"]}
+  </a> : null;
 }
 
 export default function BlogArrivalStrip({ routeId, locale = "ko" }) {
@@ -53,7 +73,7 @@ export default function BlogArrivalStrip({ routeId, locale = "ko" }) {
   return <div className="blog-arrival" role="note" aria-label={en ? "Where this result came from" : "이 결과의 출처"}>
     <p className="blog-arrival__text">{lead}</p>
     <div className="blog-arrival__actions">
-      {evidence && <EvidenceLink target={evidence} locale={locale} />}
+      {evidence && <EvidenceLink target={evidence} slug={arrival.slug} routeId={routeId} locale={locale} />}
       {state === "demo" && <button type="button" className="btn" onClick={useMine}>{en ? "Use my CSV" : "내 CSV로 바꾸기"}</button>}
       <Link className="blog-arrival__back" href={href} onClick={() => trackProductEvent("blog_arrival_action", { content_slug: arrival.slug, content_type: "blog", tool_id: routeId, placement: "blog_arrival", state: "back_to_article", locale })}>{en ? "Back to the article" : "글로 돌아가기"}</Link>
     </div>

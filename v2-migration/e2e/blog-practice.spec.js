@@ -215,6 +215,7 @@ for (const locale of ["ko", "en"]) {
 
 for (const locale of ["ko", "en"]) {
   test(`${locale === "en" ? "@light-en " : ""}cohort article opens measured retention with the same eligible counts (${locale})`, async ({ page }) => {
+    await page.addInitScript(() => { window.dataLayer ||= []; window.gtag = (...args) => window.dataLayer.push(args); });
     const prefix = locale === "en" ? "/en" : "";
     await page.goto(`${prefix}/blog/cohort-analysis-guide`);
     const bar = page.locator(".blog-example__bars li").filter({ hasText: "D14" });
@@ -225,7 +226,13 @@ for (const locale of ["ko", "en"]) {
     await link.click();
     const row = page.locator("#s-retention tbody tr").filter({ hasText: "D14" });
     for (const count of counts) await expect(row).toContainText(count);
-    await expect(page.locator("#wide-ret-curve")).toBeVisible();
+    await page.locator("#wide-ret-curve").scrollIntoViewIfNeeded();
+    const eventCount = (name, state) => page.evaluate(({ name, state }) =>
+      window.dataLayer.filter((entry) => entry[1] === name && entry[2]?.content_slug === "cohort-analysis-guide" && (!state || entry[2].state === state)).length,
+    { name, state });
+    await expect.poll(() => eventCount("blog_arrival_action", "inspect_evidence")).toBe(1);
+    await expect.poll(() => eventCount("blog_sample_result_viewed")).toBe(1);
+    await expect.poll(() => eventCount("blog_evidence_viewed")).toBe(1);
   });
 }
 

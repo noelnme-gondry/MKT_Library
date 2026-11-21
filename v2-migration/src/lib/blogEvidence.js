@@ -2,7 +2,7 @@ import { blogDashboardTab } from "./blogInsightRegistry";
 
 // Each link names the decision the reader can make at an existing result section.
 // Sections can be absent when the sample is insufficient or a user changes views.
-const evidence = (id, ko, en) => ({ id, ko, en });
+const evidence = (id, ko, en, resultSelector) => ({ id, ko, en, resultSelector });
 const byTool = {
   "5-21": evidence("s-pvm-campaigns", "캠페인별 단가와 기여 비교", "Compare cost and contribution by campaign"),
   "5-29": evidence("tool-core-figure-composition-mix-rate", "물량 이동과 내부 변화 구분", "Separate volume shifts from within-campaign changes"),
@@ -23,9 +23,9 @@ const byTool = {
 };
 const byDashboardTab = {
   viz: evidence("s-charts", "두 주의 설치당 비용과 일별 추이 확인", "Inspect the two weeks of cost per install and the daily trend"),
-  cohort: evidence("s-retention", "경과일별 복귀율과 분모 확인", "Inspect retention and its denominator by cohort age"),
-  ltv: evidence("s-table", "채널별 회수기간과 실측 범위 비교", "Compare payback and observation horizons by channel"),
-  funnel: evidence("s-funnel-wow", "지난주보다 전환율이 떨어진 단계 확인", "Find stages that declined week over week"),
+  cohort: evidence("s-retention", "경과일별 복귀율과 분모 확인", "Inspect retention and its denominator by cohort age", "#wide-ret-curve"),
+  ltv: evidence("s-table", "채널별 회수기간과 실측 범위 비교", "Compare payback and observation horizons by channel", "tbody tr"),
+  funnel: evidence("s-funnel-wow", "지난주보다 전환율이 떨어진 단계 확인", "Find stages that declined week over week", "tbody tr"),
 };
 export function blogEvidenceFor(slug, toolId) {
   return toolId === "5-2" ? byDashboardTab[blogDashboardTab(slug)] : byTool[toolId];
