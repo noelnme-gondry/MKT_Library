@@ -148,8 +148,10 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
       }
       // The preview used every uploaded row; stale detail filters must not hide them.
       state.setDashboardFilter(useAppStore.getInitialState().dashboardFilter);
-      if (candidate === pendingSample.current && practice?.comparison) {
-        state.handoffCsvToRoute(config.toolId, candidate, { comparison: { ...practice.comparison, source: "blog" } });
+      const sample = candidate === pendingSample.current;
+      const comparison = sample ? practice?.comparison || example?.comparison : result?.manifest?.comparison;
+      if (config.toolId === "5-21" && comparison) {
+        state.handoffCsvToRoute(config.toolId, candidate, { markAnalyzed: sample, comparison: { ...comparison, source: "blog" } });
       }
       if (config.type === "funnel") state.setDashboardTab("funnel");
     }

@@ -160,3 +160,18 @@
     .app .table-wrap table.data tbody :is(td, th) { padding: 12px; }
   }
 }
+
+.period-bars, .mix-preview { margin: 1rem 0; min-width: 0; }
+.period-bars figcaption, .mix-preview figcaption { font-weight: 600; margin-bottom: .5rem; }
+.period-bars__row { display: grid; grid-template-columns: minmax(3em, auto) minmax(2rem, 1fr) auto; align-items: center; gap: .25rem .65rem; margin: .45rem 0; font-variant-numeric: tabular-nums; }
+.period-bars__row small { grid-column: 2 / -1; }
+.period-bars__track { position: relative; height: .7rem; background: var(--border); }
+.period-bars__track i { height: 100%; display: block; background: var(--text-muted); }
+.period-bars__row:nth-of-type(2) .period-bars__track i { background: var(--accent); }
+.period-bars__track b { position: absolute; top: -.2rem; bottom: -.2rem; border-left: 2px dashed var(--text-primary); }
+.mix-preview { border-top: 1px solid var(--border); padding-top: .9rem; }
+.mix-preview > figure { margin-inline: 0; }
+.mix-preview__period { display: flex; align-items: center; gap: .5rem; }
+.mix-preview__stack { flex: 1; display: flex; margin: .25rem 0; }
+.mix-preview__stack span { box-sizing: border-box; text-align: center; font-size: .8rem; border: 1px solid var(--text-muted); }
+.mix-preview__stack span + span { background: var(--border); }

@@ -8,8 +8,13 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/calculator/cohort-retention$`));
     const result = page.locator(".calculator-result");
     await expect(result).toContainText("24.0%");
+    const bars = result.locator(".period-bars");
+    await expect(bars).toContainText("20.0%");
+    await expect(bars).toContainText("40 / 200");
     await page.getByRole("spinbutton", { name: locale === "en" ? /Recent cohort returners/ : /최근 코호트 복귀자/ }).fill("15");
     await expect(result).toContainText("10.0%");
+    await expect(bars).toContainText("15 / 150");
+    await expect(bars.locator(".period-bars__track i").last()).toHaveAttribute("style", /width: 10%/);
     await expect(result).toContainText(locale === "en" ? "-10.0 pp" : "-10.0%p");
     await result.getByRole("link").click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dashboard(?:[?#].*)?$`));

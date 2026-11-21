@@ -12,9 +12,9 @@ const csv = (rise = true) => {
   }
   return Buffer.from(lines.join("\r\n"));
 };
-async function upload(page, en, rise = true) {
+async function upload(page, en, rise = true, buffer = csv(rise)) {
   const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
-  await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "same-name.csv", mimeType: "text/csv", buffer: csv(rise) });
+  await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "same-name.csv", mimeType: "text/csv", buffer });
   await uploader.getByRole("button", { name: en ? "KRW ₩" : "원 ₩", exact: true }).click();
   await uploader.getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
   await expect(page.locator("#ops-plan-title")).toBeVisible();
@@ -103,3 +103,27 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     expect(errors).toEqual([]);
   });
 }
+
+test("sum alert keeps the daily trend and the complete seven-day total with a missing baseline day", async ({ page }) => {
+  await enableReviewLogin(page);
+  await page.goto("/tools/operations-planner");
+  const lines = ["Date,Channel,Campaign,Cost,Installs,Impressions,Clicks"];
+  for (let i = 0; i <= 14; i++) {
+    if (i === 1) continue;
+    const date = new Date(Date.UTC(2026, 10, i)).toISOString().slice(0, 10);
+    lines.push(`${date},Meta,Example,${i < 8 ? 100 : 140},10,1000,30`);
+  }
+  await upload(page, false, true, Buffer.from(lines.join("\n")));
+  const manager = page.locator("#performance-alerts");
+  await manager.getByRole("textbox", { name: "조건 이름" }).fill("광고비 합계");
+  await manager.getByRole("combobox", { name: "알림 지표" }).selectOption("sum");
+  await manager.getByRole("combobox", { name: "참조 컬럼" }).selectOption("Cost");
+  await manager.getByRole("button", { name: "현재 CSV로 미리보기" }).click();
+  const trend = manager.locator(".performance-alerts__trend");
+  await expect(trend.locator("canvas")).toBeVisible();
+  await expect(trend.locator(".period-bars__row strong")).toHaveText(["—", "980.00"]);
+  await expect(trend.locator(".period-bars__track b")).toHaveCount(0);
+  await expect(trend).toContainText("누락된 날짜 · 2026-11-01");
+  await trend.getByText("일별 관측값 보기").click();
+  await expect(trend.getByRole("row").filter({ hasText: "2026-11-01" })).toContainText("—");
+});

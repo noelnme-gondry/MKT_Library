@@ -68,3 +68,19 @@ export function pvmDriverLine({ mix, rate, unit, formatMoney = (value) => String
   }
   return `${bigLabel}(${signed(bigValue)})가 ${smallLabel}(${signed(smallValue)})보다 컸습니다.`;
 }
+
+export function pvmNextAction({ row, label, metric, formatMoney, locale = "ko" }) {
+  const en = locale === "en";
+  if (!row) return en ? "Keep the same periods and metric for the next comparison." : "다음 비교에서도 기간 길이와 성과 지표를 유지하세요.";
+  if (row.result1 === 0 || row.result2 === 0) return en
+    ? `Check when ${label} started or stopped recording outcomes before comparing unit costs.`
+    : `${label}에서 성과가 처음 또는 마지막으로 잡힌 날짜를 확인하세요. 성과가 없는 기간은 단가를 비교할 수 없습니다.`;
+  if (Math.abs(row.mix) > Math.abs(row.rate)) {
+    const shares = [row.s1, row.s2].map(value => `${(value * 100).toFixed(1)}%`).join(" → ");
+    return en ? `Compare the change in ${label}’s share of outcomes (${shares}) with its budget-change dates.`
+      : `${label}의 기간별 성과 비중은 ${shares}입니다. 예산을 조정한 날짜와 비중이 달라진 날짜를 대조하세요.`;
+  }
+  const costs = [row.cost1 / row.result1, row.cost2 / row.result2].map(formatMoney).join(" → ");
+  return en ? `For ${label}, compare spend and outcome counts across the two periods to trace the change in ${metric} (${costs}).`
+    : `${label}의 기간별 ${metric}는 ${costs}입니다. 광고비와 성과 건수의 변화율을 비교해 단가가 달라진 이유를 좁혀 보세요.`;
+}

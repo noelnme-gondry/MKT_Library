@@ -67,10 +67,10 @@ const stat = (res, id) => res.verdict?.stats?.find((s) => s.id === id)?.value;
 // 막대 폭·선 모양에만 쓰는 값은 10자리로 자른다 — 부동소수 마지막 자리가 CPU·Node 빌드마다
 // 달라(CI에서 1e-14 차이) 신선도 테스트가 엔진 변화가 아닌 기계 차이에 깨졌다.
 const stable = (v) => (typeof v === "number" && Number.isFinite(v) ? Number(v.toPrecision(10)) : v);
-function card({ ko, en, bars = [], spark = null, note }) {
+function card({ ko, en, bars = [], spark = null, note, comparison }) {
   const steadyBars = bars.map((b) => ({ ...b, value: stable(b.value) }));
   const steadySpark = spark ? JSON.parse(JSON.stringify(spark, (k, v) => stable(v))) : spark;
-  return { ko: { headline: ko.headline, caption: ko.caption }, en: { headline: en.headline, caption: en.caption }, bars: steadyBars, spark: steadySpark, note: note || null };
+  return { ko: { headline: ko.headline, caption: ko.caption }, en: { headline: en.headline, caption: en.caption }, bars: steadyBars, spark: steadySpark, note: note || null, ...(comparison && { comparison }) };
 }
 
 const BUILDERS = {
@@ -97,6 +97,7 @@ const BUILDERS = {
     const top = rows[0];
     const share = top.contribution / delta;
     return card({
+      comparison: res.manifest.comparison,
       ko: { headline: `설치당 비용이 ${won(Math.abs(delta))} ${delta >= 0 ? "올랐고" : "내려갔고"}, 그중 ${won(Math.abs(top.contribution))}이 ${top.entity}에서 나왔습니다.`, caption: `예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, ${won(prior)} → ${won(recent)}.` },
       en: { headline: `Cost per install ${delta >= 0 ? "rose" : "fell"} by ${won(Math.abs(delta), true)}, and ${won(Math.abs(top.contribution), true)} of it came from ${top.entity}.`, caption: `Calculated on example data. Last 7 days vs the prior 7, ${won(prior, true)} → ${won(recent, true)}.` },
       bars: rows.slice(0, 5).map((r, i) => ({ label: { ko: r.entity, en: r.entity }, value: r.contribution, display: { ko: signed(won(r.contribution)), en: signed(won(r.contribution, true)) }, highlight: i === 0, suffix: i === 0 ? pct(share, 0) : null })),

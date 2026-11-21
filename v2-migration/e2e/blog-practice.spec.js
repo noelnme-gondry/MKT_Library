@@ -190,3 +190,25 @@ for (const locale of ["ko", "en"]) {
     });
   }
 }
+
+for (const locale of ["ko", "en"]) {
+  test(`${locale === "en" ? "@light-en " : ""}blog CPI example retains periods from chart to campaign drill-down (${locale})`, async ({ page }) => {
+    const en = locale === "en", slug = "ad-performance-diagnosis";
+    await page.goto(`${en ? "/en" : ""}/blog/${slug}`);
+    const chart = page.locator("#blog-practice .blog-example__bars--signed");
+    await expect(chart).toContainText("Meta AAP");
+    const negative = chart.locator("li").filter({ hasText: "TikTok" }).locator(".blog-example__track > span");
+    expect(await negative.evaluate(el => el.style.right)).toBe("50%");
+    await page.locator(".blog-conversion-entry").getByRole("button", { name: blogConversionFor(slug, locale).action }).click();
+    const card = page.locator(".result-action-card").first();
+    await expect(card.getByRole("heading", { level: 2 })).toContainText("1,475");
+    await expect(card.getByRole("heading", { level: 2 })).toContainText("1,682");
+    await expect(card.locator(".result-next-action")).toContainText("Meta AAP");
+    const drill = page.locator('a[href="#s-pvm-campaigns"]').filter({ hasText: "Meta AAP" });
+    await drill.click();
+    const section = page.locator("#s-pvm-campaigns");
+    await expect(section.getByRole("radio", { name: "Meta AAP", exact: true })).toBeChecked();
+    await expect(section.getByRole("table")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  });
+}

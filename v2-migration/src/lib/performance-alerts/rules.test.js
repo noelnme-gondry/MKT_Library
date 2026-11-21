@@ -42,6 +42,13 @@ describe("project performance rules", () => {
     const data = fixture(); data.raw.forEach(row => { row.Installs = 0; });
     expect(evaluateAlert(checkAlert(bind(data), data))).toMatchObject({ status: "unavailable", issue: "denominator" });
   });
+  it("shows both observed totals when a zero prior total prevents a relative comparison", () => {
+    const data = fixture("2026-11-01", 14);
+    data.raw.slice(0, 7).forEach(row => { row.Cost = 0; });
+    const result = evaluateAlert(checkAlert(bind(data, { metric: "sum", valueHeader: "Cost" }), data));
+    expect(result).toMatchObject({ status: "unavailable", issue: "denominator", reference: 0, value: 980 });
+    expect(result.threshold).toBeUndefined();
+  });
   it("checks raw custom column totals/row averages and target-relative declines", () => {
     const data = fixture();
     const rule = checkAlert(bind(data, { metric: "mean", valueHeader: "Custom", comparison: "target", target: 200, direction: "down", percent: 40 }), data);
@@ -84,4 +91,14 @@ it("withholds conflicting role mappings instead of choosing the first source col
 
 it("requires a custom column to still exist when editing against another schema", () => {
   expect(() => bind(fixture(), { metric: "sum", valueHeader: "Old column" })).toThrow("ALERT_MAPPING_REQUIRED");
+});
+
+it("retains a complete recent sum when a baseline day is missing", () => {
+  const data = fixture("2026-11-01", 14);
+  data.raw.shift();
+  const rule = checkAlert(bind(data, { metric: "sum", valueHeader: "Cost" }), data, 1);
+  expect(evaluateAlert(rule)).toMatchObject({
+    status: "unavailable", issue: "coverage", value: 980, reference: null, missingDates: ["2026-11-01"],
+  });
+  expect(evaluateAlert(rule).threshold).toBeUndefined();
 });

@@ -173,7 +173,19 @@
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "comparison": {
+   "metric": "cpi",
+   "periodA": {
+    "start": "2024-03-17",
+    "end": "2024-03-23"
+   },
+   "periodB": {
+    "start": "2024-03-24",
+    "end": "2024-03-30"
+   },
+   "filterState": {}
+  }
  },
  "ad-performance-diagnosis": {
   "toolId": "5-21",
@@ -254,7 +266,19 @@
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "comparison": {
+   "metric": "cpi",
+   "periodA": {
+    "start": "2024-03-17",
+    "end": "2024-03-23"
+   },
+   "periodB": {
+    "start": "2024-03-24",
+    "end": "2024-03-30"
+   },
+   "filterState": {}
+  }
  },
  "aha-event-ad-optimization": {
   "toolId": "5-20",
@@ -783,7 +807,19 @@
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "comparison": {
+   "metric": "cpi",
+   "periodA": {
+    "start": "2024-03-17",
+    "end": "2024-03-23"
+   },
+   "periodB": {
+    "start": "2024-03-24",
+    "end": "2024-03-30"
+   },
+   "filterState": {}
+  }
  },
  "cannibalization-organic-paid": {
   "toolId": "5-18-paid-organic",
@@ -1336,7 +1372,19 @@
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "comparison": {
+   "metric": "cpi",
+   "periodA": {
+    "start": "2026-08-31",
+    "end": "2026-09-06"
+   },
+   "periodB": {
+    "start": "2026-09-07",
+    "end": "2026-09-13"
+   },
+   "filterState": {}
+  }
  },
  "marketing-mix-modeling": {
   "toolId": "5-25",
@@ -2082,6 +2130,18 @@
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "comparison": {
+   "metric": "cpi",
+   "periodA": {
+    "start": "2026-08-31",
+    "end": "2026-09-06"
+   },
+   "periodB": {
+    "start": "2026-09-07",
+    "end": "2026-09-13"
+   },
+   "filterState": {}
+  }
  }
 }
