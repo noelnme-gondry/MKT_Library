@@ -306,7 +306,8 @@ export default function CohortTab({ locale = "ko" } = {}) {
   // §1 리텐션 표 지표 컬럼 — 첫 컬럼 '구간'은 고정, 나머지만 표시/순서 토글(값 불변).
   const cohortCols = [
     { k: "rate", label: tr("잔존율", "Retention Rate"), render: (p) => fmtPct(p.retentionRate) },
-    { k: "survivors", label: survLabel, render: (p) => (p.survivors || 0).toLocaleString() },
+    { k: "survivors", label: survLabel, render: (p) => p.survivors.toLocaleString() },
+    { k: "denominator", label: tr("해당 구간 모수", "Eligible base"), render: (p) => p.n.toLocaleString() },
   ];
   const orderedCohortCols = applyMetricView(cohortCols, cohortTableCfg, (col) => col.k);
 
@@ -422,8 +423,8 @@ export default function CohortTab({ locale = "ko" } = {}) {
         )}
         <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>
           {tr(
-            <>{survLabel} = Σ(잔존 인원) ÷ Σ({anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수({anchorLabel})를 바꿉니다.</>,
-            <>{survLabel} = Σ(retained users) ÷ Σ(base of {anchorLabel}). If <code>ret_dN</code> is a <strong>0–1 rate</strong>, it&apos;s converted to a headcount (× base); if it&apos;s a <strong>whole number</strong>, it&apos;s summed as a headcount directly (weighted by cohort size — not a simple average). The basis toggle changes the base ({anchorLabel}).</>
+            <>잔존율 = Σ(잔존 인원) ÷ Σ({anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수({anchorLabel})를 바꿉니다.</>,
+            <>Retention rate = Σ(retained users) ÷ Σ(base of {anchorLabel}). If <code>ret_dN</code> is a <strong>0–1 rate</strong>, it&apos;s converted to a headcount (× base); if it&apos;s a <strong>whole number</strong>, it&apos;s summed as a headcount directly (weighted by cohort size — not a simple average). The basis toggle changes the base ({anchorLabel}).</>
           )}
         </p>
         {wrc.wholePctWarn && (

@@ -16,12 +16,12 @@ const COPY = {
   en: { answer: "Answer", edit: "Edit answers", close: "Close", count: (answered, total) => `${answered} of ${total} answered` },
 };
 
-export default function DeclaredConditions({ title, intro, status, note, ready = false, answered = 0, total = 0, locale = "ko", className = "", children }) {
+export default function DeclaredConditions({ id, title, intro, status, note, ready = false, answered = 0, total = 0, locale = "ko", className = "", children }) {
   const T = COPY[locale === "en" ? "en" : "ko"];
   const [open, setOpen] = useState(false);
   const trigger = useRef(null);
   return (
-    <section className={`declared-conditions ${className}`.trim()} aria-label={title} data-ready={ready ? "true" : "false"}>
+    <section id={id} className={`declared-conditions ${className}`.trim()} aria-label={title} data-ready={ready ? "true" : "false"}>
       <p className="declared-conditions__line">
         <strong>{title}</strong>
         <span className="declared-conditions__count">{T.count(answered, total)}</span>

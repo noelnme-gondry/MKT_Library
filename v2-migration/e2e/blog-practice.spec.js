@@ -212,3 +212,29 @@ for (const locale of ["ko", "en"]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });
 }
+
+for (const locale of ["ko", "en"]) {
+  test(`${locale === "en" ? "@light-en " : ""}cohort article opens measured retention with the same eligible counts (${locale})`, async ({ page }) => {
+    const prefix = locale === "en" ? "/en" : "";
+    await page.goto(`${prefix}/blog/cohort-analysis-guide`);
+    const bar = page.locator(".blog-example__bars li").filter({ hasText: "D14" });
+    const counts = (await bar.locator(".blog-example__detail").innerText()).split(" / ");
+    await page.locator(".blog-conversion-entry button").click();
+    const link = page.locator(".blog-arrival__evidence");
+    await expect(link).toHaveAttribute("href", "#s-retention");
+    await link.click();
+    const row = page.locator("#s-retention tbody tr").filter({ hasText: "D14" });
+    for (const count of counts) await expect(row).toContainText(count);
+    await expect(page.locator("#wide-ret-curve")).toBeVisible();
+  });
+}
+
+test("weekly CPI article opens the same seven-day metric and comparison", async ({ page }) => {
+  await page.goto("/blog/performance-marketing-analysis-order");
+  await page.locator(".blog-conversion-entry button").click();
+  await page.locator('.blog-arrival__evidence[href="#s-charts"]').click();
+  await expect(page.locator("#s-kpi button[aria-pressed=true]")).toContainText("CPI");
+  await expect(page.locator("#s-charts h2").first()).toContainText("CPI");
+  await expect(page.locator("#s-charts canvas").first()).toBeVisible();
+  await expect(page.locator(".result-action-card").first()).toContainText("14.1%");
+});

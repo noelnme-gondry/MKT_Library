@@ -3,7 +3,6 @@ import { setupBarShowsInput } from "../src/lib/report/reportContextTools";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
-import { chooseDashboardView } from "./support/dashboardView.js";
 
 const articles = ["weekly-marketing-report-template", "cac-payback-period", "marketing-report-sheets-bigquery", "ga4-data-traps", "ltv-cac-ratio", "cpi-cpa-cpm-difference", "cannibalization-organic-paid"];
 const localOnly = route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort();
@@ -80,7 +79,7 @@ for (const locale of ["ko", "en"]) {
       }
     });
   }
-  test(`payback article reaches the separate LTV demo (${locale})`, async ({ page }) => {
+  test(`payback article opens its channel payback result directly (${locale})`, async ({ page }) => {
     await page.route("**/*", localOnly);
     await page.goto(`${prefix}/blog/cac-payback-period`);
     await page.locator("#blog-practice").getByRole("button", { name: blogConversionFor("cac-payback-period", locale).action, exact: true }).click();
@@ -88,8 +87,10 @@ for (const locale of ["ko", "en"]) {
     // 블로그에서 온 방문은 데모 모달 대신 출처 한 줄(시안 E)을 본다.
     await expect(page.locator(".blog-arrival")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
-    await chooseDashboardView(page, "ltv");
+    await page.locator('.blog-arrival__evidence[href="#s-table"]').click();
+    const meta = page.locator("#s-table tbody tr").filter({ hasText: "Meta AAP" });
+    await expect(meta).toContainText("1.94×");
+    await expect(meta.getByRole("cell", { name: /^7(?:일|d| days?)$/ })).toBeVisible();
     await expect(page.locator("#dashboard-tab-ltv")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel")).toContainText(/LTV/);
     await expect(page.getByRole("tabpanel")).toContainText(locale === "en" ? "A ratio of 3× alone does not justify scaling." : "3× 이상이라는 이유만으로 증액을 결정할 수는 없습니다.");

@@ -106,7 +106,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
         </section>}
 
       <CsvUploader toolId="5-26" locale={locale} />
-      {hasData && <DeclaredConditions locale={locale} title={tr("전환 집계 확인", "Conversion completeness")}
+      {hasData && <DeclaredConditions id="asa-maturity" locale={locale} title={tr("전환 집계 확인", "Conversion completeness")}
         answered={maturity === "unknown" ? 0 : 1} total={1} ready={maturity === "mature"}
         status={maturity === "mature" ? tr("다 들어온 기간만 — 조치 검토 가능", "Settled days only — actions can be reviewed") : maturity === "immature" ? tr("아직 들어오는 날 포함 — 조치 보류", "Includes unsettled days — actions held") : tr("확인 전에는 조치 보류", "Actions held until confirmed")}
         note={tr("일별 합계만으로 전환 지연을 복원할 수 없습니다. 계정의 전환 창·보고 기준을 확인하세요. 성숙도 미확인 또는 탭 8건·설치 3건 미만은 조치를 보류합니다. 이 표본 기준은 서비스 운영 휴리스틱이며 통계적 유의성을 뜻하지 않습니다.", "Daily totals cannot reconstruct conversion delay. Check your account's conversion window and reporting basis. Unknown maturity, fewer than 8 taps, or fewer than 3 installs holds actions. These service heuristics do not establish statistical significance.")}>

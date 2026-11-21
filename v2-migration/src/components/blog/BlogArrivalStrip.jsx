@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+import { blogEvidenceFor } from "@/lib/blogEvidence";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { scheduleDataPrepFocus } from "@/lib/dataPrepFocus";
@@ -16,6 +18,16 @@ export function blogArrivalState(arrival, routeId, csvData) {
   return arrival.source === "demo" ? "demo" : "csv";
 }
 
+function subscribeToSections(notify) {
+  const observer = new MutationObserver(notify);
+  observer.observe(document.querySelector("main") || document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
+function EvidenceLink({ target, locale }) {
+  const available = useSyncExternalStore(subscribeToSections, () => Boolean(document.getElementById(target.id)), () => false);
+  return available ? <a className="btn primary blog-arrival__evidence" href={`#${target.id}`}>{target[locale === "en" ? "en" : "ko"]}</a> : null;
+}
+
 export default function BlogArrivalStrip({ routeId, locale = "ko" }) {
   const en = locale === "en";
   const arrival = useAppStore((s) => s.blogArrival);
@@ -26,6 +38,7 @@ export default function BlogArrivalStrip({ routeId, locale = "ko" }) {
   if (!state) return null;
   const href = `${en ? "/en" : ""}/blog/${arrival.slug}`;
   const title = arrival.title;
+  const evidence = state === "demo" && blogEvidenceFor(arrival.slug, routeId);
   const lead = state === "demo"
     ? (en ? `Example data from “${title}”.` : `「${title}」의 예시 데이터로 연 결과입니다.`)
     : state === "csv"
@@ -40,7 +53,8 @@ export default function BlogArrivalStrip({ routeId, locale = "ko" }) {
   return <div className="blog-arrival" role="note" aria-label={en ? "Where this result came from" : "이 결과의 출처"}>
     <p className="blog-arrival__text">{lead}</p>
     <div className="blog-arrival__actions">
-      {state === "demo" && <button type="button" className="btn primary" onClick={useMine}>{en ? "Use my CSV" : "내 CSV로 바꾸기"}</button>}
+      {evidence && <EvidenceLink target={evidence} locale={locale} />}
+      {state === "demo" && <button type="button" className="btn" onClick={useMine}>{en ? "Use my CSV" : "내 CSV로 바꾸기"}</button>}
       <Link className="blog-arrival__back" href={href} onClick={() => trackProductEvent("blog_arrival_action", { content_slug: arrival.slug, content_type: "blog", tool_id: routeId, placement: "blog_arrival", state: "back_to_article", locale })}>{en ? "Back to the article" : "글로 돌아가기"}</Link>
     </div>
   </div>;

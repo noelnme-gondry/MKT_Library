@@ -4,11 +4,11 @@
   "source": "demo",
   "ko": {
    "headline": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
-   "caption": "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다."
+   "caption": "예시 데이터로 계산했습니다. 각 안과 대조군의 비교에 Holm 보정을 적용했습니다. 상세 도구의 arm_id별 표에서 같은 안을 확인하세요."
   },
   "en": {
    "headline": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001).",
-   "caption": "Calculated on example data. P-values are adjusted for comparing several variants."
+   "caption": "Calculated on example data. Holm adjustment covers the comparisons with control. Use the per-arm table to inspect the same variant."
   },
   "bars": [
    {
@@ -388,12 +388,12 @@
   "toolId": "5-26",
   "source": "asa-mature-candidate.csv",
   "ko": {
-   "headline": "검색어 보고서에서 바로 검토할 후보가 2건 나옵니다. Exact 승격 1건, CPT 조정 1건입니다.",
-   "caption": "예시 데이터로 계산했습니다. 목표 CPA와 탭·설치 수로 고른 운영 후보입니다."
+   "headline": "전환이 모두 집계됐다고 가정하면 조치 후보는 2건입니다. Exact 승격 1건, CPT 조정 1건입니다.",
+   "caption": "예시 데이터로 계산했습니다. 상세 도구에서는 최근 전환 집계가 끝났는지 확인할 때까지 조치를 보류합니다."
   },
   "en": {
-   "headline": "The search term report yields 2 candidates to review: 1 Exact promotions and 1 CPT adjustments.",
-   "caption": "Calculated on example data. Operating candidates chosen from target CPA, taps and installs."
+   "headline": "If conversions are complete, the report yields 2 potential actions: 1 Exact promotions and 1 CPT adjustments.",
+   "caption": "Calculated on example data. In the full tool, confirm conversion completeness before acting."
   },
   "bars": [
    {
@@ -440,12 +440,12 @@
   "toolId": "5-26",
   "source": "demo",
   "ko": {
-   "headline": "검색어 보고서에서 바로 검토할 후보가 10건 나옵니다. Exact 승격 2건, CPT 조정 4건입니다.",
-   "caption": "예시 데이터로 계산했습니다. 목표 CPA와 탭·설치 수로 고른 운영 후보입니다."
+   "headline": "전환이 모두 집계됐다고 가정하면 조치 후보는 10건입니다. Exact 승격 2건, CPT 조정 4건입니다.",
+   "caption": "예시 데이터로 계산했습니다. 상세 도구에서는 최근 전환 집계가 끝났는지 확인할 때까지 조치를 보류합니다."
   },
   "en": {
-   "headline": "The search term report yields 10 candidates to review: 2 Exact promotions and 4 CPT adjustments.",
-   "caption": "Calculated on example data. Operating candidates chosen from target CPA, taps and installs."
+   "headline": "If conversions are complete, the report yields 10 potential actions: 2 Exact promotions and 4 CPT adjustments.",
+   "caption": "Calculated on example data. In the full tool, confirm conversion completeness before acting."
   },
   "bars": [
    {
@@ -492,12 +492,12 @@
   "toolId": "5-27",
   "source": "aso-mix-only.csv",
   "ko": {
-   "headline": "조회→설치 전환율이 34%에서 16%로 떨어졌고, 그 하락의 100%는 페이지가 아니라 유입 구성 변화 때문입니다.",
-   "caption": "예시 데이터로 계산했습니다. 유입 구성과 소스별 전환율로 하락을 나눴습니다."
+   "headline": "조회→설치 전환율이 34%에서 16%로 떨어졌고, 설치당 조회 수 분해에서 구성 변화의 크기 비중은 100%입니다.",
+   "caption": "예시 데이터로 계산했습니다. 막대는 두 분해 항의 절댓값 비중입니다. 페이지 변경의 효과는 별도 실험으로 확인하세요."
   },
   "en": {
-   "headline": "View-to-install conversion fell from 34% to 16%, and 100% of the drop came from traffic mix, not the page.",
-   "caption": "Calculated on example data. The drop is split into traffic mix and per-source conversion."
+   "headline": "View-to-install conversion fell from 34% to 16%, and mix accounts for 100% of the absolute components in the views-per-install decomposition.",
+   "caption": "Calculated on example data. Bars compare the magnitudes of the two components. Test page changes separately."
   },
   "bars": [
    {
@@ -527,11 +527,11 @@
   "source": "demo",
   "ko": {
    "headline": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
-   "caption": "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다."
+   "caption": "예시 데이터로 계산했습니다. 각 안과 대조군의 비교에 Holm 보정을 적용했습니다. 상세 도구의 arm_id별 표에서 같은 안을 확인하세요."
   },
   "en": {
    "headline": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001).",
-   "caption": "Calculated on example data. P-values are adjusted for comparing several variants."
+   "caption": "Calculated on example data. Holm adjustment covers the comparisons with control. Use the per-arm table to inspect the same variant."
   },
   "bars": [
    {
@@ -578,12 +578,12 @@
   "toolId": "5-24",
   "source": "demo",
   "ko": {
-   "headline": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,538건보다 558건(+15.8%) 많았습니다.",
-   "caption": "예시 데이터로 계산했습니다. 캠페인 전 35일 추세로 예상치를 만들었습니다."
+   "headline": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,537건보다 559건(+15.8%) 많았습니다. AR(1) 추정 범위는 186~873건입니다.",
+   "caption": "예시 데이터로 계산했습니다. 집행 전 35일 추세를 연장한 모형값입니다. 동시 프로모션·집계 변경을 확인하기 전에는 효과 판단을 보류하세요."
   },
   "en": {
-   "headline": "Brand searches during the campaign were 4,096, 558 (+15.8%) above the 3,538 expected without it.",
-   "caption": "Calculated on example data. The expectation comes from the 35-day pre-campaign trend."
+   "headline": "Brand searches during the campaign were 4,096, 559 (+15.8%) above the 3,537 expected without it. The AR(1) interval is 186 to 873.",
+   "caption": "Calculated on example data. The estimate extends the 35-day pre-campaign trend. Check for concurrent promotions and measurement changes before interpreting lift."
   },
   "bars": [
    {
@@ -600,8 +600,8 @@
      "ko": "캠페인 없었을 때 예상",
      "en": "Expected without campaign"
     },
-    "value": 3537.835175,
-    "display": "3,538",
+    "value": 3537.387692,
+    "display": "3,537",
     "highlight": false
    }
   ],
@@ -679,50 +679,59 @@
  "cac-payback-period": {
   "toolId": "5-2",
   "source": "demo",
+  "dashboardTab": "ltv",
   "ko": {
-   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
-   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+   "headline": "설치 획득비를 매출로 회수할 때까지 채널별 추정 일수를 비교하세요.",
+   "caption": "예시 데이터로 계산했습니다. 비용이 있는 4개 채널 중 추정 가능한 4개. 설치·매출 기준 추정치이며 공헌이익과 결제 고객 CAC는 별도 확인하세요."
   },
   "en": {
-   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
-   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+   "headline": "Compare estimated days until revenue covers acquisition cost per install.",
+   "caption": "Calculated on example data. Estimates available for 4 of 4 paid channels. Compare contribution margin and paying-customer CAC separately."
   },
   "bars": [
    {
     "label": {
-     "ko": "지출",
-     "en": "Spend"
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
     },
-    "value": 0.1731645934,
-    "display": "+17.3%",
-    "highlight": true
+    "value": 7,
+    "display": {
+     "ko": "7일",
+     "en": "7 days"
+    }
    },
    {
     "label": {
-     "ko": "노출",
-     "en": "Impressions"
+     "ko": "Google UAC",
+     "en": "Google UAC"
     },
-    "value": 0.04863190642,
-    "display": "+4.9%",
-    "highlight": false
+    "value": 1,
+    "display": {
+     "ko": "1일",
+     "en": "1 day"
+    }
    },
    {
     "label": {
-     "ko": "클릭",
-     "en": "Clicks"
+     "ko": "TikTok",
+     "en": "TikTok"
     },
-    "value": 0.0262764505,
-    "display": "+2.6%",
-    "highlight": false
+    "value": 1,
+    "display": {
+     "ko": "1일",
+     "en": "1 day"
+    }
    },
    {
     "label": {
-     "ko": "설치",
-     "en": "Installs"
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
     },
-    "value": 0.02841033859,
-    "display": "+2.8%",
-    "highlight": false
+    "value": 3,
+    "display": {
+     "ko": "3일",
+     "en": "3 days"
+    }
    }
   ],
   "spark": null,
@@ -825,11 +834,11 @@
   "toolId": "5-18-paid-organic",
   "source": "demo",
   "ko": {
-   "headline": "최근 4주 오가닉은 +10%, 유료는 −0.6% 움직였고, 둘이 반대로 움직인 주는 0주입니다. 잠식이라고 볼 신호는 아직 없습니다.",
+   "headline": "최근 4주 오가닉은 +10%, 유료는 −0.6% 움직였고, 둘이 반대로 움직인 주는 0주입니다. 방향만으로 잠식 여부를 판단할 수 없습니다.",
    "caption": "예시 데이터로 계산했습니다. 주별 변화 방향만 비교합니다."
   },
   "en": {
-   "headline": "In the last 4 weeks organic moved +10% and paid −0.6%, with 0 weeks moving in opposite directions. No sign of cannibalization yet.",
+   "headline": "In the last 4 weeks organic moved +10% and paid −0.6%, with 0 weeks moving in opposite directions. Opposite directions alone cannot establish cannibalization.",
    "caption": "Calculated on example data. Compares weekly direction only."
   },
   "bars": [
@@ -858,54 +867,38 @@
  "cohort-analysis-guide": {
   "toolId": "5-2",
   "source": "demo",
+  "dashboardTab": "cohort",
   "ko": {
-   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
-   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+   "headline": "관측이 끝난 설치 코호트의 복귀율을 비교하세요.",
+   "caption": "예시 데이터에서 각 경과일까지 관측된 설치만 집계했습니다. 막대 옆은 복귀자 수 / 해당 설치 수입니다."
   },
   "en": {
-   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
-   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+   "headline": "Compare retention among install cohorts old enough to measure.",
+   "caption": "Calculated on example data. Counts beside each bar show returning users / installs observed through that day."
   },
   "bars": [
    {
     "label": {
-     "ko": "지출",
-     "en": "Spend"
+     "ko": "D7",
+     "en": "D7"
     },
-    "value": 0.1731645934,
-    "display": "+17.3%",
-    "highlight": true
+    "value": 0.1204846399,
+    "display": "12%",
+    "detail": "190,542 / 1,581,463"
    },
    {
     "label": {
-     "ko": "노출",
-     "en": "Impressions"
+     "ko": "D14",
+     "en": "D14"
     },
-    "value": 0.04863190642,
-    "display": "+4.9%",
-    "highlight": false
-   },
-   {
-    "label": {
-     "ko": "클릭",
-     "en": "Clicks"
-    },
-    "value": 0.0262764505,
-    "display": "+2.6%",
-    "highlight": false
-   },
-   {
-    "label": {
-     "ko": "설치",
-     "en": "Installs"
-    },
-    "value": 0.02841033859,
-    "display": "+2.8%",
-    "highlight": false
+    "value": 0.08429348718,
+    "display": "8.4%",
+    "detail": "119,104 / 1,412,968"
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "scaleMax": 1
  },
  "content-element-analysis": {
   "toolId": "9-1",
@@ -975,12 +968,12 @@
   "toolId": "5-23",
   "source": "demo",
   "ko": {
-   "headline": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
-   "caption": "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다."
+   "headline": "광고를 본 그룹의 전환율은 6%, 광고를 막은 그룹은 4.41%입니다. 노출군의 상대 전환율 차이는 +36.2%이고, 우연으로 보기 어려운 차이입니다.",
+   "caption": "예시 데이터의 사전 지정 홀드아웃 기간(2024-05-12 ~ 2024-06-05)만 계산했습니다. 무작위 배정과 집단 간 오염 여부를 확인하세요."
   },
   "en": {
-   "headline": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance.",
-   "caption": "Calculated on example data. Compared with a randomized holdout."
+   "headline": "The exposed group converts at 6% and the holdout at 4.41%. The observed relative difference is +36.2%. The difference is unlikely to be chance.",
+   "caption": "Calculated on example data within the planned holdout window (2024-05-12 – 2024-06-05). Verify random assignment and check for contamination before interpreting lift."
   },
   "bars": [
    {
@@ -988,8 +981,8 @@
      "ko": "광고 노출",
      "en": "Exposed"
     },
-    "value": 0.05992687967,
-    "display": "5.99%",
+    "value": 0.06002216808,
+    "display": "6%",
     "highlight": true
    },
    {
@@ -997,8 +990,8 @@
      "ko": "홀드아웃",
      "en": "Holdout"
     },
-    "value": 0.05099814154,
-    "display": "5.1%",
+    "value": 0.04405310765,
+    "display": "4.41%",
     "highlight": false
    }
   ],
@@ -1124,54 +1117,44 @@
  "funnel-dropoff-analysis": {
   "toolId": "5-2",
   "source": "demo",
+  "dashboardTab": "funnel",
   "ko": {
-   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
-   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+   "headline": "단계별 전환율을 비교한 뒤, 지난주보다 낮아진 단계를 찾으세요.",
+   "caption": "예시 데이터 전체의 다음 단계 건수를 직전 단계 건수로 나눴습니다. 개인별 이동을 추적한 값은 아닙니다."
   },
   "en": {
-   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
-   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+   "headline": "Compare stage rates, then inspect the stage that fell week over week.",
+   "caption": "Calculated on example data by dividing each stage total by the preceding total. These are aggregate counts."
   },
   "bars": [
    {
     "label": {
-     "ko": "지출",
-     "en": "Spend"
+     "ko": "노출→클릭",
+     "en": "Impressions→Clicks"
     },
-    "value": 0.1731645934,
-    "display": "+17.3%",
-    "highlight": true
+    "value": 0.02636603579,
+    "display": "2.64%"
    },
    {
     "label": {
-     "ko": "노출",
-     "en": "Impressions"
+     "ko": "클릭→설치",
+     "en": "Clicks→Installs"
     },
-    "value": 0.04863190642,
-    "display": "+4.9%",
-    "highlight": false
+    "value": 0.1109639948,
+    "display": "11.1%"
    },
    {
     "label": {
-     "ko": "클릭",
-     "en": "Clicks"
+     "ko": "설치→액션",
+     "en": "Installs→Actions"
     },
-    "value": 0.0262764505,
-    "display": "+2.6%",
-    "highlight": false
-   },
-   {
-    "label": {
-     "ko": "설치",
-     "en": "Installs"
-    },
-    "value": 0.02841033859,
-    "display": "+2.8%",
-    "highlight": false
+    "value": 0.3642250014,
+    "display": "36.42%"
    }
   ],
   "spark": null,
-  "note": null
+  "note": null,
+  "scaleMax": 1
  },
  "google-uac-optimization": {
   "toolId": "9-6",
@@ -1263,12 +1246,12 @@
   "toolId": "5-23",
   "source": "demo",
   "ko": {
-   "headline": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
-   "caption": "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다."
+   "headline": "광고를 본 그룹의 전환율은 6%, 광고를 막은 그룹은 4.41%입니다. 노출군의 상대 전환율 차이는 +36.2%이고, 우연으로 보기 어려운 차이입니다.",
+   "caption": "예시 데이터의 사전 지정 홀드아웃 기간(2024-05-12 ~ 2024-06-05)만 계산했습니다. 무작위 배정과 집단 간 오염 여부를 확인하세요."
   },
   "en": {
-   "headline": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance.",
-   "caption": "Calculated on example data. Compared with a randomized holdout."
+   "headline": "The exposed group converts at 6% and the holdout at 4.41%. The observed relative difference is +36.2%. The difference is unlikely to be chance.",
+   "caption": "Calculated on example data within the planned holdout window (2024-05-12 – 2024-06-05). Verify random assignment and check for contamination before interpreting lift."
   },
   "bars": [
    {
@@ -1276,8 +1259,8 @@
      "ko": "광고 노출",
      "en": "Exposed"
     },
-    "value": 0.05992687967,
-    "display": "5.99%",
+    "value": 0.06002216808,
+    "display": "6%",
     "highlight": true
    },
    {
@@ -1285,8 +1268,8 @@
      "ko": "홀드아웃",
      "en": "Holdout"
     },
-    "value": 0.05099814154,
-    "display": "5.1%",
+    "value": 0.04405310765,
+    "display": "4.41%",
     "highlight": false
    }
   ],
@@ -1296,50 +1279,47 @@
  "ltv-cac-ratio": {
   "toolId": "5-2",
   "source": "demo",
+  "dashboardTab": "ltv",
   "ko": {
-   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
-   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+   "headline": "채널별 D30 예상 누적 매출을 설치 획득비와 비교하세요.",
+   "caption": "예시 데이터로 계산했습니다. 비용이 있는 4개 채널 중 추정 가능한 4개. 설치·매출 기준 추정치이며 공헌이익과 결제 고객 CAC는 별도 확인하세요."
   },
   "en": {
-   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
-   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+   "headline": "Compare projected D30 revenue per install with acquisition cost by channel.",
+   "caption": "Calculated on example data. Estimates available for 4 of 4 paid channels. Compare contribution margin and paying-customer CAC separately."
   },
   "bars": [
    {
     "label": {
-     "ko": "지출",
-     "en": "Spend"
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
     },
-    "value": 0.1731645934,
-    "display": "+17.3%",
-    "highlight": true
+    "value": 1.939460663,
+    "display": "1.94×"
    },
    {
     "label": {
-     "ko": "노출",
-     "en": "Impressions"
+     "ko": "Google UAC",
+     "en": "Google UAC"
     },
-    "value": 0.04863190642,
-    "display": "+4.9%",
-    "highlight": false
+    "value": 4.97379507,
+    "display": "4.97×"
    },
    {
     "label": {
-     "ko": "클릭",
-     "en": "Clicks"
+     "ko": "TikTok",
+     "en": "TikTok"
     },
-    "value": 0.0262764505,
-    "display": "+2.6%",
-    "highlight": false
+    "value": 3.93264751,
+    "display": "3.93×"
    },
    {
     "label": {
-     "ko": "설치",
-     "en": "Installs"
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
     },
-    "value": 0.02841033859,
-    "display": "+2.8%",
-    "highlight": false
+    "value": 2.718514639,
+    "display": "2.72×"
    }
   ],
   "spark": null,
@@ -1387,56 +1367,44 @@
   }
  },
  "marketing-mix-modeling": {
-  "toolId": "5-25",
+  "toolId": "5-18-mmm",
   "source": "demo",
   "ko": {
-   "headline": "Meta·TikTok 두 채널의 지출이 거의 같이 움직여서(VIF 3,882) 기여를 따로 나눌 수 없습니다.",
-   "caption": "예시 데이터로 계산했습니다. VIF가 10을 넘으면 기여도 분리가 불안정합니다."
+   "headline": "상세 도구와 같은 132주 지출에서 가장 높은 채널 VIF는 1.16입니다.",
+   "caption": "예시 데이터의 원 지출로 계산한 공선성 사전 점검입니다. 상세 모형에서는 검증 오차와 경고를 함께 읽으세요."
   },
   "en": {
-   "headline": "Meta and TikTok spend move almost together (VIF 3,882), so their contributions cannot be separated.",
-   "caption": "Calculated on example data. A VIF above 10 makes contribution estimates unstable."
+   "headline": "The highest channel VIF is 1.16 across the same 132 weeks used by the model.",
+   "caption": "Calculated on example data using raw spend. Inspect validation error and warnings in the fitted model."
   },
   "bars": [
    {
-    "label": {
-     "ko": "Meta",
-     "en": "Meta"
-    },
-    "value": 3.589004329,
-    "display": "3,882",
+    "label": "google_spend",
+    "value": 1.138651864,
+    "display": "1.14",
+    "highlight": false
+   },
+   {
+    "label": "meta_spend",
+    "value": 1.161049971,
+    "display": "1.16",
     "highlight": true
    },
    {
-    "label": {
-     "ko": "TikTok",
-     "en": "TikTok"
-    },
-    "value": 3.588999616,
-    "display": "3,882",
+    "label": "tiktok_spend",
+    "value": 1.05942522,
+    "display": "1.06",
     "highlight": false
    },
    {
-    "label": {
-     "ko": "Apple Search Ads",
-     "en": "Apple Search Ads"
-    },
-    "value": 0.002002750386,
-    "display": "1",
-    "highlight": false
-   },
-   {
-    "label": {
-     "ko": "Google UAC",
-     "en": "Google UAC"
-    },
-    "value": 0.001922805913,
-    "display": "1",
+    "label": "brand_spend",
+    "value": 1.035306484,
+    "display": "1.04",
     "highlight": false
    }
   ],
   "spark": null,
-  "note": "log-scale"
+  "note": null
  },
  "marketing-report-sheets-bigquery": {
   "toolId": "5-2",
@@ -1537,12 +1505,12 @@
   "toolId": "5-25",
   "source": "demo",
   "ko": {
-   "headline": "Meta·TikTok 두 채널의 지출이 거의 같이 움직여서(VIF 3,882) 기여를 따로 나눌 수 없습니다.",
-   "caption": "예시 데이터로 계산했습니다. VIF가 10을 넘으면 기여도 분리가 불안정합니다."
+   "headline": "Meta·TikTok의 VIF가 가장 높습니다(최고 3,882). 채널쌍의 상관표를 확인한 뒤 개별 기여 해석을 보류하세요.",
+   "caption": "예시 데이터로 계산했습니다. 막대는 로그 눈금이고 숫자는 원래 VIF입니다. 지출이 겹치는 채널의 독립 기여 추정은 불안정합니다."
   },
   "en": {
-   "headline": "Meta and TikTok spend move almost together (VIF 3,882), so their contributions cannot be separated.",
-   "caption": "Calculated on example data. A VIF above 10 makes contribution estimates unstable."
+   "headline": "Meta and TikTok have the highest VIFs (peak 3,882). Check pairwise correlations before interpreting individual contributions.",
+   "caption": "Calculated on example data. Bars use a log scale; labels show the original VIF. Inspect overlapping spend before attributing outcomes."
   },
   "bars": [
    {
@@ -1589,12 +1557,12 @@
   "toolId": "5-24",
   "source": "demo",
   "ko": {
-   "headline": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,538건보다 558건(+15.8%) 많았습니다.",
-   "caption": "예시 데이터로 계산했습니다. 캠페인 전 35일 추세로 예상치를 만들었습니다."
+   "headline": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,537건보다 559건(+15.8%) 많았습니다. AR(1) 추정 범위는 186~873건입니다.",
+   "caption": "예시 데이터로 계산했습니다. 집행 전 35일 추세를 연장한 모형값입니다. 동시 프로모션·집계 변경을 확인하기 전에는 효과 판단을 보류하세요."
   },
   "en": {
-   "headline": "Brand searches during the campaign were 4,096, 558 (+15.8%) above the 3,538 expected without it.",
-   "caption": "Calculated on example data. The expectation comes from the 35-day pre-campaign trend."
+   "headline": "Brand searches during the campaign were 4,096, 559 (+15.8%) above the 3,537 expected without it. The AR(1) interval is 186 to 873.",
+   "caption": "Calculated on example data. The estimate extends the 35-day pre-campaign trend. Check for concurrent promotions and measurement changes before interpreting lift."
   },
   "bars": [
    {
@@ -1611,8 +1579,8 @@
      "ko": "캠페인 없었을 때 예상",
      "en": "Expected without campaign"
     },
-    "value": 3537.835175,
-    "display": "3,538",
+    "value": 3537.387692,
+    "display": "3,537",
     "highlight": false
    }
   ],
@@ -1883,12 +1851,12 @@
   "toolId": "5-29",
   "source": "demo",
   "ko": {
-   "headline": "가입자 중 여성 비중이 21%에서 36.6%로 15.6%p 올랐습니다. 그중 47%는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.",
-   "caption": "예시 데이터로 계산했습니다. 첫 주와 마지막 주 비교, 캠페인 2개를 기준으로 나눴습니다."
+   "headline": "가입자 중 여성 비중이 35.1%에서 36.6%로 1.6%p 올랐습니다. 그중 52%는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 2025-05-12와 2025-05-19 비교, 캠페인 2개를 기준으로 나눴습니다."
   },
   "en": {
-   "headline": "The share of women among signups rose from 21% to 36.6% (15.6 pp). 47% of that came from volume moving between campaigns; the rest came from change inside campaigns.",
-   "caption": "Calculated on example data. First week vs last week, split across 2 campaigns."
+   "headline": "The share of women among signups rose from 35.1% to 36.6% (1.6 pp). 52% of that came from volume moving between campaigns; the rest came from change inside campaigns.",
+   "caption": "Calculated on example data. 2025-05-12 vs 2025-05-19, split across 2 campaigns."
   },
   "bars": [
    {
@@ -1896,10 +1864,10 @@
      "ko": "캠페인 사이 물량 이동",
      "en": "Volume shift between campaigns"
     },
-    "value": 0.07349287775,
+    "value": 0.008312586044,
     "display": {
-     "ko": "+7.3%p",
-     "en": "+7.3 pp"
+     "ko": "+0.8%p",
+     "en": "+0.8 pp"
     },
     "highlight": true
    },
@@ -1908,10 +1876,10 @@
      "ko": "캠페인 안의 구성 변화",
      "en": "Change inside campaigns"
     },
-    "value": 0.06428706218,
+    "value": 0.007392651571,
     "display": {
-     "ko": "+6.4%p",
-     "en": "+6.4 pp"
+     "ko": "+0.7%p",
+     "en": "+0.7 pp"
     },
     "highlight": false
    },
@@ -1920,10 +1888,10 @@
      "ko": "두 변화가 겹친 몫",
      "en": "Overlap of both"
     },
-    "value": 0.0186836702,
+    "value": 0.0001647049694,
     "display": {
-     "ko": "+1.9%p",
-     "en": "+1.9 pp"
+     "ko": "+0%p",
+     "en": "+0 pp"
     },
     "highlight": false
    }
@@ -1935,12 +1903,12 @@
   "toolId": "5-27",
   "source": "demo",
   "ko": {
-   "headline": "조회→설치 전환율이 27.8%에서 24.4%로 떨어졌고, 그 하락의 71%는 페이지가 아니라 유입 구성 변화 때문입니다.",
-   "caption": "예시 데이터로 계산했습니다. 유입 구성과 소스별 전환율로 하락을 나눴습니다."
+   "headline": "조회→설치 전환율이 27.8%에서 24.4%로 떨어졌고, 설치당 조회 수 분해에서 구성 변화의 크기 비중은 71%입니다.",
+   "caption": "예시 데이터로 계산했습니다. 막대는 두 분해 항의 절댓값 비중입니다. 페이지 변경의 효과는 별도 실험으로 확인하세요."
   },
   "en": {
-   "headline": "View-to-install conversion fell from 27.8% to 24.4%, and 71% of the drop came from traffic mix, not the page.",
-   "caption": "Calculated on example data. The drop is split into traffic mix and per-source conversion."
+   "headline": "View-to-install conversion fell from 27.8% to 24.4%, and mix accounts for 71% of the absolute components in the views-per-install decomposition.",
+   "caption": "Calculated on example data. Bars compare the magnitudes of the two components. Test page changes separately."
   },
   "bars": [
    {
@@ -1970,11 +1938,11 @@
   "source": "demo",
   "ko": {
    "headline": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
-   "caption": "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다."
+   "caption": "예시 데이터로 계산했습니다. 각 안과 대조군의 비교에 Holm 보정을 적용했습니다. 상세 도구의 arm_id별 표에서 같은 안을 확인하세요."
   },
   "en": {
    "headline": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001).",
-   "caption": "Calculated on example data. P-values are adjusted for comparing several variants."
+   "caption": "Calculated on example data. Holm adjustment covers the comparisons with control. Use the per-arm table to inspect the same variant."
   },
   "bars": [
    {
@@ -2021,12 +1989,12 @@
   "toolId": "5-23",
   "source": "demo",
   "ko": {
-   "headline": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
-   "caption": "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다."
+   "headline": "광고를 본 그룹의 전환율은 6%, 광고를 막은 그룹은 4.41%입니다. 노출군의 상대 전환율 차이는 +36.2%이고, 우연으로 보기 어려운 차이입니다.",
+   "caption": "예시 데이터의 사전 지정 홀드아웃 기간(2024-05-12 ~ 2024-06-05)만 계산했습니다. 무작위 배정과 집단 간 오염 여부를 확인하세요."
   },
   "en": {
-   "headline": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance.",
-   "caption": "Calculated on example data. Compared with a randomized holdout."
+   "headline": "The exposed group converts at 6% and the holdout at 4.41%. The observed relative difference is +36.2%. The difference is unlikely to be chance.",
+   "caption": "Calculated on example data within the planned holdout window (2024-05-12 – 2024-06-05). Verify random assignment and check for contamination before interpreting lift."
   },
   "bars": [
    {
@@ -2034,8 +2002,8 @@
      "ko": "광고 노출",
      "en": "Exposed"
     },
-    "value": 0.05992687967,
-    "display": "5.99%",
+    "value": 0.06002216808,
+    "display": "6%",
     "highlight": true
    },
    {
@@ -2043,8 +2011,8 @@
      "ko": "홀드아웃",
      "en": "Holdout"
     },
-    "value": 0.05099814154,
-    "display": "5.1%",
+    "value": 0.04405310765,
+    "display": "4.41%",
     "highlight": false
    }
   ],

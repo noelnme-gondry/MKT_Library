@@ -191,7 +191,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
     ? {
         conclusion: headline,
         action: verdict === "mix"
-          ? tr("유입 소스별 집행·피처링 변화를 확인하고 저전환 소스 비중을 조정한다", "Inspect source-level media or featuring changes and adjust the share of low-converting sources")
+          ? tr("소스별 조회·설치 구성 변화가 컸던 날짜를 찾아 집행·피처링 기록과 대조한다", "Locate shifts in source-level views and installs, then compare the dates with campaign and featuring records")
           : verdict === "efficiency"
             ? tr("제품 페이지 요소 한 가지를 바꾼 뒤 같은 기간 정의로 전환율을 다시 비교한다", "Change one product-page element, then compare conversion again using the same period definition")
             : verdict === "mixed"

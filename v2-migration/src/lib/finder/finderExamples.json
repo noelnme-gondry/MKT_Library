@@ -1,7 +1,11 @@
 {
+  "5-18-mmm": {
+    "ko": "상세 도구와 같은 132주 지출에서 가장 높은 채널 VIF는 1.16입니다.",
+    "en": "The highest channel VIF is 1.16 across the same 132 weeks used by the model."
+  },
   "5-18-paid-organic": {
-    "ko": "최근 4주 오가닉은 +10%, 유료는 −0.6% 움직였고, 둘이 반대로 움직인 주는 0주입니다. 잠식이라고 볼 신호는 아직 없습니다.",
-    "en": "In the last 4 weeks organic moved +10% and paid −0.6%, with 0 weeks moving in opposite directions. No sign of cannibalization yet."
+    "ko": "최근 4주 오가닉은 +10%, 유료는 −0.6% 움직였고, 둘이 반대로 움직인 주는 0주입니다. 방향만으로 잠식 여부를 판단할 수 없습니다.",
+    "en": "In the last 4 weeks organic moved +10% and paid −0.6%, with 0 weeks moving in opposite directions. Opposite directions alone cannot establish cannibalization."
   },
   "5-2": {
     "ko": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
@@ -20,32 +24,32 @@
     "en": "4 of 4 channels get more expensive per install with extra spend. Apple Search Ads is 1.72× its average."
   },
   "5-23": {
-    "ko": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
-    "en": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance."
+    "ko": "광고를 본 그룹의 전환율은 6%, 광고를 막은 그룹은 4.41%입니다. 노출군의 상대 전환율 차이는 +36.2%이고, 우연으로 보기 어려운 차이입니다.",
+    "en": "The exposed group converts at 6% and the holdout at 4.41%. The observed relative difference is +36.2%. The difference is unlikely to be chance."
   },
   "5-24": {
-    "ko": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,538건보다 558건(+15.8%) 많았습니다.",
-    "en": "Brand searches during the campaign were 4,096, 558 (+15.8%) above the 3,538 expected without it."
+    "ko": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,537건보다 559건(+15.8%) 많았습니다. AR(1) 추정 범위는 186~873건입니다.",
+    "en": "Brand searches during the campaign were 4,096, 559 (+15.8%) above the 3,537 expected without it. The AR(1) interval is 186 to 873."
   },
   "5-25": {
-    "ko": "Meta·TikTok 두 채널의 지출이 거의 같이 움직여서(VIF 3,882) 기여를 따로 나눌 수 없습니다.",
-    "en": "Meta and TikTok spend move almost together (VIF 3,882), so their contributions cannot be separated."
+    "ko": "Meta·TikTok의 VIF가 가장 높습니다(최고 3,882). 채널쌍의 상관표를 확인한 뒤 개별 기여 해석을 보류하세요.",
+    "en": "Meta and TikTok have the highest VIFs (peak 3,882). Check pairwise correlations before interpreting individual contributions."
   },
   "5-26": {
-    "ko": "검색어 보고서에서 바로 검토할 후보가 10건 나옵니다. Exact 승격 2건, CPT 조정 4건입니다.",
-    "en": "The search term report yields 10 candidates to review: 2 Exact promotions and 4 CPT adjustments."
+    "ko": "전환이 모두 집계됐다고 가정하면 조치 후보는 10건입니다. Exact 승격 2건, CPT 조정 4건입니다.",
+    "en": "If conversions are complete, the report yields 10 potential actions: 2 Exact promotions and 4 CPT adjustments."
   },
   "5-27": {
-    "ko": "조회→설치 전환율이 27.8%에서 24.4%로 떨어졌고, 그 하락의 71%는 페이지가 아니라 유입 구성 변화 때문입니다.",
-    "en": "View-to-install conversion fell from 27.8% to 24.4%, and 71% of the drop came from traffic mix, not the page."
+    "ko": "조회→설치 전환율이 27.8%에서 24.4%로 떨어졌고, 설치당 조회 수 분해에서 구성 변화의 크기 비중은 71%입니다.",
+    "en": "View-to-install conversion fell from 27.8% to 24.4%, and mix accounts for 71% of the absolute components in the views-per-install decomposition."
   },
   "5-28": {
     "ko": "핵심 행동을 시작한 사용자의 절반이 12개월 안에 멈췄습니다. 6개월째에는 77%가 남아 있었지만 12개월째에는 39%만 남았습니다.",
     "en": "Half of the users who started the key action had stopped within 12 months. 77% were still active at month 6, but only 39% at month 12."
   },
   "5-29": {
-    "ko": "가입자 중 여성 비중이 21%에서 36.6%로 15.6%p 올랐습니다. 그중 47%는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.",
-    "en": "The share of women among signups rose from 21% to 36.6% (15.6 pp). 47% of that came from volume moving between campaigns; the rest came from change inside campaigns."
+    "ko": "가입자 중 여성 비중이 35.1%에서 36.6%로 1.6%p 올랐습니다. 그중 52%는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.",
+    "en": "The share of women among signups rose from 35.1% to 36.6% (1.6 pp). 52% of that came from volume moving between campaigns; the rest came from change inside campaigns."
   },
   "5-4": {
     "ko": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",

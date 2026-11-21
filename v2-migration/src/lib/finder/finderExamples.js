@@ -12,15 +12,18 @@
  * ============================================================ */
 
 /** data.json → { [toolId]: { ko, en } }. 같은 도구의 글이 여럿이면 slug 순 첫 글. */
-export function deriveFinderExamples(data = {}) {
+export function finderDemoEntries(data = {}) {
   const out = {};
   for (const slug of Object.keys(data).sort()) {
     const entry = data[slug];
-    if (!entry || entry.source !== "demo" || !entry.toolId || out[entry.toolId]) continue;
-    const ko = entry.ko?.headline;
-    const en = entry.en?.headline;
-    if (!ko || !en) continue;
-    out[entry.toolId] = { ko, en };
+    if (!entry || entry.source !== "demo" || entry.dashboardTab || !entry.toolId || out[entry.toolId]) continue;
+    out[entry.toolId] = entry;
   }
   return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)));
+}
+
+export function deriveFinderExamples(data = {}) {
+  return Object.fromEntries(Object.entries(finderDemoEntries(data)).map(([id, entry]) => [
+    id, { ko: entry.ko.headline, en: entry.en.headline },
+  ]));
 }
