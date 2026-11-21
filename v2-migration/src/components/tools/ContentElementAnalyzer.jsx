@@ -235,7 +235,7 @@ function guessOutcome(numericCols) {
 
 /* id처럼 보이는 컬럼(피처에서 제외). */
 function looksLikeId(header) {
-  return /(_id$|^id$|post_id|content_id|url|title|이름|name)/i.test(header);
+  return /(_id$|^id$|post_id|content_id|url|이름|name|(?:^|[_\s-])title$)/i.test(header.trim());
 }
 
 function analyzeSig(outcome, features, fileName) {

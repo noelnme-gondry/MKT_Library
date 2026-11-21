@@ -4726,6 +4726,10 @@ body:not(.light-mode) .moon-icon {
 .blog-example__label { color: var(--text-secondary); overflow-wrap: anywhere; }
 .blog-example__track { display: block; height: 8px; background: color-mix(in srgb, var(--text-secondary) 12%, transparent); }
 .blog-example__track > span { display: block; height: 100%; background: color-mix(in srgb, var(--text-secondary) 45%, transparent); }
+.blog-example__scale { display: block; margin-top: 16px; color: var(--text-secondary); }
+.blog-prose .blog-example__scale + .blog-example__bars { margin-top: 4px; }
+.blog-prose .blog-example__bars li:has(.blog-example__detail) { row-gap: 0; padding-block: 4px; }
+.blog-example__detail { grid-column: 2 / -1; text-align: end; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .blog-example__value { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .blog-example__bars li.is-highlight .blog-example__label, .blog-example__bars li.is-highlight .blog-example__value { color: var(--text-primary); }
 .blog-example__bars--signed .blog-example__track { position: relative; }

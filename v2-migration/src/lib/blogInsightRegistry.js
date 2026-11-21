@@ -2,6 +2,12 @@
 // Both locales keep every existing article block and the same entry contract.
 // Every published article must have an entry or an explicit non-CSV reason.
 const entry = (toolId, type = "adapter") => ({ section: 1, toolId, type });
+export const blogDashboardTab = slug => ({
+  "cohort-analysis-guide": "cohort",
+  "ltv-cac-ratio": "ltv",
+  "cac-payback-period": "ltv",
+  "funnel-dropoff-analysis": "funnel",
+})[slug] || "viz";
 export const BLOG_INSIGHT_PLACEMENTS = {
   "marketing-analysis-example": entry("5-21"),
   "simpson-paradox-conversion-rate": entry("5-29", "ratio"),

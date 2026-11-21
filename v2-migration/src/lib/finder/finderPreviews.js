@@ -1,19 +1,17 @@
+import { finderDemoEntries } from "./finderExamples";
 import examples from "@/lib/blogExamples/data.json";
 import advancedExamples from "@/lib/advanced-marketing/workedExamples.json";
 import operationsPreview from "@/lib/finder/operationsPreview.json";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 
 // 공개 예시의 기존 계산 사본만 읽는다. 분석 찾기를 여는 것으로 엔진을 실행하지 않는다.
-const byTool = {};
-for (const slug of Object.keys(examples).sort()) {
-  const entry = examples[slug];
-  if (entry.source === "demo" && !byTool[entry.toolId]) byTool[entry.toolId] = entry;
-}
+const byTool = finderDemoEntries(examples);
 
 const TITLES = {
   "5-2": ["최근·직전 기간의 지표 변화", "Metric changes between periods"],
   "5-4": ["그룹별 전환율", "Conversion rate by group"],
   "5-18-paid-organic": ["유입 변화맵 예시 · 최근 4주 변화", "Paid-organic example · recent 4-week changes"],
+  "5-18-mmm": ["MMM 원 지출의 채널별 VIF", "Channel VIF before fitting MMM"],
   "5-20": ["초기 행동 기준별 전환율", "Conversion by early-action threshold"],
   "5-21": ["전체 CPI 변화에 대한 채널별 기여", "Channel contributions to the CPI change"],
   "5-22": ["한계 CPI / 평균 CPI", "Marginal / average CPI"],
@@ -21,7 +19,7 @@ const TITLES = {
   "5-24": ["브랜드 검색의 예상·관측", "Expected and observed brand searches"],
   "5-25": ["채널별 VIF · 로그 눈금", "VIF by channel · logarithmic scale"],
   "5-26": ["검토할 검색어 액션", "Search-term actions to review"],
-  "5-27": ["전체 전환율 하락의 구성", "Components of the conversion-rate drop"],
+  "5-27": ["설치당 조회 수 분해 항의 크기 비중", "Absolute component shares in views per install"],
   "5-28": ["선택 시점의 추정 유지율", "Estimated retention at selected times"],
   "5-29": ["전체 비중 변화의 구성", "Components of the overall share change"],
   "9-1": ["콘텐츠 요소별 단순 평균 차이", "Unadjusted mean differences by content element"],

@@ -7,6 +7,7 @@ import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import { groupForRoute } from "@/lib/toolGroups";
 import { idToSlug } from "@/lib/routeMap";
+import { blogDashboardTab } from "@/lib/blogInsightRegistry";
 import { blogMapping, blogMappingToolId, descriptiveBlogResult, runBlogAdapter, strictMetric } from "@/lib/blogInsightRunner";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { FUNNEL_MATH } from "@/utils/funnelMath";
@@ -153,7 +154,12 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
       if (config.toolId === "5-21" && comparison) {
         state.handoffCsvToRoute(config.toolId, candidate, { markAnalyzed: sample, comparison: { ...comparison, source: "blog" } });
       }
-      if (config.type === "funnel") state.setDashboardTab("funnel");
+      if (config.toolId === "5-2") {
+        const tab = blogDashboardTab(slug);
+        state.setDashboardTab(tab);
+        if (sample && (tab === "ltv" || tab === "cohort")) state.setDenomBasis("installs");
+        if (sample && tab === "cohort") state.setMatureCohortOnly(true);
+      }
     }
     // 도착 화면(시안 E)이 출처를 한 줄로 말하도록 공개 글 식별자·제목·파일명만 남긴다.
     state.setBlogArrival({ slug, title: postTitle, toolId: config.toolId, fileName: candidate?.fileName || null, source: candidate ? (candidate.importSource === "demo" ? "demo" : "csv") : "none" });

@@ -2990,8 +2990,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             conclusion: verdict.text,
             action: verdict.tone === "good"
               ? tr(
-                `추천 배분표 전체를 제한된 기간에 적용한다${actionPoints.length ? ` — 핵심 이동: ${actionPoints.slice(0, 2).map((point) => point.text).join(" · ")}` : ""}`,
-                `Apply the full recommended allocation for a limited window${actionPoints.length ? ` — key moves: ${actionPoints.slice(0, 2).map((point) => point.text).join(" · ")}` : ""}`,
+                `조정폭이 큰 항목의 관측 지출 범위를 확인하고, 범위 안에서 비교할 소규모 배분안을 정한다${actionPoints.length ? ` — 핵심 이동: ${actionPoints.slice(0, 2).map((point) => point.text).join(" · ")}` : ""}`,
+                `Check observed spending ranges for the largest moves and define a limited trial within those ranges${actionPoints.length ? ` — key moves: ${actionPoints.slice(0, 2).map((point) => point.text).join(" · ")}` : ""}`,
               )
               : verdict.tone === "bad"
                 ? tr("전역 예산 또는 효율 목표를 한 단계 보수적으로 조정한 뒤 다시 계산한다", "Make the global budget or efficiency target one step more conservative, then recalculate")

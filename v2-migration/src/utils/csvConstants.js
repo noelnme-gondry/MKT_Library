@@ -1378,6 +1378,10 @@ export const TOOL_REQUIRED_FIELDS = {
               // 콘텐츠 데이터에 없어 필수/옵션 어디에도 두지 않음(§정직성).
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
+export const RETENTION_COHORT_FIELDS = Object.keys(STANDARD_FIELDS)
+  .filter(key => /^ret_d\d+$/.test(key))
+  .map(key => ({ key, unlocks: STANDARD_FIELDS[key].label }));
+
 export const TOOL_OPTIONAL_FIELDS = {
               ...advancedMap((tool) => tool.optional.map((key) => ({ key, note: ADVANCED_FIELDS[key]?.label || key }))),
               "5-30": Object.entries(MULTITOUCH_FIELDS).filter(([, field]) => !field.required).map(([key, field]) => ({ key, note: field.label })),
@@ -1404,7 +1408,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "revenue_d7", unlocks: "ROAS·LTV 분석 추천" },
                 { key: "revenue_d14", unlocks: "D14 매출 코호트" },
                 { key: "pu_d7", unlocks: "결제건수 D7 코호트" },
-                { key: "ret_d7", unlocks: "리텐션 D7 코호트" },
+                ...RETENTION_COHORT_FIELDS,
               ],
               "5-24": [
                 { key: "cost", unlocks: "브랜드 집행 비용 합계와 추정 증분 성과당 단가" },
@@ -1479,7 +1483,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                   unlocks: "LTV:CAC 탭 · ROAS 성숙도 탭 — D14 매출/ROAS",
                 },
                 { key: "pu_d7", unlocks: "결제건수 D7 코호트" },
-                { key: "ret_d7", unlocks: "리텐션 D7 코호트" },
+                ...RETENTION_COHORT_FIELDS,
               ],
               "5-3": [
                 { key: "snapshot_date", unlocks: "추출 기준일로 완료 주·D7 성숙도 확인" },

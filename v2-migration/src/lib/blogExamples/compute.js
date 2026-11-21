@@ -12,7 +12,14 @@ import Papa from "papaparse";
 import { buildDemoCsv } from "@/utils/demoData";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { blogMapping } from "@/lib/blogInsightRunner";
-import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
+import { getMonFilteredRows, computeWeightedRetention } from "@/utils/dashboardAggregator";
+import { retentionDays, filterMaturedCohorts } from "@/utils/cohortMath";
+import { resolveRetentionSnapshot, snapshotDateForRow } from "@/utils/retentionSnapshot";
+import { buildFunnelData } from "@/utils/funnelMath";
+import { computeVif } from "@/utils/modelDiagnostics";
+import { buildResponseAdapterColMap } from "@/lib/assistant/responseColumnMapping";
+import { buildLtvData } from "@/utils/ltvMath";
+import { blogDashboardTab, BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
 import { BLOG_PRACTICES } from "@/lib/blogPractice";
 import { runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
 import { runOptimizationAnalysis } from "@/lib/assistant/optimizationAnalysisAdapters";
@@ -22,7 +29,7 @@ import { STATS } from "@/utils/abTestMath";
 import { AHA_STATS } from "@/utils/ahaMath";
 import { runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
 import { runSubscriptionAnalysis } from "@/lib/assistant/subscriptionAnalysisAdapters";
-import { autoDeclare, periodKeys } from "@/lib/segment-composition/autoDeclare";
+import { autoDeclare, defaultPeriods } from "@/lib/segment-composition/autoDeclare";
 import { buildSegmentPanel } from "@/lib/segment-composition/segmentPanel";
 import { compareDistribution, decomposeMixRate, rankDimensions } from "@/utils/segmentCompositionMath";
 
@@ -30,7 +37,7 @@ import { compareDistribution, decomposeMixRate, rankDimensions } from "@/utils/s
 // 카드 제목이 어떤 분석의 예시인지 밝히므로 숨기는 대체가 아니다.
 // 5-3: 효율 데모는 배분 곡선을 적합할 만큼 채널별 지출 수준이 다양하지 않다(엔진이 not_computable).
 // 5-18-mmm: MMM 적합은 무겁고 데모 132주로는 식별 판정이 따로 필요하다 — 글이 권하는 사전 점검(VIF)을 보여 준다.
-export const EXAMPLE_TOOL_SUBSTITUTE = Object.freeze({ "5-3": "5-22", "5-18-mmm": "5-25" });
+export const EXAMPLE_TOOL_SUBSTITUTE = Object.freeze({ "5-3": "5-22" });
 
 const r1 = (v) => Math.round(v * 10) / 10;
 const pct = (v, d = 1) => `${(Math.round(v * 10 ** (d + 2)) / 10 ** d).toLocaleString("en-US", { maximumFractionDigits: d })}%`;
@@ -67,10 +74,53 @@ const stat = (res, id) => res.verdict?.stats?.find((s) => s.id === id)?.value;
 // 막대 폭·선 모양에만 쓰는 값은 10자리로 자른다 — 부동소수 마지막 자리가 CPU·Node 빌드마다
 // 달라(CI에서 1e-14 차이) 신선도 테스트가 엔진 변화가 아닌 기계 차이에 깨졌다.
 const stable = (v) => (typeof v === "number" && Number.isFinite(v) ? Number(v.toPrecision(10)) : v);
-function card({ ko, en, bars = [], spark = null, note, comparison }) {
+function card({ ko, en, bars = [], spark = null, note, comparison, scaleMax }) {
   const steadyBars = bars.map((b) => ({ ...b, value: stable(b.value) }));
   const steadySpark = spark ? JSON.parse(JSON.stringify(spark, (k, v) => stable(v))) : spark;
-  return { ko: { headline: ko.headline, caption: ko.caption }, en: { headline: en.headline, caption: en.caption }, bars: steadyBars, spark: steadySpark, note: note || null, ...(comparison && { comparison }) };
+  return { ko: { headline: ko.headline, caption: ko.caption }, en: { headline: en.headline, caption: en.caption }, bars: steadyBars, spark: steadySpark, note: note || null, ...(comparison && { comparison }), ...(scaleMax && { scaleMax }) };
+}
+
+function dashboardExample(tab, csv, slug) {
+  const rows = getMonFilteredRows(csv, {});
+  const mapped = new Set(Object.values(csv.mapping));
+  if (tab === "cohort") {
+    const snapshot = resolveRetentionSnapshot({ rows });
+    const asOf = { ...snapshot, getDateForRow: row => snapshotDateForRow(snapshot, row) };
+    const bars = retentionDays(mapped).filter(day => day > 0).flatMap(day => {
+      const mature = filterMaturedCohorts(rows, day, true, asOf);
+      const { rate, survivors, denom } = computeWeightedRetention(mature, day, "installs");
+      return Number.isFinite(rate) ? [{ label: { ko: `D${day}`, en: `D${day}` }, value: rate, display: pct(rate), detail: `${num(survivors)} / ${num(denom)}` }] : [];
+    });
+    return card({
+      ko: { headline: "관측이 끝난 설치 코호트의 복귀율을 비교하세요.", caption: "예시 데이터에서 각 경과일까지 관측된 설치만 집계했습니다. 막대 옆은 복귀자 수 / 해당 설치 수입니다." },
+      en: { headline: "Compare retention among install cohorts old enough to measure.", caption: "Calculated on example data. Counts beside each bar show returning users / installs observed through that day." },
+      bars, scaleMax: 1,
+    });
+  }
+  if (tab === "funnel") {
+    const { trans, overallSteps } = buildFunnelData(rows, mapped, { unitField: "channel" });
+    const enLabels = buildFunnelData(rows, mapped, { unitField: "channel" }, "en").trans;
+    const bars = trans.filter(step => Number.isFinite(overallSteps[step.i].cvr)).map(step => ({
+      label: { ko: step.label, en: enLabels.find(item => item.i === step.i).label },
+      value: overallSteps[step.i].cvr, display: pct(overallSteps[step.i].cvr, 2),
+    }));
+    return card({
+      ko: { headline: "단계별 전환율을 비교한 뒤, 지난주보다 낮아진 단계를 찾으세요.", caption: "예시 데이터 전체의 다음 단계 건수를 직전 단계 건수로 나눴습니다. 개인별 이동을 추적한 값은 아닙니다." },
+      en: { headline: "Compare stage rates, then inspect the stage that fell week over week.", caption: "Calculated on example data by dividing each stage total by the preceding total. These are aggregate counts." }, bars, scaleMax: 1,
+    });
+  }
+  const payback = slug === "cac-payback-period";
+  const channels = buildLtvData(rows, csv.mapping, "channel", 30, "installs").filter(row => row.cost > 0);
+  const measured = channels.filter(row => Number.isFinite(payback ? row.payback : row.ratio));
+  const bars = measured.slice(0, 5).map(row => ({
+    label: { ko: row.unit, en: row.unit }, value: payback ? row.payback : row.ratio,
+    display: payback ? { ko: `${num(row.payback)}일`, en: `${num(row.payback)} ${row.payback === 1 ? "day" : "days"}` } : `${num(row.ratio, 2)}×`,
+  }));
+  return card({
+    ko: { headline: payback ? "설치 획득비를 매출로 회수할 때까지 채널별 추정 일수를 비교하세요." : "채널별 D30 예상 누적 매출을 설치 획득비와 비교하세요.", caption: `예시 데이터로 계산했습니다. 비용이 있는 ${channels.length}개 채널 중 추정 가능한 ${measured.length}개. 설치·매출 기준 추정치이며 공헌이익과 결제 고객 CAC는 별도 확인하세요.` },
+    en: { headline: payback ? "Compare estimated days until revenue covers acquisition cost per install." : "Compare projected D30 revenue per install with acquisition cost by channel.", caption: `Calculated on example data. Estimates available for ${measured.length} of ${channels.length} paid channels. Compare contribution margin and paying-customer CAC separately.` },
+    bars,
+  });
 }
 
 const BUILDERS = {
@@ -115,14 +165,25 @@ const BUILDERS = {
       bars: rows.slice(0, 5).map((r, i) => ({ label: { ko: r.entity, en: r.entity }, value: r.saturationIndex, display: `${num(r.saturationIndex, 2)}×`, highlight: i === 0 })),
     });
   },
+  "5-18-mmm": (csv) => {
+    const roles = buildResponseAdapterColMap(csv);
+    const channels = csv.headers.filter(h => roles[h]?.role === "channel");
+    const result = computeVif(csv.raw.map(row => channels.map(h => Number(row[h]))));
+    if (!Number.isFinite(result.maxVif)) return null;
+    return card({
+      ko: { headline: `상세 도구와 같은 ${csv.raw.length}주 지출에서 가장 높은 채널 VIF는 ${num(result.maxVif, 2)}입니다.`, caption: "예시 데이터의 원 지출로 계산한 공선성 사전 점검입니다. 상세 모형에서는 검증 오차와 경고를 함께 읽으세요." },
+      en: { headline: `The highest channel VIF is ${num(result.maxVif, 2)} across the same ${csv.raw.length} weeks used by the model.`, caption: "Calculated on example data using raw spend. Inspect validation error and warnings in the fitted model." },
+      bars: result.vif.map((value, i) => ({ label: channels[result.variableIndices[i]], value, display: num(value, 2), highlight: value === result.maxVif })),
+    });
+  },
   "5-25": (csv) => {
     const res = runAdapter("5-25", csv);
     if (res.status !== "success") return null;
     const rows = res.visualizations[0].data.filter((r) => r.isComputable).sort((a, b) => b.vif - a.vif);
     const [a, b] = rows;
     return card({
-      ko: { headline: `${a.entity}·${b.entity} 두 채널의 지출이 거의 같이 움직여서(VIF ${num(a.vif)}) 기여를 따로 나눌 수 없습니다.`, caption: "예시 데이터로 계산했습니다. VIF가 10을 넘으면 기여도 분리가 불안정합니다." },
-      en: { headline: `${a.entity} and ${b.entity} spend move almost together (VIF ${num(a.vif)}), so their contributions cannot be separated.`, caption: "Calculated on example data. A VIF above 10 makes contribution estimates unstable." },
+      ko: { headline: `${a.entity}·${b.entity}의 VIF가 가장 높습니다(최고 ${num(a.vif)}). 채널쌍의 상관표를 확인한 뒤 개별 기여 해석을 보류하세요.`, caption: "예시 데이터로 계산했습니다. 막대는 로그 눈금이고 숫자는 원래 VIF입니다. 지출이 겹치는 채널의 독립 기여 추정은 불안정합니다." },
+      en: { headline: `${a.entity} and ${b.entity} have the highest VIFs (peak ${num(a.vif)}). Check pairwise correlations before interpreting individual contributions.`, caption: "Calculated on example data. Bars use a log scale; labels show the original VIF. Inspect overlapping spend before attributing outcomes." },
       bars: rows.slice(0, 5).map((r, i) => ({ label: { ko: r.entity, en: r.entity }, value: Math.log10(Math.max(1, r.vif)), display: num(r.vif, r.vif < 10 ? 2 : 0), highlight: i === 0 })),
       note: "log-scale",
     });
@@ -134,8 +195,8 @@ const BUILDERS = {
       .map(([id, ko, en]) => ({ id, ko, en, v: stat(res, id) ?? 0 }));
     const total = items.reduce((s, x) => s + x.v, 0);
     return card({
-      ko: { headline: `검색어 보고서에서 바로 검토할 후보가 ${total}건 나옵니다. Exact 승격 ${items[0].v}건, CPT 조정 ${items[1].v + items[2].v}건입니다.`, caption: "예시 데이터로 계산했습니다. 목표 CPA와 탭·설치 수로 고른 운영 후보입니다." },
-      en: { headline: `The search term report yields ${total} candidates to review: ${items[0].v} Exact promotions and ${items[1].v + items[2].v} CPT adjustments.`, caption: "Calculated on example data. Operating candidates chosen from target CPA, taps and installs." },
+      ko: { headline: `전환이 모두 집계됐다고 가정하면 조치 후보는 ${total}건입니다. Exact 승격 ${items[0].v}건, CPT 조정 ${items[1].v + items[2].v}건입니다.`, caption: "예시 데이터로 계산했습니다. 상세 도구에서는 최근 전환 집계가 끝났는지 확인할 때까지 조치를 보류합니다." },
+      en: { headline: `If conversions are complete, the report yields ${total} potential actions: ${items[0].v} Exact promotions and ${items[1].v + items[2].v} CPT adjustments.`, caption: "Calculated on example data. In the full tool, confirm conversion completeness before acting." },
       bars: items.map((x, i) => ({ label: { ko: x.ko, en: x.en }, value: x.v, display: num(x.v), highlight: i === 0 })),
     });
   },
@@ -145,8 +206,8 @@ const BUILDERS = {
     const before = stat(res, "before-view-to-install"), after = stat(res, "after-view-to-install"), mix = stat(res, "mix-share");
     if (![before, after, mix].every(Number.isFinite)) return null;
     return card({
-      ko: { headline: `조회→설치 전환율이 ${pct(before)}에서 ${pct(after)}로 떨어졌고, 그 하락의 ${pct(mix, 0)}는 페이지가 아니라 유입 구성 변화 때문입니다.`, caption: "예시 데이터로 계산했습니다. 유입 구성과 소스별 전환율로 하락을 나눴습니다." },
-      en: { headline: `View-to-install conversion fell from ${pct(before)} to ${pct(after)}, and ${pct(mix, 0)} of the drop came from traffic mix, not the page.`, caption: "Calculated on example data. The drop is split into traffic mix and per-source conversion." },
+      ko: { headline: `조회→설치 전환율이 ${pct(before)}에서 ${pct(after)}로 떨어졌고, 설치당 조회 수 분해에서 구성 변화의 크기 비중은 ${pct(mix, 0)}입니다.`, caption: "예시 데이터로 계산했습니다. 막대는 두 분해 항의 절댓값 비중입니다. 페이지 변경의 효과는 별도 실험으로 확인하세요." },
+      en: { headline: `View-to-install conversion fell from ${pct(before)} to ${pct(after)}, and mix accounts for ${pct(mix, 0)} of the absolute components in the views-per-install decomposition.`, caption: "Calculated on example data. Bars compare the magnitudes of the two components. Test page changes separately." },
       bars: [
         { label: { ko: "유입 구성 변화", en: "Traffic mix" }, value: mix, display: pct(mix, 0), highlight: true },
         { label: { ko: "페이지 전환율 변화", en: "Page conversion" }, value: 1 - mix, display: pct(1 - mix, 0), highlight: false },
@@ -183,8 +244,8 @@ const BUILDERS = {
     if (res.status !== "success") return null;
     const org = stat(res, "recent-organic-change"), paid = stat(res, "recent-paid-change"), opp = stat(res, "opposite-direction-weeks");
     return card({
-      ko: { headline: `최근 4주 오가닉은 ${signed(`${r1(org)}%`)}, 유료는 ${signed(`${r1(paid)}%`)} 움직였고, 둘이 반대로 움직인 주는 ${num(opp)}주입니다. 잠식이라고 볼 신호는 아직 없습니다.`, caption: "예시 데이터로 계산했습니다. 주별 변화 방향만 비교합니다." },
-      en: { headline: `In the last 4 weeks organic moved ${signed(`${r1(org)}%`)} and paid ${signed(`${r1(paid)}%`)}, with ${num(opp)} weeks moving in opposite directions. No sign of cannibalization yet.`, caption: "Calculated on example data. Compares weekly direction only." },
+      ko: { headline: `최근 4주 오가닉은 ${signed(`${r1(org)}%`)}, 유료는 ${signed(`${r1(paid)}%`)} 움직였고, 둘이 반대로 움직인 주는 ${num(opp)}주입니다. 방향만으로 잠식 여부를 판단할 수 없습니다.`, caption: "예시 데이터로 계산했습니다. 주별 변화 방향만 비교합니다." },
+      en: { headline: `In the last 4 weeks organic moved ${signed(`${r1(org)}%`)} and paid ${signed(`${r1(paid)}%`)}, with ${num(opp)} weeks moving in opposite directions. Opposite directions alone cannot establish cannibalization.`, caption: "Calculated on example data. Compares weekly direction only." },
       bars: [
         { label: { ko: "오가닉", en: "Organic" }, value: org / 100, display: signed(`${r1(org)}%`), highlight: true },
         { label: { ko: "유료", en: "Paid" }, value: paid / 100, display: signed(`${r1(paid)}%`), highlight: false },
@@ -206,22 +267,28 @@ const BUILDERS = {
     const sigKo = best.sig ? `차이는 우연으로 보기 어렵습니다(p ${best.pValue < 0.001 ? "< 0.001" : `= ${num(best.pValue, 3)}`}).` : "아직 우연과 구분되지 않습니다.";
     const sigEn = best.sig ? `The difference is unlikely to be chance (p ${best.pValue < 0.001 ? "< 0.001" : `= ${num(best.pValue, 3)}`}).` : "It is not yet distinguishable from chance.";
     return card({
-      ko: { headline: `${best.name}의 전환율이 ${pct(best.rate, 2)}로 대조군(${pct(control.rate, 2)})보다 ${pct(best.liftRel)} 높습니다. ${sigKo}`, caption: "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다." },
-      en: { headline: `${best.name} converts at ${pct(best.rate, 2)}, ${pct(best.liftRel)} above control (${pct(control.rate, 2)}). ${sigEn}`, caption: "Calculated on example data. P-values are adjusted for comparing several variants." },
+      ko: { headline: `${best.name}의 전환율이 ${pct(best.rate, 2)}로 대조군(${pct(control.rate, 2)})보다 ${pct(best.liftRel)} 높습니다. ${sigKo}`, caption: "예시 데이터로 계산했습니다. 각 안과 대조군의 비교에 Holm 보정을 적용했습니다. 상세 도구의 arm_id별 표에서 같은 안을 확인하세요." },
+      en: { headline: `${best.name} converts at ${pct(best.rate, 2)}, ${pct(best.liftRel)} above control (${pct(control.rate, 2)}). ${sigEn}`, caption: "Calculated on example data. Holm adjustment covers the comparisons with control. Use the per-arm table to inspect the same variant." },
       bars: rows.map((r) => ({ label: { ko: r.isControl ? `${r.name} (대조군)` : r.name, en: r.isControl ? `${r.name} (control)` : r.name }, value: r.rate, display: pct(r.rate, 2), highlight: r === best })),
     });
   },
   "5-23": () => {
     const demo = buildDemoCsv(TOOL_GROUP["5-23"], "ko");
     const g = { exposed: { name: "exposed", n: 0, x: 0, isControl: false }, holdout: { name: "holdout", n: 0, x: 0, isControl: true } };
-    for (const row of demo.raw) { const a = g[row.holdout_group]; if (!a) continue; a.n += Number(row.denominator); a.x += Number(row.numerator); }
+    for (const row of demo.raw) {
+      if (row.date < demo.designWindow.start || row.date > demo.designWindow.end) continue;
+      const arm = g[row.holdout_group];
+      if (!arm) continue;
+      arm.n += Number(row.denominator);
+      arm.x += Number(row.numerator);
+    }
     const rows = STATS.massReadout([g.holdout, g.exposed]).rows;
     const hold = rows.find((r) => r.isControl), exp = rows.find((r) => !r.isControl);
     const sigKo = exp.sig ? "우연으로 보기 어려운 차이입니다." : "아직 우연과 구분되지 않는 차이입니다.";
     const sigEn = exp.sig ? "The difference is unlikely to be chance." : "The difference is not yet distinguishable from chance.";
     return card({
-      ko: { headline: `광고를 본 그룹의 전환율은 ${pct(exp.rate, 2)}, 광고를 막은 그룹은 ${pct(hold.rate, 2)}입니다. 광고가 만든 순증분은 ${signed(pct(exp.liftRel))}이고, ${sigKo}`, caption: "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다." },
-      en: { headline: `The exposed group converts at ${pct(exp.rate, 2)} and the holdout at ${pct(hold.rate, 2)}. The incremental lift is ${signed(pct(exp.liftRel))}. ${sigEn}`, caption: "Calculated on example data. Compared with a randomized holdout." },
+      ko: { headline: `광고를 본 그룹의 전환율은 ${pct(exp.rate, 2)}, 광고를 막은 그룹은 ${pct(hold.rate, 2)}입니다. 노출군의 상대 전환율 차이는 ${signed(pct(exp.liftRel))}이고, ${sigKo}`, caption: `예시 데이터의 사전 지정 홀드아웃 기간(${demo.designWindow.start} ~ ${demo.designWindow.end})만 계산했습니다. 무작위 배정과 집단 간 오염 여부를 확인하세요.` },
+      en: { headline: `The exposed group converts at ${pct(exp.rate, 2)} and the holdout at ${pct(hold.rate, 2)}. The observed relative difference is ${signed(pct(exp.liftRel))}. ${sigEn}`, caption: `Calculated on example data within the planned holdout window (${demo.designWindow.start} – ${demo.designWindow.end}). Verify random assignment and check for contamination before interpreting lift.` },
       bars: [
         { label: { ko: "광고 노출", en: "Exposed" }, value: exp.rate, display: pct(exp.rate, 2), highlight: true },
         { label: { ko: "홀드아웃", en: "Holdout" }, value: hold.rate, display: pct(hold.rate, 2), highlight: false },
@@ -232,15 +299,16 @@ const BUILDERS = {
     const demo = buildDemoCsv(TOOL_GROUP["5-24"], "ko");
     const res = runBrandInterruptedTimeSeries({ rows: demo.raw.map((r) => ({ date: r.date, outcome: r.brand_search, campaignOn: r.campaign_on })) });
     if (!res.ok) return null;
-    const rate = res.incrementalRate;
-    const [lo, hi] = res.ci95;
-    const certain = lo > 0 || hi < 0;
+    const expected = res.profileCounterfactualTotal, estimate = res.profileIncrementalTotal;
+    if (!(expected > 0) || !Number.isFinite(estimate) || !res.profileInterval) return null;
+    const rate = estimate / expected;
+    const [lo, hi] = res.profileInterval;
     return card({
-      ko: { headline: `캠페인 기간 브랜드 검색은 ${num(res.actualTotal)}건으로, 캠페인이 없었다면 예상되는 ${num(res.counterfactualTotal)}건보다 ${num(res.incrementalTotal)}건(${signed(pct(rate))}) 많았습니다.${certain ? "" : " 다만 불확실성 범위가 0을 포함합니다."}`, caption: `예시 데이터로 계산했습니다. 캠페인 전 ${res.prePeriods}일 추세로 예상치를 만들었습니다.` },
-      en: { headline: `Brand searches during the campaign were ${num(res.actualTotal)}, ${num(res.incrementalTotal)} (${signed(pct(rate))}) above the ${num(res.counterfactualTotal)} expected without it.${certain ? "" : " The uncertainty range still includes zero."}`, caption: `Calculated on example data. The expectation comes from the ${res.prePeriods}-day pre-campaign trend.` },
+      ko: { headline: `캠페인 기간 브랜드 검색은 ${num(res.actualTotal)}건으로, 캠페인이 없었다면 예상되는 ${num(expected)}건보다 ${num(estimate)}건(${signed(pct(rate))}) 많았습니다. AR(1) 추정 범위는 ${num(lo)}~${num(hi)}건입니다.`, caption: `예시 데이터로 계산했습니다. 집행 전 ${res.prePeriods}일 추세를 연장한 모형값입니다. 동시 프로모션·집계 변경을 확인하기 전에는 효과 판단을 보류하세요.` },
+      en: { headline: `Brand searches during the campaign were ${num(res.actualTotal)}, ${num(estimate)} (${signed(pct(rate))}) above the ${num(expected)} expected without it. The AR(1) interval is ${num(lo)} to ${num(hi)}.`, caption: `Calculated on example data. The estimate extends the ${res.prePeriods}-day pre-campaign trend. Check for concurrent promotions and measurement changes before interpreting lift.` },
       bars: [
         { label: { ko: "실제", en: "Actual" }, value: res.actualTotal, display: num(res.actualTotal), highlight: true },
-        { label: { ko: "캠페인 없었을 때 예상", en: "Expected without campaign" }, value: res.counterfactualTotal, display: num(res.counterfactualTotal), highlight: false },
+        { label: { ko: "캠페인 없었을 때 예상", en: "Expected without campaign" }, value: expected, display: num(expected), highlight: false },
       ],
     });
   },
@@ -279,8 +347,8 @@ const BUILDERS = {
     const demo = buildDemoCsv(TOOL_GROUP["5-29"], "ko");
     const auto = autoDeclare({ headers: demo.headers, rows: demo.raw });
     const panel = buildSegmentPanel({ rows: demo.raw, roles: auto.roles, dimensions: auto.dimensions });
-    const periods = periodKeys(demo.raw, auto.roles.time);
-    const selector = { pre: [periods[0]], post: [periods[periods.length - 1]] };
+    const { pre, post } = defaultPeriods(demo.raw, auto.roles.time);
+    const selector = { pre: [pre], post: [post] };
     const top = rankDimensions({ panel, ...selector })[0];
     if (!top) return null;
     const dist = compareDistribution({ panel, dimensionId: top.dimensionId, ...selector });
@@ -294,8 +362,8 @@ const BUILDERS = {
     const spp = (v, en) => signed(`${num(v * 100, 1)}${en ? " pp" : "%p"}`);
     const mixShare = mix / delta;
     return card({
-      ko: { headline: `가입자 중 ${koName} 비중이 ${pct(preRate)}에서 ${pct(postRate)}로 ${pp(delta)} 올랐습니다. 그중 ${pct(mixShare, 0)}는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.`, caption: `예시 데이터로 계산했습니다. 첫 주와 마지막 주 비교, 캠페인 ${dec.entities.length}개를 기준으로 나눴습니다.` },
-      en: { headline: `The share of ${enName} among signups rose from ${pct(preRate)} to ${pct(postRate)} (${pp(delta, true)}). ${pct(mixShare, 0)} of that came from volume moving between campaigns; the rest came from change inside campaigns.`, caption: `Calculated on example data. First week vs last week, split across ${dec.entities.length} campaigns.` },
+      ko: { headline: `가입자 중 ${koName} 비중이 ${pct(preRate)}에서 ${pct(postRate)}로 ${pp(delta)} 올랐습니다. 그중 ${pct(mixShare, 0)}는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.`, caption: `예시 데이터로 계산했습니다. ${pre}와 ${post} 비교, 캠페인 ${dec.entities.length}개를 기준으로 나눴습니다.` },
+      en: { headline: `The share of ${enName} among signups rose from ${pct(preRate)} to ${pct(postRate)} (${pp(delta, true)}). ${pct(mixShare, 0)} of that came from volume moving between campaigns; the rest came from change inside campaigns.`, caption: `Calculated on example data. ${pre} vs ${post}, split across ${dec.entities.length} campaigns.` },
       bars: [
         { label: { ko: "캠페인 사이 물량 이동", en: "Volume shift between campaigns" }, value: mix, display: { ko: spp(mix), en: spp(mix, true) }, highlight: mix >= rate },
         { label: { ko: "캠페인 안의 구성 변화", en: "Change inside campaigns" }, value: rate, display: { ko: spp(rate), en: spp(rate, true) }, highlight: rate > mix },
@@ -327,7 +395,8 @@ function exampleFor(slug) {
   if (!placement) return null;
   const practice = BLOG_PRACTICES[slug];
   const toolId = EXAMPLE_TOOL_SUBSTITUTE[placement.toolId] || placement.toolId;
-  const build = BUILDERS[toolId];
+  const tab = blogDashboardTab(slug);
+  const build = toolId === "5-2" && tab !== "viz" ? csv => dashboardExample(tab, csv, slug) : BUILDERS[toolId];
   if (!build) throw new Error(`No example builder for ${toolId} (${slug})`);
   if (practice?.file && ["5-2", "5-21", "5-22", "5-27", "5-26"].includes(toolId)) {
     const custom = build(csvFromExample(practice.file, toolId, practice.currency, practice.comparison));
@@ -347,7 +416,7 @@ function exampleFor(slug) {
   }
   const result = build(toolId.startsWith("5-4") || ["5-23", "5-24", "5-20", "9-1", "5-29"].includes(toolId) ? null : csvFromDemo(toolId));
   if (!result) throw new Error(`Example not computable for ${toolId} (${slug})`);
-  return { toolId, source: "demo", ...result };
+  return { toolId, source: "demo", ...(tab !== "viz" && { dashboardTab: tab }), ...result };
 }
 
 export function computeBlogExamples() {

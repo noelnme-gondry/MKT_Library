@@ -1,5 +1,5 @@
 import { ADVANCED_FIELDS } from "../../advanced-marketing/fields";
-import { STANDARD_FIELDS } from "@/utils/csvConstants";
+import { RETENTION_COHORT_FIELDS, STANDARD_FIELDS } from "@/utils/csvConstants";
 import { CANONICAL_FIELDS } from "./canonicalFields";
 import { MULTITOUCH_FIELDS } from "../../attributionReports/fields";
 
@@ -118,7 +118,7 @@ export const LEGACY_FIELD_MIGRATIONS = Object.freeze({
   revenue_d360: windowed("outcome_revenue", 360),
   pu_d7: windowed("outcome_purchases", 7),
   retained_users: exact("outcome_retention", { representation: "count" }),
-  ret_d7: windowed("outcome_retention", 7),
+  ...Object.fromEntries(RETENTION_COHORT_FIELDS.map(({ key }) => [key, windowed("outcome_retention", STANDARD_FIELDS[key].cohort)])),
 });
 
 export const LEGACY_MIGRATION_POLICIES = new Set([
