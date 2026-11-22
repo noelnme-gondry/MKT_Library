@@ -12,10 +12,10 @@ faq:
   - q: "How large a gap is still normal?"
     a: "There is no fixed threshold. A gap that widens suddenly is more likely an integration problem than normal variance. Record your usual gap and investigate when it leaves that range."
 
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Same week, same conversions — Meta's dashboard says 120, GA4 says 70, your MMP says 85. Open the order DB and it's 100. What goes in Monday's report? The short answer: "which one is right" is the wrong question. Different rules can explain the gap, but they do not establish that all four numbers are correct. Check duplicates, missing events, and integration errors. Here are the four reasons they diverge, and which number to anchor on for which purpose.
+The ads dashboard and the measurement partner both say “purchases,” yet their weekly totals disagree. Pick one purchase near midnight and check which reporting day and attribution window each system assigns it to.
 
 ![Same week's conversion count, different by system](/blog-assets-en/attribution-data-mismatch/four-numbers.svg)
 
@@ -25,6 +25,8 @@ Same week, same conversions — Meta's dashboard says 120, GA4 says 70, your MMP
 - **GA4 sessions differ from UA, yesterday's conversions keep changing, or unassigned grows**: start with [GA4 data traps](/blog/ga4-data-traps). That is a GA4 definition, processing-lag, or threshold question.
 
 Both symptoms sound like “the numbers do not match,” but they lead to different fixes. Set the reporting source first, then inspect the product analytics setup.
+
+Use the self-check to line up the reporting windows and date basis before investigating missing or duplicate events.
 
 ## Why this actually becomes a problem
 

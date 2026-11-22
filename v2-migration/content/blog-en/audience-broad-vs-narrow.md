@@ -12,10 +12,10 @@ faq:
   - q: "Why does CPA rise after narrowing the audience?"
     a: "Repeated exposure, auction cost, creative response and conversion delay are possible explanations. Narrowing alone does not identify the cause. Compare reach, frequency, CTR and mature conversions over aligned windows."
 
-reviewedAt: "2026-09-14"
-updated: "2026-09-14"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-"Narrow targeting is more accurate" and "broad is the answer these days" both circulate at the same time. Both are true, and both are half-true. The right answer changes with the situation, so this isn't something to memorize — it's something to learn to judge. Today, let's look at what to check before you decide.
+A targeting test is due for a budget decision. The example’s variant A converted at 6.2% against 4.4% for control. You still need the assignment record to know which audience A represents.
 
 ## Compare observed reach and response
 
@@ -27,6 +27,8 @@ Narrowing limits eligible reach, but does not guarantee higher conversion or mor
 Broadening expands the eligible pool. The algorithm still selects delivery, so measure the actual direction of CPM and conversion changes.
 
 Here's the key point: CPA is the outcome of all four of these interacting together. If you look only at conversion rate and conclude "narrower is better," you're missing the CPM increase. If you look only at CPM and conclude "broader is better," you're missing the conversion rate drop. You need to judge by final CPA, not by any single metric in isolation.
+
+Open the per-arm comparison and match the labels to the targeting plan before applying the result to broad or narrow delivery.
 
 ## Half the CPM can still mean a higher CPA
 

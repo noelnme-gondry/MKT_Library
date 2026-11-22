@@ -15,13 +15,13 @@ faq:
     a: "Record changes and conversion delay, and allow observation time between major changes. Change frequency alone does not establish permanent learning or a complete reset. Check current strategy guidance and console status together."
   - q: "Should I rebuild a poorly performing campaign from scratch?"
     a: "Diagnose tracking, goals, budget, and assets first. A new campaign needs a learning period, but that does not prove all system learning is reset to zero. Define the structural reason and comparison criteria before rebuilding."
-updated: "2026-09-09"
-reviewedAt: "2026-09-09"
+updated: "2026-11-22"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Google App campaigns Maximize conversions"
     url: "https://support.google.com/google-ads/answer/16550675?hl=en"
 ---
-Google UAC (App Campaigns) lets the algorithm decide most of the placements, targeting, and bidding. "So what does the marketer even do?" is the natural question. There are clear levers — and knowing which ones they are, and leaving the rest alone, is the heart of running UAC.
+An app campaign’s CPI is rising and the buyer has time for one asset refresh. The sample flags 30 of 63 eligible creatives for falling click-through. That shortlist gives you a starting point before editing campaign-wide bids.
 
 Placement selection is automated, but available exclusions and brand-suitability settings depend on campaign type and the current console. Automation does not mean that every placement control is unavailable.
 
@@ -52,6 +52,8 @@ The algorithm learns from the conversion events you define. If your event design
 Choose event scope by strategy. Google's Maximize conversions guidance specifies one install event, recommends one or two similarly valued in-app actions, and supports multiple value events for Maximize conversion value. With sparse events, check missing tracking and reporting delay first, and verify that any earlier-funnel substitute represents business value.
 
 <!-- CONTENT_ACTION -->
+
+Review the flagged assets alongside their time in market and installs. Check the optimization event separately before changing it.
 
 ## What not to touch
 

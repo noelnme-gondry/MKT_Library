@@ -2,7 +2,7 @@
 title: "When Does Scaling Budget Start Raising CPA?"
 description: "Compare marginal CPA with average CPA to separate channels with headroom from channels already saturated."
 date: "2026-08-15"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "budget-scaling-limit"
 keywords: "budget scaling, advertising budget limit, marginal CPA, saturation, diminishing returns, scale up budget, CPA increase, response curve, marketing budget optimization, when to stop scaling"
 tags: ["Budget Allocation", "Scaling"]
@@ -12,9 +12,9 @@ faq:
     a: "Average CPA can sit under target while the CPA of the next unit of spend already exceeds it. Scaling decisions belong to marginal CPA, not the average."
   - q: "How is marginal CPA calculated?"
     a: "Fit a curve to outcomes across spend levels, then measure how much additional outcome one more unit of spend produces at the current point. Channels whose spend barely varied cannot support a curve, so the verdict is withheld."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-The following hypothetical example illustrates the risk of scaling from average CPA alone.
+The buyer wants a ceiling for next week’s budget, but the sample gives no scaling estimate. Start by checking whether the same channel actually ran at several spend levels on different dates.
 
 "This channel's CPA is 30% under target."
 "Then double the budget."
@@ -39,6 +39,8 @@ Ad channels generally follow diminishing returns. Cheap inventory and responsive
 So this state is extremely common: average CPA sits under target while marginal CPA has already passed it. Scaling in that zone slowly degrades the average, and a few weeks later someone asks why CPA went up. That is exactly the cycle above.
 
 ![Concept diagram comparing the slope from the origin (average) with the tangent at current spend (marginal) on a cumulative conversion curve](/blog-assets-en/budget-scaling-limit/average-vs-marginal.svg)
+
+Open the withheld result and identify the missing variation. Collect that evidence before quoting a spending limit.
 
 ## Saturation is one ratio
 

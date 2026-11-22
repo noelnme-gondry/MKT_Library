@@ -2,16 +2,16 @@
 title: "Simpson's Paradox: Every Campaign Improved, Yet Conversion Fell"
 description: "When every campaign's conversion rate rises but the total falls, split the change into volume shifting between campaigns and change within campaigns."
 date: "2026-10-01"
-updated: "2026-10-01"
+updated: "2026-11-22"
 slug: "simpson-paradox-conversion-rate"
 keywords: "Simpson's paradox, conversion rate drop, mix analysis"
 searchTitleTerms: ["Simpson's Paradox", "Conversion"]
 tags: ["Analysis Methodology", "Diagnosis"]
 draft: false
 faq: [{"q": "Does Simpson's paradox mean the data is wrong?", "a": "No. The total rate is a volume-weighted average of campaign rates, so a large shift in weights can pull the total down even when every campaign improves. The arithmetic is right; only the reading changes."}, {"q": "Should I report the total conversion rate or the campaign rates?", "a": "Report both and split the difference. Whether the change came from volume moving between campaigns or from change inside campaigns decides the next action."}, {"q": "What do I check when the volume shift is the cause?", "a": "Start with what moved the volume. Check the log for budget changes, bidding changes or automated platform allocation; if the shift was intended, the lower blended rate may not be a problem."}]
-reviewedAt: "2026-10-01"
+reviewedAt: "2026-11-22"
 ---
-Every so often a weekly report produces a strange table. Each campaign's conversion rate went up, yet the total row at the bottom went down. It is not a formula error. Statisticians call it Simpson's paradox, and in paid acquisition it happens more often than people expect.
+The share of women among signups rose from 35.1% to 36.6% in the example. Did each campaign reach a different audience, or did more signups simply come from campaigns that already had a higher share?
 
 This article shows how to read that table and how to report the total change as two parts: volume shifting between campaigns, and change within campaigns.
 
@@ -28,6 +28,8 @@ Take the share of installs that went on to a first purchase, across two campaign
 A rose from 10.0% to 11.0% and B from 2.0% to 2.5%. The total nearly halved, from 8.4% to 4.6%.
 
 ![Both campaign rates rose, but install share moved to campaign B and the total rate fell from 8.4% to 4.6%](/blog-assets-en/simpson-paradox-conversion-rate/simpson-overview.svg)
+
+Open the mix breakdown. It attributes 52% of the change to signup volume moving between campaigns. Check the within-campaign component before changing targeting.
 
 ## Why it happens: the weights of the average changed
 

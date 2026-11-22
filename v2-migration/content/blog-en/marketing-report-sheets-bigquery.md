@@ -2,7 +2,7 @@
 title: "Marketing Report Automation: BigQuery, Google Sheets and CSV"
 description: "Connect BigQuery and Connected Sheets refreshes to analysis-ready CSVs. Check permissions, costs, aggregation grain and the manual import boundary."
 date: "2026-09-14"
-updated: "2026-09-14"
+updated: "2026-11-22"
 slug: "marketing-report-sheets-bigquery"
 keywords: "Marketing Report Automation, BigQuery, Google Sheets"
 searchTitleTerms: ["Marketing Report Automation", "BigQuery", "Google Sheets"]
@@ -10,9 +10,9 @@ tags: ["Analysis Methodology"]
 draft: false
 sources: [{"title": "Google Cloud: Connected Sheets", "url": "https://cloud.google.com/blog/products/data-analytics/using-connected-sheets-to-analyze-bigquery-data/"}, {"title": "Google Cloud: Scheduled queries", "url": "https://docs.cloud.google.com/bigquery/docs/scheduling-queries"}]
 faq: [{"q": "Does a BigQuery connection automatically refresh site analysis?", "a": "No. BigQuery and Sheets schedules are separate from site imports. Upload a new CSV or reload a public sheet in the site, then run the analysis again."}, {"q": "Must I make an internal sheet public?", "a": "No. Keep business data private and export only the necessary aggregate CSV from an authorized environment for browser analysis."}]
-reviewedAt: "2026-09-14"
+reviewedAt: "2026-11-22"
 ---
-Marketing report automation starts with reducing repeated export preparation. BigQuery can prepare aggregates and Google Sheets can support review, but first define which rows are safe to combine and where scheduled refresh ends.
+A scheduled export now feeds the weekly report. How do you know the joins preserved its totals? In the sample, spend rises 20% and installs stay flat, so CPI should rise 20% too.
 
 If your CSV is already clean, you do not need to introduce BigQuery. Choose the path that fits the work. The demo in this article checks the analysis-ready CSV at the end of the process.
 
@@ -25,6 +25,8 @@ If your CSV is already clean, you do not need to introduce BigQuery. Choose the 
 | BigQuery → Connected Sheets → CSV → analysis | Repeated collection into BigQuery already exists | Queries, refresh schedules, permissions and the final upload |
 
 BigQuery does not automatically collect advertising-account data. Connectors or transfer jobs are a separate setup with their own platform support and costs. Growth Opt Playbook does not connect directly to ad-account APIs.
+
+Reconcile spend and installs before and after the join, then open the sample dashboard to check the week-over-week result.
 
 ## Align dates, campaigns and outcome definitions
 

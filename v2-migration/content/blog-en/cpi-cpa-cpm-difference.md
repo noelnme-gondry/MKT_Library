@@ -2,7 +2,7 @@
 title: "CPM vs CPC vs CPI vs CPA: Ad Cost Metrics Explained"
 description: "Compare CPI, CPA, CPM and CPC formulas, denominators and uses. Calculate a common example and narrow the checks behind a performance change."
 date: "2026-07-15"
-updated: "2026-09-14"
+updated: "2026-11-22"
 slug: "cpi-cpa-cpm-difference"
 keywords: "what is CPM, what is CPC, CPM vs CPC, impression cost, click cost, CPM calculation, CPC calculation, advertising impression cost, advertising click cost, why did CPC go up, why did CPM go up"
 tags: ["Metrics Basics", "Marketing Metrics"]
@@ -18,9 +18,9 @@ faq:
     a: "CPM is an auction outcome, not a dial you set. It moves with audience size, bid strategy, creative quality, and competitive pressure. Rather than targeting CPM itself, find what pushed it up."
   - q: "Over what window should I compare CPM, CPC, CPI, and CPA?"
     a: "Day-level comparisons mislead because weekday variation is large. Compare equal-length windows such as the last 7 days against the previous 7, and exclude recent days that have not matured for metrics whose conversions land late."
-reviewedAt: "2026-09-14"
+reviewedAt: "2026-11-22"
 ---
-CPI, CPA, CPM and CPC divide advertising spend by different denominators. When a cost metric rises, inspect exposure costs and click, install or action rates first. CPM and CTR can describe a CPC change, but identifying auction, creative or targeting causes requires change history and further evidence.
+The weekly report shows a 14.1% rise in CPI. Spend grew 17.3% while installs grew 2.8%. Which extra column would you need before saying that purchases also became more expensive?
 
 For the full CPI, CPA, and ROAS chain, and which optimization metric to choose, start with the [performance marketing metrics guide](/blog/performance-marketing-metrics). This article compares all four cost metrics, then uses CPM and CPC to narrow the change.
 
@@ -36,6 +36,8 @@ For the full CPI, CPA, and ROAS chain, and which optimization metric to choose, 
 Align currency, period and attribution scope. If a denominator is zero or missing, do not report zero cost. Distinguish [CAC](/glossary/cac), the cost per new customer, from signup CPA or cost per order.
 
 Lay it in one line and it clicks (numbers are illustrative). Spend $10,000 for 5M impressions → CPM $2. Of those, 50k clicks means 1% CTR, CPC $0.20. If 5,000 of those install, CPI $2. If 500 of them sign up, CPA $20. Stretched out like this, you see exactly where people drop and how cost compounds.
+
+Compare spend against installs first. To calculate cost per purchase, obtain a purchase count for the same period and attribution window.
 
 ## CPC went up — it is one of two causes
 

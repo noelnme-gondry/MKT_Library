@@ -12,10 +12,10 @@ faq:
   - q: "Conversions are very low but the test says significant. Can I trust it?"
     a: "With sparse conversions, normal-approximation error rates can be unreliable. For 50 per group and 0 versus 5 conversions, the two-sided pooled z p-value is about 0.0218 and Fisher exact p-value about 0.0563, giving different decisions at 5%. Use a preplanned test and check exact-test assumptions for sparse samples."
 
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Have you ever looked at landing page variant A against variant B and decided "hmm… B looks a bit better?" Run it for a few days, pick whichever has the higher conversion rate. But that could just be chance.
+Variant A converted at 6.2% against the control’s 4.4% in the sample. Before shipping it, ask how many variants had a chance to win and whether assignment ran as planned.
 
 A/B testing is exactly the method for turning that "feeling" into a "number." Today let's look at how to run one properly, and one trap to watch for. By the end, you'll be a lot more careful about saying "this beat that."
 
@@ -26,6 +26,8 @@ Let's start with the common mistake. Say you're trying to test creatives — you
 Sound familiar? Even stretching it to a week wouldn't change much. The real problem here is that conversion rate fluctuates by chance when the sample is small. Flip a coin ten times, and you might get heads seven times — that doesn't mean "this coin is good at landing heads."
 
 Doing A/B testing properly means ruling out that chance and determining whether there's a "real" difference.
+
+Open the per-arm table, locate A and check the comparison with control after the adjustment for multiple comparisons.
 
 ## Here's what an A/B test looks like
 

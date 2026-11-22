@@ -12,16 +12,18 @@ faq:
   - q: "Can I keep Meta's default attribution window?"
     a: "Check the current ad set’s click/view attribution settings and reporting basis. Matching windows still leaves deduplication and measurement differences."
 
-reviewedAt: "2026-09-09"
-updated: "2026-10-01"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Meta Advantage+ App (AAP), like [Google UAC](/blog/google-uac-optimization), is a heavily automated campaign type. You can barely tune at the ad-set level; you set a goal at the campaign level and the algorithm handles the rest. Still, there are levers that decide the outcome.
+Advantage+ can shift delivery while you are deciding which assets to replace. In the sample, 30 of 63 eligible creatives show falling click-through. Which have enough delivery history to justify a closer look?
 
 ![What the marketer sets in Advantage+ (measurement, optimization event, attribution window, bidding) versus what the algorithm runs (audience expansion, placements, bids, creative combinations)](/blog-assets-en/meta-advantage-plus-guide/levers.svg)
 
 ## Separate OS measurement and setup requirements
 
 Supported optimization, attribution methods and delay can differ by OS. Check app and OS requirements for the campaign, and segment reporting by OS and attribution method. Not all iOS performance is measured through SKAN alone.
+
+Open the fatigue breakdown, separate unassessable assets and check whether spend moved between creatives during the same period. For a comparison with Google’s automated app campaigns, see the [Google UAC guide](/blog/google-uac-optimization).
 
 ## Check optimization events and value delivery
 

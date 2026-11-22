@@ -2,16 +2,16 @@
 title: "User Churn Timing: Find When Users Leave With Survival Curves"
 description: "Dropping users who have not left yet pulls churn forward. Use a survival curve and monthly churn risk to find when users actually leave."
 date: "2026-10-01"
-updated: "2026-10-01"
+updated: "2026-11-22"
 slug: "user-churn-survival-analysis"
 keywords: "user churn, survival analysis, churn timing"
 searchTitleTerms: ["Churn", "Survival Curve"]
 tags: ["Analysis Methodology"]
 draft: false
 faq: [{"q": "How is a survival curve different from D1, D7 and D30 retention?", "a": "Retention asks whether a user came back on a fixed day; a survival curve asks how long a user lasted before first stopping. Users observed for different lengths of time can all stay in the calculation."}, {"q": "How are users who have not churned yet handled?", "a": "They count as active up to the end of observation, and what happens after is treated as unknown. This is called censoring; dropping them or recording them as churned makes survival look shorter."}, {"q": "How many users do I need before trusting a survival curve?", "a": "There is no fixed rule, but the tail swings widely because few users remain there. Read the number still at risk and the confidence interval at each point, and leave out stretches where only a few dozen users remain."}]
-reviewedAt: "2026-10-01"
+reviewedAt: "2026-11-22"
 ---
-"Subscribers leave after 2.8 months on average." When a line like that shows up in a report, it is worth a second look. That average most likely includes only people who already left and excludes people who are still subscribed. Dropping the long-lasting users always makes churn look earlier than it is.
+Some users were still active when tracking ended. Treating them all as churned would change the retention curve. In the sample, estimated survival falls from 77% at month six to 39% at month twelve.
 
 This article walks through the honest way to calculate when users leave, the survival curve (Kaplan–Meier estimate), using a ten-user example you can follow by hand. The same method applies to subscription cancellation, repeat purchases stopping, or use of a key feature ending.
 
@@ -32,6 +32,8 @@ Suppose we have ten subscription records. As of today, five have cancelled and f
 Averaging the five cancelled users gives (1 + 2 + 2 + 4 + 5) ÷ 5 = 2.8 months, which is where the opening "2.8 months on average" comes from. The three users still active at month six never entered that calculation. Averaging all ten gives 3.9 months, and even that is too short, because the five active users will keep going.
 
 A user who has not left only tells you they lasted until observation ended. This is called censoring. The survival curve uses that information without discarding it and without turning it into a cancellation.
+
+Open the survival curve and distinguish the 54 observed exits from users whose follow-up ended while they remained active.
 
 ## How the survival curve is calculated
 

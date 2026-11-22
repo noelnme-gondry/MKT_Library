@@ -2,7 +2,7 @@
 title: "How to Measure Advertising Uplift: Read Net Lift with a Holdout Test"
 description: "Measure advertising uplift with a holdout test, learn when good CPA or ROAS is not enough to scale, and interpret net lift in order."
 date: "2026-08-09"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "uplift-holdout-guide"
 keywords: "uplift, uplift meaning, advertising uplift, holdout test, incrementality, net lift, incremental ROAS, iROAS, ad effectiveness measurement"
 tags: ["Incrementality", "Performance Marketing"]
@@ -17,9 +17,9 @@ faq:
     a: "In marketing practice they are often used for the outcome advertising truly added. Absolute uplift is a conversion-rate difference in percentage points; relative uplift divides that difference by the holdout rate and is expressed as a percentage."
   - q: "Can I skip uplift testing when CPA is good?"
     a: "No. Brand Search and retargeting can show strong CPA among people likely to convert anyway. Use a holdout when the decision is whether more spend will create additional business outcome."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-A Brand Search campaign has a great CPA. Retargeting collects many conversions. But if total revenue or new customers do not rise with spend, the report may include conversions that would have happened without advertising.
+If the holdout converts at 4.41% and the exposed group at 6.00%, the gap is about 1.6 percentage points. The same result is a 36.2% relative lift. Which figure belongs in your forecast?
 
 The question is not “how many conversions did this ad receive?” It is **“how many conversions would disappear without this ad?”** That difference is advertising uplift, or net incremental outcome.
 
@@ -32,6 +32,8 @@ If an exposed group converts at 8% and a holdout group converts at 5%, absolute 
 > **Uplift = exposed-group conversion rate − holdout-group conversion rate**
 
 The critical assumption is that the groups are alike except for ad exposure. That is why a randomized holdout is strongest. Regional or pre/post comparisons can help, but need more caution for seasonality, promotions, and price changes.
+
+Open the holdout comparison and inspect the assigned populations. Use an absolute difference and a defined eligible population when translating rates into a conversion count.
 
 ## Why great CPA or ROAS is not enough
 

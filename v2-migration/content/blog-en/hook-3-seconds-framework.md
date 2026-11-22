@@ -12,10 +12,10 @@ faq:
   - q: "How do I compare creatives that differ only in the hook?"
     a: "Hold other elements fixed, randomize assignment, and compare the hook variants using predeclared metrics, duration and uncertainty. Changing several elements at once makes the effect impossible to attribute."
 
-reviewedAt: "2026-09-09"
-updated: "2026-10-01"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Scrolling a feed, some videos make you stop and some you swipe past instantly. That decision happens almost entirely in the **first three seconds**. However much effort went into the creative, if you can't stop the scroll in three seconds, nobody sees the next thirty. So the hook isn't decoration — it's **the first gate that decides your return on the whole thing**.
+Would you reshoot the opening shot? Of 10,000 impressions in this article’s example, 2,500 reached three seconds and 750 made it halfway. That gives you two different places to look before commissioning another cut.
 
 ## Four hook patterns to test
 
@@ -25,6 +25,8 @@ Scrolling a feed, some videos make you stop and some you swipe past instantly. T
 - **④ Proof / citation**: open with reviews, ratings, or press captures on-screen. Use it when credibility is the deciding factor.
 
 All four share one principle: convince the viewer "this is relevant to me" in the opening moment. Don't decide which pattern fits your product by gut — run two or three and [compare with an A/B test](/blog/ab-testing).
+
+Compare 25% reaching three seconds with the 30% of those viewers reaching halfway. If the question is which running creative deserves review, open the separate CTR report. It flags 30 of 63 eligible creatives for falling click-through, without measuring those first three seconds.
 
 ## Opening-frame (freeze frame) checklist
 

@@ -43,12 +43,11 @@ describe("계측 호스트 판정", () => {
 
 describe("계측 스크립트는 게이트를 통해서만 실린다", () => {
   // 게이트를 우회해 스크립트를 되살리면 로컬 히트가 다시 운영 속성에 쌓인다.
-  // 태그 URL을 직접 적을 수 있는 곳은 게이트 컴포넌트 두 개뿐이다.
-  const GATED = new Set(["components/AnalyticsScripts.jsx", "components/AdSenseScript.jsx"]);
+  // 태그 URL을 직접 적을 수 있는 곳은 AnalyticsScripts뿐이다.
+  const GATED = new Set(["components/AnalyticsScripts.jsx"]);
   const TAG_URLS = [
     "googletagmanager.com/gtag/js",
     "googletagmanager.com/gtm.js",
-    "pagead2.googlesyndication.com",
   ];
 
   function walk(dir) {
@@ -76,7 +75,7 @@ describe("계측 스크립트는 게이트를 통해서만 실린다", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("두 게이트 컴포넌트가 실제로 호스트 판정을 거친다", () => {
+  it("분석 게이트가 실제로 호스트 판정을 거친다", () => {
     // 판정은 훅 한 곳(useAnalyticsEnabled)이 소유하고, 그 훅만 순수 lib을 읽는다.
     // 호출 없이 import만 해 두면 게이트가 열린 채로 통과하므로 호출까지 확인한다.
     for (const rel of GATED) {
@@ -90,10 +89,14 @@ describe("계측 스크립트는 게이트를 통해서만 실린다", () => {
     );
   });
 
-  it("RootDocument와 발행 글이 게이트 컴포넌트를 쓴다", () => {
+  it("RootDocument가 분석 게이트를 사용한다", () => {
     expect(stripComments(read("components/RootDocument.jsx"))).toContain("<AnalyticsScripts />");
-    for (const rel of ["app/(ko)/blog/[slug]/page.js", "app/(en)/en/blog/[slug]/page.js"]) {
-      expect(stripComments(read(rel)), rel).toContain("<AdSenseScript />");
+  });
+
+  it("게시자 광고 태그와 제휴 프레임을 로드하는 코드가 없다", () => {
+    for (const file of walk(SRC)) {
+      expect(stripComments(fs.readFileSync(file, "utf8")), path.relative(SRC, file))
+        .not.toMatch(/pagead2\.googlesyndication\.com|ads-partners\.coupang\.com|google-adsense-account/);
     }
   });
 

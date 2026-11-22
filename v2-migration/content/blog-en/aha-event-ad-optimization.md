@@ -13,10 +13,10 @@ faq:
     a: "No. First confirm that it relates to later retention or revenue, then test whether nudging the action improves those outcomes."
   - q: "Why use an Aha Event instead of purchase optimization?"
     a: "Purchase is closer to the business goal, but it can be too sparse for early-stage campaigns to learn from. An Aha Event can be an earlier, higher-volume quality signal."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-An install CPA can fall while the business still feels unchanged. Installs and sign-ups rise, but very few people return a few days later.
+A cheaper install can still leave the sales target untouched. In this sample, users who sent at least 18 messages in seven days converted at 95.8%, compared with 52.8% overall. Could that event guide bidding without simply selecting people who were already likely to convert?
 
 That does not always mean the campaign failed. It can mean you gave the platform a goal that was too easy. When you optimize for installs, automation gets very good at finding people likely to install. It does not automatically find people who will experience your product's value and stay.
 
@@ -29,6 +29,8 @@ Two users can both count as one install. One leaves after ten seconds; the other
 ![Optimising on install CPA alone versus optimising through the Aha Event — the second keeps far more users.](/blog-assets-en/aha-event-ad-optimization/install-vs-quality-funnel.svg)
 
 If install CPA is low while Aha Event reach and D7 retention are low too, you may be buying cheap churn. A campaign with a slightly higher install CPA can be better when more users reach the Aha Event and retain. Read [cohort retention](/blog/cohort-analysis-guide) alongside the average so recent users are not over-read.
+
+Inspect how many users meet the threshold, then check whether the relationship holds in a later cohort before changing the optimization event.
 
 ## Why purchase optimization is not always enough
 

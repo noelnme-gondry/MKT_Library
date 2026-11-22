@@ -2,7 +2,7 @@
 title: "iOS Measurement: ATT, SKAN, and Conversion Value Explained"
 description: "iOS performance may not be bad, just invisible. ATT cuts user-level measurement and SKAN gives delayed aggregate signal. How to judge anyway."
 date: "2026-07-15"
-updated: "2026-09-14"
+updated: "2026-11-22"
 slug: "ios-att-skan-guide"
 keywords: "ATT, SKAN, SKAdNetwork, SKAN 4, SKAdNetwork 4.0, skan attribution, iOS performance measurement, iOS privacy, App Tracking Transparency, iOS14 marketing, app attribution, conversion value, crowd anonymity, privacy threshold, AdAttributionKit"
 tags: ["Measurement", "iOS"]
@@ -18,9 +18,9 @@ faq:
     a: "Apple limits returned detail to reduce re-identification risk. Value and source-identifier detail depend on the tier and window. If detail falls after splitting campaigns, inspect return conditions and observed distributions; splitting alone does not establish a tier decline."
   - q: "Can I calculate ROAS from SKAN data?"
     a: "Only loosely. You can encode revenue into conversion-value buckets, but the resolution is low and revenue beyond the measurement window is never captured. Treat SKAN ROAS as a limited estimate; different missingness and maturity can distort rankings too."
-reviewedAt: "2026-09-14"
+reviewedAt: "2026-11-22"
 ---
-If Android is fine but only iOS looks cut in half, suspect measurement before the campaign. After the "Allow tracking?" prompt (ATT), precise user-level tracking on iOS got hard, and you now read performance through Apple's limited aggregate frame, SKAdNetwork (SKAN). Miss this structure and you'll kill a perfectly good iOS campaign on the numbers alone.
+Android installs are steady while the most recent iOS totals fell. Get the install dates and the postback receipt dates onto the same page before pausing the campaign.
 
 Here's what changed and what to judge by inside it.
 
@@ -31,6 +31,8 @@ If a user declines the ATT (App Tracking Transparency) prompt, you can't use the
 So the ATT consent rate itself became a metric to manage. When and in what context you show the prompt (priming — showing value first, then asking) changes consent a lot. Raise consent and more of your sample becomes measurable — iOS performance starts to "reappear."
 
 One point that trips people up: declining ATT restricts cross-app tracking, not ad delivery or every form of first-party measurement. Ads still serve to those users and installs still happen. You simply cannot confirm at the user level which campaign earned them.
+
+Use the self-check to distinguish an iOS-only change in a recent window from a drop that persists in older cohorts.
 
 ## SKAN: anonymous, delayed, limited signal
 

@@ -12,10 +12,10 @@ faq:
   - q: "Which number should be the official one?"
     a: "Fix one per decision type: internal database or payment data for business performance, network numbers for in-network optimization, MMP for cross-channel comparison. Deciding in advance stops every meeting turning into a numbers argument."
 
-reviewedAt: "2026-09-14"
-updated: "2026-09-14"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-You pulled last week's conversions Monday, check again Wednesday, and the number went up. Sessions are lower than what you remember from UA. The channel report has a pile of "unassigned." If you've ever wondered whether you can trust GA4's numbers, you're not alone. Counting rules can explain differences, but actual tracking errors still need investigation. Use the seven checks below to distinguish definitions from collection errors.
+Monday’s report and Wednesday’s rerun show different conversion totals for the same week. Before revising the slide, record the export time, the last date included and any data-quality indicator in the report.
 
 ## First choose: a GA4 issue, or a cross-system comparison issue?
 
@@ -23,6 +23,8 @@ You pulled last week's conversions Monday, check again Wednesday, and the number
 - **Meta, GA4, MMP, and the order database report different conversions**: start with [aligning ad-platform, MMP, and GA4 numbers](/blog/attribution-data-mismatch). That is about choosing the right source for the reporting question.
 
 Choose the scope before changing settings. It prevents you from treating a legitimate cross-system attribution difference as a broken GA4 configuration.
+
+Answer the self-check questions about recent dates and sampling or threshold indicators. Keep those answers beside the next export.
 
 ## Start with the symptom
 

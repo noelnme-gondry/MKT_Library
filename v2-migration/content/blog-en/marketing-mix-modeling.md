@@ -17,10 +17,10 @@ faq:
     a: "MMM estimates associations from observational data, not guaranteed causal effects. Use it to choose a direction, then validate important budget decisions with a holdout or another controlled experiment."
   - q: "How much data do I need to start MMM?"
     a: "A practical starting point is at least 52 weeks of weekly channel spend, outcome, and external-factor data so the model can observe a full seasonal cycle."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Ever raised budget on brand search because its ROAS looked outstanding — and watched total revenue stay flat? Last-click praises only the channel that stood **last** in the journey; the credit earned by channels that created demand upstream all flows to the final click. When one person sees dozens of ads across channels in a single day, judging performance with last-touch attribution alone stops making sense. Multi-touch attribution does not always deliver a clear answer either.
+Before trusting a channel’s contribution in an MMM budget review, ask whether its spend moved independently enough to identify it. Across the sample’s 132 model weeks, the largest channel VIF is 1.16.
 
 That's why Marketing Mix Modeling (MMM) is having a resurgence. Today I'll lay out plainly what it is, what it answers, and how far you should trust it. Oh, and I'll also show you how to actually do it.
 
@@ -35,6 +35,8 @@ Put simply, MMM takes "how much did we spend on each channel per week over the l
 In this example, the outcome is set to "revenue." That's how it slices revenue up. Here, baseline is the share that would show up even without any advertising (brand awareness, organic traffic, repurchases, and the like) — the same baseline concept discussed in the [incrementality measurement post](/en/blog/incrementality-measurement). MMM draws that out across every channel at once.
 
 The data you need is your "outcome" data plus each channel's spend and impression volume — since it doesn't rely on individual-level data, it depends less on personal identifiers. Changes in aggregate measurement, missing conversions, or definitions can still affect it. And because it doesn't hand credit to the last touch, it lets you see how much your actual budget spend impacted the business, rather than overweighting whichever touchpoint happened to come last. That's why MMM is back in the spotlight these days.
+
+Inspect the collinearity check on the same weeks used by the model, then review assumptions and external evidence before reallocating spend.
 
 ## Two things you absolutely have to get right
 

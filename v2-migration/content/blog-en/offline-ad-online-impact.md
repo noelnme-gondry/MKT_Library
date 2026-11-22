@@ -11,10 +11,10 @@ faq:
     a: "You cannot track individual viewers, so work at the aggregate level. Compare online demand trends across exposed and unexposed windows, and check short-window response around airtimes as a cross-check."
   - q: "Can I separate TV from digital contribution?"
     a: "If both moved in the same window, the data alone usually cannot separate them. Separation needs periods where the two budgets moved differently. Without that, report a combined effect rather than inventing a split."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Offline advertising has no clicks. So measurement usually ends either in vague impressions, or in the opposite error: crediting the entire lift during the flight to TV.
+Your offline campaign had no click ID, but branded searches reached 4,096 during its run. A model fitted to the baseline expected 3,537. What else happened during those weeks that could explain the difference?
 
 The way out of both is to **compare exposed and unexposed windows as a time series**.
 
@@ -27,6 +27,8 @@ Offline advertising leaves roughly three traces online.
 - **Non-ad-attributed installs or signups** — conversions no network claimed.
 
 Do not read performance-channel conversions directly. If digital budget rose during the TV flight, that increase may belong to digital.
+
+Open the observed and expected series, read the uncertainty interval and mark overlapping promotions before attributing the gap to offline ads.
 
 ## Read two time scales
 

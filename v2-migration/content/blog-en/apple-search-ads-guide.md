@@ -24,10 +24,10 @@ faq:
     a: "No. Exact is the tightest match type, but Apple says close variants such as misspellings, plurals, reordered words, and translations may still match."
   - q: "Should I always raise CPT when budget pacing is low?"
     a: "No. It is a raise candidate only when pacing is low and target CPA is being met. If performance is poor, inspect the term, product page, market, and seasonality first."
-updated: "2026-09-09"
-reviewedAt: "2026-09-09"
+updated: "2026-11-22"
+reviewedAt: "2026-11-22"
 ---
-Run Apple Search Ads (ASA) as one lumped campaign, and a few days later the report may show brand terms taking most of the spend — people who may have searched for your app anyway. ASA sits at the top of App Store search and can reach **high-intent users**. To make that value repeatable, separate campaigns by purpose and run a loop for discovering terms, promoting Exact targets, and adjusting bids.
+A search term earns its first installs. Should you promote it to Exact or change the bid? With mature conversions, the sample flags one promotion candidate and one cost-per-tap adjustment, two different jobs for the buyer.
 
 ## Split campaigns by purpose
 
@@ -39,6 +39,8 @@ ASA is usually split into four buckets by keyword type. Different purposes mean 
 - **Discovery**: Apple auto-explores related keywords. Promote the winners here into the campaigns above.
 
 Mix purposes into one campaign and budget and bids tangle — cheap brand ends up eating the budget while the rest never learns. Split them, and "where the money actually is" becomes visible.
+
+Open the decision rows and check the conversion window before acting on either candidate.
 
 ## Match types: discovery and control
 

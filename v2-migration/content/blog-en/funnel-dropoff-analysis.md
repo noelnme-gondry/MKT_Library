@@ -2,7 +2,7 @@
 title: "Conversion Rate: Diagnose Funnel Drop-off and Test Fixes"
 description: "Find the highest-priority funnel drop-off, then check message match, friction, traffic quality, and offer strength before validating one change at a time."
 date: "2026-07-27"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "funnel-dropoff-analysis"
 keywords: "funnel analysis, conversion funnel, funnel drop-off, conversion analysis, stage conversion rate, find leak points, improve conversion rate, CVR improvement, marketing funnel, drop-off analysis"
 tags: ["Analysis", "Conversion Rate"]
@@ -14,9 +14,9 @@ faq:
     a: "Check ad-to-landing message match, conversion friction, and whether the creative attracted clicks from people who were never likely to convert."
   - q: "Can funnel analysis prove the cause of a conversion problem?"
     a: "No. It prioritizes where to investigate. Validate a suspected cause with an A/B test that has sufficient sample size."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-If you want to lift conversion rate but don't know where to start, draw the funnel first. One biggest-leaking stage usually creates most of the loss. Plugging that one first is the order. This combines our former CVR guide and funnel analysis into one diagnose-to-test workflow.
+Your team has one week to investigate a drop in installs. In the sample dashboard, clicks per impression slipped from 2.65% to 2.59% while installs per click edged from 11.14% to 11.16%. Which team would you ask to investigate first?
 
 First, make the denominator in CVR explicit across the team. The same conversion count produces a different rate when the denominator is clicks, installs, or sessions. If that definition is not fixed, the diagnosis below is not comparable.
 
@@ -38,6 +38,8 @@ For example:
 What stands out here is install → signup at 25%. Of clickers, 40% install, but only 25% of those sign up — the other 75% have no recorded signup in the chosen window. Check delays, tracking gaps, and alternate paths; this rate alone does not establish the biggest improvement opportunity.
 
 ![Example funnel from 100,000 impressions to 2,000 clicks, 800 installs, 200 signups and 16 purchases, with the 25% install-to-signup step highlighted](/blog-assets-en/funnel-dropoff-analysis/funnel-steps.svg)
+
+Open Weekly change and compare the two pairs of rates. Ask the media buyer which placements changed before asking the product team to redesign onboarding. These are aggregate event counts.
 
 ## Conversion rate priority — value at stake, not the lowest rate
 

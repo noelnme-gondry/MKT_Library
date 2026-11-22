@@ -2,7 +2,7 @@
 title: "Retargeting and Re-engagement: Why to Split From UA"
 description: "Why retargeting belongs in its own campaign, how to segment the audience, and how to distinguish deep links from deferred installation flows."
 date: "2026-07-18"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "retargeting-reengagement-guide"
 keywords: "retargeting, re-engagement, app retargeting, dormant user reactivation, retargeting audience, deferred deep link, lookalike seed, user segments, retargeting incrementality"
 tags: ["UA", "Growth & career"]
@@ -16,9 +16,9 @@ faq:
     a: "Only as far as you can genuinely write a different message. Splitting segments that will share the same creative just shrinks the volume behind each one and slows learning. Start with axes where the message clearly changes, such as cart abandonment."
   - q: "After how many days is a user dormant?"
     a: "There is no fixed threshold — it comes from your service's natural usage cycle. Fourteen days without a session means something entirely different for a weekly app than for a daily one. Set the line where your retention curve bends."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-The campaign that brings new users (UA) and the one that recalls existing users (retargeting) have completely different purposes. Mix them in one campaign and they eat each other's budget, and you can't see which side earned the result. So split them from the start.
+A retargeting campaign reports cheap conversions. Before increasing its budget, separate two questions: did the campaign bring people back, and what would the next unit of spend buy? The sample cost curve addresses the second question.
 
 ## Why mixing them breaks the numbers
 
@@ -35,6 +35,8 @@ That $18 is not the reality of either campaign. Decide "we're under target, let'
 ![Bars for acquisition CPA $30 and retargeting CPA $6, with the blended $18 line matching neither](/blog-assets-en/retargeting-reengagement-guide/blended-cpa.svg)
 
 Separate goals, separate reports, separate budgets.
+
+Inspect marginal versus average cost. To investigate incremental re-engagement, define the eligible audience and compare with a holdout.
 
 ## Segment the audience first
 

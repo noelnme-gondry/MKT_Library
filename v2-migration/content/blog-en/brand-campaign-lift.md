@@ -11,10 +11,10 @@ faq:
     a: "Most conversions from a brand campaign arrive later through another path. Click-based CPA captures only a fraction of the effect, and cutting budget on that number hides the effect entirely."
   - q: "Is it acceptable to report a number with no control group?"
     a: "Yes, if you label it an estimated lift. Without a control, seasonality, PR, and promotions are not separated, so list the other events that happened in the same window alongside the number."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-About two weeks after a brand campaign wraps, the readout meeting gets booked. Three slides in, someone asks the only question that matters:
+A brand flight ended with 4,096 searches during the campaign window. The model expected 3,537 without the flight. How much weight should a budget owner put on the 559-search gap?
 
 "So what did this earn?"
 
@@ -36,6 +36,8 @@ Brand campaigns do not behave that way. Someone sees the ad and does not tap. A 
 Where does that conversion get recorded? Under **brand search** or **direct traffic**. Nothing lands in the brand campaign account — and the brand search campaign gets praised for great efficiency, when the demand it harvested was created by the brand campaign.
 
 Click-based reporting alone cannot establish the total effect. Cut budget on that number and you lose the ability to see the effect at all.
+
+Open the counterfactual chart and read the interval of 186 to 873 alongside the point estimate. Check other events that could have moved branded demand.
 
 ## Choose the outcome metric
 

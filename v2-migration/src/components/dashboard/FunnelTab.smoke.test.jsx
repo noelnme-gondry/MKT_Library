@@ -79,6 +79,16 @@ describe("FunnelTab render smoke", () => {
     expect(screen.getByRole("table", { name: "전체 퍼널 단계" }).classList.contains("ds-data-table")).toBe(true);
   });
 
+  it("withholds the weekly verdict when the prior week has no comparable rate", () => {
+    seedWithData();
+    const csv = useAppStore.getState().csvData;
+    const singleWeek = { ...csv, raw: csv.raw.slice(0, 14) };
+    useAppStore.setState({ csvData: singleWeek, csvGroups: { efficiency: singleWeek } });
+    render(<FunnelTab />);
+    expect(screen.getByText(/직전 주와 비교할 수 있는 단계가 없습니다/)).toBeTruthy();
+    expect(screen.queryByText(/하락한 단계가 없습니다/)).toBeNull();
+  });
+
   // Regression for the "rising trend flagged as 급락" report: the low-day
   // chip label must describe "average 대비", not "급락" (day-over-day crash),
   // since the flag is a period-mean threshold and can co-occur with a day

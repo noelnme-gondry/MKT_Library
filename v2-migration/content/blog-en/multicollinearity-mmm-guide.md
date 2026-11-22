@@ -11,10 +11,10 @@ faq:
     a: "In practice, VIF 5 or higher is commonly treated as a warning and 10 or higher as a severe multicollinearity signal. It is a starting point for judging whether channel coefficients are fit for decisions."
   - q: "Can I run MMM with high VIF?"
     a: "You can calculate a model, but channel contribution and coefficients may not be reliable. Create periods where linked channels move independently, then re-check before using the result for allocation."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-An MMM result shows negative Search contribution and implausibly large Social contribution. The model may not be broken. If Search and Social budgets always rose and fell together, the data does not contain enough independent movement to tell which channel drove the outcome. That is the practical problem of **multicollinearity**.
+Your model assigns radically different returns to Meta and TikTok even though their budgets moved together. In the sample both channels have a VIF near 3,882. How much can the available weeks really tell them apart?
 
 ![Channel spend moving together and a VIF check](/blog-assets-en/multicollinearity/vif-before-mmm.svg)
 
@@ -25,6 +25,8 @@ This is not another explanation of MMM equations. It is an operating check befor
 Teams often move campaigns in bundles. Search, Social, and Display budgets rise together at the beginning of a month and fall together at quarter end. Promotion weeks lift several channels at once. Revenue can move, but there is too little variation to separate who caused what.
 
 A regression still tries to fill that gap. Coefficients can flip signs, or contribution can change sharply when you shift the analysis window. A number being produced is not the same as that number being fit for allocation.
+
+Inspect their pairwise correlations and look for periods of independent spend variation before presenting separate contribution estimates.
 
 ## What VIF tells you
 

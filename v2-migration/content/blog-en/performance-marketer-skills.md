@@ -12,10 +12,10 @@ faq:
   - q: "Do I need SQL or statistics?"
     a: "You do not need to write queries yourself. You do need to judge whether the sample is sufficient, whether a difference could be chance, and whether a correlation is being stated as a cause."
 
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-"What do I need to learn to become a performance marketer?" A lot of answers to this question start by rattling off tool names — Meta Ads Manager, GA4, SQL, a tag manager… but tools aren't skills. They're just instruments. Today, instead of a tool list, let's map this out as a **growth sequence** — the order skills actually stack in. Once you know which level you're standing on, it's obvious what to learn next.
+Could you explain a 14.1% CPI increase to the budget owner without reciting a list of metrics? In the sample, spend rose 17.3% while installs grew only 2.8%. That is enough to explain the arithmetic and to ask a better follow-up question.
 
 ## Knowing a tool and knowing how to decide are two different things
 
@@ -26,6 +26,8 @@ Performance marketing ultimately comes down to **"deciding how to get the most o
 ![Performance marketer skills drawn as a four-layer pyramid. From the bottom up: operating fundamentals (account structure, creative, targeting), working with data (spreadsheets, SQL, metrics), analysis and decision-making (budget allocation, saturation, attribution), and causal inference (incrementality, experiment design).](/blog-assets-en/performance-marketer-skills/skill-pyramid.svg)
 
 Skip the lower layers and jump straight to the top, and it doesn't stick. I've seen people who dove straight into incrementality or MMM and still couldn't structure a basic account.
+
+Open the example and write one sentence about what changed, followed by one question the totals cannot answer.
 
 ## Layer 1. Operating Fundamentals — knowing how to actually run ads
 

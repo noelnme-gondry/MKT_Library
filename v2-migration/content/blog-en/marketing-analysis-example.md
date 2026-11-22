@@ -1,6 +1,7 @@
 ---
 title: "Marketing Analysis: A Practical CSV Walkthrough"
 description: "Work through marketing analysis with a downloadable CSV: calculate spend, installs and CPI, locate campaign changes, and plan the next review."
+updated: "2026-11-22"
 date: "2026-10-14"
 slug: "marketing-analysis-example"
 searchTitleTerms: ["Marketing Analysis", "CSV"]
@@ -27,8 +28,9 @@ sources:
     url: "https://support.google.com/google-ads/answer/12851704?hl=en"
   - title: "Google Meridian — Required causal assumptions"
     url: "https://developers.google.com/meridian/docs/causal-inference/required-assumptions"
+reviewedAt: "2026-11-22"
 ---
-Ad spend is up, but installs are flat. The report shows a higher cost per install without telling you which campaign to open first or whether cutting budget is the right response. This is where marketing analysis becomes useful.
+You have one sentence to explain why a week of extra spend bought no extra installs. In the worked example CPI rose ₩200. Start with the totals, then look for the campaign that accounts for the change.
 
 This walkthrough uses one downloadable CSV to check totals, locate campaign changes and define the next review. It is a synthetic teaching example, not a customer success story. After the [performance marketing workflow](/blog/performance-marketing-analysis-order), use it to practice the analysis step.
 
@@ -37,6 +39,8 @@ This walkthrough uses one downloadable CSV to check totals, locate campaign chan
 Marketing analysis examines marketing data to assess performance and inform operating decisions. [SAS’s introduction](https://www.sas.com/ko_kr/insights/marketing/marketing-analytics.html) describes using data and analytical processes to evaluate marketing performance. In practice, narrow the task to an answerable question such as where a weekly cost increase is concentrated.
 
 Our question is **why overall cost per install rose while installs stayed flat**. First compare totals, then inspect campaigns. Completing the arithmetic does not identify a creative or targeting change as the cause.
+
+Read the single-channel contribution, then go to the campaign rows to see how a channel total can conceal different outcomes.
 
 ## 1. Establish what one row means
 

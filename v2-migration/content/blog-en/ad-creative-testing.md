@@ -2,7 +2,7 @@
 title: "How Many Ad Creatives Should You Test on a Limited Budget?"
 description: "Calculate how many ad creatives your budget can support, define one hypothesis, and classify winners, holds, and losers without relying on CTR alone."
 date: "2026-08-03"
-updated: "2026-08-03"
+updated: "2026-11-22"
 slug: "ad-creative-testing"
 keywords: "ad creative testing framework, creative testing, ad creative test, creative test budget, how many ad creatives to test, creative performance analysis"
 tags: ["Ad Creative", "Experiment Analysis"]
@@ -10,7 +10,7 @@ draft: false
 ogImage: "/blog-assets/ad-creative-testing/ad-creative-lifecycle-en.png"
 primaryTool: "9-6"
 relatedGlossary: ["cpa", "roas", "ctr", "cvr"]
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Google Ads: Test with confidence with the Experiments page"
     url: "https://support.google.com/google-ads/answer/7281575"
@@ -40,7 +40,7 @@ faq:
   - q: "Should I replace every winning creative at once?"
     a: "No. Keep assets that still perform, add new variants first, and replace only the weaker portion after an adequate observation window."
 ---
-There is no universal answer such as “always test three creatives.” The number of creatives you can test at once depends on two inputs: the budget available for one test batch and the amount each creative needs before you can make a useful decision.
+You have budget for one replacement creative. In the sample, 30 of 63 eligible ads show falling click-through. Which of those ads makes a fair starting point for a test?
 
 Adding more creatives without increasing the budget spreads delivery thin. Some ads receive too little exposure to tell you whether they failed or never had a fair chance. The goal is not to launch the most assets. It is to give each hypothesis enough opportunity to produce an answer.
 
@@ -54,6 +54,8 @@ Adding more creatives without increasing the budget spreads delivery thin. Some 
 ![Ad creative launch, test, decision, fatigue tracking, and replacement lifecycle](/blog-assets/ad-creative-testing/ad-creative-lifecycle-en.png)
 
 *Creative operations form a loop: test results and fatigue signals should become the hypothesis for the next production brief.*
+
+Use the fatigue example to shortlist an incumbent. Compare days in market and delivery, then plan a separately randomized test with one creative change.
 
 ## Creative testing should reduce uncertainty
 

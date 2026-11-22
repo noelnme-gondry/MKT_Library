@@ -11,15 +11,15 @@ primaryTool: "5-2"
 relatedGlossary: ["cpa", "incrementality", "multicollinearity", "response-curve"]
 answer: "Performance marketing analysis starts with the decision and the grain of the data, not the name of a method. Use daily performance for monitoring and variance decomposition, spend variation for saturation and allocation, a control for incrementality, and a 52+ week channel panel with a VIF check before MMM."
 conditions: "The time windows below are practical eligibility checks used by this service. More rows do not fix poor measurement or weak variation, and observational data alone cannot establish causal lift."
-reviewedAt: "2026-09-14"
+reviewedAt: "2026-11-22"
 faq:
   - q: "Which analysis should I run first when ad performance drops?"
     a: "Start with daily spend and conversions to validate the period and scope. Then use variance decomposition to separate channel mix from within-channel efficiency."
   - q: "Can I run MMM as soon as I have a lot of data?"
     a: "No. You need a long weekly channel panel with meaningful spend variation, then a VIF check for collinearity. High collinearity makes channel contributions hard to separate."
-updated: "2026-10-14"
+updated: "2026-11-22"
 ---
-Ad spend has produced conversions, yet the next budget decision is still unclear. Installs may not lead to purchases, and a high ROAS does not necessarily mean a campaign is profitable. Performance marketing connects goal setting, measurement, analysis and operating changes.
+Installs grew 2.8%, so the weekly slide looks encouraging until the buyer mentions a 17.3% increase in spend. Put the two changes on the same timeline before asking which campaign to cut.
 
 This guide explains the meaning, goals and metrics of performance marketing, then selects an analysis from **the decision you need to make** and **what one row represents**. For a worked numerical example, follow the [marketing analysis CSV walkthrough](/blog/marketing-analysis-example).
 
@@ -32,6 +32,8 @@ Performance marketing sets measurable goals such as installs, signups or purchas
 For a new-customer purchase campaign, installs alone are insufficient. Align the definition of a new purchase and the reporting window, then review cost per purchase and attributed revenue relative to ad spend. ROAS is a revenue ratio, not profit margin or incremental advertising impact.
 
 Connect **goal and conversion definition → metric review → change analysis → operating action → review on the same basis**. Use the [performance marketing metrics guide](/blog/performance-marketing-metrics) for calculation definitions and [marketing analysis methods and tools](/compare) to choose a path for the question at hand.
+
+Compare the two seven-day windows in the dashboard, confirm the 14.1% increase in CPI, then choose a channel to investigate.
 
 ## What performance marketing means in practice
 

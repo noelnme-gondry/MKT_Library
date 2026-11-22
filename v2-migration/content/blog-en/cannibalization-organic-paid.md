@@ -2,7 +2,7 @@
 title: "Paid vs Organic Cannibalization: How to Measure It"
 description: "Diagnose internal cannibalization — paid ads eating organic conversions — and tell correlation apart from causation."
 date: "2026-07-15"
-updated: "2026-10-15"
+updated: "2026-11-22"
 slug: "cannibalization-organic-paid"
 keywords: "cannibalization, internal cannibalization, organic cannibalization, paid vs organic, brand search advertising, incrementality, cannibalization rate, organic conversion decline, brand keyword bidding"
 tags: ["Analysis", "Incrementality Analysis"]
@@ -21,9 +21,9 @@ faq:
     a: "Moving together proves nothing on its own. Advertising may have created new demand, or it may simply have been peak season. Use a suitable comparison design and examine its assumptions and uncertainty to distinguish these explanations."
   - q: "How do I calculate a cannibalization rate?"
     a: "Under comparable groups, aligned measurement and a suitable design, divide organic gains by paid losses. A 100-conversion paid loss and 70-conversion organic gain give an arithmetic 70%, but a simple before/after difference does not identify cannibalization or net lift."
-reviewedAt: "2026-09-14"
+reviewedAt: "2026-11-22"
 ---
-When paid traffic rises while organic traffic falls, investigate whether advertising is replacing visits that would have arrived organically. That substitution is ad cannibalization. The same pattern can also reflect seasonality or tracking changes; a before/after difference alone cannot establish displacement or causal lift.
+You are considering cutting paid acquisition because it might displace organic installs. In the example, organic grew 10% over four weeks and paid fell 0.6%, yet the two series moved in opposite directions in none of the individual weeks.
 
 ## Why it's dangerous
 
@@ -32,6 +32,8 @@ Performance reports credit every ad-touched conversion to the ad (attribution). 
 Cannibalization is especially common on ads that attach to people who already know you: brand keywords, retargeting. Someone searching your brand name was already looking for you.
 
 The problem is that this illusion drives budget decisions. Heavily cannibalizing campaigns usually show the *best* ROAS in the report, because they harvest conversions from people who were already ready to buy. So they get labelled "our best campaign," get more budget, and convert even more organic traffic into paid — a loop that spends more to buy the same outcome.
+
+Compare the weekly changes before choosing the question for a holdout. These aggregate trends cannot measure displaced organic installs.
 
 ## What it looks like in numbers
 

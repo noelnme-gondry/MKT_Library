@@ -12,10 +12,10 @@ faq:
   - q: "If CPA spikes, should I cut budget right away?"
     a: "Separate the cause first. Learning restarts, rising competition, creative fatigue, and broken conversion tracking each need a different response. Cutting budget on a tracking bug kills a healthy campaign."
 
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-"It's probably still in the learning phase" — half true, half dangerous. Misunderstand the learning phase and you make one of two mistakes: overreacting to the wild swings during learning, or waiting forever assuming "it'll get better once learning finishes." Both leak budget.
+A campaign’s CPI rose while the platform was learning. In the sample, one channel accounts for ₩197 of the ₩208 rise in overall CPI. That gives you a change log to inspect before you decide to wait another week.
 
 Today, let's really look at what ad machine learning is actually doing — when you should leave it alone, and when you should step in. This one's a bit long. Understand it, though, and it changes how you run accounts entirely.
 
@@ -32,6 +32,8 @@ Check completion criteria for the platform, goal and campaign type. A fixed even
 What matters is whether the signals are sufficient and valid. You need a sample to detect a pattern. Three conversions isn't enough to build a rule like "this kind of person buys." Could be coincidence. [A/B testing](/en/blog/ab-testing) also needs adequate samples, but statistical power and platform learning completion are different criteria. Machine or human, thin data means no judgment.
 
 (Note: this threshold differs by platform and the policy changes over time. Check the official docs for whatever platform you're running on.)
+
+Open the channel breakdown and match the affected dates against edits to the bid, budget or optimization event.
 
 ## Numbers during learning aren't "real performance" yet
 

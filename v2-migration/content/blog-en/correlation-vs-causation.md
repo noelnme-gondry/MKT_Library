@@ -12,10 +12,10 @@ faq:
   - q: "What if an experiment is impossible?"
     a: "Use quasi-experimental designs such as pre/post, control regions, or interrupted time series, and label the result as an estimated lift. State that seasonality and promotions were not separated."
 
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-On days when ice cream sales are high, drowning accidents also go up. Does ice cream cause drowning? Of course not. There's a separate cause — both are driven by 'summer.'
+The users who saw an ad converted at 6.00%. The holdout converted at 4.41%. Before you tell finance how many conversions the campaign generated, ask how users entered those groups.
 
 That's the kind of illusion you get when you confuse correlation with causation. The example is extreme, but in real life we make plenty of milder versions of the same mistake. In marketing, this mistake costs real money — it sends budget to the wrong channel, or kills a perfectly healthy campaign. Today, let's draw a clear line between the two.
 
@@ -26,6 +26,8 @@ Simply put: correlation means "they move together," causation means "one produce
 ![Two line charts of ice cream sales and drowning accidents, both spiking together in summer and falling together in winter over a year. They move identically, but neither causes the other.](/blog-assets-en/correlation-vs-causation/spurious-correlation.svg)
 
 Ice cream sales and drownings move in lockstep on a chart — the correlation is very high. But one doesn't produce the other. High correlation doesn't mean causation.
+
+Open the exposure and holdout results. Check the planned window, random assignment and possible cross-group exposure before interpreting the relative lift.
 
 ## Why we keep confusing them — the confounder
 

@@ -12,10 +12,10 @@ faq:
   - q: "How much history does an LTV estimate need?"
     a: "The observed cohort length is the ceiling. With only D7 data, anything beyond it is extrapolation and should be labeled as an estimate with its basis."
 
-reviewedAt: "2026-09-14"
-updated: "2026-09-14"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Plenty of teams answer "can we keep spending on this channel?" with LTV:CAC. But before you relax at a ratio above 3:1, check whether the number was **computed right**. Depending on what you took as the denominator, and whether you used revenue or margin, the same data can flip the conclusion. Here's the math, then the three spots people most often get wrong.
+For each unit of acquisition cost, the sample projects 1.94 units of day-30 revenue per install on Meta AAP and 4.97 on Google UAC. Would those figures still support the same budget decision after refunds and variable costs?
 
 ## Start with CAC
 
@@ -29,6 +29,8 @@ Customer Acquisition Cost (CAC) is allocated acquisition cost divided by distinc
 | Observation window | Observed D30 values separate from predicted D180 values |
 
 Repeat orders and install counts are different denominators. If acquisition takes much longer than a month, disclose the approximation in dividing this month’s spend by this month’s new customers.
+
+Open the D30 comparison, distinguish projected revenue from observed revenue and reconcile paying-customer CAC separately.
 
 ## LTV is an estimate
 

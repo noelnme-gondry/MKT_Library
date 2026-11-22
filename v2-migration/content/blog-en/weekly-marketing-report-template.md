@@ -2,7 +2,7 @@
 title: "Weekly Marketing Report Template: From Metrics to Decisions"
 description: "Build a weekly marketing report with three weeks of campaign data. Follow a worked example from comparison to a saved decision and next-week review."
 date: "2026-09-14"
-updated: "2026-09-20"
+updated: "2026-11-22"
 slug: "weekly-marketing-report-template"
 keywords: "Weekly Marketing Report, Template"
 searchTitleTerms: ["Weekly Marketing Report", "Template"]
@@ -10,9 +10,9 @@ tags: ["Analysis Methodology"]
 draft: false
 sources: [{"title": "Google Analytics: Data freshness", "url": "https://support.google.com/analytics/answer/11198161?hl=en"}]
 faq: [{"q": "Is the worksheet free?", "a": "The synthetic CSV and blank report worksheet attached to this article are public resources. Product project storage and analysis-report downloads follow the separate pass entitlement."}, {"q": "Should I cut spend when CPI rises week over week?", "a": "Check conversion maturity, measurement definitions and campaign composition first. An observed CPI rise alone establishes neither the cause nor the optimal budget."}]
-reviewedAt: "2026-09-20"
+reviewedAt: "2026-11-22"
 ---
-A weekly marketing report should leave the reader with a decision to make or a question to resolve. Copying spend and installs into a slide is only the beginning. Record the evidence, the hypothesis, the owner and the next review date.
+You spent ₩840,000 to bring in 700 installs this week. Last week those same 700 installs cost ₩700,000. What would you write in the budget review before anyone approves another increase?
 
 This worked example uses synthetic install-campaign data. Download the [campaign CSV](/examples/weekly-report-campaigns.csv), [blank report worksheet](/examples/weekly-report-template-en.csv) and [completed example](/examples/weekly-report-filled-en.csv). Only the campaign CSV is an analysis input; the other files are writing worksheets.
 
@@ -21,6 +21,8 @@ This worked example uses synthetic install-campaign data. Download the [campaign
 Compare August 31–September 6, 2026 with September 7–13: two Monday-to-Sunday weeks. The time zone is Korea, the currency is KRW, and the outcome is installs under one attribution definition. Both weeks are assumed mature in this example. For a real export, record the extraction time and check platform-specific conversion lag.
 
 Installs cannot stand in for new paying customers. Resolve mixed purchase, signup and install definitions using the [data preparation guide](/guide/csv-data-prep). Compare ROAS only when the revenue observation windows also match.
+
+Open the comparison for August 31–September 6 and September 7–13. The full ₩200 increase in CPI sits in Example channel. The accompanying campaign CSV shows how A and B performed inside it.
 
 ## Spend rose 20% while installs stayed at 700
 

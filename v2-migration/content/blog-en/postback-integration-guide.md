@@ -17,10 +17,10 @@ faq:
     a: "Use the official MMP and network integration method. A SAN has its own attribution flow, so duplicating links or settings can create mismatched data."
   - q: "Is delayed cost data normal?"
     a: "Cost usually uses a separate API integration, permission set, and sync schedule. Diagnose it separately from conversion postbacks."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-When an integration shows “zero installs,” do not start by rebuilding the postback. Check whether the event happened in the app, reached the MMP, was sent to the network, and was counted under the network's rules. The last verified point tells you where to investigate.
+The ad network shows zero installs. Open the same day in your measurement partner first: if the partner recorded the installs, the investigation moves downstream. A zero in the cost column starts a different investigation.
 
 ## What a postback sends
 
@@ -29,6 +29,8 @@ A postback is a signal from an MMP or measurement system to an ad network for in
 `Ad click or impression → app install and launch → MMP attribution → event collection → network postback → network reporting and learning`
 
 ![Postback path from app event to network reporting](/blog-assets/postback-integration-guide/postback-flow-en.svg)
+
+Use the integration self-check to separate missing event delivery from a cost connection issue.
 
 ## Separate SAN from S2S first
 

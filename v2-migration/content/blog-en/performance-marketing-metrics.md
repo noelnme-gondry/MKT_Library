@@ -2,7 +2,7 @@
 title: "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS"
 description: "Start with CTR, CVR, CPA, and ROAS, then connect CPM, CPC, CPI, and LTV:CAC into one chain to locate the actual performance problem."
 date: "2026-07-27"
-updated: "2026-10-15"
+updated: "2026-11-22"
 slug: "performance-marketing-metrics"
 keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained"
 tags: ["Metrics Basics", "Performance Marketing"]
@@ -23,9 +23,9 @@ faq:
     a: "Check repeat purchase and retention alongside cohort mix, margins, acquisition-cost scope, and lifetime-value assumptions. This is not a confirmed retention diagnosis."
   - q: "In what order should I review performance metrics?"
     a: "Read them as a chain: spend, CPI, CPA, short-term ROAS, then LTV:CAC. Find the first stage that deteriorates and use the metrics immediately before and after it to narrow the cause."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-CPI, CPA, ROAS, LTV, CAC… open a report and the acronyms pour out. You know what each one means, but "so what should I actually look at right now?" doesn't jump out at you. Today I'll show you how to read these metrics as one connected chain instead of memorizing them separately. Read them this way, and when a number spikes, you'll immediately know where to look.
+Spend and installs both rose this week. Which metric tells you whether acquisition kept pace with the extra money? In the sample, 17.3% more spend bought 2.8% more installs, taking CPI up 14.1%.
 
 If the number of metrics feels overwhelming, begin with only four: CTR, CVR, CPA, and ROAS. Once you know the question behind each number, the rest naturally join when you need to narrow a diagnosis.
 
@@ -34,6 +34,8 @@ If the number of metrics feels overwhelming, begin with only four: CTR, CVR, CPA
 Let's start with the most common mistake: reading each metric in isolation. You know what CPA is, you know what ROAS is — but when ROAS goes bad, you get stuck on "okay, so what do I fix first?"
 
 There's a reason for that. There isn't just one thing that can hurt performance. Like every metric system, ad metrics are linked in one chain running from impressions all the way to long-term value. You have to look at the whole chain to see where the cause actually sits.
+
+Open the spend, clicks and installs comparison, then select the denominator that matches the decision you need to make.
 
 ## 1. Metrics are one chain
 

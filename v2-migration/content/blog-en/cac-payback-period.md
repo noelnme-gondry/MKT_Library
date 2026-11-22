@@ -2,7 +2,7 @@
 title: "CAC Payback Period: Calculation and Cash Recovery"
 description: "Calculate CAC payback from a new-customer cohort’s monthly contribution. Distinguish refunds, churn, unrecovered costs and revenue-based tool estimates."
 date: "2026-09-14"
-updated: "2026-09-14"
+updated: "2026-11-22"
 slug: "cac-payback-period"
 keywords: "CAC Payback Period"
 searchTitleTerms: ["CAC Payback Period"]
@@ -10,9 +10,9 @@ tags: ["Analysis Methodology"]
 draft: false
 sources: [{"title": "Stripe: CAC payback period", "url": "https://stripe.com/resources/more/what-is-the-cac-payback-period"}]
 faq: [{"q": "How should an unrecovered cohort be reported?", "a": "State the observed window, such as unrecovered through month three. Do not replace it with zero months or a claim that recovery is impossible."}, {"q": "Should I report 4.67 or five months?", "a": "Month-end data first confirm recovery at month five. Report 4.67 separately as an interpolation assuming contribution accrues uniformly within the month."}]
-reviewedAt: "2026-09-14"
+reviewedAt: "2026-11-22"
 ---
-A strong LTV:CAC ratio does not tell you when acquisition cash comes back. The CAC payback period measures when a new-customer cohort has generated enough cumulative contribution to recover its acquisition cost. This article uses a contribution basis explicitly, rather than treating revenue recovery as profit recovery.
+Suppose it costs ₩10 million to acquire 100 paying customers. By the end of month four they have contributed ₩9 million after variable costs. The first month-end above the acquisition bill is month five, at ₩10.5 million. How should finance record the payback date?
 
 Download the [monthly calculation CSV](/examples/cac-payback-monthly.csv) to check the table. It is a payback worksheet, not a campaign-format input for the analysis tool.
 
@@ -21,6 +21,8 @@ Download the [monthly calculation CSV](/examples/cac-payback-monthly.csv) to che
 Assume 100 first-time paying customers acquired in one month cost KRW 10,000,000. CAC is KRW 100,000 per new customer. Include allocated acquisition-related sales or production costs if they belong to your definition, and disclose the scope. Neither installs nor order counts substitute for distinct new paying customers.
 
 The CSV repeats new_customers and acquisition_cost_krw as fixed cohort metadata; do not sum those columns across months. Track the subsequent contribution of those same 100 customers. Do not remove churned customers from the original denominator: averaging only survivors can overstate recovery. Start with the [LTV:CAC calculation guide](/blog/ltv-cac-ratio) if the definitions differ between reports.
+
+Read the month-end table first. Then open the dashboard’s separate revenue-per-install example. Its seven-day estimate for Meta AAP answers when revenue covers the cost of an install. Finance still needs costs and paying-customer counts to calculate contribution payback.
 
 ## State what you subtract from revenue
 

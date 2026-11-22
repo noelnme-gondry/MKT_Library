@@ -2,7 +2,7 @@
 title: "Incrementality: Validate Ad Lift With Holdouts and DiD"
 description: "Dashboard ROAS should only be half-trusted. Incrementality measurement and three holdout designs for measuring what ads actually create."
 date: "2026-07-09"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "incrementality-measurement"
 keywords: "incrementality measurement, holdout experiment, difference-in-differences, DiD, iROAS, attribution, conversion lift, incrementality vs attribution, holdout group test, what is incrementality, measuring ad effectiveness, proving ad impact, what is a holdout test"
 tags: ["Incrementality Analysis", "Performance Marketing"]
@@ -18,9 +18,9 @@ faq:
   - q: "What share should the holdout be?"
     a: "Derive it from the minimum effect you want to detect and your conversion volume. Too small and the difference is undetectable; too large and the opportunity cost grows. Calculate the required sample first, then back out the share."
 
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-You served a search ad to someone who searched your brand name. They clicked through, and they purchased. Your report shows 'ROAS 800%.' Feels good, right?
+A brand-search conversion can show up in a campaign report even when the shopper would have purchased anyway. In the holdout example, 4.41% converted without the ad and 6.00% converted in the exposed group.
 
 But wait — wouldn't those people have landed on your site anyway, even without the ad? They already searched your brand name. If so, that conversion wasn't "created" by the ad — it was "picked up" by it. Today let's look at how to tell these two apart: **incrementality measurement**, which isolates only the performance an ad actually created. By the end, you won't be able to take dashboard ROAS at face value the way you used to. And that skepticism is exactly what leads to richer analysis.
 
@@ -41,6 +41,8 @@ A significant chunk of the conversions showing up in your dashboard may be "base
 ![An illustration showing that of 500 conversions on the dashboard, 380 are baseline that would have happened without the ad, and only the 120 on top are the true incremental conversions the ad created.](/blog-assets-en/incrementality-measurement/attribution-vs-incremental.svg)
 
 Just like this image. Even if marketing shows 500 conversions, the ad may have genuinely created only the 120 on top. The other 380 were customers who were coming anyway. The problem is the dashboard doesn't separate the two — it shows all 500 as credit for the ad.
+
+Compare the two group rates in the planned test window. Use the difference as evidence of incrementality only after checking assignment and contamination.
 
 ## So how do you actually measure incrementality — three holdout experiment designs
 

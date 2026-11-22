@@ -22,10 +22,10 @@ faq:
     a: "No. Separate channel mix, seasonality, promotions, and simultaneous changes first. Use an A/B test or holdout when a causal decision is needed."
   - q: "What is the difference between Classic and Rolling retention?"
     a: "Classic retention measures a return exactly on the relevant day. Rolling retention includes a return on or after that day, so the two values should not be compared as the same D7 metric."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Only compare a D7 cohort after every user in that cohort has had seven full days to return. If your data ends on July 30, a cohort acquired on July 28 has not had a chance to reach D7 yet. Treating it as zero—or quietly averaging it in—makes retention look worse than it is.
+Your export ends July 30. A July 24 install has had six days to return, so a blank D7 cell still has a day to run. Treating it as zero would make the newest cohort look worse before a single return was missed.
 
 Retention cohort analysis groups people who started at the same time, then measures whether they return and perform a meaningful action later. It is not a single all-user retention number. That distinction matters whenever acquisition volume, channel mix, or product releases change.
 
@@ -38,6 +38,8 @@ For an app, a cohort commonly starts on `install_date` or `first_open_date`. It 
 The return action needs a product-specific definition. An app open can be useful for a daily-use product; completing a meaningful action may be better for a marketplace or B2B product. Document the starting event, return event, timezone, and interval before comparing numbers.
 
 Google Analytics defines cohorts through shared first-session dates and supports retention as `cohortActiveUsers / cohortTotalUsers`. Use its [cohort specification](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1alpha/CohortSpec) and [report examples](https://developers.google.com/analytics/devguides/reporting/data/v1/predefined-reports) to align the team’s GA4 definition.
+
+In the sample chart, D7 is 190,542 returns out of 1,581,463 eligible installs (12%). Compare cohorts at the same age and check which install dates enter the denominator before explaining a change.
 
 ## Use the data maximum date, not today’s date
 

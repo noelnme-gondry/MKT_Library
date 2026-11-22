@@ -2,7 +2,7 @@
 title: "SKAN 4 Migration: Which Window to Turn On First"
 description: "The order to settle measurement windows, value resolution, and campaign structure when moving to SKAN 4."
 date: "2026-08-18"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "skan4-migration-guide"
 keywords: "SKAN 4, SKAdNetwork 4.0, skan 4 strategy, skan 4 adoption, skan 4 best practices, skan optimization, measurement windows, hierarchical source ID, SKAN 5"
 tags: ["Measurement", "iOS"]
@@ -16,9 +16,9 @@ faq:
     a: "Days 0–2 can return the fine value (0–63), so it carries activation quality; days 3–7 covers early return behavior; days 8–35 covers long-run value. The last two have only three levels of resolution, so treat them as directional."
   - q: "Should I be preparing for SKAN 5 now?"
     a: "Check supported versions and schedules by platform, MMP and OS. Apple supports SKAN–AdAttributionKit interoperability; validate schemas against the actual APIs and return conditions."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-The most common mistake in a SKAN 4 migration is ordering: designing all three windows at once and porting the Android campaign structure straight across. Data arrives, and half of it is empty.
+Your subscription usually starts after day two, but the migration plan puts subscription revenue at the center of the first-window schema. Walk through the actual timing of one new subscriber before locking the mapping.
 
 [SKAN](/glossary/skan) generally and its relationship with ATT are covered in the [iOS ATT and SKAN measurement guide](/blog/ios-att-skan-guide). This article is only about **the order**.
 
@@ -35,6 +35,8 @@ SKAN 4 supports up to three conditional postbacks for periods after install. The
 One conclusion follows immediately: precise design only means anything in the first window. Detailed LTV bands in windows 2 and 3 collapse into three buckets.
 
 ![The three SKAN 4 windows: days 0–2 can return fine or coarse values, days 3–7 and 8–35 return coarse values only](/blog-assets-en/ios-att-skan-guide/skan4-windows.svg)
+
+Use the migration check to decide which first-window action is observable and which decision needs a later window.
 
 ## Step 1 — Lock the first window's schema
 

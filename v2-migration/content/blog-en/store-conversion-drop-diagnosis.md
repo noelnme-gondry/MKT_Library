@@ -2,7 +2,7 @@
 title: "Store Conversion Dropped: Page Problem or Traffic Mix?"
 description: "The blended rate hides the cause. Split conversion by source and share to separate two problems whose fixes are opposites."
 date: "2026-08-18"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "store-conversion-drop-diagnosis"
 keywords: "store conversion rate drop, app store conversion rate, product page conversion, ASO diagnosis, traffic source conversion, Simpson's paradox marketing, App Store conversion analysis"
 tags: ["ASO", "Diagnosis"]
@@ -16,9 +16,9 @@ faq:
     a: "Take per-source views and installs for two periods and total the share changes and the rate changes separately. The tool’s components sum to the change in views per install, not conversion percentage points. The larger component narrows the investigation; it does not prescribe a proven fix."
   - q: "What do I do when mix is the cause?"
     a: "Look at why the traffic composition changed rather than at the page. Paid scaling pushing more Browse traffic, a featuring placement, and seasonality all call for different responses. Unchanged per-source ratios do not establish healthy performance; examine install volume and acquisition value too."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-Say store conversion fell from 32% to 21%. The first thing said in the review is almost always "when did we last touch the screenshots?" Then you split by source and find that neither Search nor Browse moved at all. Observed source rates held while the total fell; this does not establish that the page is optimal.
+The sample store’s view-to-install rate fell from 27.8% to 24.4%. Before blaming a screenshot, check how much the visitor mix changed and how much changed within each traffic source.
 
 This post is about telling those two situations apart. The fixes are opposites, so neither can be applied while they are blended together.
 
@@ -30,6 +30,8 @@ Store conversion is usually read as installs over product page views. Inside tha
 - **Mix** — per-source conversion held, but the weighting changed. More people arrived through a lower-converting door.
 
 Both pull the blended rate down identically. The symptom on screen is the same. But an efficiency change can also reflect within-source intent, device mix, or measurement changes. These components narrow the investigation rather than uniquely identify the fix.
+
+Open the views-per-install decomposition. The mix term represents 71% of the absolute components in this example. Its denominator differs from the percentage-point change in store conversion.
 
 ## The arithmetic makes it obvious
 

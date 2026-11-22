@@ -39,7 +39,6 @@ export function buildRootMetadata(locale = "ko") {
       description: copy.socialDescription,
       images: [`${SITE_URL}/og-card.png`],
     },
-    other: { "google-adsense-account": "ca-pub-3073450406371629" },
   };
 }
 
