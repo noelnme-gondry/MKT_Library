@@ -1,3 +1,4 @@
+import { TOOL_BLOG_GUIDES } from "./toolBlogGuides";
 import { BLOG_INSIGHT_PLACEMENTS } from "./blogInsightRegistry";
 import { TOOL_GROUP } from "./toolGroups";
 import { toolIndexEntry } from "./toolIndex";
@@ -150,7 +151,8 @@ export function blogPracticeFor(slug, locale = "ko") {
     mode: "detail",
     demoGroup: group,
     locale,
-    file: `demo_${group}_${locale}.csv`,
+    ...(TOOL_BLOG_GUIDES[slug] && { sampleToolId: config.toolId, displayCurrency: "KRW" }),
+    file: `demo_${TOOL_BLOG_GUIDES[slug] ? slug : group}_${locale}.csv`,
     title: tool.question,
     introduction: en ? "Open the demo or choose a CSV, then check the columns and analysis settings in the full tool." : "데모를 바로 열거나 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요.",
     steps: [
@@ -158,6 +160,6 @@ export function blogPracticeFor(slug, locale = "ko") {
       en ? "Confirm the column roles, units and observation period in the tool before running the analysis." : "도구에서 열의 역할·단위·관찰 기간을 확인한 뒤 분석하세요.",
       en ? `Inspect the results and their limitations: ${tool.outputs.join("; ")}.` : `결과와 해석 한계를 확인하세요: ${tool.outputs.join(", ")}.`,
     ],
-    limit: en ? "This synthetic example teaches the analysis workflow. It does not reproduce the article’s figures or effects in a real account." : "예제는 분석 흐름을 익히기 위한 합성 데이터입니다. 글의 수치나 실제 계정의 효과를 재현하는 자료가 아닙니다.",
+    limit: TOOL_BLOG_GUIDES[slug] ? (en ? "The article compares the tool’s default example in KRW. Your own results depend on your data and settings." : "글의 수치는 기본 예시를 원화로 비교한 값입니다. 실제 결과는 입력 자료와 설정에 따라 달라집니다.") : en ? "This synthetic example teaches the analysis workflow. It does not reproduce the article’s figures or effects in a real account." : "예제는 분석 흐름을 익히기 위한 합성 데이터입니다. 글의 수치나 실제 계정의 효과를 재현하는 자료가 아닙니다.",
   };
 }

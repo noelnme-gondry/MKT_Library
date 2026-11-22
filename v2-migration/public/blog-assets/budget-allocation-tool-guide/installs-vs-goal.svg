@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="345.6pt" height="273.6pt" viewBox="0 0 345.6 273.6" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.9.4, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 273.6
+L 345.6 273.6
+L 345.6 0
+L 0 0
+z
+" style="fill: #faf9f6"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 69.8112 206.568
+L 327.2832 206.568
+L 327.2832 80.712
+L 69.8112 80.712
+z
+" style="fill: #faf9f6"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: middle" x="69.8112" y="221.179562" transform="rotate(-0 69.8112 221.179562)">4,000</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: middle" x="198.5472" y="221.179562" transform="rotate(-0 198.5472 221.179562)">4,100</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: middle" x="327.2832" y="221.179562" transform="rotate(-0 327.2832 221.179562)">4,200</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_4">
+      <path d="M 69.8112 190.836
+L 327.2832 190.836
+" clip-path="url(#p662528f9f0)" style="fill: none; stroke: #d6d8db; stroke-width: 0.6; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_5"/>
+     <g id="text_4">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: end" x="65.8112" y="196.141781" transform="rotate(-0 65.8112 196.141781)">26,200</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_6">
+      <path d="M 69.8112 155.876
+L 327.2832 155.876
+" clip-path="url(#p662528f9f0)" style="fill: none; stroke: #d6d8db; stroke-width: 0.6; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_7"/>
+     <g id="text_5">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: end" x="65.8112" y="161.181781" transform="rotate(-0 65.8112 161.181781)">26,300</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_8">
+      <path d="M 69.8112 120.916
+L 327.2832 120.916
+" clip-path="url(#p662528f9f0)" style="fill: none; stroke: #d6d8db; stroke-width: 0.6; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_9"/>
+     <g id="text_6">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: end" x="65.8112" y="126.221781" transform="rotate(-0 65.8112 126.221781)">26,400</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_10">
+      <path d="M 69.8112 85.956
+L 327.2832 85.956
+" clip-path="url(#p662528f9f0)" style="fill: none; stroke: #d6d8db; stroke-width: 0.6; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_11"/>
+     <g id="text_7">
+      <text style="fill: #4e5660; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: end" x="65.8112" y="91.261781" transform="rotate(-0 65.8112 91.261781)">26,500</text>
+     </g>
+    </g>
+   </g>
+   <g id="line2d_12">
+    <path d="M 69.8112 120.916
+L 327.2832 120.916
+" clip-path="url(#p662528f9f0)" style="fill: none; stroke-dasharray: 4,3; stroke-dashoffset: 0; stroke: #20242a"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 69.8112 206.568
+L 327.2832 206.568
+" style="fill: none; stroke: #a6abb2; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_8">
+    <text style="fill: #20242a; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: start" x="72.38592" y="116.636075" transform="rotate(-0 72.38592 116.636075)">목표</text>
+   </g>
+   <g id="text_9">
+    <text style="fill: #204fb3; font: 14.5px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: end" x="278.549479" y="100.7776" transform="rotate(-0 278.549479 100.7776)">현재안  26,429</text>
+   </g>
+   <g id="text_10">
+    <text style="fill: #666f79; font: 14.5px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: start" x="130.366471" y="189.844" transform="rotate(-0 130.366471 189.844)">변경안  26,220</text>
+   </g>
+   <g id="PathCollection_1">
+    <defs>
+     <path id="m1e01677414" d="M 0 3.674235
+C 0.974418 3.674235 1.909058 3.287094 2.598076 2.598076
+C 3.287094 1.909058 3.674235 0.974418 3.674235 0
+C 3.674235 -0.974418 3.287094 -1.909058 2.598076 -2.598076
+C 1.909058 -3.287094 0.974418 -3.674235 0 -3.674235
+C -0.974418 -3.674235 -1.909058 -3.287094 -2.598076 -2.598076
+C -3.287094 -1.909058 -3.674235 -0.974418 -3.674235 0
+C -3.674235 0.974418 -3.287094 1.909058 -2.598076 2.598076
+C -1.909058 3.287094 -0.974418 3.674235 0 3.674235
+z
+" style="stroke: #faf9f6; stroke-width: 1.2"/>
+    </defs>
+    <g clip-path="url(#p662528f9f0)">
+     <use xlink:href="#m1e01677414" x="281.549479" y="110.7776" style="fill: #204fb3; stroke: #faf9f6; stroke-width: 1.2"/>
+    </g>
+   </g>
+   <g id="PathCollection_2">
+    <defs>
+     <path id="mfd75b6baab" d="M -0 5.196152
+L 5.196152 0
+L 0 -5.196152
+L -5.196152 -0
+z
+" style="stroke: #faf9f6; stroke-width: 1.2"/>
+    </defs>
+    <g clip-path="url(#p662528f9f0)">
+     <use xlink:href="#mfd75b6baab" x="120.366471" y="183.844" style="fill: #666f79; stroke: #faf9f6; stroke-width: 1.2"/>
+    </g>
+   </g>
+  </g>
+  <g id="text_11">
+   <text style="fill: #20242a; font: 17px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: start" x="13.824" y="24.780594" transform="rotate(-0 13.824 24.780594)">일예산과 예상 설치</text>
+  </g>
+  <g id="text_12">
+   <text style="fill: #4e5660; font: 14.3px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: start" x="13.824" y="46.450317" transform="rotate(-0 13.824 46.450317)">가상 예시 · 목표는 하루 26,400건</text>
+  </g>
+  <g id="text_13">
+   <text style="fill: #20242a; font: 14px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: start" x="13.824" y="68.931312" transform="rotate(-0 13.824 68.931312)">예상 설치 (건/일)</text>
+  </g>
+  <g id="text_14">
+   <text style="fill: #20242a; font: 14.4px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: end" x="324.864" y="241.15815" transform="rotate(-0 324.864 241.15815)">하루 예산 (만 원)</text>
+  </g>
+  <g id="text_15">
+   <text style="fill: #20242a; font: 14.3px 'Apple SD Gothic Neo', 'Helvetica', 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Avant Garde', sans-serif; text-anchor: start" x="13.824" y="263.055494" transform="rotate(-0 13.824 263.055494)">목표 대비   현재안 +29건   /   변경안 −180건</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p662528f9f0">
+   <rect x="69.8112" y="80.712" width="257.472" height="125.856"/>
+  </clipPath>
+ </defs>
+</svg>

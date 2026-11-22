@@ -1,8 +1,10 @@
+import { mapToolBlogGuides } from "./toolBlogGuides";
 import { mapDashboardGuides } from "./dashboardBlogGuides";
 // Editorial SSOT for the analysis users should run after reading a post or
 // glossary entry. This is deliberately explicit rather than keyword-based:
 // every published topic has one reviewed conversion destination.
 const BLOG_PRIMARY_TOOL = {
+  ...mapToolBlogGuides(guide => guide.toolId),
   ...mapDashboardGuides(() => "5-2"),
   "marketing-analysis-example": "5-21",
   "simpson-paradox-conversion-rate": "5-29",
@@ -111,6 +113,9 @@ const GLOSSARY_PRIMARY_TOOL = {
 // 5-18은 이제 매핑 허브와 네 개의 독립 분석 화면으로 분리된다. 콘텐츠의 질문에
 // 맞는 화면으로 바로 보내고, CSV·매핑은 해당 브라우저 세션에서만 공유한다.
 const BLOG_RELATED_GLOSSARY = {
+  "operations-planner-guide": ["cpi", "marginal-cpa"],
+  "mmm-contribution-tool-guide": ["mmm", "adstock"],
+  "budget-allocation-tool-guide": ["cpi", "marginal-cpa"],
   "dashboard-viz-guide": ["cpi", "roas"],
   "dashboard-scorecard-guide": ["cpi", "cpa", "cvr"],
   "dashboard-seasonality-guide": ["cpi", "roas"],

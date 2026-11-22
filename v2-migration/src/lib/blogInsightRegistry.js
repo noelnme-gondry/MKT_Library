@@ -1,3 +1,4 @@
+import { mapToolBlogGuides } from "./toolBlogGuides";
 import { DASHBOARD_GUIDES, mapDashboardGuides } from "./dashboardBlogGuides";
 // Put the example after the first explanatory section, before readers must finish the article.
 // Both locales keep every existing article block and the same entry contract.
@@ -10,6 +11,7 @@ export const blogDashboardTab = slug => DASHBOARD_GUIDES[slug]?.tab || ({
   "funnel-dropoff-analysis": "funnel",
 })[slug] || "viz";
 export const BLOG_INSIGHT_PLACEMENTS = {
+  ...mapToolBlogGuides(guide => entry(guide.toolId)),
   ...mapDashboardGuides(() => entry("5-2")),
   "marketing-analysis-example": entry("5-21"),
   "simpson-paradox-conversion-rate": entry("5-29", "ratio"),

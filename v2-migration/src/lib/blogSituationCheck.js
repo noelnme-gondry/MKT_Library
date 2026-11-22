@@ -9,6 +9,14 @@
 const T = (ko, en) => ({ ko, en });
 
 const BY_TOOL = {
+  "5-31": {
+    q: T("다음 주 예산을 정할 때 어떤 근거가 더 필요한가요?", "What evidence do you need for next week’s budget?"),
+    options: [
+      { label: T("옮길 캠페인을 고르고 싶다", "Choose which campaigns to adjust"), answer: T("캠페인별 예상 설치 증감과 제안 금액 근처의 실제 지출 이력을 비교해 보세요.", "Compare projected install changes with each campaign’s observations near the proposed spend."), tool: "5-31" },
+      { label: T("국가와 채널별로 나누고 싶다", "Split the budget across markets"), answer: T("일예산 상한을 두고 국가·채널별 설치와 단가를 비교하세요.", "Compare installs and unit cost by country and channel under the daily spending limit."), tool: "5-3" },
+      { label: T("단가가 오른 이유부터 보고 싶다", "Explain the rise in unit cost"), answer: T("어느 캠페인의 단가가 바뀌었는지, 비싼 캠페인의 비중이 커졌는지 나눠 보세요.", "Separate changes in each campaign’s unit cost from a shift toward more expensive campaigns."), tool: "5-21" },
+    ],
+  },
   "5-2": {
     q: T("지금 설치당 비용(CPI·CPA)은 어떤가요?", "How is your cost per install or action right now?"),
     options: [
