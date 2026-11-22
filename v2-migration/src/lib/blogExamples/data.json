@@ -610,7 +610,7 @@
  },
  "budget-allocation-tool-guide": {
   "toolId": "5-3",
-  "source": "demo",
+  "source": "demo_budget-allocation-tool-guide_ko.csv",
   "ko": {
    "headline": "90일의 집행 기록으로 하루 예산을 다시 나눠 봅니다.",
    "caption": "예시 데이터에서 국가·채널·OS별 지출과 설치를 비교합니다."
@@ -1903,7 +1903,7 @@
  },
  "mmm-contribution-tool-guide": {
   "toolId": "5-18-mmm",
-  "source": "demo",
+  "source": "demo_mmm-contribution-tool-guide_ko.csv",
   "ko": {
    "headline": "예시에는 번갈아 광고를 늘리거나 쉰 132주간의 가입과 지출이 담겨 있습니다.",
    "caption": "예시 데이터의 주별 가입 수와 채널별 지출로 추세와 반응곡선을 추정합니다."
@@ -2004,7 +2004,7 @@
  },
  "operations-planner-guide": {
   "toolId": "5-31",
-  "source": "demo",
+  "source": "demo_operations-planner-guide_ko.csv",
   "ko": {
    "headline": "총예산을 유지하면 7일 예상 설치는 3,238건에서 3,331건으로 바뀝니다.",
    "caption": "예시 데이터의 기준안과 캠페인별 재배분안을 비교했습니다."

@@ -60,4 +60,6 @@ If rising acquisition cost is something you check every week, an alert can evalu
 
 For budget decisions, start with date, campaign ID or name, spend and installs or sign-ups. You can use channel when you have no campaign identifier. If the discussion might lead to replacing an ad, export one row per date, campaign and creative, including the creative ID. Keep campaign subtotals out of that file so you count the spend once. Impressions and clicks give you a way to investigate the next question if CPI moves.
 
+If your next decision is a daily spending limit by country and channel, the [budget allocation walkthrough](/blog/budget-allocation-tool-guide) compares those limits with a minimum install target.
+
 [Compare two plans with fictional campaign data](/tools/operations-planner?example=1)

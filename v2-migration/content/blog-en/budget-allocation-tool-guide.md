@@ -47,6 +47,6 @@ The next-step plan limits how far daily spend can change at once. Use it to size
 
 Export dated actual spend and outcomes, with country, channel and OS for the splits you manage. Keep the currency, reporting period and outcome definition consistent. A row of purchases cannot stand in for a row of installs in a CPI comparison. If country rows add up to your channel total, leave the subtotal out so the same spend is counted once.
 
-Use this tool when the decision is how to distribute a daily budget across markets and channels. If the question turns into why a particular retargeting campaign became more expensive or whether a creative should be replaced, the Operations planner works at that finer level.
+Use this tool when the decision is how to distribute a daily budget across markets and channels. If the question turns into why a particular retargeting campaign became more expensive or whether a creative should be replaced, the [Operations planner walkthrough](/blog/operations-planner-guide) covers that finer level.
 
 [See how the example allocation changes both installs and CPI](/tools/budget-allocation?example=1)

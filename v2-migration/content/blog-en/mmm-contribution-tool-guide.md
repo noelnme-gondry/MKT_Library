@@ -59,4 +59,6 @@ Meta has a positive estimate too, but had no spend in the final eight weeks. The
 
 Use one row per week, one consistent business outcome and a spend column for each channel. Align week boundaries and currencies. A missing report and a confirmed zero-spend week should be distinguishable. Bring dates for major promotions or price changes, too. A year or more of history helps you examine an annual pattern. Weeks when channels moved independently help you answer the separate question of which channel mattered.
 
+If several spending series rose and fell together, use the [MMM collinearity guide](/blog/multicollinearity-mmm-guide) to identify channel estimates that are difficult to interpret separately.
+
 [Explore the trend, channel estimates and response curves](/tools/mmm-contribution?example=1)

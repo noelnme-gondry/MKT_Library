@@ -95,3 +95,5 @@ To recap: MMM doesn't track individuals — it reverse-engineers total outcome i
 Calculating this regression, adstock, saturation, and confidence band by hand is a hassle, on top of an already-annoying data prep step. So if you have weekly data, you can run all of it at once in the [MMM analysis tab](/tools/mmm-contribution) mentioned above. Uploaded data is processed entirely in your browser and never leaves it. (User privacy matters these days, doesn't it!)
 
 And don't forget: MMM narrows hypotheses, and experiments test them under valid design conditions. Use both together, and you move budget based on evidence instead of gut feel. (And statistics and math are, honestly, the most powerful weapon you have for persuasion!)
+
+The [weekly sign-up and response-curve walkthrough](/blog/mmm-contribution-tool-guide) shows how those estimates feed into a spending decision.

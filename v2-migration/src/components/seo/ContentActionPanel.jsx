@@ -10,6 +10,10 @@ import { growthUseCase } from "@/lib/growthUseCases";
 import { templatePageForTool } from "@/lib/templateCatalog";
 
 const TOOL_COPY = {
+  "5-31": {
+    ko: { label: "운영 플래너", title: "다음 주 캠페인 예산을 비교하세요", desc: "옮길 예산과 예상 설치, 제안 금액 근처에서 실제로 관측한 단가를 함께 확인합니다.", cta: "운영 플래너 열기" },
+    en: { label: "Operations planner", title: "Compare next week’s campaign budgets", desc: "See the proposed budget changes, expected installs and observed cost per install near each spending level.", cta: "Open the Operations planner" },
+  },
   "5-2": {
     ko: { label: "운영 대시보드", title: "읽은 내용을 이번 주 데이터에서 확인하세요", desc: "CPA·ROAS·예산 속도와 이상 신호를 한 화면에서 확인합니다.", cta: "내 데이터로 운영 점검" },
     en: { label: "Operations dashboard", title: "Check this in this week’s data", desc: "Review CPA, ROAS, budget pacing, and anomaly signals in one place.", cta: "Review my operations" },

@@ -24,7 +24,7 @@ import { computeVif } from "@/utils/modelDiagnostics";
 import { buildResponseAdapterColMap } from "@/lib/assistant/responseColumnMapping";
 import { buildLtvData } from "@/utils/ltvMath";
 import { blogDashboardTab, BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
-import { BLOG_PRACTICES } from "@/lib/blogPractice";
+import { BLOG_PRACTICES, blogPracticeFor } from "@/lib/blogPractice";
 import { runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
 import { runOptimizationAnalysis } from "@/lib/assistant/optimizationAnalysisAdapters";
 import { runSpecialAnalysis } from "@/lib/assistant/specialAnalysisAdapters";
@@ -453,7 +453,7 @@ function toolGuideExample(toolId) {
 function exampleFor(slug) {
   const placement = BLOG_INSIGHT_PLACEMENTS[slug];
   if (!placement) return null;
-  if (TOOL_BLOG_GUIDES[slug]) return { toolId: placement.toolId, source: "demo", ...toolGuideExample(placement.toolId) };
+  if (TOOL_BLOG_GUIDES[slug]) return { toolId: placement.toolId, source: blogPracticeFor(slug).file, ...toolGuideExample(placement.toolId) };
   const practice = BLOG_PRACTICES[slug];
   const toolId = EXAMPLE_TOOL_SUBSTITUTE[placement.toolId] || placement.toolId;
   const tab = blogDashboardTab(slug);
