@@ -22,6 +22,11 @@ const byTool = {
   "5-25": evidence("tool-core-figure-vif-by-entity", "채널별 지출 중복과 판정 기준 확인", "Inspect channel VIFs and interpretation thresholds"),
 };
 const byDashboardTab = {
+  scorecard: evidence("s-score", "두 주의 지표 카드 확인", "Inspect the two weeks of KPI cards", ".ab-stat-value"),
+  seasonality: evidence("s-seasonality", "연평균 대비 반복 차이 확인", "Inspect the recurring deviation from each annual mean", ".seasonality-summary"),
+  pacing: evidence("s-pace", "월말 예상 지출 확인", "Inspect the month-end projection", ".ab-stat-value"),
+  anomaly: evidence("s-anom", "날짜별 지출과 기준선 확인", "Inspect spend against the daily baseline", "#anomaly-chart"),
+  segment: evidence("s-matrix", "국가와 채널별 단가·지출 확인", "Inspect cost per install and spend by country and channel", "tbody tr"),
   viz: evidence("s-charts", "두 주의 설치당 비용과 일별 추이 확인", "Inspect the two weeks of cost per install and the daily trend"),
   cohort: evidence("s-retention", "경과일별 복귀율과 분모 확인", "Inspect retention and its denominator by cohort age", "#wide-ret-curve"),
   ltv: evidence("s-table", "채널별 회수기간과 실측 범위 비교", "Compare payback and observation horizons by channel", "tbody tr"),

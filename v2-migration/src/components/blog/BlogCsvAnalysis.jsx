@@ -158,7 +158,7 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
       if (config.toolId === "5-2") {
         const tab = blogDashboardTab(slug);
         state.setDashboardTab(tab);
-        if (sample && tab === "viz") {
+        if (sample && (tab === "viz" || ["scorecard", "segment"].includes(tab) || slug === "dashboard-ltv-guide")) {
           const { current, previous } = dashboardPeriods(candidate);
           if (previous.start && current.end) state.setDashboardFilter({
             dateStart: current.start, dateEnd: current.end, compareEnabled: true,

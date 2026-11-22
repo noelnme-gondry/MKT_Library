@@ -1,14 +1,16 @@
+import { DASHBOARD_GUIDES, mapDashboardGuides } from "./dashboardBlogGuides";
 // Put the example after the first explanatory section, before readers must finish the article.
 // Both locales keep every existing article block and the same entry contract.
 // Every published article must have an entry or an explicit non-CSV reason.
 const entry = (toolId, type = "adapter") => ({ section: 1, toolId, type });
-export const blogDashboardTab = slug => ({
+export const blogDashboardTab = slug => DASHBOARD_GUIDES[slug]?.tab || ({
   "cohort-analysis-guide": "cohort",
   "ltv-cac-ratio": "ltv",
   "cac-payback-period": "ltv",
   "funnel-dropoff-analysis": "funnel",
 })[slug] || "viz";
 export const BLOG_INSIGHT_PLACEMENTS = {
+  ...mapDashboardGuides(() => entry("5-2")),
   "marketing-analysis-example": entry("5-21"),
   "simpson-paradox-conversion-rate": entry("5-29", "ratio"),
   "user-churn-survival-analysis": entry("5-28", "distribution"),

@@ -1,7 +1,9 @@
+import { mapDashboardGuides } from "./dashboardBlogGuides";
 // Editorial SSOT for the analysis users should run after reading a post or
 // glossary entry. This is deliberately explicit rather than keyword-based:
 // every published topic has one reviewed conversion destination.
 const BLOG_PRIMARY_TOOL = {
+  ...mapDashboardGuides(() => "5-2"),
   "marketing-analysis-example": "5-21",
   "simpson-paradox-conversion-rate": "5-29",
   "user-churn-survival-analysis": "5-28",
@@ -109,6 +111,15 @@ const GLOSSARY_PRIMARY_TOOL = {
 // 5-18은 이제 매핑 허브와 네 개의 독립 분석 화면으로 분리된다. 콘텐츠의 질문에
 // 맞는 화면으로 바로 보내고, CSV·매핑은 해당 브라우저 세션에서만 공유한다.
 const BLOG_RELATED_GLOSSARY = {
+  "dashboard-viz-guide": ["cpi", "roas"],
+  "dashboard-scorecard-guide": ["cpi", "cpa", "cvr"],
+  "dashboard-seasonality-guide": ["cpi", "roas"],
+  "dashboard-pacing-guide": ["cpi", "cpa"],
+  "dashboard-anomaly-guide": ["cpi", "ctr"],
+  "dashboard-ltv-guide": ["ltv", "cac", "roas"],
+  "dashboard-cohort-guide": ["cohort", "retention"],
+  "dashboard-funnel-guide": ["funnel", "ctr", "cvr"],
+  "dashboard-segment-guide": ["cpi", "roas"],
   "marketing-analysis-example": ["cpi", "cpa", "roas", "incrementality"],
   "simpson-paradox-conversion-rate": ["cvr", "funnel"],
   "user-churn-survival-analysis": ["retention", "cohort", "ltv"],
