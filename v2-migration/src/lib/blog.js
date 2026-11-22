@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "./frontmatter";
-import { Marked } from "marked";
+import { articleMarkdown } from "./articleMarkdown";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
 import { getBlogSeo } from "@/lib/blogSeo";
@@ -14,22 +14,6 @@ import { decodeTextEntitiesOnce, stripHtmlTags } from "@/lib/htmlText";
 import { wrapArticleTables } from "@/lib/articleTables";
 import { consolidateTags, decodedTagSlug, tagSlug } from "./blogTags.mjs";
 export { tagSlug } from "./blogTags.mjs";
-
-// 자체 작성 신뢰 MD라 위험은 낮지만, 방어적으로 기본 옵션만 사용(raw HTML 통과를
-// 굳이 확장하지 않음). gfm=마크다운 표/자동링크 지원.
-const marked = new Marked({
-  gfm: true,
-  breaks: false,
-  tokenizer: {
-    del(src) {
-      // 날짜·수치 범위의 물결표는 본문이다. 취소선은 ~~로 명시한다.
-      if (src.startsWith("~") && !src.startsWith("~~")) {
-        return { type: "text", raw: "~", text: "~" };
-      }
-      return false;
-    },
-  },
-});
 
 function readDir(locale) {
   try {
@@ -83,7 +67,7 @@ function parseFile(fileName, locale) {
   const slug = data.slug || fileName.replace(/\.md$/, "");
   const seo = getBlogSeo(locale, slug, data);
   const editorial = getBlogEditorial(locale, slug, data);
-  const html = wrapArticleTables(normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale))
+  const html = wrapArticleTables(normalizeArticleHeadings(localizeInternalLinks(articleMarkdown.parse(content || ""), locale))
     .replace(/<pre>/g, `<pre tabindex="0" role="region" aria-label="${locale === "en" ? "Formula or code" : "수식 또는 코드"}">`), locale);
   return {
     slug,

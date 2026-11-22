@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { getPostBySlug } from "./blog";
+import { articleMarkdown } from "./articleMarkdown";
 
 /**
  * 블로그 마크다운 서식 계약.
@@ -56,6 +57,11 @@ describe("블로그 마크다운 서식", () => {
       expect(html).toContain("3월 24~30일, 비교 기간 3월 17~23일");
       expect(html).not.toContain("<del>");
     }
+  });
+
+  it("본문의 숫자 범위, 명시적인 취소선, 인라인 코드를 구분한다", () => {
+    const html = articleMarkdown.parse("0~2일·3~7일·8~35일 / ~~이전 값~~ / `~계산~`");
+    expect(html).toContain("0~2일·3~7일·8~35일 / <del>이전 값</del> / <code>~계산~</code>");
   });
 
   it("검사 대상을 실제로 수집한다", () => {
