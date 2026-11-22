@@ -10,16 +10,14 @@ import sitemap from "@/app/sitemap";
 const sitemapUrls = new Set(sitemap().map((entry) => entry.url));
 
 describe("저자·발행자 신원", () => {
-  // 이 배선의 핵심. author가 publisher와 같은 노드면 "누가 썼는가"에 대한 답이
-  // "이 사이트가"뿐이고, 검색엔진이 저자 신뢰도를 잴 재료가 없다.
-  it("저자와 발행자를 별개 주체로 낸다", () => {
-    const author = authorNode("ko");
-    const publisher = publisherNode("ko");
-    expect(author["@type"]).toBe("Person");
-    expect(publisher["@type"]).toBe("Organization");
-    expect(author.name).toBe("신기훈");
-    expect(publisher.name).toBe("Growth Opt Playbook");
-    expect(author["@id"]).not.toBe(publisher["@id"]);
+  it.each(["ko", "en"])("공개 저자와 발행자는 같은 브랜드로 표시한다 (%s)", (locale) => {
+    const author = authorNode(locale);
+    const publisher = publisherNode(locale);
+    expect(author["@type"]).toBe("Organization");
+    expect(author.name).toBe("Growth Opt Playbook");
+    expect(author.name).toBe(publisher.name);
+    expect(author["@id"]).toBe(publisher["@id"]);
+    expect(author).not.toHaveProperty("jobTitle");
   });
 
   it.each(["ko", "en"])("저자 프로필이 실재하는 페이지를 가리킨다 (%s)", (locale) => {
@@ -46,9 +44,7 @@ describe("저자·발행자 신원", () => {
         }
       }
     }
-    if (AUTHOR.credentials.length === 0) {
-      expect(authorNode("ko")).not.toHaveProperty("hasCredential");
-    }
+    expect(authorNode("ko")).not.toHaveProperty("hasCredential");
   });
 
   it("sameAs는 절대 URL만 담는다", () => {

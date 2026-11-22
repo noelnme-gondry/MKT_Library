@@ -6,12 +6,10 @@
 import fs from "fs";
 import path from "path";
 import matter from "./frontmatter";
-import { marked } from "marked";
+import { articleMarkdown } from "./articleMarkdown";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";
 import { wrapArticleTables } from "@/lib/articleTables";
-
-marked.setOptions({ gfm: true, breaks: false });
 
 // EN 글 렌더 HTML의 내부 링크(/glossary/·/blog/)를 /en/ 접두로 재작성 — blog.js의
 // localizeInternalLinks와 동일 패턴(PR #303 재발 방지). 원고는 항상 KR 경로만 쓰면 됨.
@@ -67,7 +65,7 @@ function parseFile(fileName, locale) {
       : [],
     primaryTool: data.primaryTool || primaryToolForContent(slug, "glossary"),
     draft: data.draft === true,
-    html: wrapArticleTables(localizeInternalLinks(marked.parse(content || ""), locale), locale),
+    html: wrapArticleTables(localizeInternalLinks(articleMarkdown.parse(content || ""), locale), locale),
   };
 }
 

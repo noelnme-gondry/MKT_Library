@@ -5,7 +5,6 @@ import { AUTHOR } from "@/lib/authorProfile";
 // 주소가 된다(§12.29 — 앵커는 slug 원문이 아니라 표시명).
 const PROFILE_LABELS = [
   { match: "blog.naver.com", ko: "네이버 블로그", en: "Naver blog" },
-  { match: "instagram.com", ko: "Instagram", en: "Instagram" },
 ];
 
 const labelFor = (url, lang) =>
@@ -24,11 +23,10 @@ export default function AuthorCard({ locale = "ko" }) {
   const profileHref = `${isEnglish ? "/en" : ""}${AUTHOR.profilePath}`;
 
   return (
-    <aside className="author-card" aria-label={isEnglish ? "About the author" : "글쓴이 소개"}>
+    <aside className="author-card" aria-label={isEnglish ? "About the publisher" : "발행처 소개"}>
       <div className="author-card__head">
-        <span className="author-card__label">{isEnglish ? "Written by" : "글쓴이"}</span>
+        <span className="author-card__label">{isEnglish ? "Published by" : "발행처"}</span>
         <strong className="author-card__name">{AUTHOR.name}</strong>
-        <span className="author-card__role">{AUTHOR[lang].role}</span>
       </div>
       <p className="author-card__bio">{AUTHOR[lang].bio}</p>
       <div className="author-card__links">

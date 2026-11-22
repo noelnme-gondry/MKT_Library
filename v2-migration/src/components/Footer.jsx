@@ -8,6 +8,7 @@ import SellerInformation from "./SellerInformation";
 export default function Footer() {
   const pathname = usePathname() || "/";
   const isAnalysisPath = /^\/(?:en\/)?(?:dashboard|tools\/|content\/)/.test(pathname);
+  const isBlog = /^\/(?:en\/)?blog(?:\/|$)/.test(pathname);
   const isEn = pathname === "/en" || pathname.startsWith("/en/");
   // 분석 화면은 전체 푸터를 숨겨 도구에 집중시킨다. 다만 사용자가 실제로 CSV를
   // 올리는 화면이 곧 신뢰 판단 지점이므로, 정책·문의 경로까지 없애면 안 된다
@@ -42,8 +43,8 @@ export default function Footer() {
       <div className="site-footer__brand"><Link href={p || "/"}>Growth Opt Playbook</Link><p>{copy.note}</p></div>
       <nav className="site-footer__column" aria-label={copy.tools}><strong>{copy.tools}</strong><Link href={`${p}/dashboard`}>{copy.dashboard}</Link><Link href={`${p}/tools/campaign-variance`}>{copy.variance}</Link><Link href={`${p}/content/freshness`}>{copy.fatigue}</Link><Link href={`${p}/tools/budget-allocation`}>{copy.budget}</Link><Link href={`${p}/calculator`}>{copy.calculators}</Link><Link href={`${p}/diagnose`}>{copy.diagnose}</Link></nav>
       <nav className="site-footer__column" aria-label={copy.learn}><strong>{copy.learn}</strong><Link href={`${p}/weekly-review`}>{workspaceNavItem("review", isEn ? "en" : "ko").name}</Link><Link href={`${p}/weekly-report`}>{copy.report}</Link><Link href={`${p}/templates`}>{copy.templates}</Link><Link href={`${p}/compare`}>{copy.compare}</Link><Link href={`${p}/manuals`}>{copy.manuals}</Link><Link href={`${p}/blog`}>{copy.blog}</Link><Link href={`${p}/glossary`}>{copy.glossary}</Link><Link href={`${p}/guide`}>{copy.guide}</Link></nav>
-      <nav className="site-footer__column" aria-label={copy.legal}><strong>{copy.legal}</strong><Link href={`${p}/privacy`}>{copy.privacy}</Link><Link href={`${p}/terms`}>{copy.terms}</Link><Link href={`${p}/contact`}>{copy.contact}</Link></nav>
+      <nav className="site-footer__column" aria-label={copy.legal}><strong>{copy.legal}</strong><Link href={`${p}/privacy`}>{copy.privacy}</Link><Link href={`${p}/terms`}>{copy.terms}</Link><Link href={`${p}/contact`}>{copy.contact}</Link>{isBlog && <Link href={`${p}/subscription#seller-information`}>{isEn ? "Seller information" : "사업자 정보"}</Link>}</nav>
     </div>
-    <SellerInformation locale={isEn ? "en" : "ko"} />
+    {!isBlog && <SellerInformation locale={isEn ? "en" : "ko"} />}
   </footer>;
 }

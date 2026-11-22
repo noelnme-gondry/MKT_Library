@@ -80,7 +80,7 @@ export default function SubscriptionPage({ locale = "ko" }) {
       <p>{en ? "For duplicate charges, unavailable paid features, or services differing from their description or contract, we provide refunds and other remedies required by applicable law. The 7-day and prorated rules above do not limit statutory withdrawal rights, defect remedies, or compensation. Mandatory consumer protections prevail if they are more favorable to you. Later policy changes do not reduce the refund rights attached to an existing purchase." : "중복 결제, 유료 기능 제공 불가, 표시·광고 또는 계약 내용과 다른 서비스 제공은 관계 법령에 따른 환불과 필요한 조치의 대상입니다. 위 7일·일할 환불 기준은 법정 청약철회, 하자에 따른 환불이나 손해배상 권리를 제한하지 않습니다. 관계 법령에서 더 유리한 소비자 보호 기준을 정한 경우 그 기준을 우선 적용합니다. 정책이 변경되어도 이미 구매한 이용권의 환불 권리를 불리하게 변경하지 않습니다."}</p>
     </section>
     <ProjectStorageSummary locale={locale} />
-    <SellerInformation locale={locale} />
+    <SellerInformation locale={locale} id="seller-information" />
     <Link className="btn" href={en ? "/en/projects" : "/projects"}>{en ? "Open projects" : "프로젝트 보관함 열기"}</Link>
   </div>;
 }
