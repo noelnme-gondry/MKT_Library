@@ -105,7 +105,10 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   const noun = brief.unit === "campaign" ? tr("캠페인", "campaigns") : tr("채널", "channels");
   const deteriorated = brief.campaigns.filter(row => row.changePct > 1e-8);
   const comparable = brief.campaigns.filter(row => row.changePct != null).length;
-  const campaign = brief.campaigns.find(row => row.id === selected) || brief.campaigns[0];
+  const campaignById = new Map(brief.campaigns.map(row => [row.id, row]));
+  const recommendationRows = plan.items.map(allocation => ({ ...campaignById.get(allocation.id), allocation }))
+    .sort((a, b) => (b.allocation.budget - b.allocation.current) - (a.allocation.budget - a.allocation.current));
+  const campaign = campaignById.get(selected) || recommendationRows[0] || brief.campaigns[0];
   const creative = brief.creatives.find(row => row.id === creativeSelection) || brief.creatives[0];
   const headline = brief.current.cpr == null ? tr("최근 성과 단가를 계산할 수 없습니다.", "Recent unit cost cannot be calculated.")
     : !comparable ? tr("최근 실적은 확인되지만 비교할 이전 실적이 부족합니다.", "Recent performance is available, but prior observations are insufficient for comparison.")
@@ -113,7 +116,6 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
         : tr(`비교 가능한 ${noun} ${comparable}개의 단가 상승은 관측되지 않았습니다.`, `No unit-cost increase was observed among ${comparable} comparable ${noun}.`);
   const holdCopy = { direction: tr("증액 총액은 현재 기준보다 크게, 감액 총액은 작게 입력하세요.", "Enter a higher total to increase, or a lower total to decrease."), interval: tr("서로 겹치지 않는 완전한 집계 기간을 선택하세요. 주·월 자료를 날짜별로 나눌 수 없습니다.", "Select complete, non-overlapping periods. Weekly/monthly rows cannot be split into days."), grain: tr("원본의 날짜 단위를 확인하세요. 원본보다 작은 단위로 나눌 수 없습니다.", "Check source date units. Observations cannot be split into smaller units.") };
   const holdMessages = [...new Set(plan.holds.map(hold => holdCopy[hold.reason] || OPERATIONS_HOLDS[hold.reason]?.[locale] || OPERATIONS_HOLDS.missing[locale]))];
-  const campaignById = new Map(brief.campaigns.map(row => [row.id, row]));
   const budgetRows = plan.items.map(row => ({ ...row, name: entity(campaignById.get(row.id)), context: campaignById.get(row.id).context,
     observedCpr: campaignById.get(row.id).current.cpr, baselineCpr: row.current / row.currentResults }));
   const isDemo = isDemoData(csvData);
@@ -145,7 +147,7 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   ], method: { name: "operations-brief", version: "1", assumptions: [`Budget mode: ${plan.mode}; plan period: ${plan.planRange.start}–${plan.planRange.end}; source: ${brief.sourceGrain}; curve observations: ${brief.grain}. Historical curves with recent exponential weights (14-day half-life), automatic regime selection; changes capped within observed/safe spend range. Execution amounts are daily equivalents.`], limitations: [...notes, "Model predictions are conditional, not guaranteed or causal gains.", ...holdMessages] } });
 
   return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo, view, setView }}
-    overview={chooseReview => <><OperationsPlanBoard {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages, metric, currency, isDemo }} signals={bundle.signals} today={localToday()} sourceThrough={bundle.history.end || bundle.history.dates.at(-1) || ""} onChange={changeOptions} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
+    overview={chooseReview => <><OperationsPlanBoard rows={recommendationRows} {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages, metric, currency, isDemo }} signals={bundle.signals} today={localToday()} sourceThrough={bundle.history.end || bundle.history.dates.at(-1) || ""} onChange={changeOptions} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
       <OperationsDecisionEvidence {...{ brief, plan, campaign, creative, setSelected, setCreativeSelection, metricName, outcomeName, currency, locale, periods, isDemo, money, number, pct, chooseReview }} signals={bundle.signals} />
       <ModalDialog open={dataOpen} onClose={() => setDataOpen(false)} ariaLabel={tr("입력·상세 데이터", "Inputs and detailed data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2>{tr("입력과 지표 계산", "Inputs and metric calculations")}</h2><OperationsMetricEvidence inDialog evidence={bundle.evidence} {...{ currency, locale }} onInspectMapping={() => { setDataOpen(false); onInspectMapping(); }} /><button type="button" className="btn ghost" onClick={() => setDataOpen(false)}>{tr("닫기", "Close")}</button></ModalDialog></>}
     evidence={() => <ResultActionCard title={tr("선택 기간의 성과와 원본 근거", "Performance and source evidence for the selected periods")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
@@ -257,11 +259,12 @@ export default function OperationsPlanner({ locale = "ko" }) {
         </span>
       </div>
       {!ready && <div className="operations-planner__entry"><CsvUploader toolId={OPERATIONS_TOOL_ID} locale={locale} onLoadDemo={launchDemo} /></div>}
-      {ready && <><DashboardComparisonPeriod compact {...bounds} periods={periods} windowDays={windowDays} locale={locale} showPresets={operationsSourceGrain(sourceRows) === "day"}
+      {ready && <details className="ops-scope-options"><summary>{tr("분석 범위", "Analysis scope")} · {periods.current.start} – {periods.current.end} · {tr(`매체 ${filter.channels?.size || channelOptions.length}개`, `${filter.channels?.size || channelOptions.length} channels`)}</summary>
+        <DashboardComparisonPeriod compact {...bounds} periods={periods} windowDays={windowDays} locale={locale} showPresets={operationsSourceGrain(sourceRows) === "day"}
             onWindowChange={days => { setWindow(days); setFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null }); }}
             onPeriodChange={(current, previous) => setFilter({ dateStart: current.start, dateEnd: current.end, compareEnabled: true, comparisonStart: previous.start, comparisonEnd: previous.end, comparisonPreset: "custom" })} />
-        <label className="ops-grain-control">{tr("차트 집계 단위", "Chart interval")} <select value={grain} onChange={event => setGrain(event.target.value)}><option value="auto">{tr("원본 날짜 형식에 맞춤", "Match source date format")}</option><option value="day">{tr("일별", "Daily")}</option><option value="week">{tr("주별", "Weekly")}</option><option value="month">{tr("월별", "Monthly")}</option></select></label></>}
-      {ready && channelOptions.length > 1 && <div className="ops-scope-chips" role="group" aria-label={tr("분석에 포함할 매체", "Channels included in the analysis")}><span>{tr("포함할 매체", "Included channels")}</span>{channelOptions.map(channel => {
+        <label className="ops-grain-control">{tr("차트 집계 단위", "Chart interval")} <select value={grain} onChange={event => setGrain(event.target.value)}><option value="auto">{tr("원본 날짜 형식에 맞춤", "Match source date format")}</option><option value="day">{tr("일별", "Daily")}</option><option value="week">{tr("주별", "Weekly")}</option><option value="month">{tr("월별", "Monthly")}</option></select></label>
+      {channelOptions.length > 1 && <div className="ops-scope-chips" role="group" aria-label={tr("분석에 포함할 매체", "Channels included in the analysis")}><span>{tr("포함할 매체", "Included channels")}</span>{channelOptions.map(channel => {
         const selected = filter.channels?.size ? channelOptions.filter(value => filter.channels.has(value)) : channelOptions;
         const included = selected.includes(channel);
         return <button type="button" key={channel} aria-pressed={included} disabled={included && selected.length === 1} onClick={() => {
@@ -269,6 +272,7 @@ export default function OperationsPlanner({ locale = "ko" }) {
           setFilter({ channels: next.size === channelOptions.length ? new Set() : next });
         }}>{included ? "✓ " : ""}{channel}</button>;
       })}{filter.channels?.size > 0 && <button type="button" className="btn ghost" onClick={() => setFilter({ channels: new Set() })}>{tr("전체 포함", "Include all")}</button>}</div>}
+      </details>}
       <ModalDialog initialFocusRef={settingsTitleRef} open={ready && conditionsOpen} onClose={() => setConditionsOpen(false)} ariaLabel={tr("파일·분석 대상 설정", "File and analysis scope")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2 ref={settingsTitleRef} tabIndex={-1} id="ops-settings-dialog-title">{tr("파일·분석 대상 설정", "File and analysis scope")}</h2><div className="operations-planner__settings" data-currency-scope="declare">
         <CsvUploader toolId={OPERATIONS_TOOL_ID} locale={locale} onLoadDemo={launchDemo} />
         <DashboardFilterBar locale={locale} compact hideDate /><p>{tr("날짜가 2026-W40처럼 주차이거나 2026-10처럼 월이면 그 기간의 합계로 읽습니다. 주·월 합계를 하루 날짜로 적은 파일은 날짜 형식을 먼저 맞춰 주세요.", "Week labels such as 2026-W40 and month labels such as 2026-10 are treated as period totals. Relabel weekly/monthly totals recorded as individual dates before analysis.")}</p>

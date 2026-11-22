@@ -56,7 +56,16 @@ describe("standalone operations planner entry path", () => {
     expect(screen.getByRole("button", { name: /^선택한 계획 저장/ })).toBeTruthy();
     expect(document.querySelectorAll(".operations-queue__choice")).toHaveLength(0);
     expect(document.querySelector(".operations-queue__empty").textContent).toContain("아직 기록한 액션이 없습니다");
-    expect(document.querySelectorAll(".ops-evidence canvas")).toHaveLength(1);
+    const picks = Array.from(document.querySelectorAll(".ops-campaign-pick"));
+    expect(picks).toHaveLength(2);
+    fireEvent.click(picks[1].closest("tr").lastElementChild);
+    expect(picks[1].getAttribute("aria-pressed")).toBe("true");
+    const proof = document.getElementById(picks[1].getAttribute("aria-controls"));
+    expect(proof.querySelector("canvas").getAttribute("aria-label")).toContain(picks[1].querySelector("span").textContent);
+    fireEvent.keyDown(picks[1], { key: "Home" });
+    expect(document.activeElement).toBe(picks[0]);
+    expect(proof.querySelector("canvas").getAttribute("aria-label")).toContain(picks[0].querySelector("span").textContent);
+    expect(document.querySelectorAll(".operations-scatter")).toHaveLength(1);
     await openData();
     expect(screen.getByRole("region", { name: "소재별 최근 효율" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "대상별 예산과 효율" })).toBeTruthy();
@@ -107,6 +116,7 @@ describe("standalone operations planner entry path", () => {
     expect(screen.getByText("2026-11-01 – 2026-11-30 · 30일")).toBeTruthy();
     expect(container.querySelectorAll('.ops-allocation [data-direction="increase"]')).toHaveLength(0);
     expect(container.querySelectorAll('.ops-allocation [data-direction="decrease"]').length).toBeGreaterThan(0);
+    fireEvent.click(container.querySelector(".ops-scope-options summary"));
     const channels = within(screen.getByRole("group", { name: "분석에 포함할 매체" }));
     fireEvent.click(channels.getByRole("button", { name: /TikTok/ }));
     await settle();
@@ -227,7 +237,7 @@ describe("standalone operations planner entry path", () => {
     fireEvent.click(within(screen.getByRole("dialog", { name: "Inputs and detailed data" })).getByRole("button", { name: "Close", exact: true }));
     expect(screen.getByRole("combobox", { name: "Select campaign" }).textContent).toContain("Campaign 0");
     expect(document.querySelector(".ops-decomposition").textContent).toContain("Contributions to this CPI change");
-    expect(document.querySelector(".ops-evidence canvas")).toBeTruthy();
+    expect(document.querySelector(".ops-campaign-proof canvas")).toBeTruthy();
 
   });
 

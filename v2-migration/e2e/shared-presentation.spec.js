@@ -3,9 +3,23 @@ import { measureDesignRules } from "./support/designRules";
 import { chooseDashboardView } from "./support/dashboardView.js";
 
 for (const locale of ["ko", "en"]) {
+  test(`analysis tables and blog guides share typographic rules (${locale})`, async ({ page }) => {
+    const prefix = locale === "en" ? "/en" : "";
+    const headerStyle = (cell) => cell.evaluate((element) => {
+      const { fontSize, fontWeight, lineHeight, color, padding } = getComputedStyle(element);
+      return { fontSize, fontWeight, lineHeight, color, padding };
+    });
+    await page.goto(`${prefix}/tools/mmm-contribution?example=1`);
+    const toolStyle = await headerStyle(page.locator(".table-wrap table.data thead th").first());
+    await page.goto(`${prefix}/blog/dashboard-scorecard-guide`);
+    expect(await headerStyle(page.locator(".blog-prose .table-scroll thead th").first())).toEqual(toolStyle);
+    await page.goto(`${prefix}/blog`);
+    await expect(page.locator(".content-list .content-card").first()).toHaveCSS("border-left-width", "0px");
+  });
+
   test(`shared title, named progress and uncrowded PNG controls (${locale})`, async ({ page }, testInfo) => {
     await page.goto(`${locale === "en" ? "/en" : ""}/tools/operations-planner?example=1`);
-    await expect(page.locator(".ops-plan-impact")).toBeVisible();
+    await expect(page.locator(".ops-recommendation-pct")).toBeVisible();
     // The result header is a compact, unfilled title; execution lives in this planner.
     await expect(page.locator(".journey-progress")).toHaveCount(0);
     const title = page.locator(".tool-instrument-header");

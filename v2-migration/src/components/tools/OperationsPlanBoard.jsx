@@ -1,19 +1,18 @@
 "use client";
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import OperationsCampaignRecommendations from "./OperationsCampaignRecommendations";
 import DataTable from "@/components/ds/DataTable";
 import { useAppStore } from "@/store/useDataStore";
 import { matchesOperationsTarget } from "@/lib/operations/operationsIdentity";
 import { defaultOperationsSelection, forecastOperationsSelection, isRecommendedSelection, pendingBudgetActions } from "@/lib/operations/operationsSelection";
 import { CommaNumberInput } from "./marketingResponseModel";
 import OperationsPlanSaveDialog from "./OperationsPlanSaveDialog";
-import ResultChange from "@/components/ds/ResultChange";
 import { fmtNum } from "@/utils/format";
 import { periodDays } from "@/lib/analysisPeriod";
 import { operationsPlanRange } from "@/lib/operations/operationsScenario";
 import OperationsDetailLinks from "./OperationsDetailLinks";
 
-export default function OperationsPlanBoard({ brief, plan, options, onChange, money, pct, outcomeName, metricName, locale, holdMessages, selected, onSelect, busy, metric, currency, isDemo, signals = [], today, sourceThrough }) {
+export default function OperationsPlanBoard({ brief, plan, rows, options, onChange, money, pct, outcomeName, metricName, locale, holdMessages, selected, onSelect, busy, metric, currency, isDemo, signals = [], today, sourceThrough }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   // 사람이 고른 실행안. 추천안이 다시 계산되면(조건 변경) 추천안으로 돌아간다 — 상태는 그 추천안에 묶여 있다.
   const [edits, setEdits] = useState({ plan: null, choices: null });
@@ -30,16 +29,12 @@ export default function OperationsPlanBoard({ brief, plan, options, onChange, mo
   const range = plan.planRange || operationsPlanRange(brief.periods.current.end, options.horizon);
   const n = periodDays(range), hasBase = n > 0 && brief.campaigns.length > 0 && brief.campaigns.every(row => Number.isFinite(brief.currentSpends[row.id]));
   const base = hasBase ? Object.values(brief.currentSpends).reduce((a, b) => a + b, 0) * n : null;
-  const rows = plan.items.map(item => ({ ...item, ...brief.campaigns.find(row => row.id === item.id), allocation: item })).sort((a, b) => (b.allocation.budget - b.allocation.current) - (a.allocation.budget - a.allocation.current));
   const changeMode = mode => onChange({ mode, targetTotal: mode === "maintain" || !hasBase ? null : Math.round(base * (mode === "increase" ? 1.1 : .9)) });
   // 표시 단위보다 작은 잔차(부동소수 합계 차이)는 0이다. "₩0.00"이나 부호 붙은 0을 쓰지 않는다.
   const delta = value => Math.abs(value) < (currency === "USD" ? 0.005 : 0.5) ? money(0) : `${value > 0 ? "+" : "−"}${money(Math.abs(value))}`;
   // 모형 성과는 소수로 나오지만 설치·가입은 정수로 읽는다. 표시만 반올림하고 0으로 접히면 부호를 붙이지 않는다.
   const countDelta = value => { const rounded = Math.round(value); return `${rounded > 0 ? "+" : rounded < 0 ? "−" : ""}${fmtNum(Math.abs(rounded))}`; };
   const direction = item => item.budget > item.current + 1e-6 ? "increase" : item.budget < item.current - 1e-6 ? "decrease" : "hold";
-  const reduced = rows.filter(row => direction(row.allocation) === "decrease"), increased = rows.filter(row => direction(row.allocation) === "increase");
-  const moved = reduced.reduce((sum, row) => sum + row.allocation.current - row.allocation.budget, 0) * n;
-  const movementList = (items, label) => <div className="ops-transfer__side"><h4>{label}</h4>{items.length ? items.map(row => <button type="button" key={row.id} onClick={() => onSelect(row.id)} aria-pressed={selected === row.id} className="ops-transfer__item"><span><strong>{row.name}</strong><small>{row.context}</small></span><b data-direction={direction(row.allocation)}>{delta((row.allocation.budget - row.allocation.current) * n)}</b></button>) : <p>{tr("변경할 대상 없음", "No changes")}</p>}</div>;
   const controls = <div className="ops-plan-controls">
       <fieldset><legend>{tr("다음 예산을 어떻게 운영할까요?", "What should happen to the next budget?")}</legend><div className="ops-mode">{[["maintain", "유지·재배분", "Keep & reallocate"], ["increase", "증액", "Increase"], ["decrease", "감액", "Decrease"]].map(([id, ko, en]) => <button key={id} type="button" aria-pressed={options.mode === id} onClick={() => changeMode(id)}>{tr(ko, en)}</button>)}</div></fieldset>
       <label>{tr("적용 기간", "Plan period")}<select aria-label={tr("적용 기간", "Plan period")} aria-describedby="ops-plan-dates" value={options.horizon} onChange={event => {
@@ -52,15 +47,7 @@ export default function OperationsPlanBoard({ brief, plan, options, onChange, mo
   return <section className="ops-plan" aria-labelledby="ops-plan-title" aria-busy={busy}>
     {!plan.ok && controls}
     {!plan.ok ? <div className="ops-plan-held" role="status"><h3 id="ops-plan-title">{tr("이 조건에서는 예산 제안을 보류합니다", "No budget proposal under these conditions")}</h3>{holdMessages.map(message => <p key={message}>{message}</p>)}{Number.isFinite(plan.minTotal) && <p>{tr("설정할 수 있는 기간 총액", "Available total for the period")}: {money(plan.minTotal * n)} – {money(plan.maxTotal * n)}</p>}<p>{tr("아래 실제 성과와 변화 이력은 계속 확인할 수 있습니다.", "Observed performance and change history remain available below.")}</p></div> : <>
-      <div className="ops-plan-summary">
-        <div className="ops-plan-proposal"><span className="ops-section-label">{tr("추천 예산 액션", "Recommended budget actions")}</span><h3 id="ops-plan-title">{options.mode === "maintain" ? moved < 1e-6 ? tr("현재 캠페인별 예산을 유지하세요", "Keep the current campaign budgets") : tr(`${money(moved)}을 재배분하세요`, `Reallocate ${money(moved)}`) : options.mode === "increase" ? tr(`기간 예산을 ${money(plan.totalBudget * n)}으로 늘립니다`, `Increase the period budget to ${money(plan.totalBudget * n)}`) : tr(`기간 예산을 ${money(plan.totalBudget * n)}으로 줄입니다`, `Reduce the period budget to ${money(plan.totalBudget * n)}`)}</h3><p>{tr(`${n}일 총액 기준 · 캠페인을 누르면 아래 근거가 바뀝니다.`, `${n}-day totals · Select a campaign to inspect its evidence below.`)}</p>
-          <div className={`ops-transfer${options.mode !== "maintain" ? " ops-transfer--single" : ""}`} style={{ "--transfer-rows": Math.max(1, options.mode === "maintain" ? Math.max(reduced.length, increased.length) : rows.length) }}>{options.mode === "maintain" ? <>{movementList(reduced, tr("줄일 곳", "Reduce"))}<ArrowRight className="ops-transfer__arrow" aria-hidden="true" />{movementList(increased, tr("늘릴 곳", "Increase"))}</> : movementList(rows, options.mode === "increase" ? tr("늘리거나 유지할 곳", "Increase or keep") : tr("줄이거나 유지할 곳", "Reduce or keep"))}</div>
-        </div>
-        <div className="ops-plan-outcome" data-design-exempt="eyebrow: Names the forecast metric and its unit beside the calculated value"><span className="ops-section-label">{tr("이 조정안의 예상 성과", "Expected outcomes with this plan")}</span><ResultChange value={plan.expectedResults} as="strong" className="ops-plan-impact">{pct(plan.improvementPct)}</ResultChange><p>{tr(`전체 ${outcomeName}`, `Total ${outcomeName}`)} · {fmtNum(plan.baselineResults * n)} → <b>{fmtNum(plan.expectedResults * n)}</b></p>
-          <div className="ops-impact-list">{rows.map(row => <button key={row.id} type="button" aria-pressed={selected === row.id} onClick={() => onSelect(row.id)}><span>{row.name}</span><b>{countDelta((row.allocation.expectedResults - row.allocation.currentResults) * n)}</b></button>)}</div>
-          <div className="ops-cost-outcome"><span>{tr(`전체 예상 ${metricName}`, `Overall predicted ${metricName}`)}</span><strong>{money(plan.baselineCpr)} → {money(plan.expectedCpr)}</strong></div>
-        </div>
-      </div>
+      <OperationsCampaignRecommendations {...{ brief, plan, rows, selected, onSelect, money, delta, countDelta, pct, metricName, outcomeName, locale, currency, isDemo }} days={n} horizon={options.horizon} />
       {controls}
       <section className="ops-allocation" data-design-exempt="nested: The campaign table belongs to the plan selection section" aria-labelledby="ops-allocation-title"><header><div><h3 id="ops-allocation-title">{tr("실행할 액션 고르기", "Choose the actions to run")}</h3><p>{tr("추천안을 미리 골라 두었습니다. 실행할 캠페인과 기간 예산을 바꾸면 같은 모형으로 예상 성과를 다시 계산합니다.", "The recommendation is preselected. Change the campaigns or period budgets to recalculate expected outcomes with the same model.")}</p></div><span>{range.start} – {range.end} · {tr("기간 합계", "Period totals")}</span></header>
         <div className="ops-selection" aria-live="polite">

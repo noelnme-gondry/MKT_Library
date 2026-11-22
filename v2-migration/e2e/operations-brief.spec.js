@@ -40,21 +40,22 @@ for (const locale of ["ko", "en"]) {
     const previewCpi = (await page.locator(".operations-sample-preview__metric strong").textContent()).split("→").at(-1).trim();
     await entry.click();
     await expect(page.locator("#ops-plan-title")).toBeVisible();
-    await expect(page.locator(".ops-plan-impact")).toHaveText(/\+[\d.]+%/);
+    await expect(page.locator(".ops-recommendation-pct")).toHaveText(/\+[\d.]+%/);
     await expect(page.locator(".ops-creative-choices button")).toHaveCount(6);
-    const summary = await page.locator(".ops-plan-summary").boundingBox();
+    const summary = await page.locator(".ops-recommendation-summary").boundingBox();
     const execution = await page.locator("#ops-execution-title").boundingBox();
     expect(summary.y + summary.height).toBeLessThan(execution.y);
-    if (testInfo.project.use.viewport.width > 1100) {
-      const sides = await page.locator(".ops-transfer__side").evaluateAll(nodes => nodes.map(node => {
-        const box = node.getBoundingClientRect();
-        return { x: box.x, right: box.right, width: box.width, rows: [...node.querySelectorAll("button")].map(button => ({ top: button.getBoundingClientRect().top, height: button.getBoundingClientRect().height })) };
-      }));
-      expect(Math.abs(sides[0].width - sides[1].width)).toBeLessThanOrEqual(1);
-      const arrow = await page.locator(".ops-transfer__arrow").boundingBox();
-      expect(Math.abs(arrow.x + arrow.width / 2 - (sides[0].right + sides[1].x) / 2)).toBeLessThanOrEqual(1);
-      expect(sides[0].rows).toEqual(sides[1].rows);
+    const picks = page.locator(".ops-campaign-pick");
+    await expect(picks).toHaveCount(4);
+    for (const button of await picks.all()) {
+      const name = await button.locator("span").innerText();
+      await button.click();
+      await expect(button).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator(".ops-campaign-proof h3").first()).toContainText(name);
+      await expect(page.locator(".ops-campaign-proof canvas")).toHaveAttribute("aria-label", `${name} · ${en ? "Observed relationship between spend and CPI" : "지출과 CPI의 관측 관계"}`);
     }
+    await page.locator(".ops-return-to-row").click();
+    await expect(picks.last()).toBeFocused();
     await page.getByRole("button", { name: en ? /Inspect observations over time/ : /날짜 흐름으로 관측 확인/ }).click();
     const trendDialog = page.getByRole("dialog", { name: en ? "Observation details" : "관측 근거 상세", exact: true });
     const figureHeader = trendDialog.locator(".figure-head");
@@ -119,7 +120,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByRole("textbox", { name: en ? "Total for this period" : "기간 전체 예산", exact: true })).toHaveValue("2,324,000");
     const cap = page.getByRole("slider", { name: en ? "Change limit per campaign" : "캠페인별 변경 한도", exact: true });
     await cap.fill("0");
-    await expect(page.locator(".ops-plan-impact")).toHaveText("0.0%");
+    await expect(page.locator(".ops-recommendation-pct")).toHaveText("0.0%");
     const table = page.getByRole("table", { name: en ? "Budget and efficiency by entity" : "대상별 예산과 효율", exact: true });
     for (const row of await table.locator("tbody tr").all()) {
       const cells = await row.locator("td").allTextContents();
@@ -131,6 +132,7 @@ for (const locale of ["ko", "en"]) {
     const creative = page.getByRole("table", { name: en ? "Recent efficiency by creative" : "소재별 최근 효율", exact: true });
     await expect(creative).toContainText("이번 주 추가로 관측된 후기 소재");
     await expect(creative).toContainText("2026-09-02");
+    await page.locator(".ops-scope-options summary").click();
     await page.getByRole("button", { name: en ? /^Comparison period/ : /^비교 기간/ }).click();
     const dialog = page.getByRole("dialog", { name: en ? "Comparison period" : "비교 기간", exact: true });
     await dialog.getByLabel(en ? "Start date" : "시작일").fill("2026-08-19");
@@ -142,7 +144,7 @@ for (const locale of ["ko", "en"]) {
     expect((await new AxeBuilder({ page }).include(".operations-planner").withTags(["wcag2a", "wcag2aa"]).analyze()).violations).toEqual([]);
     expect(errors).toEqual([]);
     await cap.fill("20");
-    await expect(page.locator(".ops-plan-impact")).not.toHaveText("0.0%");
+    await expect(page.locator(".ops-recommendation-pct")).not.toHaveText("0.0%");
     await page.locator(".ops-plan").screenshot({ path: testInfo.outputPath("operations-layout.png") });
   });
 
@@ -151,7 +153,7 @@ for (const locale of ["ko", "en"]) {
     await openOperations(page, en, { gap: true });
     await expect(page.locator(".ops-plan-held")).toContainText(en ? "No budget proposal" : "예산 제안을 보류");
     await expect(page.locator(".ops-creative-choices button")).toHaveCount(3);
-    await expect(page.locator(".ops-plan-impact")).toHaveCount(0);
+    await expect(page.locator(".ops-recommendation-pct")).toHaveCount(0);
     await page.getByRole("tab", { name: en ? "Detailed data & export" : "상세 데이터·내보내기", exact: true }).click();
     await expect(page.getByRole("table", { name: en ? "Recent efficiency by creative" : "소재별 최근 효율", exact: true })).toBeVisible();
   });
@@ -160,13 +162,14 @@ for (const locale of ["ko", "en"]) {
     const en = locale === "en";
     // 업로드 자격(14일)을 통과한 뒤 초기 2일만 분석한다. 뒤의 12일은 학습에 쓰면 안 된다.
     await openOperations(page, en, { days: 14 });
+    await page.locator(".ops-scope-options summary").click();
     await page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ }).click();
     const dialog = page.getByRole("dialog", { name: en ? "Analysis period" : "분석 기간", exact: true });
     await dialog.getByLabel(en ? "Start date" : "시작일").fill("2026-07-01");
     await dialog.getByLabel(en ? "End date" : "종료일").fill("2026-07-02");
     await dialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
     await expect(page.locator(".ops-plan-held")).toContainText(en ? "observations or model fit are insufficient" : "관측 수 또는 모형 적합도가 부족");
-    await expect(page.locator(".ops-plan-impact, .ops-allocation")).toHaveCount(0);
+    await expect(page.locator(".ops-recommendation-pct, .ops-allocation")).toHaveCount(0);
     await expect(page.locator(".ops-evidence")).toContainText("2026-07-01 – 2026-07-02");
     await page.getByRole("button", { name: en ? "Inspect inputs and detailed data" : "입력·상세 데이터 확인", exact: true }).click();
     await expect(page.locator("#ops-input-detail")).toContainText(en ? "Complete total" : "유효한 합계");
@@ -179,6 +182,7 @@ for (const locale of ["ko", "en"]) {
     const en = locale === "en";
     await enableReviewLogin(page);
     await openOperations(page, en);
+    await page.locator(".ops-campaign-pick").filter({ hasText: "리타겟팅" }).click();
     await page.getByRole("button", { name: en ? /Plan an action for this campaign/ : /이 캠페인의 액션 정하기/ }).click();
     const editor = page.getByRole("dialog", { name: en ? "Define an operating action" : "운영 액션 정하기", exact: true });
     await expect(editor.getByRole("combobox", { name: en ? "Target" : "대상", exact: true }).locator("option:checked")).toContainText("리타겟팅");
@@ -243,6 +247,7 @@ for (const locale of ["ko", "en"]) {
     await settings.getByRole("button", { name: en ? "Back to results" : "결과로 돌아가기", exact: true }).click();
     await expect(settings).toBeHidden();
     await expect(settingsButton).toBeFocused();
+    await page.locator(".ops-scope-options summary").click();
     await page.getByRole("radio", { name: en ? "14 days" : "14일", exact: true }).click();
     await expect(context).toContainText("2026-09-23 – 10-06");
     await expect(context).toContainText("2026-09-09 – 09-22");
