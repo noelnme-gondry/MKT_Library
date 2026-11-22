@@ -17,10 +17,10 @@ faq:
     a: "Use it as a hypothesis, not proof. Confirm that encouraging the action increases retention in an A/B test or holdout before making it an operating metric."
   - q: "Can I find an Aha Moment without user-level event data?"
     a: "You need at least a user ID, a 0/1 target, and early action counts to test the relationship directly. Aggregated campaign data cannot establish a person-level behavior-retention link."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-An Aha Moment is not the one action that retained users happened to do most often. It is a testable statement about **which users did which action, how many times, and by when**—and whether encouraging that action actually improves long-term retention.
+How many messages would a new user have to send before you changed their onboarding? The sample surfaces a promising threshold of 18 messages in seven days, but it emerged from comparing several behaviors and cutoffs.
 
 For example, “users who added three friends retained better” may be a useful candidate, but highly motivated users may simply add more friends. Candidate discovery finds association. Product and marketing decisions need a separate causal test.
 
@@ -31,6 +31,8 @@ For example, “users who added three friends retained better” may be a useful
 - **Aha Event**: the measurable event definition used to analyze, share, or optimize toward that moment.
 
 A useful candidate is more specific than “used feature X.” It should read like `added three friends within three days of signup`, `saved five items in the first week`, or `registered a payment method in the first session`. Without timing and count, the finding is hard to operationalize in onboarding.
+
+Open the threshold example, specify the later outcome you care about and test the same cutoff on a fresh cohort.
 
 ## Start with one row per user
 

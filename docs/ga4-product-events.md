@@ -12,7 +12,6 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 
 | 이벤트 | 시점 | 핵심 파라미터 |
 |---|---|---|
-| `ad_slot_view` | visible 문서에서 실제 광고 프레임의 50% 이상이 viewport에 들어온 첫 순간. 체류시간 조건 없음 | 실제 `ad_provider`, `ad_slot`, `ad_format`, `locale`, `page_path`, `ad_measurement_version=1` |
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
 | `operations_detail_clicked` | 운영 플래너 단계의 "자세히 보기"에서 상세 도구를 누름(product-ssot §5.1) | `tool_id`(도착 도구), `source_tool_id=5-31`, `placement=changes\|budget\|creative`, `locale` |
@@ -93,32 +92,9 @@ CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 
 콘텐츠 CTA 노출과 클릭은 동일 `content_slug`·`placement`·`locale`를 맞춘다. 이번 보완은 `tool_view`에 그 글과 클릭 위치를 이어 주며, 결과 카드의 기존 `placement=result_action_card`는 덮어쓰지 않는다. 이는 최근 CTA 클릭 연결이지 GA 유입 출처나 최초 랜딩을 바꾸는 기능이 아니다. 30분 만료·다른 도구·다른 언어·CTA 없는 직접 진입에는 연결하지 않는다. 기존 이벤트의 과거 값은 소급 생성하지 않는다.
 
-## 제휴 광고 영역 도달 (2026-10-29 구현, 2026-10-30 배치 보완)
+## 과거 제휴 광고 지면 데이터
 
-`ad_slot_view`는 광고 **영역 도달**이며 광고 네트워크의 유효 노출·클릭·구매나 소재 송출 성공이 아니다. iframe load/error, 부모 focus/blur로 송출·클릭을 추정하지 않는다. 제공자·배치 키·허용 규격은 `src/lib/partnerAds.js` 정본을 사용하며, 처음 유효하게 도달했을 때 실제 iframe 규격을 기록한다. 홈 `home-intro`는 푸터에서 주요 진입 구획 뒤로 이동한다. 분석 화면의 `site-rail`은 좁은 메인 영역에서 같은 슬롯의 compact로 대체되며 `analysis-bottom` 쿠팡은 유지한다. 새 슬롯 ID나 측정 버전은 만들지 않는다.
-
-중복 단위는 현재 **페이지 진입 × 슬롯**이다. `GaPageviews`의 pathname 전환에 맞춰 메모리 Set을 새로 만들고, A→B→A는 새 진입으로 센다. 같은 진입의 스크롤 재진입·리렌더·규격 변경·중복 마운트는 추가하지 않는다. query/fragment만 바뀐 것은 새 진입이 아니다. 사용자 식별자나 영속 저장 키를 만들지 않는다.
-
-`usePartnerAdView`는 실제 iframe을 IntersectionObserver로 관측한다. 숨김 레일·폭 부족·0 크기·CSS 숨김·숨은 문서는 제외한다. visible 복귀 시 관측기를 새로 만들고 이전 관측기의 늦은 콜백을 무시해 새 교차율로 판단한다. `mode=live` 및 기존 호스트·동의 조건을 렌더와 전송 직전에 모두 검사한다. 관측 API 미지원·관측 예외·gtag 호출 예외는 수집 불가이며 UI를 중단하지 않는다. 동의 철회·언마운트 때 observer/listener를 해제한다.
-
-기존 `trackProductEvent`/gtag 경로만 사용한다. 광고 이벤트는 계약 필드만 허용하고 `page_path`는 현재 pathname에서 가져온다. 자동 URL에도 원본 query/fragment가 섞이지 않도록 `page_location=origin+pathname`, `page_referrer=""`, `page_title=""`를 이벤트 단위로 지정한다. CSV·파일명·분석값·사용자 입력 및 기존 여정의 추가 필드는 보내지 않는다. 광고 전용 버전은 전역 `measurement_version`과 별개다.
-
-전송 함수의 성공은 **기존 gtag 큐가 호출을 수락했다는 뜻**이다. 차단된 SDK·네트워크 실패·GA 수신 여부를 이 반환값으로 알 수 없다. 배포 후 GA 속성 `542428327`의 실제 수신을 별도로 확인해야 하며, 과거 자료에 새 지면 값이 소급 생성되지 않는다.
-
-### GA4 맞춤 측정기준 확인과 설정안
-
-2026-10-29 내부 브라우저에서 Growth 속성의 맞춤 측정기준 15개 전체를 읽기 전용으로 확인했다. `locale`(이벤트 범위)은 있고 아래 네 항목은 없다. 아래 이름과 매개변수로 **이벤트 범위** 등록을 제안한다. 계정 설정 변경은 이번 작업에서 실행하지 않았다.
-
-| 표시 이름 / 이벤트 매개변수 | 목적 |
-|---|---|
-| `ad_provider` | 공급자별 도달 구분 |
-| `ad_slot` | 기존 배치 키별 도달 분석 |
-| `ad_format` | 첫 도달 시 실제 규격 비교 |
-| `ad_measurement_version` | 광고 측정 계약 변경 전후 구분 |
-
-`locale`은 기존 정의를 재사용하고 경로는 쿼리가 제거된 `page_location`의 기본 페이지 경로 측정기준을 우선 사용한다. 별도 `page_path` 맞춤 정의는 현재 없으며, 이 이벤트 매개변수 자체를 보고서에서 선택해야 할 때만 추가한다. 기존 `placement`는 제품 행동 위치로 유지하며 `ad_slot`과 합치지 않는다.
-
-로컬 검증: `partnerAdMeasurement.test.js`, `PartnerAdMeasurement.smoke.test.jsx`, `e2e/partner-ad-measurement.spec.js`. E2E는 운영 hostname을 로컬 서버에 매핑하고 모든 외부 요청을 차단해 실제 앱 렌더·IntersectionObserver·표준 gtag 큐를 검증한다. 실제 쿠팡 송출·GA 수신의 증거는 아니다.
+광고 제거 버전부터 Library는 `ad_slot_view` 전송을 중단한다. 이전 버전의 수치는 광고 프레임이 절반 이상 보인 페이지 진입별 첫 회수로 해석한다. 과거 시계열의 종료일은 실제 운영 배포일을 기준으로 기록한다. 글 조회·도구 진입·결과 확인은 각각 기존 제품 이벤트에서 계속 집계한다.
 
 ## GA4에서 등록할 이벤트 범위
 

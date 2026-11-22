@@ -12,10 +12,10 @@ faq:
   - q: "Should an anomaly alert trigger immediate action?"
     a: "First separate a data problem from a performance problem. Broken tracking or delayed reporting is no reason to touch the campaign. Then split the change into volume, efficiency, and mix to locate it."
 
-reviewedAt: "2026-09-09"
-updated: "2026-10-01"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: is this a real anomaly, or just that day's noise?
+A CPI alert fired overnight. You can route it more precisely than “check everything”: the sample traces ₩197 of a ₩208 account-wide rise to Meta AAP.
 
 ## First choose: a sudden spike, or a sustained performance drop?
 
@@ -23,6 +23,8 @@ You open the dashboard one day and CPA has jumped. Your stomach drops. But befor
 - **CPA, CTR, or conversion rate has worsened across several periods**: go to [the four-step ad performance diagnosis](/blog/ad-performance-diagnosis). It moves from measurement to scope, mix versus efficiency, and then the funnel.
 
 A one-day anomaly and a continuing decline should not get the same response. Confirm the signal first; move to the deeper diagnosis only when the problem persists.
+
+Inspect the channel contribution and compare its delivery and reporting dates. A large contribution gives the owner a place to investigate.
 
 ## Daily numbers wobble by nature
 

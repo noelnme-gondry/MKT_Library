@@ -12,10 +12,10 @@ faq:
   - q: "How far should I trust an AI-generated analysis?"
     a: "Trust it when you can reproduce which data and which assumptions produced the number; otherwise hold. Sentences that turn a correlation into a cause need separate evidence."
 
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Auto-bidding sets the bid. The algorithm finds the audience. Automated campaigns even pick the placement and creative combination. AI writes the copy and generates the images. So doesn't it feel like everything a marketer used to do is disappearing, one task at a time? Most of us have felt that anxiety at some point.
+Your bidding system can find cheaper signups while the business needs more paying customers. Pull up the event the platform actually optimizes and the outcome finance uses to call a campaign successful. Would the same campaign win both reviews?
 
 Short answer: the work isn't disappearing — the center of gravity is shifting. From operating to judging. Today let's get concrete about what that means, and what you actually need to prepare for.
 
@@ -30,6 +30,8 @@ Manually adjusting bids, fine-tuning audience segments by hand, micro-tuning bud
 Honestly, there was a time when this kind of manipulation skill counted as "ability." Being good at operating the ads manager was the job. That era is fading. Better to accept it and move on.
 
 But here's the interesting part. The more the machine takes over operating, the more valuable the non-operating work becomes.
+
+Run the self-check on goal alignment and how you distinguish reported conversions from incremental conversions.
 
 ## Three responsibilities to retain under automation
 

@@ -11,10 +11,10 @@ faq:
     a: "That is the most certain route, but with five elements the number of combinations is more than you can realistically run. Recording the attributes of content you already published lets you compare several elements at once without an experiment."
   - q: "Can I turn these results straight into production guidelines?"
     a: "Use them to narrow hypotheses. Observational data carries the selection bias of the delivery algorithm, so it is not causal. Confirm only the top one or two elements with an experiment before writing a rule."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Content retros keep producing the same sentence: "this one worked because the hook was strong." But that piece was also shorter than usual, and the thumbnail was brighter. Which of those made the performance is unknown.
+Should the next headline include a number? In the sample, headlines with numbers averaged 1.47 percentage points more click-through. Check what else those headlines shared before writing a new rule for the creative team.
 
 Changing one element at a time is certain, but five elements produce dozens of combinations. You cannot run them all.
 
@@ -28,6 +28,8 @@ One piece of content is one row, and the columns look like this.
 - **Elements** — hook type, length in seconds or characters, format, thumbnail brightness, CTA style.
 
 Elements go in as 0/1 (present or not) or as numbers (length). What matters is **recording them when you produce the content**. Tagging everything in one retroactive batch relies on memory, which imports a bias toward remembering successful content as better made.
+
+Compare overlapping content elements and describe one change to test in the next brief.
 
 ## Why they have to go in together
 

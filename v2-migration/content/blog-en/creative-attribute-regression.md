@@ -11,10 +11,10 @@ faq:
     a: "Use it only to narrow direction. When the delivery algorithm concentrates impressions on creatives that respond well, the attributes of those creatives look better than they are. Confirmation has to come from an experiment."
   - q: "How many creatives do I need before this analysis works?"
     a: "Meaningfully more than the number of attributes you are comparing. With four attributes you need at least dozens of creatives, and each attribute needs enough creatives both with and without it before the coefficients stabilise."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-Everyone knows A/B testing is the right answer. The problem is that you cannot run one every time — the budget is small, there are too few creatives, or the network refuses to split delivery evenly.
+Ads with numbers in the headline earned 1.47 percentage points more click-through in the raw comparison. If the same ads also used testimonials, how much credit belongs to the headline?
 
 There is a second-best option for those situations: **turn the attributes of creatives you already served into data and compare them**.
 
@@ -28,6 +28,8 @@ One creative is one row.
 | cr_002 | 0 | 1 | 30 | 0.014 |
 
 Attributes go in as 0/1 or as numbers. What matters here is **recording facts, not judgements**. "Well-made thumbnail" cannot be a column. "Has a person in it" can.
+
+Open the element comparison, look for attributes that travel together and select a change you could test independently.
 
 ## Why a simple average comparison is not enough
 

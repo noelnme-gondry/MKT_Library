@@ -2,7 +2,7 @@
 title: "Store Listing Experiments: Designing and Reading PPO Tests"
 description: "Before-and-after gets icon and screenshot tests wrong. How Apple PPO and Play listing experiments differ, and how to read them."
 date: "2026-08-18"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "store-listing-experiment"
 keywords: "store listing experiment, PPO, Product Page Optimization, Play store listing experiment, app store A/B test, app icon test, screenshot test, store experiment design"
 tags: ["ASO", "Experiment Analysis"]
@@ -16,9 +16,9 @@ faq:
     a: "Plan duration from sample needs and business cycles, using the platform’s decision criteria. Two weeks is not a universal minimum. What matters more than duration is fixing the stop condition before launch. Stopping the moment a variant is ahead raises the chance of stopping on a random peak and inflating the winner."
   - q: "Can a winning variant still turn out to have no effect?"
     a: "Yes. An interval crossing zero means not yet distinguishable, even with a winner badge showing. Apple PPO treatments may also appear in search results. Its conversion result does not establish effects on search rank, long-term retention or revenue."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-Screenshots changed, and two weeks later conversion is up. Was it the screenshots? If ad spend also grew and the season turned in those same two weeks, the honest answer is that you do not know.
+A store listing converts better after new screenshots go live. Would the old listing have improved that week too? Start with a concurrent assignment, then use the sample’s 6.2% versus 4.4% rates to practice reading the comparison.
 
 [Decomposing store conversion](/blog/store-conversion-drop-diagnosis) narrows where to look, but it does not prove cause. Confirming that a change worked takes an experiment — and both stores provide one for free.
 
@@ -34,6 +34,8 @@ Before-and-after compares "before the change" against "after it". The problem is
 Any one of those moving lands in the screenshot's column. The last one catches people most often, because a shift in source composition moves the blended rate even when every per-source rate holds steady.
 
 Store experiments reduce this through random assignment **at the same moment**. Conditions balance in expectation; verify actual allocation and measurement rather than assuming perfect equality.
+
+Open the per-arm table. Check assignment, eligibility and the comparison window before treating any difference as a screenshot effect.
 
 ## The two stores are built differently
 

@@ -1,4 +1,3 @@
-import AdSenseScript from "@/components/AdSenseScript";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
@@ -8,7 +7,6 @@ import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import { primaryCalculatorForContent } from "@/lib/contentToolRegistry";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
-import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
@@ -137,13 +135,15 @@ export default async function EnBlogPostPage({ params }) {
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
   const inline = splitBlogInsight(post.html, post.slug);
   const article = inline || splitArticleForAction(post.html, { early: true });
+  // Lift the authored lead above the entry panel while keeping the same full text in RSS.
+  const opening = article.before.match(/^\s*<p>[\s\S]*?<\/p>/)?.[0] || "";
+  const remainingBefore = article.before.slice(opening.length);
   const practice = inline ? blogPracticeFor(post.slug, "en") : null;
   const example = inline ? BLOG_EXAMPLES[post.slug] || null : null;
   const selfCheck = inline ? null : blogSelfCheckFor(post.slug, "en");
 
   return (
     <BlogJourneyProvider><div className="content-article blog-article" data-design-exempt="nested: Tables, practice tools and author information keep their own purpose within the article surface">
-      <AdSenseScript />
       <BlogReadTracker slug={post.slug} locale="en" />
       <script
         type="application/ld+json"
@@ -157,6 +157,7 @@ export default async function EnBlogPostPage({ params }) {
         <h1>
           {post.h1}
         </h1>
+        {opening && <div className="blog-article__lead" dangerouslySetInnerHTML={{ __html: opening }} />}
         <BlogConversionEntry slug={post.slug} locale="en" sample={Boolean(inline)} toolId={inline?.config.toolId} />
         {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
         {post.seoAnswer && (
@@ -180,9 +181,8 @@ export default async function EnBlogPostPage({ params }) {
         </div>
       </header>
 
-      <PartnerAdSlot placement="blog-byline" locale="en" />
       <article className="blog-prose">
-        <div dangerouslySetInnerHTML={{ __html: article.before }} />
+        <div dangerouslySetInnerHTML={{ __html: remainingBefore }} />
         {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} example={example} postTitle={post.title} locale="en" /> : selfCheck ? <div id="blog-self-check" tabIndex={-1}><BlogSelfCheck slug={post.slug} locale="en" /></div> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>

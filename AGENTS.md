@@ -12,7 +12,7 @@
 
 - **이름**: Performance Marketing Library (Ops Dashboard)
 - **목적**: 앱 퍼포먼스 마케팅 SOP 문서 + CSV 기반 운영 데이터 분석 도구
-- **배포**: Railway — `main` 자동 deploy. Root Directory=`v2-migration`. **커스텀 도메인 `growthoptplaybook.com`**(SEO canonical/OG/sitemap/robots/`rss.xml`[네이버 제출용, `app/rss.xml/route.js`]는 `routeMap.js` `SITE_URL` SSOT + `layout.js` 하드코딩). AdSense `ca-pub-3073450406371629`(layout Script·meta·`public/ads.txt`).
+- **배포**: Railway — `main` 자동 deploy. Root Directory=`v2-migration`. **커스텀 도메인 `growthoptplaybook.com`**(SEO canonical/OG/sitemap/robots/`rss.xml`[네이버 제출용, `app/rss.xml/route.js`]는 `routeMap.js` `SITE_URL` SSOT + `layout.js` 하드코딩). 게시자 광고 정책은 `docs/product-ssot.md` §5 참조.
 - **저장소**: `https://github.com/noelnme-gondry/MKT_Library`
 - **타겟**: 시니어 퍼포먼스 마케터 (KR 시장, 한글 UI)
 - **데이터 민감도**: 마케팅 운영 데이터 = 사내 민감 자료. **클라이언트 사이드 처리만**, 서버 전송 금지.

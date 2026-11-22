@@ -13,13 +13,13 @@ faq:
     a: "Either total may be larger depending on delay, date basis, attribution windows, and deduplication. Privacy tiers also affect detail. Compare the same mature period and definitions, then check integration gaps."
   - q: "Can I optimise in real time on SKAN data?"
     a: "Undelivered SKAN postbacks cannot establish final same-day performance. Keep other operational signals separate and reassess mature periods using the applicable postback windows and delays."
-updated: "2026-09-08"
-reviewedAt: "2026-09-09"
+updated: "2026-11-22"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Apple SKAdNetwork"
     url: "https://developer.apple.com/documentation/storekit/skadnetwork"
 ---
-An iOS campaign can show different totals in the ads manager, MMP, and SKAN. Definitions may explain the gap, but integration or deduplication errors can also cause it. Disagreement alone does not establish that everything is correct.
+An install recorded on Tuesday may produce a postback received on a different day. Lining up two dashboards by their calendar labels can put the same activity into different comparison windows.
 
 ## They are counting different things
 
@@ -33,6 +33,8 @@ An iOS campaign can show different totals in the ads manager, MMP, and SKAN. Def
 | Users who declined ATT | Privacy-preserving attribution supported | IDFA-based cross-app attribution restricted; SKAN ingestion is also possible |
 
 An MMP can ingest SKAN postbacks, so the names do not identify mutually exclusive data sources. Check which attribution method and aggregation unit the particular MMP report uses.
+
+Run the self-check on the install-date basis and maturity of both reports before comparing their attribution rules.
 
 ## Three places the gap opens
 

@@ -2,14 +2,14 @@
 title: "Marketing Budget Allocation: Marginal ROAS and CPA"
 description: "Compare budget increases, reallocations, and cuts with marginal ROAS or CPA, then check the assumptions and limits of the estimated response curve."
 date: "2026-07-21"
-updated: "2026-08-03"
+updated: "2026-11-22"
 slug: "budget-marginal-efficiency"
 keywords: "marketing budget allocation, ad budget reallocation, when to scale ad budget, budget cut priorities, marginal ROAS, marginal CPA, response curve"
 tags: ["Budget Allocation", "Scaling"]
 draft: false
 primaryTool: "5-3"
 relatedGlossary: ["marginal-cpa", "response-curve", "roas"]
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Google Meridian: ROI, mROI, and response curves"
     url: "https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves"
@@ -27,6 +27,8 @@ faq:
   - q: "Does cutting budget always reset campaign learning?"
     a: "No. There is no universal rule that every budget reduction resets learning. Large changes can still create delivery and performance volatility, so record the change and allow an adequate observation window."
 ---
+Which channel should receive the next slice of budget? The sample estimates that an additional install on Apple Search Ads costs 1.72 times its average. Ranking channels by their historical CPI alone would hide that change.
+
 ### The short version (3 lines)
 
 - Whether you are **increasing, reallocating, or cutting** budget, start with marginal ROAS or CPA over the incremental or removed spend range.
@@ -40,6 +42,8 @@ Ranking channels only by average ROAS (or average CPA) can keep pouring spend in
 In this article, **marginal CPA** is an operating definition that applies the same idea in cost space: `change in spend ÷ change in conversions` over an incremental range. It is not a Google Meridian term; the official source above supports the distinction between mROI and the response curve.
 
 Treat equalized marginal efficiency as an allocation candidate only when the response curve is reliable within the observed range, KPI and cost scope are comparable, and channel constraints such as minimum and maximum spend are represented. Without those conditions, a mathematical optimum is not an operating answer.
+
+Compare marginal with average cost across the four channels, then check the spend range supporting the estimate before proposing a move.
 
 ## One metric solves all three directions
 

@@ -21,10 +21,10 @@ faq:
     a: "Define at least a numeric amount, an ISO 4217 currency code, and a transaction ID for deduplication. GA4 requires currency when value is sent for recommended ecommerce events."
   - q: "Is hashed PII safe to send as an event parameter?"
     a: "Check the relevant platform, contract, and legal policies first. The default should be to avoid direct identifiers in events and use an internal ID without direct identifiers plus categorical attributes instead."
-reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-An event name describes the **user action**. Parameters describe its **context and value**. Keep that split: do not turn one event into a bag of screen, product, and payment details. It is how GA4, your MMP, ad platforms, and internal reports can read the same action with the same meaning.
+A signup form now tracks a web signup and an iOS signup under separate event names. What happens when someone asks for one signup rate across both? Start with the action you want to count and the parameter that distinguishes platforms.
 
 An event taxonomy is not a screen inventory. It is the operating contract for event names, parameters, user properties, and firing conditions. SDK events need that same contract so that GA4, the MMP, and ad platforms do not attach different meanings to one conversion.
 
@@ -39,6 +39,8 @@ An event taxonomy is not a screen inventory. It is the operating contract for ev
 Avoid names such as `paywall_screen_view` that blend a screen and action. Record the view with a screen parameter. Record a completed purchase with a stable purchase event, then send payment method, item, and amount as parameters.
 
 ![Diagram separating user behavior into event, parameters, and user properties before GA4, MMP, and ad-platform mapping](/blog-assets/event-taxonomy-guide/action-event-parameter-flow.svg)
+
+Use the event-design check to compare your naming rule with recommended events, then review one instrumentation row with engineering.
 
 ## Keep naming rules small and strict
 

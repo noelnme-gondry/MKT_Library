@@ -2,14 +2,14 @@
 title: "Ad Performance Drop: Diagnose CPA and CTR in 4 Steps"
 description: "Before replacing creative when CPA rises or CTR and conversion rate fall, diagnose measurement, channel mix, efficiency, and the funnel in four steps."
 date: "2026-07-22"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "ad-performance-diagnosis"
 keywords: "ad performance drop, CPA increase, CTR drop, ad performance diagnosis, creative fatigue, conversion rate decline"
 tags: ["Diagnosis", "Creative"]
 draft: false
 primaryTool: "5-21"
 relatedGlossary: ["cpa", "ctr", "cvr", "cpm"]
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Google Ads: Data freshness"
     url: "https://support.google.com/google-ads/answer/2544985?hl=en"
@@ -27,7 +27,7 @@ faq:
   - q: "Should I diagnose a sudden performance improvement too?"
     a: "Yes. Duplicate or invalid conversions and channel-mix shifts can make results look better. Validate the number and decompose the change before scaling spend."
 ---
-When you operate marketing campaigns, ad performance sometimes worsens without an obvious action on your side. The first instinct is usually to blame the creative.
+An account-wide CPI increase can start in one channel. In this example CPI rose ₩208, with ₩197 of that increase attributed to Meta AAP. What would you check there before cutting the entire account’s budget?
 
 But a higher CPA does not automatically mean the creative is worse. Conversion tracking may have broken, budget may have shifted toward a more expensive channel, or the landing page may be the problem. Diagnose in this order: **validate the number → isolate the scope → separate mix from efficiency → trace the funnel**.
 
@@ -39,6 +39,8 @@ But a higher CPA does not automatically mean the creative is worse. Conversion t
 Treating one day of noise like a long-term problem can introduce changes that disturb learning and the comparison baseline. Treating a repeated decline like noise can let the cause grow. Separate the time pattern first.
 
 ![Four-step ad performance diagnosis flow: validate data, isolate channels, split mix and efficiency, then diagnose the funnel](/blog-assets-en/ad-performance-drop/diagnosis-order.svg)
+
+Start with the contribution chart. Within the channel, compare spend and completed installs over the same dates.
 
 ## The four-step diagnosis sequence
 

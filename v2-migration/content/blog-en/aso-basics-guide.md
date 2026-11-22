@@ -18,15 +18,15 @@ faq:
     a: "Split it in two or the diagnosis stalls. Browse conversion is product page views divided by impressions and is driven by the icon and app name; page conversion is installs divided by product page views and is driven by screenshots and ratings. These are operational ratios, distinct from Apple’s official conversion rate. With 100,000 impressions, 12,000 product page views, and 3,600 installs, those are 12% and 30%. Reading only the combined 3.6% cannot tell you whether to fix the icon or the screenshots."
   - q: "Does ASO improve paid performance too?"
     a: "With identical spend and product page views, conversion moving from 30% to 40% means about 33.3% more installs and 25% lower CPI. This calculation does not hold unchanged if traffic mix or acquisition costs change."
-updated: "2026-09-14"
-reviewedAt: "2026-09-09"
+updated: "2026-11-22"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Apple Product Page Optimization"
     url: "https://developer.apple.com/help/app-store-connect-analytics/acquisition/product-page-optimization"
   - title: "Google Play store listing experiments"
     url: "https://support.google.com/googleplay/android-developer/answer/12053285?hl=en"
 ---
-While you're tweaking creative and bids to lower CPI, the store page where users actually decide to install has often sat untouched for months. A tap on your ad still installs on the store, so if store conversion is leaking, ad spend leaks along with it.
+The store’s view-to-install rate fell from 34% to 16% in the sample. Before ordering new screenshots, check whether the store attracted a different mix of visitors.
 
 ASO (App Store Optimization) plugs that hole and grows organic installs on top. It has two axes: getting found (visibility) and getting installed (conversion).
 
@@ -37,6 +37,8 @@ Start with how ASO connects directly to ad efficiency. Everyone who clicks an ad
 In numbers (illustrative): ads drive 10,000 product page views, and at 30% conversion that is 3,000 installs. Raise conversion to 40% and the same spend produces 4,000. Installs up 33%, CPI down 25%.
 
 This example holds spend and page views fixed. Traffic intent and custom product pages may differ by channel, so do not apply one page's improvement equally to every channel.
+
+Open the mix breakdown. Read the units on the views-per-install decomposition before using it to explain a change in conversion rate.
 
 ## 1. Found — keywords
 

@@ -2,7 +2,7 @@
 title: "ASA Keywords: When to Promote to Exact Match"
 description: "Split the campaign that finds terms from the campaign that spends, and promote only terms that clear both volume and CPA."
 date: "2026-07-18"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "asa-keyword-expansion"
 keywords: "Apple Search Ads, ASA keywords, ASA keyword expansion, exact match promotion, search terms report, CPT bidding, discovery campaign, negative keywords, apple search ads optimisation, ASA campaign structure"
 tags: ["ASA", "UA"]
@@ -16,9 +16,9 @@ faq:
     a: "Keep it running when new candidates are needed and the exploration budget allows. Set a review cadence; reduce or pause exploration when its value is low."
   - q: "Why do brand keywords need a separate campaign?"
     a: "Brand terms produce unusually good CPAs because many of those users would have found the app anyway. Mixed in with generic terms, that efficiency lifts the blended average and hides how new-user acquisition is really performing."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-Apple Ads search results campaigns reach people expressing search intent. Whether to advertise depends on demand, acquisition value and budget.
+Your discovery campaign has found new search terms. In the sample, only two terms qualify for Exact promotion, while four suggestions concern the tap bid. Moving every suggestion into a keyword list would mix two different decisions.
 
 When moving promising Search Match terms into Exact, also define the roles of the discovery and operating campaigns.
 
@@ -40,6 +40,8 @@ Move terms that proved out in Discovery into Exact, and add each moved term as a
 Give Discovery an exploration budget and review cadence. Continue when new candidates are valuable; reduce or pause when budget or exploration value is low.
 
 ![Structure: terms that meet both conditions move from Discovery to Exact, and promoted terms are added to Discovery as negatives](/blog-assets-en/asa-keyword-expansion/two-campaigns.svg)
+
+Review the candidate types and confirm that recent conversions have finished arriving before promoting a term.
 
 ## Promotion needs two conditions, together
 

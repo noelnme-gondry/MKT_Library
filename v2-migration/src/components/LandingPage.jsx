@@ -11,7 +11,6 @@ import { exampleHref } from "@/lib/exampleLink";
 import CsvUploader from "@/components/CsvUploader";
 import { finderHref, finderSituations } from "@/lib/finder/analysisFinder";
 import MobileQuickStart from "@/components/MobileQuickStart";
-import PartnerAdSlot from "@/components/ads/PartnerAdSlot";
 import useSampleAnalysis from "@/components/useSampleAnalysis";
 import { useEffect, useRef, useState } from "react";
 
@@ -266,7 +265,6 @@ export default function LandingPage({ locale = "ko", reading }) {
             <Link href={lang === "en" ? "/en/diagnose" : "/diagnose"} onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}>{T.diagnoseCta}</Link>
           </p>
         </div>
-        <PartnerAdSlot placement="home-intro" locale={lang} />
       </section>
 
       <section className="dc-loop" aria-labelledby="dc-loop-title">

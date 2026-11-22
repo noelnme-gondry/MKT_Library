@@ -15,16 +15,18 @@ faq:
     a: "No. Separate a saturated channel from one whose underlying efficiency or conversion flow has deteriorated. The appropriate action differs for each."
   - q: "Does a ROAS increase after reallocation prove the change worked?"
     a: "It is an observed improvement, not proof of causation. Seasonality, promotions, and competition can change at the same time, so validate important scale decisions with small steps or a control."
-reviewedAt: "2026-09-09"
-updated: "2026-10-14"
+reviewedAt: "2026-11-22"
+updated: "2026-11-22"
 ---
-When ROAS falls, the instinct is to cut budget. But one blended ROAS number can make you cut a channel that still has efficient room to grow. First separate **immature data, channel movement, and leakage after conversion** before changing spend.
+The campaign spent ₩1 million and reports ₩3 million in attributed revenue. That gives a ROAS of 300%. How much would refunds and fulfillment costs change the decision to keep spending?
 
 ## First check whether ROAS actually dropped
 
 Revenue and purchase conversions can arrive after the click. In the latest day or two, spend may already be recorded while revenue is still incomplete. Align date range, conversion definition, and attribution window before comparing, then check whether the recent period has matured.
 
 For a sudden movement, start with [campaign anomaly detection](/blog/campaign-anomaly-detection). For a decline that persists across periods, use the sequence in [ad performance diagnosis](/blog/ad-performance-diagnosis) to narrow the scope.
+
+Enter spend and attributed revenue in the article’s ROAS calculator using the same currency and window. Assess profit and incremental revenue separately.
 
 ## Did CPA rise while ROAS fell, or did ROAS fall alone?
 

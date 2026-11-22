@@ -2,7 +2,7 @@
 title: "SKAN Conversion Value Schema: What Fits in 64 Slots"
 description: "How to decide which behavior goes into six bits, and the design mistakes that leave half the slots empty."
 date: "2026-08-18"
-updated: "2026-09-09"
+updated: "2026-11-22"
 slug: "skan-conversion-value-schema"
 keywords: "SKAN conversion value, conversions skan, conversion value schema, fine conversion value, coarse value, skan optimization, conversion value mapping"
 tags: ["Measurement", "iOS"]
@@ -16,9 +16,9 @@ faq:
     a: "The moment you do, data before and after mean different things and trend comparison breaks. If you must change it, record the date and never blend the two periods."
   - q: "Does the ad platform learn from the conversion value?"
     a: "Yes, which is why a design mistake becomes an optimization problem. Feed it a bad signal and the algorithm works hard to bring you the wrong users."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-11-22"
 ---
-SKAN 4 may return up to three window postbacks, with fine values available only in the first. The encoded signal is the [conversion value](/glossary/conversion-value). Deciding what goes into that narrow slot is the part of iOS measurement that takes the most actual work.
+Two conversion values lead the buyer to make exactly the same bid adjustment. What decision would be lost if you merged them? Start with the decisions your first-window schema needs to support.
 
 ## 64 slots is smaller than it sounds
 
@@ -29,6 +29,8 @@ Then you list what you want to encode. Signup (2) × tutorial complete (2) × fi
 But the real constraint is not slot count, it is **volume per slot**. Split into 64 and a campaign doing 500 installs a day averages eight per slot. Actual distribution and missingness differ, so that average alone does not establish whether the schema is useful.
 
 ![500 daily installs across 64 slots averages about 8 per slot; across 8 decision slots it averages 62.5](/blog-assets-en/skan-conversion-value-schema/cell-volume.svg)
+
+Use the schema check to compare decision value with available install volume, then identify a split that would survive coarse reporting.
 
 ## The design rule: split only where decisions differ
 

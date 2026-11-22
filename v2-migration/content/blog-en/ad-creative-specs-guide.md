@@ -12,21 +12,23 @@ faq:
   - q: "How much space does a safe zone need?"
     a: "The safe zone is the area for essential content that avoids platform UI and cropping. Leave covered areas clear and place captions and logos inside the official safe zone for that placement."
 
-updated: "2026-10-01"
-reviewedAt: "2026-09-09"
+updated: "2026-11-22"
+reviewedAt: "2026-11-22"
 sources:
   - title: "Google App campaigns asset specifications"
     url: "https://support.google.com/google-ads/answer/17091671?hl=en"
   - title: "IAB MRAID interface specification"
     url: "https://iabtechlab.com/standards/mobile-rich-media-ad-interface-definitions-mraid/"
 ---
-Upload the same video to several platforms without thinking, and some crop it automatically while others reject it outright in review. Each platform demands different ratios, file sizes, and UI safe zones. However good the creative is, if the spec blocks it, it never serves.
+A price looks legible in the master video, but the app’s buttons cover the last digit in the vertical placement. Before exporting the next version, open that placement’s preview and check the price, caption and call to action together.
 
 ## Specs differ by platform
 
 Image and video ratios (1:1, 4:5, 9:16), minimum resolution, and file-size caps vary by platform. And within one platform, feed, stories, and reels have different recommended ratios.
 
 These specs **change often**, so memorizing them isn't worth much. Checking the platform's current official spec each time you set up a campaign is safer. Instead, master the original at the **largest resolution with room to spare** and crop per placement — then a spec change won't force a reshoot.
+
+Use the two-question creative check to review aspect ratios and areas covered by the interface.
 
 ## Video has regions hidden by the UI
 
