@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "./frontmatter";
-import { marked } from "marked";
+import { Marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
 import { getBlogSeo } from "@/lib/blogSeo";
@@ -17,7 +17,19 @@ export { tagSlug } from "./blogTags.mjs";
 
 // 자체 작성 신뢰 MD라 위험은 낮지만, 방어적으로 기본 옵션만 사용(raw HTML 통과를
 // 굳이 확장하지 않음). gfm=마크다운 표/자동링크 지원.
-marked.setOptions({ gfm: true, breaks: false });
+const marked = new Marked({
+  gfm: true,
+  breaks: false,
+  tokenizer: {
+    del(src) {
+      // 날짜·수치 범위의 물결표는 본문이다. 취소선은 ~~로 명시한다.
+      if (src.startsWith("~") && !src.startsWith("~~")) {
+        return { type: "text", raw: "~", text: "~" };
+      }
+      return false;
+    },
+  },
+});
 
 function readDir(locale) {
   try {

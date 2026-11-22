@@ -25,11 +25,11 @@ export default function EnglishContactPage() {
         alternateHref="/contact"
         title="Contact"
         intro="Business inquiries, collaborations, and product feedback are all welcome. Use whichever channel works best."
-        updated="2026-09-02"
+        updated="2026-11-22"
         sections={[
           { title: "Pass recovery", content: <PassRecoveryHelp locale="en" /> },
           {
-            title: "About the operator",
+            title: "About the publisher",
             content: <ContactAuthorProfile locale="en" />,
           },
           {

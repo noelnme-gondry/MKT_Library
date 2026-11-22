@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { getPostBySlug } from "./blog";
 
 /**
  * 블로그 마크다운 서식 계약.
@@ -49,6 +50,14 @@ function contentLines(body) {
 const posts = readPosts();
 
 describe("블로그 마크다운 서식", () => {
+  it("두 날짜 범위가 이어지는 문장을 본문과 RSS에서 온전히 표시한다", () => {
+    const post = getPostBySlug("dashboard-scorecard-guide");
+    for (const html of [post.html, post.rssHtml]) {
+      expect(html).toContain("3월 24~30일, 비교 기간 3월 17~23일");
+      expect(html).not.toContain("<del>");
+    }
+  });
+
   it("검사 대상을 실제로 수집한다", () => {
     // 경로가 깨지면 0편이 되고 아래 검사가 전부 공허하게 통과한다.
     expect(posts.length).toBeGreaterThan(80);

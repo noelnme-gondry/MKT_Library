@@ -1,8 +1,8 @@
 import { SELLER } from "@/lib/sellerFacts";
 
-export default function SellerInformation({ locale = "ko" }) {
+export default function SellerInformation({ locale = "ko", id }) {
   const en = locale === "en";
-  return <section className="seller-information" aria-label={en ? "Seller information" : "사업자 정보"}>
+  return <section id={id} className="seller-information" aria-label={en ? "Seller information" : "사업자 정보"}>
     <strong>{SELLER.name}</strong>
     <dl>
       <div><dt>{en ? "Representative" : "대표자"}</dt><dd>{SELLER.representative}</dd></div>

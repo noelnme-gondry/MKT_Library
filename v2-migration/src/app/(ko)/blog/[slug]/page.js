@@ -172,7 +172,7 @@ export default async function BlogPostPage({ params }) {
           {/* 저자를 식별 가능한 실제 페이지로 잇는다 — 이름만 적힌 바이라인은
               검색엔진에도 독자에게도 "누가 썼는지"를 답하지 못한다. */}
           <Link href={AUTHOR.profilePath} className="content-article__byline" rel="author">
-            {AUTHOR.name} · {AUTHOR.ko.role}
+            {AUTHOR.name}
           </Link>
           <span>{fmtDate(post.date)}</span>
           {post.updated && post.updated !== post.date && <span>업데이트 {fmtDate(post.updated)}</span>}

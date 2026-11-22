@@ -171,7 +171,7 @@ export default async function EnBlogPostPage({ params }) {
         )}
         <div className="content-article__meta">
           <Link href={`/en${AUTHOR.profilePath}`} className="content-article__byline" rel="author">
-            {AUTHOR.name} · {AUTHOR.en.role}
+            {AUTHOR.name}
           </Link>
           <span>{fmtDate(post.date)}</span>
           {post.updated && post.updated !== post.date && <span>Updated {fmtDate(post.updated)}</span>}
