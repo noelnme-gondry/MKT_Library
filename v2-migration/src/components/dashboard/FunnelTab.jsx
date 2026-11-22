@@ -201,8 +201,8 @@ export default function FunnelTab({ locale = "ko" } = {}) {
             <h2 className="section-title">{tr("주간 변화 — 지난 주 대비", "Weekly change — vs last week")}</h2>
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "-4px 0 10px" }}>
               {tr(
-                `이번 주(${rangeStr}) 단계별 전환율을 직전 주와 비교합니다. (최근 7개 영업일 vs 직전 7개)`,
-                `Compares this week's (${rangeStr}) stage conversion rates to the prior week. (last 7 business days vs prior 7)`
+                `이번 주(${rangeStr}) 단계별 전환율을 직전 주와 비교합니다. (데이터에 기록된 최근 7개 날짜와 그 이전 최대 7개)`,
+                `Compares this week's (${rangeStr}) stage conversion rates to the prior week. (latest 7 observed dates vs up to 7 preceding dates)`
               )}
             </p>
             {bd && bd.delta != null && bd.delta < 0 ? (
@@ -219,11 +219,16 @@ export default function FunnelTab({ locale = "ko" } = {}) {
                   </p>
                 </div>
               </div>
-            ) : (
+            ) : bd ? (
               <div className="callout ok">
                 <div className="ico">✓</div>
-                <div className="body"><p style={{ margin: 0, fontSize: "var(--fs-sm)" }}>{tr("지난 주 대비 전환율이 하락한 단계가 없습니다.", "No stage dropped in conversion rate vs last week.")}</p></div>
+                <div className="body"><p style={{ margin: 0, fontSize: "var(--fs-sm)" }}>{tr("비교 가능한 단계에서 전환율 하락이 관측되지 않았습니다.", "No decline was observed among stages with comparable rates.")}</p></div>
               </div>
+            ) : (
+              <p className="muted">{tr(
+                "직전 주와 비교할 수 있는 단계가 없습니다. 이전 날짜를 포함하도록 기간을 넓히고 두 구간의 분모를 확인하세요.",
+                "No stage has comparable rates for the two windows. Include earlier dates and check the denominator in each window."
+              )}</p>
             )}
             <div className="table-wrap" style={{ marginTop: "10px" }}>
               <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
