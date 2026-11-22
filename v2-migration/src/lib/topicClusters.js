@@ -15,7 +15,16 @@
  * 여기 등록하지 않으면 테스트가 잡는다(§7 — 손으로 센 목록은 가드가 아니다).
  * ============================================================ */
 
+import { DASHBOARD_GUIDES } from "./dashboardBlogGuides";
+
 export const TOPIC_CLUSTERS = [
+  {
+    id: "dashboard-guides",
+    pillar: "dashboard-viz-guide",
+    ko: { title: "운영 대시보드 사용법", blurb: "예시 데이터를 열고 아홉 탭의 수치를 직접 확인하세요." },
+    en: { title: "Operations dashboard guides", blurb: "Open the worked examples and follow the numbers across all nine tabs." },
+    members: Object.keys(DASHBOARD_GUIDES).filter(slug => slug !== "dashboard-viz-guide"),
+  },
   {
     id: "causal",
     pillar: "incrementality-measurement",

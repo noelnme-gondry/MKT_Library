@@ -1,6 +1,15 @@
 // 검색 의도에 맞춘 블로그 표기층. 원고 파일을 다시 쓰지 않고도 제목·요약을
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
+  "dashboard-viz-guide": "시각화 대시보드 사용법: 설치와 CPI가 함께 오른 주를 읽는 순서",
+  "dashboard-scorecard-guide": "스코어카드 사용법: 주간 지표의 분모와 비교 기간 맞추기",
+  "dashboard-seasonality-guide": "시즈널리티 사용법: 11월 설치 증가가 해마다 반복되는지 확인하기",
+  "dashboard-pacing-guide": "페이싱 사용법: 월말 지출 예상액과 남은 일예산 계산하기",
+  "dashboard-anomaly-guide": "이상탐지 사용법: 지출이 평소와 달라진 날부터 조사하기",
+  "dashboard-ltv-guide": "LTV·ROAS 사용법: 설치 획득비를 D30 매출로 회수했는지 읽기",
+  "dashboard-cohort-guide": "코호트 분석 사용법: D7과 D14 리텐션의 분모부터 확인하기",
+  "dashboard-funnel-guide": "퍼널 진단 사용법: 주간 전환율이 떨어진 단계를 찾는 법",
+  "dashboard-segment-guide": "세그먼트 사용법: 국가별 CPI와 지출을 한 셀씩 비교하기",
   "marketing-analysis-example": "마케팅 분석 방법: CSV 한 장으로 따라 하는 실무 예제",
   "simpson-paradox-conversion-rate": "심슨의 역설: 캠페인은 다 올랐는데 전체 전환율이 떨어질 때",
   "user-churn-survival-analysis": "유저 이탈 시점 분석: 생존곡선으로 떠나는 때 찾기",
@@ -57,6 +66,15 @@ const KO_TITLES = {
 };
 
 const EN_TITLES = {
+  "dashboard-viz-guide": "How to read the Visualization dashboard when installs and CPI both rise",
+  "dashboard-scorecard-guide": "Using the Scorecard to compare two marketing reporting periods",
+  "dashboard-seasonality-guide": "Using the Seasonality dashboard to test a recurring November peak",
+  "dashboard-pacing-guide": "Using Pacing to forecast month-end spend and set a remaining daily budget",
+  "dashboard-anomaly-guide": "Using Anomaly Detection to investigate a change in daily spend",
+  "dashboard-ltv-guide": "Reading LTV and ROAS to assess acquisition cost recovery at D30",
+  "dashboard-cohort-guide": "Reading D7 and D14 retention in the Cohort dashboard",
+  "dashboard-funnel-guide": "Using Funnel Diagnosis to locate a week-over-week conversion drop",
+  "dashboard-segment-guide": "Using the Segment matrix to compare CPI and spend by market",
   "marketing-analysis-example": "Marketing Analysis: A Practical CSV Walkthrough",
   "simpson-paradox-conversion-rate": "Simpson's Paradox: Every Campaign Improved, Yet Conversion Fell",
   "user-churn-survival-analysis": "User Churn Timing: Find When Users Leave With Survival Curves",

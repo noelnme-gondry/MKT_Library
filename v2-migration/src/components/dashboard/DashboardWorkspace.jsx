@@ -3,6 +3,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import DashboardBoardLibrary from './DashboardBoardLibrary';
 import { applyPortableBoard } from '@/lib/dashboard/boardContract';
 import Link from 'next/link';
+import { DASHBOARD_GUIDES } from '@/lib/dashboardBlogGuides';
 import { isDemoData } from '@/lib/dataOrigin';
 import { captureBoardReport } from '@/lib/dashboard/boardReport';
 import { computeAnalyzeSig } from '@/store/useDataStore';
@@ -21,7 +22,9 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
   const csv = useAppStore(s => s.csvData);
   const metrics = useAppStore(s => s.customMetrics['5-2:viz-kpi']);
   const commit = useAppStore(s => s.saveDashboardWorkspace);
-  const [defaultView, setDefaultView] = useState(false);
+  const arrival = useAppStore(s => s.blogArrival);
+  const guideSample = arrival?.source === 'demo' && arrival.fileName === csv?.fileName && DASHBOARD_GUIDES[arrival.slug]?.tab === tab;
+  const [defaultView, setDefaultView] = useState(guideSample);
   const paid = hasPaidAccess(entitlement);
   const [draft, setDraft] = useState(null);
   const [history, setHistory] = useState([]);
@@ -35,7 +38,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
   const [reportNotice, setReportNotice] = useState('');
   const reportRoot = useRef(null);
   const [message, setMessage] = useState('');
-  const [liveControls, setLiveControls] = useState(() => saved.tabs?.[tab]?.controls || {});
+  const [liveControls, setLiveControls] = useState(() => guideSample ? {} : saved.tabs?.[tab]?.controls || {});
   const editing = draft !== null && paid;
   const workspace = editing ? draft : defaultView ? EMPTY_WORKSPACE : saved;
   const config = workspace.tabs?.[tab] || {};
@@ -114,7 +117,7 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
   };
   const supportsComparison = Boolean(custom || ['workbench', 's-score', 's-score-daily'].includes(selected));
   const title = custom?.name || available.find(b => b.id === selected)?.title || '';
-  const value = { editing, config, locale, content: children, selected, select: id => { setSelected(id); setPanel('layout'); }, patchTab, patchBlock, setAvailable, controls, legacy: workspace.legacy, mutateLegacy,
+  const value = { editing, config, locale, content: children, selected, select: id => { setSelected(id); setPanel('layout'); }, patchTab, patchBlock, setAvailable, controls, legacy: defaultView && guideSample && !editing ? { viewConfig: {}, customMetrics: {} } : workspace.legacy, mutateLegacy,
     setControl, observationBounds };
   const selectField = (label, val, items, onChange) => <label className="dashboard-editor-field"><span>{label}</span><select value={val} onChange={e => onChange(e.target.value)}>{items.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>;
   const toolbar = (
@@ -123,7 +126,10 @@ export default function DashboardWorkspace({ tab, locale = 'ko', enabled = true,
         <div className="dashboard-workspace-actions">
           <button className="ab-pill" disabled={!paid || editing || reportBusy} onClick={collectReport}>{t("현재 탭을 보고서에 담기 · Pro", "Add this tab to report · Pro")}</button>
           <button className="ab-pill" onClick={() => setLibraryOpen(true)}>{t("보드 동기화·팀 공유", "Board sync / team sharing")}</button>
-          {!editing && Object.keys(saved.tabs || {}).length > 0 && <button className="ab-pill" onClick={() => setDefaultView(!defaultView)}>{defaultView ? t("저장된 배치 보기", "View saved layout") : t("기본 배치 보기", "View default layout")}</button>}
+          {!editing && Object.keys(saved.tabs || {}).length > 0 && <button className="ab-pill" onClick={() => {
+            if (guideSample) setLiveControls(defaultView ? saved.tabs?.[tab]?.controls || {} : {});
+            setDefaultView(!defaultView);
+          }}>{defaultView ? t("저장된 배치 보기", "View saved layout") : t("기본 배치 보기", "View default layout")}</button>}
           {editing ? <><button className="ab-pill" disabled={!history.length} onClick={() => { setDraft(history.at(-1)); setHistory(history.slice(0, -1)); }}>{t('되돌리기', 'Undo')}</button><button className="ab-pill" onClick={() => { setDraft(null); setSelected(null); setHistory([]); }}>{t('취소', 'Cancel')}</button><button className="btn primary" onClick={save}>{t('편집 저장', 'Save edits')}</button></> : <button className="ab-pill" onClick={() => paid ? (startEditing()) : setMessage(t('기본 분석은 무료입니다. 배치·차트별 조건 편집과 보드 저장은 Pro에서 사용할 수 있습니다.', 'Basic analysis is free. Layout editing, per-chart scope and saved boards require Pro.'))}>{t('대시보드 편집 · Pro', 'Edit dashboard · Pro')}</button>}
         </div>
       </div>

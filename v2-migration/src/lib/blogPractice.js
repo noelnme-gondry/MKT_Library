@@ -30,6 +30,11 @@ const WEEKLY_REPORT_PRACTICE = {
 // Editorial examples: one file and equivalent reading instructions for both locales.
 // Numeric examples are verified against these files by editorialExamples.test.js.
 export const BLOG_PRACTICES = {
+  "dashboard-seasonality-guide": {
+    file: "dashboard-seasonality-monthly.csv", currency: "KRW", mode: "detail",
+    ko: { title: "11월 설치의 반복 차이", steps: ["예시를 열어 설치·월별 보기를 확인합니다.", "두 해의 11월을 각 연도의 평균과 비교합니다.", "추세 제거를 켜고 기준선에 따라 지수가 어떻게 달라지는지 확인합니다."], limit: "두 해의 합성 월별 자료입니다. 캠페인 효과를 추정할 수 없습니다." },
+    en: { title: "November installs in two calendar years", steps: ["Open the monthly installs example.", "Compare each November with its own annual mean.", "Turn on detrending to see how the comparison baseline changes."], limit: "Two synthetic years of monthly observations illustrate the calculation. They cannot identify a campaign effect." },
+  },
   "marketing-analysis-example": WEEKLY_REPORT_PRACTICE,
   "marketing-report-sheets-bigquery": WEEKLY_REPORT_PRACTICE,
   "weekly-marketing-report-template": {

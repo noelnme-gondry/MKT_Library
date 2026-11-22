@@ -1114,6 +1114,391 @@
   "spark": null,
   "note": null
  },
+ "dashboard-anomaly-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "anomaly",
+  "ko": {
+   "headline": "월별 지출 합계로 예시의 범위를 확인하세요.",
+   "caption": "예시 데이터에서 달마다 관측된 지출 합계(원)입니다. 마지막 달은 최종 관측일까지 포함합니다."
+  },
+  "en": {
+   "headline": "Check which months of spend are in the example.",
+   "caption": "Monthly observed spend (KRW) in the example data. The last month ends on the final observed date."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "2024-01",
+     "en": "2024-01"
+    },
+    "value": 570333734,
+    "display": "570,333,734"
+   },
+   {
+    "label": {
+     "ko": "2024-02",
+     "en": "2024-02"
+    },
+    "value": 765957080,
+    "display": "765,957,080"
+   },
+   {
+    "label": {
+     "ko": "2024-03",
+     "en": "2024-03"
+    },
+    "value": 1056908727,
+    "display": "1,056,908,727"
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "dashboard-cohort-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "cohort",
+  "ko": {
+   "headline": "관측이 끝난 설치 코호트의 복귀율을 비교하세요.",
+   "caption": "예시 데이터에서 각 경과일까지 관측된 설치만 집계했습니다. 막대 옆은 복귀자 수 / 해당 설치 수입니다."
+  },
+  "en": {
+   "headline": "Compare retention among install cohorts old enough to measure.",
+   "caption": "Calculated on example data. Counts beside each bar show returning users / installs observed through that day."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "D7",
+     "en": "D7"
+    },
+    "value": 0.1204846399,
+    "display": "12%",
+    "detail": "190,542 / 1,581,463"
+   },
+   {
+    "label": {
+     "ko": "D14",
+     "en": "D14"
+    },
+    "value": 0.08429348718,
+    "display": "8.4%",
+    "detail": "119,104 / 1,412,968"
+   }
+  ],
+  "spark": null,
+  "note": null,
+  "scaleMax": 1
+ },
+ "dashboard-funnel-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "funnel",
+  "ko": {
+   "headline": "단계별 전환율을 비교한 뒤, 지난주보다 낮아진 단계를 찾으세요.",
+   "caption": "예시 데이터 전체의 다음 단계 건수를 직전 단계 건수로 나눴습니다. 개인별 이동을 추적한 값은 아닙니다."
+  },
+  "en": {
+   "headline": "Compare stage rates, then inspect the stage that fell week over week.",
+   "caption": "Calculated on example data by dividing each stage total by the preceding total. These are aggregate counts."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "노출→클릭",
+     "en": "Impressions→Clicks"
+    },
+    "value": 0.02636603579,
+    "display": "2.64%"
+   },
+   {
+    "label": {
+     "ko": "클릭→설치",
+     "en": "Clicks→Installs"
+    },
+    "value": 0.1109639948,
+    "display": "11.1%"
+   },
+   {
+    "label": {
+     "ko": "설치→액션",
+     "en": "Installs→Actions"
+    },
+    "value": 0.3642250014,
+    "display": "36.42%"
+   }
+  ],
+  "spark": null,
+  "note": null,
+  "scaleMax": 1
+ },
+ "dashboard-ltv-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "ltv",
+  "ko": {
+   "headline": "채널별 D30 예상 누적 매출을 설치 획득비와 비교하세요.",
+   "caption": "예시 데이터로 계산했습니다. 비용이 있는 4개 채널 중 추정 가능한 4개. 설치·매출 기준 추정치이며 공헌이익과 결제 고객 CAC는 별도 확인하세요."
+  },
+  "en": {
+   "headline": "Compare projected D30 revenue per install with acquisition cost by channel.",
+   "caption": "Calculated on example data. Estimates available for 4 of 4 paid channels. Compare contribution margin and paying-customer CAC separately."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 1.136207392,
+    "display": "1.14×"
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": 3.588239135,
+    "display": "3.59×"
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 4.429755893,
+    "display": "4.43×"
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 2.334283082,
+    "display": "2.33×"
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "dashboard-pacing-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "pacing",
+  "ko": {
+   "headline": "월별 지출 합계로 예시의 범위를 확인하세요.",
+   "caption": "예시 데이터에서 달마다 관측된 지출 합계(원)입니다. 마지막 달은 최종 관측일까지 포함합니다."
+  },
+  "en": {
+   "headline": "Check which months of spend are in the example.",
+   "caption": "Monthly observed spend (KRW) in the example data. The last month ends on the final observed date."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "2024-01",
+     "en": "2024-01"
+    },
+    "value": 570333734,
+    "display": "570,333,734"
+   },
+   {
+    "label": {
+     "ko": "2024-02",
+     "en": "2024-02"
+    },
+    "value": 765957080,
+    "display": "765,957,080"
+   },
+   {
+    "label": {
+     "ko": "2024-03",
+     "en": "2024-03"
+    },
+    "value": 1056908727,
+    "display": "1,056,908,727"
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "dashboard-scorecard-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "scorecard",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.1731645934,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.04863190642,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.0262764505,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033859,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "dashboard-seasonality-guide": {
+  "toolId": "5-2",
+  "source": "dashboard-seasonality-monthly.csv",
+  "ko": {
+   "headline": "해마다 설치 규모가 다릅니다.",
+   "caption": "예시 데이터의 연도별 설치 합계입니다. 탭에서는 같은 달을 각 연평균에 맞춰 비교합니다."
+  },
+  "en": {
+   "headline": "Annual installs differ in scale.",
+   "caption": "Annual installs in the example data. The tab compares each month with its own annual baseline."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "2023",
+     "en": "2023"
+    },
+    "value": 12000,
+    "display": "12,000"
+   },
+   {
+    "label": {
+     "ko": "2024",
+     "en": "2024"
+    },
+    "value": 14400,
+    "display": "14,400"
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "dashboard-segment-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "dashboardTab": "segment",
+  "ko": {
+   "headline": "Meta AAP의 국가별 설치당 비용을 비교하세요.",
+   "caption": "예시 데이터 최근 7일의 국가별 비용 합계를 설치 합계로 나눴습니다. 탭에서는 같은 셀의 지출 규모도 확인할 수 있습니다."
+  },
+  "en": {
+   "headline": "Compare Meta AAP's cost per install across countries.",
+   "caption": "Example data from the last seven days. Each country's spend is divided by its installs. Inspect spend in the same cell in the tab."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "KR",
+     "en": "KR"
+    },
+    "value": 4301.942039,
+    "display": {
+     "ko": "4,302원",
+     "en": "₩4,302"
+    }
+   },
+   {
+    "label": {
+     "ko": "US",
+     "en": "US"
+    },
+    "value": 3924.024103,
+    "display": {
+     "ko": "3,924원",
+     "en": "₩3,924"
+    }
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "dashboard-viz-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.1731645934,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.04863190642,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.0262764505,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033859,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
  "funnel-dropoff-analysis": {
   "toolId": "5-2",
   "source": "demo",

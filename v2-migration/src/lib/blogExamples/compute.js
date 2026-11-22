@@ -9,6 +9,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Papa from "papaparse";
+import { buildSegmentGrid, segmentMetricValue } from "@/utils/segmentMath";
+import { dashboardPeriods } from "@/lib/analysis-results/dashboardPeriods";
 import { buildDemoCsv } from "@/utils/demoData";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { blogMapping } from "@/lib/blogInsightRunner";
@@ -82,6 +84,36 @@ function card({ ko, en, bars = [], spark = null, note, comparison, scaleMax }) {
 
 function dashboardExample(tab, csv, slug) {
   const rows = getMonFilteredRows(csv, {});
+  if (tab === "seasonality" || tab === "pacing" || tab === "anomaly") {
+    const seasonal = tab === "seasonality";
+    const totals = new Map();
+    for (const row of rows) {
+      const period = row.date.slice(0, seasonal ? 4 : 7);
+      totals.set(period, (totals.get(period) || 0) + Number(seasonal ? row.installs : row.cost));
+    }
+    const bars = [...totals].sort(([a], [b]) => a.localeCompare(b)).slice(-5).map(([period, value]) => ({
+      label: { ko: period, en: period }, value, display: num(value),
+    }));
+    return card({
+      ko: { headline: seasonal ? "해마다 설치 규모가 다릅니다." : "월별 지출 합계로 예시의 범위를 확인하세요.", caption: seasonal ? "예시 데이터의 연도별 설치 합계입니다. 탭에서는 같은 달을 각 연평균에 맞춰 비교합니다." : "예시 데이터에서 달마다 관측된 지출 합계(원)입니다. 마지막 달은 최종 관측일까지 포함합니다." },
+      en: { headline: seasonal ? "Annual installs differ in scale." : "Check which months of spend are in the example.", caption: seasonal ? "Annual installs in the example data. The tab compares each month with its own annual baseline." : "Monthly observed spend (KRW) in the example data. The last month ends on the final observed date." },
+      bars,
+    });
+  }
+  if (tab === "scorecard") return BUILDERS["5-2"](csv);
+  if (tab === "segment") {
+    const { grid, cols, rows: channels } = buildSegmentGrid(dashboardPeriods(csv).recentRows, "channel", "country");
+    const marketCells = grid[channels.indexOf("Meta AAP")] || [];
+    const bars = cols.flatMap((country, index) => {
+      const cell = marketCells[index];
+      const value = cell && segmentMetricValue(cell, "cpi");
+      return Number.isFinite(value) ? [{ label: { ko: country, en: country }, value, display: { ko: won(value, false), en: won(value, true) } }] : [];
+    });
+    return card({
+      ko: { headline: "Meta AAP의 국가별 설치당 비용을 비교하세요.", caption: "예시 데이터 최근 7일의 국가별 비용 합계를 설치 합계로 나눴습니다. 탭에서는 같은 셀의 지출 규모도 확인할 수 있습니다." },
+      en: { headline: "Compare Meta AAP's cost per install across countries.", caption: "Example data from the last seven days. Each country's spend is divided by its installs. Inspect spend in the same cell in the tab." }, bars,
+    });
+  }
   const mapped = new Set(Object.values(csv.mapping));
   if (tab === "cohort") {
     const snapshot = resolveRetentionSnapshot({ rows });
@@ -110,7 +142,8 @@ function dashboardExample(tab, csv, slug) {
     });
   }
   const payback = slug === "cac-payback-period";
-  const channels = buildLtvData(rows, csv.mapping, "channel", 30, "installs").filter(row => row.cost > 0);
+  const ltvRows = slug === "dashboard-ltv-guide" ? dashboardPeriods(csv).recentRows : rows;
+  const channels = buildLtvData(ltvRows, csv.mapping, "channel", 30, "installs").filter(row => row.cost > 0);
   const measured = channels.filter(row => Number.isFinite(payback ? row.payback : row.ratio));
   const bars = measured.slice(0, 5).map(row => ({
     label: { ko: row.unit, en: row.unit }, value: payback ? row.payback : row.ratio,

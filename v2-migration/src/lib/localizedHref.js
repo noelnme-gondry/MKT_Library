@@ -1,9 +1,11 @@
+import { DASHBOARD_GUIDES } from "./dashboardBlogGuides";
 import { hasEnVersion, resolvePathToId } from "@/lib/routeMap";
 
 // Client/server-safe publication registry. Content loaders, Header language
 // switching and Markdown link localization all use this list so an EN prefix is
 // never added to a route that does not exist.
 export const EN_BLOG_SLUGS = new Set([
+  ...Object.keys(DASHBOARD_GUIDES),
   "marketing-analysis-example",
   "simpson-paradox-conversion-rate",
   "user-churn-survival-analysis",
