@@ -57,6 +57,7 @@
     border-color: var(--library-border);
   }
   .app :is(.block, .card, .operations-panel):has(.figure-head) .chart-container,
+  .app .blog-inline-insight .chart-container,
   .app .operations-chart .chart-container {
     background: transparent;
     border: 0;
@@ -88,44 +89,50 @@
     border-radius: var(--radius-md);
     overscroll-behavior-x: contain;
   }
-  .app .table-wrap table.data {
+  /* Numeric typesetting and heading hierarchy also reach custom interactive
+     tables that own their row selection and cannot use the DataTable wrapper. */
+  .app :is(table.data, .table-scroll > table, .blog-inline-insight table) {
     font-family: var(--font-sans);
     font-size: var(--fs-sm);
     line-height: 1.55;
     border-collapse: collapse;
     font-variant-numeric: tabular-nums;
   }
-  .app .table-wrap table.data thead th {
+  .app :is(table.data, .table-scroll > table, .blog-inline-insight table) thead th {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    letter-spacing: normal;
+  }
+  .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) thead th {
     padding: 12px 16px;
     background: var(--surface-container-low);
     color: var(--text-secondary);
     border-bottom: 1px solid var(--library-border);
-    font-family: var(--font-sans);
-    font-size: var(--fs-xs);
-    font-weight: 400;
-    letter-spacing: normal;
-    line-height: 1.5;
     vertical-align: middle;
   }
-  .app .table-wrap table.data tbody :is(td, th) {
+  .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) tbody :is(td, th) {
     padding: 14px 16px;
     border-top-color: var(--border-subtle);
     vertical-align: middle;
     line-height: 1.55;
   }
-  .app .table-wrap table.data tbody tr:hover { background: var(--surface-container-low); }
-  .app .table-wrap table.data tbody tr:last-child :is(td, th) { border-bottom: 0; }
-  .app .table-wrap table.data :is(th, td):is(.tnum, [data-numeric="true"]) {
+  .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) tbody tr:hover { background: var(--surface-container-low); }
+  .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) tbody tr:last-child :is(td, th) { border-bottom: 0; }
+  .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) :is(th, td):is(.tnum, [data-numeric="true"]) {
     text-align: right;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .app :is(.home-sample-table, .dochi-workspace__result-table, .compare-page__table, .plan-pro-table, .growth-funnel-tools, .blog-inline-insight table) {
+  .app .table-scroll :is(th, td)[align="right"] { text-align: right; }
+  .app .table-scroll :is(th, td)[align="center"] { text-align: center; }
+  .app :is(.home-sample-table, .dochi-workspace__result-table, .compare-page__table, .plan-pro-table, .growth-funnel-tools) {
     font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     line-height: 1.55;
   }
-  .app :is(.home-sample-table, .dochi-workspace__result-table, .compare-page__table, .plan-pro-table, .growth-funnel-tools, .blog-inline-insight table) :is(th, td) {
+  .app :is(.home-sample-table, .dochi-workspace__result-table, .compare-page__table, .plan-pro-table, .growth-funnel-tools) :is(th, td) {
     padding: 12px 16px;
     vertical-align: middle;
     border-color: var(--border-subtle);
@@ -156,8 +163,8 @@
   .app .dochi-workspace__chart-legend i.is-series-4::before { background: var(--chart-category-6); }
   @media (max-width: 768px) {
     .app .chart-container { padding: 12px; }
-    .app .table-wrap table.data thead th { padding: 10px 12px; }
-    .app .table-wrap table.data tbody :is(td, th) { padding: 12px; }
+    .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) thead th { padding: 10px 12px; }
+    .app :is(.table-wrap table.data, .table-scroll > table, .blog-inline-insight table) tbody :is(td, th) { padding: 12px; }
   }
 }
 

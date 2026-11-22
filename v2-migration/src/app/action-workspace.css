@@ -48,7 +48,6 @@
   .ops-plan, .ops-evidence, .ops-creatives { min-width: 0; margin: 1.5rem 0 2rem; }
   body .operations-data > h3 { padding: 1.25rem 1.5rem; }
   .ops-plan-controls { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.25rem; padding: 1.25rem; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1.25rem; }
-  .ops-plan-summary + .ops-plan-controls { border-radius: 0 0 var(--radius-lg) var(--radius-lg); margin-bottom: 0; border-top: 0; }
   .ops-plan-controls fieldset { padding: 0; border: 0; min-width: 0; margin: 0; }
   .ops-plan-controls legend, .ops-plan-controls > label { font-size: var(--fs-sm); font-weight: 600; }
   .ops-plan-controls label { display: grid; gap: .45rem; align-content: start; min-width: 0; }
@@ -59,34 +58,8 @@
   .ops-mode button { flex: 1; min-height: 44px; padding: .5rem; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; white-space: nowrap; color: var(--text-secondary); }
   /* A pressed segment states the current mode; filled blue is reserved for the page's primary action. */
   .ops-mode button[aria-pressed="true"] { background: color-mix(in srgb, var(--primary) 9%, var(--surface-container-lowest)); border-color: var(--primary); color: var(--text-primary); font-weight: 600; }
-  .ops-plan-summary { display: grid; grid-template-columns: 1.2fr 1fr; border: 1px solid var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface-container-lowest); overflow: hidden; }
-  .ops-plan-proposal, .ops-plan-outcome { padding: 1.5rem; min-width: 0; }
-  .ops-plan-proposal h3 { font-size: var(--fs-2xl); line-height: 1.4; margin: .7rem 0; letter-spacing: -.03em; }
-  .ops-plan-proposal > p { margin: 0 0 1.5rem; color: var(--text-secondary); font-size: var(--fs-sm); }
-  .ops-plan-outcome { border-left: 1px solid var(--border); background: var(--surface-container-lowest); }
-  .ops-plan-impact { display: block; margin: .5rem 0; font-size: var(--fs-3xl); line-height: 1.1; letter-spacing: -.04em; color: var(--text-primary); }
-  .ops-plan-outcome p { margin: .5rem 0 1rem; }
-  .ops-transfer { display: grid; grid-template-columns: minmax(0,1fr) 40px minmax(0,1fr); column-gap: 1rem; align-items: stretch; }
-  .ops-transfer--single { grid-template-columns: minmax(0,1fr); }
-  .ops-transfer { grid-template-rows: auto repeat(var(--transfer-rows), minmax(5.5rem, auto)); }
-  .ops-transfer__side { min-width: 0; display: grid; grid-template-rows: subgrid; grid-row: 1 / -1; }
-  .ops-transfer__side:first-child { grid-column: 1; }
-  .ops-transfer:not(.ops-transfer--single) .ops-transfer__side:last-child { grid-column: 3; }
-  .ops-transfer__arrow { grid-row: 2 / -1; grid-column: 2; }
-  .ops-transfer__side h4 { font-size: var(--fs-md); color: var(--text-secondary); margin: 0; padding: 0 0 .6rem; border-bottom: 1px solid var(--border); }
-  .ops-transfer__arrow { align-self: center; justify-self: center; width: 24px; height: 24px; margin-top: 1.5rem; color: var(--text-secondary); }
-  .ops-transfer__item { display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left; gap: .65rem; min-height: 76px; padding: .8rem 0; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; background: transparent; color: var(--text-primary); font: inherit; }
-  .ops-transfer__item span { min-width: 0; }
-  .ops-transfer__item small { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
-  .ops-transfer__item b { white-space: nowrap; font-size: var(--fs-sm); }
   .ops-plan [data-direction="increase"] { color: var(--primary); }
   .ops-plan [data-direction="decrease"] { color: var(--warning); }
-  .ops-transfer__item[aria-pressed="true"] { box-shadow: inset 0 -2px var(--primary); }
-  .ops-impact-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem; }
-  .ops-impact-list button { display: flex; justify-content: space-between; align-items: center; gap: .5rem; border: 1px solid transparent; border-radius: var(--radius-sm); padding: .65rem; background: transparent; font: inherit; font-size: var(--fs-sm); text-align: left; color: var(--text-primary); min-height: 44px; }
-  .ops-impact-list button[aria-pressed="true"] { border-color: var(--primary); background: var(--surface-container-lowest); }
-  .ops-cost-outcome { display: grid; gap: .5rem; border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; font-size: var(--fs-sm); }
-  .ops-cost-outcome strong { font-size: var(--fs-lg); }
   .ops-plan-note { color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.65; }
   .ops-plan-held { border: 1px solid var(--border); padding: 1.5rem; background: var(--surface-container-lowest); border-radius: var(--radius-md); }
   .ops-allocation { padding: 1.25rem; background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-top: 1.5rem; }
@@ -181,8 +154,6 @@
   .ops-scope-chips > button { min-height: 36px; padding: .4rem .7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-1); color: var(--text-primary); font: inherit; cursor: pointer; }
   .ops-scope-chips > button[aria-pressed="true"] { border-color: var(--primary); box-shadow: inset 0 -2px var(--primary); }
   .ops-scope-chips > button:disabled { cursor: default; }
-  body .ops-transfer__item { min-height: 5.5rem; }
-  .ops-transfer__arrow { margin-top: 0; }
   .ops-spend-range { display: flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; border-top: 1px solid var(--border); padding-block: .85rem; font-size: var(--fs-xs); }
   .guide-directory .phase-card { box-shadow: none; border-top: 3px solid var(--primary); }
   .guide-directory .phase-card-title { font-size: var(--fs-lg); }
@@ -242,11 +213,6 @@
   @media (max-width: 1100px) {
     body .home-approved .home-planner-intro { grid-template-columns: minmax(0,1fr); gap: 1rem; }
     .ops-plan-controls { grid-template-columns: repeat(2,minmax(0,1fr)); }
-    .ops-plan-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
-    .ops-transfer { column-gap: .5rem; grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr); }
-    .ops-transfer--single { grid-template-columns: minmax(0,1fr); }
-    .ops-transfer__item { flex-direction: column; align-items: start; gap: .4rem; }
-    .ops-impact-list { grid-template-columns: minmax(0,1fr); }
   }
   @media (max-width: 760px) {
     .operations-planner .tool-instrument-header .page-sticky-row1 { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; }
@@ -255,17 +221,12 @@
     .ops-analysis-context .result-period-picker { display: flex; align-items: center; gap: .5rem; }
     .ops-analysis-context .result-period-picker__label { flex: 0 0 auto; font-size: var(--fs-xs); }
     .ops-analysis-context .result-period-picker__trigger { min-width: 0; font-size: var(--fs-xs); padding-inline: .5rem; }
-    .ops-plan-proposal .ops-transfer { display: none; } /* The complete, actionable table below owns this information on phones. */
-    .ops-plan-proposal h3 { font-size: var(--fs-xl); }
-    .ops-plan-proposal > p { margin-bottom: 0; }
-    .ops-plan-outcome .ops-impact-list { display: none; } /* Campaign amounts and outcomes remain in the complete action table. */
     .ops-analysis-context .dashboard-comparison-period > p:not([role="status"]) { display: none; }
     .result-next-action { flex-direction: column; align-items: stretch; }
-    .ops-plan-summary, .ops-evidence-grid, .ops-creative-workspace { grid-template-columns: minmax(0,1fr); }
-    .ops-plan-outcome { border-left: 0; }
+    .ops-evidence-grid, .ops-creative-workspace { grid-template-columns: minmax(0,1fr); }
     .ops-creative-detail { position: static; }
     .ops-creative-detail { padding: 1rem 0 0; border-left: 0; border-top: 1px solid var(--border); }
-    .ops-plan-proposal, .ops-plan-outcome, .ops-creatives, .ops-evidence-surface, .ops-allocation { padding: 1rem; }
+    .ops-creatives, .ops-evidence-surface, .ops-allocation { padding: 1rem; }
     .ops-plan-controls { padding: 1rem; gap: 1rem; }
     .ops-plan-controls fieldset { grid-column: 1 / -1; }
     body .operations-queue__list { max-height: none; overflow: visible; }

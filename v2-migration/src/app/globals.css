@@ -13407,6 +13407,37 @@ body, body.light-mode { background: var(--paper); }
 .app :is(.csv-guide-example-btn, .sheet-connect-btn):hover { background: var(--sunk); border-color: var(--ink-3); }
 /* 블로그 글은 종이 위에 바로 놓는다 — 페이지 전체를 감싼 둥근 흰 카드는 걷는다. */
 .app .content-article.blog-article { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding-left: 0; padding-right: 0; }
+/* 도구 안내와 글 요약은 같은 왼쪽 기준선, 찾아보기 목록은 같은 행 구분선을 쓴다. */
+.app main :is(.tool-brief, .content-answer) {
+  background: transparent;
+  border: 0;
+  border-inline-start: 2px solid var(--primary);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 0 0 var(--space-4);
+}
+.app main :is(.content-list .content-card, .home-tool-directory > section, .tool-index__list, .blog-faq) {
+  min-width: 0;
+  border: 0;
+  border-top: 1px solid var(--rule-2);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app main :is(.content-list .content-card, .home-tool-directory > section, .blog-faq) {
+  padding: clamp(14px, 2vw, 22px) 0;
+}
+.app main .content-list { column-gap: clamp(18px, 3vw, 36px); }
+.app main .content-list .content-card { min-height: 0; }
+.app main .content-list .content-card.is-featured { border-top-color: var(--ink); }
+.app main :is(.content-card, .tool-index__link, .home-tool-directory li a):is(:hover, :focus-visible) {
+  background: var(--surface-container-low);
+}
+.app main .content-card:is(:hover, :focus-visible) .card-title {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
 /* 홈 상황 칸 — 상자 목록이 아니라 머리카락 선으로 나눈 색인. */
 .app .home-entry__situations ul { gap: 0; border-top: 1px solid var(--ink); }
 .app .home-entry__situations li a {

@@ -40,11 +40,11 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/tools/operations-planner$`));
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.locator(".operations-planner__context")).toContainText(locale === "en" ? "Fictional sample" : "가상 예시");
-    await expect(page.locator(".ops-plan-impact")).toBeVisible();
+    await expect(page.locator(".ops-recommendation-pct")).toBeVisible();
     await expect(page.locator(".operations-queue")).toBeVisible();
     await page.getByRole("tab", { name: locale === "en" ? "Detailed data & export" : "상세 데이터·내보내기", exact: true }).click();
     await expect(page.locator(".result-action-card__stats")).toContainText(currentCpi);
-    await expect(page.locator(".ops-plan-impact")).toContainText(forecast);
+    await expect(page.locator(".ops-recommendation-pct")).toContainText(forecast);
     for (const creative of creatives) await expect(page.locator(".ops-creatives")).toContainText(creative);
     // 홈에서 가져온 데이터가 액션, 전체 변화, 근거를 한 플래너에서 지원한다.
     await page.getByRole("tab", { name: locale === "en" ? "Full change history" : "전체 변화 이력", exact: true }).click();
