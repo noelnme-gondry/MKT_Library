@@ -2,7 +2,7 @@
 .ops-recommendation-layout { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .ops-recommendation-summary { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: clamp(12px, 2vw, 24px); padding: 1rem 0; border-bottom: 2px solid var(--text-primary); }
 .ops-recommendation-summary > div + div { border-inline-start: 1px solid var(--border); padding-inline-start: 1rem; }
-.ops-recommendation-summary h3 { font-size: var(--fs-sm); margin: 0; }
+.ops-recommendation-summary h3 { font-size: var(--fs-md); line-height: 1.5; margin: 0; }
 .ops-recommendation-summary strong { display: block; margin: .2rem 0; font-size: clamp(1.45rem, 2.4vw, 1.9rem); line-height: 1.2; letter-spacing: -.035em; }
 .ops-recommendation-summary > div:first-child strong { font-size: clamp(1.9rem, 3.5vw, 2.45rem); }
 .ops-recommendation-summary small, .ops-forecast-rounding, .ops-proof-budgets { color: var(--text-secondary); font-size: var(--fs-xs); }
