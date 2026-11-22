@@ -6,6 +6,8 @@
 //
 // 숫자를 손으로 적지 않는다: 도구의 데모 데이터(또는 글이 지정한 예제 파일)를
 // 같은 어댑터·엔진에 넣어 나온 값만 쓴다. 판정할 수 없으면 판정할 수 없다고 쓴다.
+import { TOOL_BLOG_GUIDES } from "../toolBlogGuides";
+import { buildOperationsHomePreview } from "../operations/operationsHomePreview";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Papa from "papaparse";
@@ -22,7 +24,7 @@ import { computeVif } from "@/utils/modelDiagnostics";
 import { buildResponseAdapterColMap } from "@/lib/assistant/responseColumnMapping";
 import { buildLtvData } from "@/utils/ltvMath";
 import { blogDashboardTab, BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
-import { BLOG_PRACTICES } from "@/lib/blogPractice";
+import { BLOG_PRACTICES, blogPracticeFor } from "@/lib/blogPractice";
 import { runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
 import { runOptimizationAnalysis } from "@/lib/assistant/optimizationAnalysisAdapters";
 import { runSpecialAnalysis } from "@/lib/assistant/specialAnalysisAdapters";
@@ -422,10 +424,36 @@ const BUILDERS = {
   },
 };
 
+function toolGuideExample(toolId) {
+  if (toolId === "5-31") {
+    const { plan, planDays } = buildOperationsHomePreview();
+    const before = num(plan.baselineResults * planDays);
+    const after = num(plan.expectedResults * planDays);
+    return card({
+      ko: { headline: `총예산을 유지하면 7일 예상 설치는 ${before}건에서 ${after}건으로 바뀝니다.`, caption: "예시 데이터의 기준안과 캠페인별 재배분안을 비교했습니다." },
+      en: { headline: `Reallocating the same total budget changes projected installs from ${before} to ${after} over seven days.`, caption: "Both plans use the same campaign example data." },
+    });
+  }
+  const { raw } = buildDemoCsv(TOOL_GROUP[toolId], "ko");
+  if (toolId === "5-18-mmm") {
+    const weeks = new Set(raw.map(row => row.week)).size;
+    return card({
+      ko: { headline: `예시에는 번갈아 광고를 늘리거나 쉰 ${weeks}주간의 가입과 지출이 담겨 있습니다.`, caption: "예시 데이터의 주별 가입 수와 채널별 지출로 추세와 반응곡선을 추정합니다." },
+      en: { headline: `Explore sign-ups and changes in channel spending over ${weeks} weeks.`, caption: "The model fits the trend and response curves to weekly example data." },
+    });
+  }
+  const days = new Set(raw.map(row => row.date)).size;
+  return card({
+    ko: { headline: `${days}일의 집행 기록으로 하루 예산을 다시 나눠 봅니다.`, caption: "예시 데이터에서 국가·채널·OS별 지출과 설치를 비교합니다." },
+    en: { headline: `Compare daily budget allocations using ${days} days of delivery history.`, caption: "The example data includes spend and installs by country, channel and operating system." },
+  });
+}
+
 // 글이 자기 예제 파일을 지정했으면 그 파일로, 아니면 도구 데모로 계산한다.
 function exampleFor(slug) {
   const placement = BLOG_INSIGHT_PLACEMENTS[slug];
   if (!placement) return null;
+  if (TOOL_BLOG_GUIDES[slug]) return { toolId: placement.toolId, source: blogPracticeFor(slug).file, ...toolGuideExample(placement.toolId) };
   const practice = BLOG_PRACTICES[slug];
   const toolId = EXAMPLE_TOOL_SUBSTITUTE[placement.toolId] || placement.toolId;
   const tab = blogDashboardTab(slug);

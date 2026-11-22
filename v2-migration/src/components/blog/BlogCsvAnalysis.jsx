@@ -146,7 +146,7 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
         // Match the tool's explicit sample action. Its own validation still decides
         // whether to show an estimate or withhold it; real uploads retain their gate.
         state.setGroupAnalyzed(config.toolId);
-        if (candidate.currency) state.setDisplayCurrency(candidate.currency);
+        if (candidate.currency) state.setDisplayCurrency(practice?.displayCurrency || candidate.currency);
       }
       // The preview used every uploaded row; stale detail filters must not hide them.
       state.setDashboardFilter(useAppStore.getInitialState().dashboardFilter);
@@ -190,7 +190,7 @@ function BlogCsvWorkbench({ config, slug, locale = "ko", practice = null, exampl
       const contract = blogMapping(parsed.data, parsed.meta.fields, config.toolId);
       // Preserve the registered fixture's planned window/cutoff and units.
       // These describe the sample; they do not confirm the user's causal design.
-      const candidate = { ...sample.demo, raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: sample.file, projectId, importSource: "demo" };
+      const candidate = { ...sample.demo, raw: parsed.data, headers: parsed.meta.fields, mapping: practice.sampleToolId ? sample.demo.mapping : contract.mapping, fileName: sample.file, projectId, importSource: "demo" };
       pendingSample.current = candidate;
       setCsv(candidate);
       // Loading a sample never grants permission to replace existing project data.

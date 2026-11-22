@@ -1,6 +1,8 @@
+import { mapToolBlogGuides } from "./toolBlogGuides";
 // 검색 의도에 맞춘 블로그 표기층. 원고 파일을 다시 쓰지 않고도 제목·요약을
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
+  ...mapToolBlogGuides(guide => guide.ko.title),
   "dashboard-viz-guide": "시각화 대시보드 사용법: 설치와 CPI가 함께 오른 주를 읽는 순서",
   "dashboard-scorecard-guide": "스코어카드 사용법: 주간 지표의 분모와 비교 기간 맞추기",
   "dashboard-seasonality-guide": "시즈널리티 사용법: 11월 설치 증가가 해마다 반복되는지 확인하기",
@@ -66,6 +68,7 @@ const KO_TITLES = {
 };
 
 const EN_TITLES = {
+  ...mapToolBlogGuides(guide => guide.en.title),
   "dashboard-viz-guide": "How to read the Visualization dashboard when installs and CPI both rise",
   "dashboard-scorecard-guide": "Using the Scorecard to compare two marketing reporting periods",
   "dashboard-seasonality-guide": "Using the Seasonality dashboard to test a recurring November peak",

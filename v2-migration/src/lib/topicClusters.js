@@ -36,6 +36,7 @@ export const TOPIC_CLUSTERS = [
       "cannibalization-organic-paid",
       "correlation-vs-causation",
       "marketing-mix-modeling",
+      "mmm-contribution-tool-guide",
       "multicollinearity-mmm-guide",
       "offline-ad-online-impact",
       "uplift-holdout-guide",
@@ -48,6 +49,8 @@ export const TOPIC_CLUSTERS = [
     en: { title: "Budget and efficiency", blurb: "Deciding how much to spend and where." },
     members: [
       "budget-scaling-limit",
+      "budget-allocation-tool-guide",
+      "operations-planner-guide",
       "cpi-cpa-cpm-difference",
       "ltv-cac-ratio",
       "cac-payback-period",

@@ -1,9 +1,10 @@
+import { buildToolDemo } from "./toolDemo";
 import { buildDemoCsv } from "@/utils/demoData";
 import { csvBody } from "@/utils/download";
 
 // Only registered, deterministic public fixtures are serialized; never store data.
 export function buildBlogPracticeDownload(practice) {
-  const demo = buildDemoCsv(practice.demoGroup, practice.locale);
+  const demo = practice.sampleToolId ? buildToolDemo(practice.sampleToolId, practice.locale) : buildDemoCsv(practice.demoGroup, practice.locale);
   return {
     file: practice.file,
     text: csvBody(demo.headers, demo.raw.map(row => demo.headers.map(header => row[header]))),

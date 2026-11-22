@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DASHBOARD_GUIDES } from "@/lib/dashboardBlogGuides";
+import DashboardGuideList from "@/components/seo/DashboardGuideList";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -72,6 +74,7 @@ export default function BlogIndexPage() {
         <p>CPA·ROAS·예산·소재·측정 문제를 원인부터 좁히는 글입니다. 읽은 다음에는 같은 질문을 무료 도구에서 내 데이터로 확인할 수 있습니다.</p>
         <span className="content-index__meta">{posts.length} ARTICLES · UPDATED FOR OPERATORS</span>
       </header>
+      <DashboardGuideList posts={posts} locale="ko" />
       <SearchTopicHub />
       <NewsletterSignup placement="index" />
 
@@ -110,7 +113,7 @@ export default function BlogIndexPage() {
         </div>
       ) : (
         <div className="content-list">
-          {posts.map((post, index) => (
+          {posts.filter((post) => !DASHBOARD_GUIDES[post.slug]).map((post, index) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}

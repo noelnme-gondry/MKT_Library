@@ -1,3 +1,4 @@
+import { TOOL_BLOG_GUIDES } from "./toolBlogGuides";
 import { DASHBOARD_GUIDES } from "./dashboardBlogGuides";
 import { hasEnVersion, resolvePathToId } from "@/lib/routeMap";
 
@@ -6,6 +7,7 @@ import { hasEnVersion, resolvePathToId } from "@/lib/routeMap";
 // never added to a route that does not exist.
 export const EN_BLOG_SLUGS = new Set([
   ...Object.keys(DASHBOARD_GUIDES),
+  ...Object.keys(TOOL_BLOG_GUIDES),
   "marketing-analysis-example",
   "simpson-paradox-conversion-rate",
   "user-churn-survival-analysis",

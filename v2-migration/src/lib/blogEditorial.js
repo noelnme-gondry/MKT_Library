@@ -1,8 +1,10 @@
+import { mapToolBlogGuides } from "./toolBlogGuides";
 import { mapDashboardGuides } from "./dashboardBlogGuides";
 import { AUTHOR } from "@/lib/authorProfile";
 // 블로그의 "짧은 답"·적용 범위·검토 정보를 원고와 분리한 편집 레지스트리.
 // 검색 메타와 CTA를 섞지 않고, SSR 본문과 JSON-LD가 동일한 답변을 쓰게 한다.
 const KO_ANSWERS = {
+  ...mapToolBlogGuides(guide => guide.ko.answer),
   ...mapDashboardGuides(guide => `${guide.ko.label} 탭에서는 ${guide.ko.preview}`),
   "marketing-analysis-example": "마케팅 분석은 같은 기준으로 집계한 비용과 성과를 비교하고, 다음에 확인할 대상과 행동을 정하는 과정입니다. 이 실습에서는 비용 70만→84만 원, 설치 700건 유지로 CPI가 1,000→1,200원이 되는 변화를 계산하고 캠페인 A를 먼저 점검합니다. 합성 예제이며 광고의 인과효과나 수익성을 증명하지 않습니다.",
   "simpson-paradox-conversion-rate": "심슨의 역설은 캠페인별 전환율이 모두 올라도 물량이 전환율 낮은 캠페인으로 옮겨 가면 전체 전환율이 떨어지는 현상입니다. A 10%→11%, B 2%→2.5%여도 설치 비중이 80:20에서 25:75로 바뀌면 전체는 8.4%에서 4.6%로 떨어집니다. 변화를 물량 이동(−4.4%p)과 캠페인 안의 변화(+0.9%p)로 나눠 보고하세요.",
@@ -61,6 +63,7 @@ const KO_ANSWERS = {
 };
 
 const EN_ANSWERS = {
+  ...mapToolBlogGuides(guide => guide.en.answer),
   ...mapDashboardGuides(guide => guide.en.preview),
   "marketing-analysis-example": "Marketing analysis compares cost and outcomes on consistent definitions, then identifies what to investigate and do next. This synthetic CSV walkthrough raises spend from KRW 700,000 to 840,000 with installs unchanged at 700: CPI rises from 1,000 to 1,200. Investigate campaign A first; this does not establish profitability or causal advertising effects.",
   "simpson-paradox-conversion-rate": "Simpson's paradox is when every campaign's conversion rate rises but the total falls because volume moved to a lower-converting campaign. With A at 10% to 11% and B at 2% to 2.5%, shifting install share from 80:20 to 25:75 drops the total from 8.4% to 4.6%. Report the change as a volume shift (−4.4 pp) and change within campaigns (+0.9 pp).",

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DASHBOARD_GUIDES } from "@/lib/dashboardBlogGuides";
+import DashboardGuideList from "@/components/seo/DashboardGuideList";
 import { getAllPosts } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -72,6 +74,7 @@ export default function EnBlogIndexPage() {
         <p>Practical notes for narrowing down CPA, ROAS, budget, creative, and measurement issues — then checking the answer with your own data.</p>
         <span className="content-index__meta">{posts.length} ARTICLES · BUILT FOR OPERATORS</span>
       </header>
+      <DashboardGuideList posts={posts} locale="en" />
       <SearchTopicHub locale="en" />
       <NewsletterSignup locale="en" placement="index" />
 
@@ -93,7 +96,7 @@ export default function EnBlogIndexPage() {
         </div>
       ) : (
         <div className="content-list">
-          {posts.map((post, index) => (
+          {posts.filter((post) => !DASHBOARD_GUIDES[post.slug]).map((post, index) => (
             <Link
               key={post.slug}
               href={`/en/blog/${post.slug}`}

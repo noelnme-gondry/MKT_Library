@@ -1,8 +1,10 @@
+import { mapToolBlogGuides } from "./toolBlogGuides";
 import { DASHBOARD_GUIDES } from "./dashboardBlogGuides";
 // Editorial promises describe the next screen, not a guaranteed business outcome.
 // The same copy is used at article entry, beside the example, and in the reading bar.
 const C = (ko, en, previewKo, previewEn, noteKo = "", noteEn = "") => ({ ko: { action: ko, preview: previewKo, note: noteKo }, en: { action: en, preview: previewEn, note: noteEn } });
 export const BLOG_CONVERSION = {
+  ...mapToolBlogGuides(guide => ({ ko: guide.ko, en: guide.en })),
   ...DASHBOARD_GUIDES,
   "marketing-analysis-example": C("예제 CSV로 캠페인 변화 분석하기", "Analyze campaign changes in the example CSV", "비용 70만→84만 원과 설치 700건 유지가 어떤 캠페인에서 생겼는지 직접 확인합니다.", "Locate the campaigns behind spend rising from KRW 700,000 to 840,000 while installs stay at 700."),
   "simpson-paradox-conversion-rate": C("구성 이동과 내부 변화 나눠보기", "Split composition shift from within-group change", "전체 전환율이 변했을 때 구성 비중과 집단 안의 변화를 구분하는 예시입니다.", "Explore how composition and within-group changes affect an overall rate.", "예시는 가입자 구성 비중을 나눕니다. 내 파일로는 묶음별 합계의 비율을 먼저 확인합니다.", "The example splits a signup share. With your file, the inline check compares ratios of group totals first."),
