@@ -1779,7 +1779,7 @@ function findMeta(id) {
             <section class="block" id="s-bid">
               <h2 class="section-title"><span class="ix">§3</span>입찰 전략</h2>
               <ul>
-                <li><strong>Cost-Per-Tap (CPT)</strong>: ASA는 클릭 기반 과금. CPI = CPT / Tap-Through-Rate(TTR)</li>
+                <li><strong>탭 기준 CPI</strong> = 광고비 ÷ 탭으로 발생한 설치 수 = 평균 탭당 비용(CPT) ÷ 탭 기준 설치 전환율(CR).<br />광고비 25만 원으로 1만 회 노출, 500회 탭, 탭 기준 설치 100건을 얻었다면 탭률(TTR)은 5%(500 ÷ 10,000), 설치 전환율은 20%(100 ÷ 500)입니다. 평균 CPT는 500원이므로 설치당 비용은 500원 ÷ 0.20 = 2,500원입니다.</li>
                 <li><strong>최대 CPT 입찰</strong>: Apple 추천 입찰의 1.2~1.5배에서 시작 → 일 7일 후 조정</li>
                 <li><strong>CPA Goal</strong>: 캠페인 레벨 옵션. Adjust 연동된 in-app event 기준으로 자동 입찰 가능</li>
                 <li><strong>스케줄링</strong>: ASA는 24/7 운영이 기본. 시간대별 광고 OFF 옵션 없음 — 입찰 +- 만 가능</li>

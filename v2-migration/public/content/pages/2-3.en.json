@@ -77,7 +77,7 @@
         {
           "type": "list",
           "items": [
-            "<strong>Cost-Per-Tap (CPT)</strong>: ASA charges per tap. CPI = CPT / Tap-Through-Rate (TTR)",
+            "<strong>Tap-through CPI</strong> = spend ÷ tap-through installs = average cost per tap (CPT) ÷ tap-through conversion rate (CR).<br />Suppose ₩250,000 buys 10,000 impressions and 500 taps, and those taps lead to 100 installs. The tap-through rate (TTR) is 5% (500 ÷ 10,000), and the conversion rate is 20% (100 ÷ 500). At an average CPT of ₩500, each install costs ₩500 ÷ 0.20 = ₩2,500.",
             "<strong>Max CPT bid</strong>: start at 1.2–1.5× Apple's suggested bid → adjust after ~7 days",
             "<strong>CPA Goal</strong>: campaign-level option. Can auto-bid against Adjust-connected in-app events",
             "<strong>Scheduling</strong>: ASA runs 24/7 by default. No per-hour off switch — only bid up/down adjustments"
