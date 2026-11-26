@@ -15,8 +15,9 @@ for (const toolId of TOOLS) {
   test(`example goes straight to the result (${toolId})`, async ({ page }) => {
     test.setTimeout(150_000);
     await page.goto(idToSlug[toolId]);
-    const example = page.getByRole("button", { name: /예시 데이터로 결과 바로 보기/ }).first();
-    const card = page.locator(toolResultSelector(toolId)).first();
+    const planner = toolId === "5-31";
+    const example = page.getByRole("button", { name: planner ? "예시로 먼저 보기" : /예시 데이터로 결과 바로 보기/ }).first();
+    const card = page.locator(planner ? "#diagnosis-summary" : toolResultSelector(toolId)).first();
     await expect(example.or(card)).toBeVisible({ timeout: 30_000 });
     // 빌드본은 버튼이 서버 렌더로 먼저 보이고 하이드레이션이 뒤에 붙는다 — 그 사이 클릭은 사라진다.
     await expect(async () => {

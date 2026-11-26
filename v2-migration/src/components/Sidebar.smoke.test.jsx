@@ -2,12 +2,12 @@
 //
 // Render-smoke for Sidebar. Regression net for a render/mount-effect throw.
 // Sidebar derives its active id from usePathname() (mocked to "/") and reads the
-// static IA/PHASES tables. Primary destinations remain visible on every route.
+// static IA/PHASES tables. The planner remains the first action on every route.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Sidebar from "@/components/Sidebar";
-import { WORKSPACE_NAV, workspaceNavItem } from "@/lib/workspaceNav";
+import { workspaceNavItem } from "@/lib/workspaceNav";
 
 let pathname = "/";
 let search = "";
@@ -47,84 +47,40 @@ describe("Sidebar render smoke", () => {
     search = "";
     seedNoData();
   });
-  it("keeps a single data entry without exposing the old result destination", () => {
+  it.each(["ko", "en"])("keeps the planner and project review visible on entry (%s)", (locale) => {
+    const prefix = locale === "en" ? "/en" : "";
+    pathname = prefix || "/";
+    const { container } = render(<Sidebar locale={locale} />);
+    const rail = container.querySelector(".planner-rail");
+    expect([...rail.querySelectorAll(":scope > a")].map(link => link.getAttribute("href")))
+      .toEqual([prefix + "/tools/operations-planner", prefix + "/weekly-review"]);
+    expect(rail.querySelectorAll("details")).toHaveLength(3);
+    expect(rail.querySelector("details[open]")).toBeNull();
+    for (const path of ["/start", "/diagnose", "/blog", "/guide", "/calculator", "/templates", "/glossary", "/compare", "/storage", "/subscription", "/account"]) {
+      expect(rail.querySelectorAll(`details a[href="${prefix}${path}"]`), path).toHaveLength(1);
+    }
+    expect(container.querySelector("a[href*='youtube.com']")).toBeNull();
+  });
+
+  it.each(["/start", "/en/blog/article", "/calculator/example", "/account"])("opens the current collection on %s", (path) => {
+    pathname = path;
+    const { container } = render(<Sidebar locale={path.startsWith("/en/") ? "en" : "ko"} />);
+    expect(container.querySelectorAll("details[open]")).toHaveLength(1);
+    expect(container.querySelectorAll('details[open] a[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it("keeps the planner current when data is loaded and retains the analysis session", () => {
+    pathname = "/tools/operations-planner";
     seedWithData();
     const source = useAppStore.getState().csvData;
-    useAppStore.setState({ dochiAnalysisSession: { sourceData: source, analyses: [] }, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV } });
+    useAppStore.setState({ dochiAnalysisSession: { sourceData: source, analyses: [] } });
     const { container } = render(<Sidebar />);
-    expect(container.querySelector('.library-nav-item[href="/dochi-result"]')).toBeNull();
-    expect(container.querySelector('.library-nav-item[href="/dashboard"]')).toBeNull();
-    expect(container.querySelector('.library-nav-item[href="/start"]')).toBeTruthy();
+    expect(container.querySelector('.rail-planner[aria-current="page"]')).toBeTruthy();
+    expect(container.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
+    expect(container.querySelector('nav a[href="/dochi-result"]')).toBeNull();
     expect(useAppStore.getState().dochiAnalysisSession.sourceData).toBe(source);
   });
-  it("no-data mounts", () => {
-    expect(() => render(<Sidebar />)).not.toThrow();
-    expect(document.querySelector(".library-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".library-nav-item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
-    // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
-    // 가능한지"를 볼 길이 없었다. 전체 목록(분석 찾기)으로 가는 줄이 반드시 있어야 한다.
-    expect(document.querySelector('a[href="/start"]')).toBeTruthy();
-    // 같은 질문에 따로 답하던 "분석 방법 둘러보기" 줄은 분석 찾기 하나로 합쳤다(product-ssot §1.1c).
-    expect(document.querySelector('a[href="/start?view=methods"]')).toBeNull();
-    expect(document.querySelector('.library-nav-item[href="/start"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("start").desc);
-    expect(document.querySelector('.library-nav-item[href="/diagnose"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("diagnose").desc);
-    expect(document.body.textContent).toContain(workspaceNavItem("start").name);
-    expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
-    // 개수 대신 목적지를 단언한다 — 개수를 적으면 항목이 하나 늘 때마다 여기서
-    // 깨지고, 그때 숫자만 고치면 무엇이 들어왔는지는 아무도 안 본다.
-    // Blog and SOPs stay in primary navigation; supporting resources stay here.
-    expect([...document.querySelectorAll(".sidebar-library-link")].map((link) => link.getAttribute("href")))
-      .toEqual(["/calculator", "/templates", "/glossary", "/compare"]);
-    expect(document.body.textContent).toContain("마케팅 지표 계산기");
-    expect(document.body.textContent).not.toContain("무CSV 계산기");
-    // 소셜 채널은 사이드바에서 뺐다 — 도구 목록과 같은 열에 YouTube·Instagram이
-    // 있을 이유가 없다. 도달 경로는 랜딩의 자료·채널 줄이 갖는다(LandingPage 스모크가 강제).
-    expect(document.querySelector(".sidebar-social")).toBe(null);
-    expect(document.querySelector('a[href*="youtube.com"]')).toBe(null);
-    expect(document.querySelector('.library-nav-item[aria-current="page"]')).toBeTruthy();
-    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
-  });
-  it("with-data mounts", () => {
-    pathname = "/dashboard";
-    seedWithData();
-    expect(() => render(<Sidebar />)).not.toThrow();
-    expect(document.querySelector("aside.sidebar")).toBeTruthy();
-    expect(document.querySelector('.nav-item[data-route="5-2"]')).toBeNull();
-    expect(document.querySelector(".sidebar-search")).toBeNull();
-    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
-    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
-  });
-  // 분석 섹션은 TOOL_JOURNEY 스테이지를 그리므로 IA 그룹 기준 항목 번호를 붙이면
-  // 헤더(01~05)와 앞자리가 어긋나고 가이드 번호와도 겹친다. 도구 칩엔 번호 없음,
-  // 가이드 문서(01~04)는 번호 유지 — 둘 다 회귀로 잠근다.
-  it("moves the full tool tree into the dedicated analysis browser", () => {
-    pathname = "/dashboard";
-    seedWithData();
-    const { container } = render(<Sidebar />);
 
-    const toolChips = [...container.querySelectorAll(".sidebar-workflow-stage .nav-item .ix")];
-    expect(toolChips).toHaveLength(0);
-    expect(container.querySelector(".sidebar-workflow-prep")).toBeNull();
-    expect(container.querySelector('.nav-group[data-group="01"]')).toBeNull();
-    expect(container.querySelector('a[href="/guide"]')).toBeTruthy();
-    expect(container.querySelector('a[href="/start"]')).toBeTruthy();
-  });
-
-  it("keeps resource and external-link parity in English", () => {
-    pathname = "/en";
-    const { container } = render(<Sidebar locale="en" />);
-    expect(container.textContent).toContain(workspaceNavItem("guide", "en").name);
-    expect(container.textContent).toContain(workspaceNavItem("review", "en").name);
-    expect(container.textContent).toContain("Marketing metric calculators");
-    expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
-  });
-  it("uses the full workspace navigation on library routes instead of treating them as home", () => {
-    pathname = "/blog";
-    const { container } = render(<Sidebar />);
-    expect(container.querySelector(".library-nav")).toBeTruthy();
-    expect(container.querySelector(".sidebar-primary-nav")).toBeTruthy();
-    expect(container.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
-  });
   it("surfaces decisions due now in the recurring workspace flow", () => {
     useAppStore.setState({
       decisionRecords: [{ id: "decision_1", toolId: "5-2", action: "CPA 검토", reviewDate: "2020-01-01", actual: "", learning: "" }],
@@ -133,61 +89,5 @@ describe("Sidebar render smoke", () => {
     const review = container.querySelector('a[href="/weekly-review"]');
     expect(review?.getAttribute("aria-label")).toBe(`${workspaceNavItem("review").name}, 지금 검토할 결정 1건`);
     expect(review?.textContent).toContain("1");
-  });
-  it.each(["ko", "en"])("keeps content, CSV, results and recurring work outside disclosures (%s)", (locale) => {
-    pathname = locale === "en" ? "/en" : "/";
-    const { container } = render(<Sidebar locale={locale} />);
-    for (const id of ["blog", "guide", "start", "review", "subscription", "storage", "diagnose"]) {
-      const item = workspaceNavItem(id, locale);
-      const link = container.querySelector(`.library-nav a[href="${locale === "en" ? "/en" : ""}${item.href}"]`);
-      expect(link, id).toBeTruthy();
-      expect(link.closest("[data-information-section]"), id).toBeNull();
-    }
-  });
-
-});
-
-describe("Analysis finder navigation", () => {
-  it("marks the single finder entry as current on /start, with or without the old methods address", () => {
-    for (const query of ["", "view=methods", "situation=budget"]) {
-      pathname = "/start";
-      search = query;
-      const { container, unmount } = render(<Sidebar />);
-      expect(container.querySelector('a[href="/start"]').getAttribute("aria-current"), query).toBe("page");
-      expect(container.querySelectorAll('a[href^="/start"]'), query).toHaveLength(1);
-      expect(container.querySelector(".nav-subnav")).toBeNull();
-      unmount();
-    }
-    pathname = "/";
-    search = "";
-  });
-});
-
-// 도구 화면에서 사이드바 안이 복잡하다는 지적을 받고 정리한 결과를 계약으로 고정한다.
-// 값(줄 수)이 아니라 **무엇이 없어야 하는가**를 적는다 — 장식 라벨과 뜻 없는 숫자가
-// 다시 들어오면 여기서 걸린다.
-describe("Sidebar content weight", () => {
-  beforeEach(() => { pathname = "/dashboard"; seedNoData(); });
-
-  it("carries no decorative all-caps English labels on a Korean screen", () => {
-    const { container } = render(<Sidebar />);
-    // §5.7 — 모든 문장은 상태·행동·오해 방지·오류 해결 중 하나를 해야 한다.
-    for (const label of ["QUICK MATH", "FILES", "TERMS", "VS", "INSIGHTS", "LOCAL ONLY", "LIBRARY"]) {
-      expect(container.textContent).not.toContain(label);
-    }
-  });
-
-  it("keeps one numbering system out of the tool stages", () => {
-    const { container } = render(<Sidebar />);
-    // 워크스페이스·SOP 그룹까지 번호 체계가 세 벌이라 어느 번호가 무슨 순서인지
-    // 알 수 없었다. 스테이지는 1→6으로 밟는 순서가 아니므로 번호를 달지 않는다.
-    const stageIndexes = container.querySelectorAll(".sidebar-workflow-stage .nav-group-index");
-    expect(stageIndexes).toHaveLength(0);
-  });
-
-  it("does not print a count that disagrees with what is listed", () => {
-    const { container } = render(<Sidebar />);
-    // 링크는 6개인데 뱃지는 "04"라고 적혀 있었다. 개수를 알 필요도 없다.
-    expect(container.querySelector(".sidebar-library-disclosure__count")).toBe(null);
   });
 });

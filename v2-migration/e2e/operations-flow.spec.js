@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { expect, test } from "@playwright/test";
 import { toolIndexEntry } from "../src/lib/toolIndex";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
@@ -9,6 +10,7 @@ for (const locale of ["ko", "en"]) {
 
   test(`home reading stays aligned and the primary example opens results (${locale})`, async ({ page }) => {
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     const reading = page.locator(".home-reading-list");
     await expect(reading.getByRole("heading", { level: 2 })).toBeVisible();
     await expect.poll(() => reading.evaluate(section => Math.abs(section.getBoundingClientRect().left - section.querySelector("h2").getBoundingClientRect().left))).toBeLessThan(1);

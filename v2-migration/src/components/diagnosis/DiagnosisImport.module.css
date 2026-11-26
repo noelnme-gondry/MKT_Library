@@ -1,0 +1,29 @@
+.intake { min-width: 0; font-variant-numeric: tabular-nums; }
+.intake button, .intake select, .intake input { font: inherit; }
+.intake button, .additional summary { cursor: pointer; }
+.buttons, .strip, .strip p, .mappingHead { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem .85rem; }
+.intake button.primary, .intake button.secondary { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 44px; border-radius: var(--radius-sm, 4px); padding: .6rem 1rem; font-weight: 600; }
+.primary { color: white; background: var(--primary, #2452c7); border: 1px solid var(--primary, #2452c7); }
+.secondary { background: transparent; color: var(--text-primary); border: 1px solid var(--border, #ccc); }
+.intake button:disabled { cursor: progress; opacity: .65; }
+.privacy, .mapping p, .strip span { font-size: .875rem; color: var(--text-secondary); line-height: 1.6; }
+.privacy { margin: .7rem 0 0; }
+.privacy a { display: inline-flex; gap: .2rem; align-items: center; color: inherit; margin-inline-start: .35rem; }
+.mapping { border-top: 1px solid var(--border, #ccc); padding-block: 1rem; }
+.mappingHead { justify-content: space-between; }
+.mappingHead h2 { font-size: 1.15rem; margin: 0; }
+.mappingHead button, .strip button { background: transparent; color: var(--text-secondary); border: 0; min-height: 44px; text-decoration: underline; text-underline-offset: .2rem; }
+.strip p { margin: 0 auto 0 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%, 11rem),1fr)); gap: .75rem; }
+.grid label { display: grid; gap: .3rem; font-size: .875rem; min-width: 0; }
+.grid select, .grid input { min-height: 42px; min-width: 0; width: 100%; padding: .45rem; border: 1px solid var(--border, #ccc); color: var(--text-primary); background: var(--paper, #fff); border-radius: var(--radius-sm, 4px); }
+.additional { margin: 1rem 0; }
+.additional summary { font-size: .9rem; padding-block: .5rem; }
+.check { margin-top: .8rem; display: flex; gap: .4rem; align-items: baseline; font-size: .875rem; }
+.intake .error { color: var(--danger, #a62b24); margin: .6rem 0; }
+.intake :is(button, select, input, a, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+.strip .scope { font-size: .8125rem; color: var(--text-secondary); }
+.filter { margin: .8rem 0 0; padding: .7rem 0 0; border: 0; }
+.filter legend { font-weight: 600; }
+.filter p { margin-bottom: 0; }

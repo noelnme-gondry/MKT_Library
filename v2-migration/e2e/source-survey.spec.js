@@ -25,8 +25,8 @@ for (const locale of ["ko", "en"]) test(`유입 설문은 결과 아래에 표�
 
   const card = page.locator(".source-survey");
   await expect(card).toHaveCount(0);
-  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
-  await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+  await page.locator("details.diagnosis-directory > summary").click();
+  await page.getByRole("button", { name: en ? "Run the example and see results · 404-row guide" : "가이드의 404행 예시 데이터로 결과 바로 보기", exact: true }).click();
   await page.getByRole("tab", { name: en ? "Detailed data & export" : "상세 데이터·내보내기", exact: true }).click();
   await expect(page.locator("#ops-plan-title")).toBeVisible();
   const metric = page.getByRole("slider", { name: en ? "Change limit per campaign" : "캠페인별 변경 한도", exact: true });
@@ -72,8 +72,8 @@ for (const locale of ["ko", "en"]) test(`유입 설문은 결과 아래에 표�
   await page.getByRole("button", { name: en ? "Later" : "나중에", exact: true }).click();
   await expect(card).toHaveCount(0);
   await page.reload();
-  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
-  await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+  await page.locator("details.diagnosis-directory > summary").click();
+  await page.getByRole("button", { name: en ? "Run the example and see results · 404-row guide" : "가이드의 404행 예시 데이터로 결과 바로 보기", exact: true }).click();
   await page.getByRole("tab", { name: en ? "Detailed data & export" : "상세 데이터·내보내기", exact: true }).click();
   await expect(page.locator("#ops-plan-title")).toBeVisible();
   await page.clock.fastForward(60_001);

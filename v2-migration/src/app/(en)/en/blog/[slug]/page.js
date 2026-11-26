@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BlogDiagnosisLink from "@/components/diagnosis/BlogDiagnosisLink";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { OG_CARD_URL, SITE_URL } from "@/lib/routeMap";
@@ -186,6 +187,7 @@ export default async function EnBlogPostPage({ params }) {
         {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} example={example} postTitle={post.title} locale="en" /> : selfCheck ? <div id="blog-self-check" tabIndex={-1}><BlogSelfCheck slug={post.slug} locale="en" /></div> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
+      <BlogDiagnosisLink toolId={post.primaryTool} locale="en" slug={post.slug} />
 
       <BlogSituationCheck slug={post.slug} toolId={post.primaryTool} locale="en" />
 

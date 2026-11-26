@@ -1546,3 +1546,41 @@
 }
 
 .app .content .start-next-project { margin-top: 28px; }
+
+.article-diagnosis-link, .diagnosis-directory {
+  border-top: 1px solid var(--border);
+  padding-block: 1.25rem;
+  margin-block: 1.5rem;
+}
+.article-diagnosis-link p { margin-block: .4rem .75rem; }
+.diagnosis-directory {
+  box-sizing: border-box;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 3.2vw, 46px);
+}
+.article-diagnosis-link a, .diagnosis-directory button { color: var(--primary); font-weight: 600; }
+.diagnosis-directory button { background: transparent; border: 0; padding: .5rem 0; cursor: pointer; }
+
+.planner-views__switch { display:flex; flex-wrap:wrap; gap:.5rem; margin:1.25rem 0; border-bottom:1px solid var(--rule); }
+.planner-views__switch button { background:transparent; border:0; border-bottom:3px solid transparent; padding:.68rem .4rem; color:var(--ink-2); font:inherit; cursor:pointer; }
+.planner-views__switch button[aria-pressed="true"] { color:var(--ink); font-weight:600; border-bottom-color:var(--primary); }
+.planner-views__switch button:focus-visible { outline:2px solid var(--primary); }
+
+/* The same hierarchy serves the desktop rail and the mobile dialog. */
+.sidebar.library-sidebar .planner-rail { display: grid; gap: 4px; padding-block: 6px; }
+.planner-rail :is(a, summary) { box-sizing: border-box; text-decoration: none; border-radius: 4px; }
+.planner-rail .rail-planner { display: grid; gap: 4px; padding: 14px 12px; border-inline-start: 3px solid var(--primary); background: var(--paper); color: var(--ink); }
+.planner-rail .rail-planner strong { font-size: 17px; font-weight: 600; line-height: 1.4; }
+.planner-rail .rail-planner span { color: var(--library-muted); font-size: 12px; line-height: 1.5; }
+.planner-rail .rail-link, .planner-rail summary { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; color: var(--ink); font-size: 14px; line-height: 1.45; }
+.planner-rail .rail-link strong { font-weight: 400; }
+.planner-rail .rail-collections { margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 8px; }
+.planner-rail summary { justify-content: space-between; cursor: pointer; list-style: none; }
+.planner-rail summary::-webkit-details-marker { display: none; }
+.planner-rail summary::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); margin: 0 4px 3px 12px; }
+.planner-rail details[open] > summary::after { transform: rotate(225deg); }
+.planner-rail details .rail-link { padding-inline-start: 24px; font-size: 13px; }
+.planner-rail :is(a,summary):hover { background: var(--sunk); }
+.planner-rail [aria-current="page"] strong { color: var(--primary); font-weight: 600; }
+.planner-rail :is(a,summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

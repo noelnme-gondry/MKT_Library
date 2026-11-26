@@ -8,6 +8,17 @@
 
 ## 0. 문서 지위와 다른 문서와의 관계
 
+### 운영 플래너의 CSV 캠페인 효율 진단 · Operations planner
+
+- 첫 화면은 아래의 이전 홈 구성보다 이 진단을 우선한다. 전체 도구와 가이드 탐색에서 기존 허브를 열 수 있다.
+- 국문 홈과 영문 홈에서 일별 또는 주별 캠페인 CSV로 두 주의 비용, 같은 정의의 성과 건수, 가중 CPA를 비교한다. 예시와 실제 파일은 같은 계산을 쓰고 분석 이벤트에서 구분한다. 기존 도구·가이드로도 이동할 수 있다.
+- 지출이 늘어난 매체에서는 두 기간의 관측 변화와 다음 집행안의 예측을 구분한다. 성과를 입력하지 않은 행은 0건으로 처리하지 않는다. 자료가 부족하면 계산이 보류된 이유를 표시한다.
+- Korean and English homepages accept one campaign CSV. The first diagnosis screen scans all ordered source–outcome pairs. It compares pooled CPA and average weekly outcome changes with the preceding weeks, using configured budget where consecutive settings exist and actual spend otherwise. In the evidence scatter, a point is one week, x is outcome-channel spend, y is outcome-channel CPA, and all weeks use identical circles. Fill follows a continuous pale-to-dark blue scale using only actual source-channel spend in each plotted week. Equal spend has equal color regardless of week-over-week changes. The tooltip includes actual source spend. An optional organic count or creative ID enables additional checks within the same report.
+
+- 공용 탐색의 첫 링크는 운영 플래너이며, 내 프로젝트는 바로 아래에 둔다. 분석 도구, 블로그·자료실, 계정·데이터는 접을 수 있고 현재 페이지가 속한 묶음은 처음부터 펼친다. 모바일 메뉴도 같은 순서를 사용한다.
+- 홈에서 읽은 파일은 같은 브라우저 탭에서 운영 플래너로 이동해도 이어진다. 블로그와 다른 도구의 통합 분석 CTA는 해당 언어의 운영 플래너로 간다. 가이드의 기존 404행 예시도 동일한 원본·필터·선택 기간으로 효율 진단을 연다.
+- 한 결과에서 캠페인 효율 진단과 집행 계획·기록을 전환한다. 매체별 시뮬레이션의 차이가 작아 현 배분 유지 판정이면 일별 캠페인 집행안도 한도 0%에서 시작한다. 설치·가입 외의 성과를 고르면 해당 성과 이름을 유지한 캠페인 시나리오를 계산한다. 예시와 실제 파일을 구분하고 저장·내보내기에는 기존 이용 권한을 적용한다.
+
 ### 운영 변화·액션 루프 (2026-11-04)
 
 - KO: 운영 플래너는 업로드한 전체 기간에서 관측 변화 후보를 찾고, 직접 기록한 액션을 같은 이력에서 출처·계획/실행 상태와 함께 보여 준다. 지출 변화는 실제 예산 설정 변경으로 확정하지 않는다. EN: Scan the entire uploaded history for observed change candidates and show manual actions alongside them with source and planned/executed state. Spend changes do not confirm budget-setting changes.

@@ -1,3 +1,4 @@
+import { openLegacyPlannerImport, openLibraryOverview } from "./support/libraryOverview";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
@@ -21,6 +22,7 @@ function csvFixture({ gap = false, days = 70 } = {}) {
 
 async function openOperations(page, en, options = {}) {
   await page.goto(`${en ? "/en" : ""}/tools/operations-planner`);
+  await openLegacyPlannerImport(page, en);
   const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
   await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "synthetic-operations.csv", mimeType: "text/csv", buffer: csvFixture(options) });
   await uploader.getByRole("button", { name: en ? "KRW ₩" : "원 ₩", exact: true }).click();
@@ -34,6 +36,7 @@ for (const locale of ["ko", "en"]) {
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript(theme => localStorage.setItem("mkt-library-theme", theme), en ? "light" : "dark");
     await page.goto(en ? "/en" : "/");
+    await openLibraryOverview(page);
     // The primary CTA opens the real planner, with the forecast above execution tabs.
     const entry = page.locator(".home-planner-entry .primary");
     await expect(entry).toHaveAttribute("href", `${en ? "/en" : ""}/tools/operations-planner?example=1`);
@@ -214,7 +217,8 @@ for (const locale of ["ko", "en"]) {
     await confirmReviewDialog(page, en);
     const navigation = page.locator(".header-sidebar-toggle");
     if (await navigation.getAttribute("aria-haspopup") === "dialog") await navigation.click();
-    await page.locator(`.library-nav-item[href="${en ? "/en" : "/"}"]`).click();
+    await page.locator(`#brand[href="${en ? "/en" : "/"}"]`).click();
+    await openLibraryOverview(page);
     await expect(page.locator(".home-operations-actions")).toBeVisible();
     await expect(page.locator(".home-operations-actions")).toContainText("리타겟팅");
     await expect(page.locator(".dc-return")).toHaveCount(0);

@@ -1,12 +1,41 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { measureDesignRules } from "./support/designRules";
 
 for (const locale of ["ko", "en"]) {
+  test(`campaign diagnosis opens weekly evidence from the home example (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    await page.goto(en ? "/en" : "/");
+    await expect(page.getByRole("button", { name: en ? "Diagnose my CSV" : "내 CSV로 진단하기", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: en ? "Try an example" : "예시로 먼저 보기", exact: true }).click();
+    const pairs = page.getByRole("region", { name: en ? /When one channel increased/ : /어느 매체를 증액/ });
+    await pairs.getByRole("button", { name: "Meta → Google", exact: true }).click();
+    const chart = pairs.getByRole("figure", { name: /Google.*CPA/ });
+    await expect(chart.locator("figcaption")).toContainText(en ? "actual Meta spend" : "Meta 실제 지출액");
+    const points = chart.locator("g[data-week]");
+    const marks = await points.evaluateAll(nodes => nodes.map(node => {
+      const dot = node.lastElementChild;
+      return { cost: Number(node.dataset.cost), shape: dot.tagName, radius: dot.getAttribute("r"), fill: getComputedStyle(dot).fill };
+    }));
+    expect(marks.length).toBeGreaterThan(1);
+    expect(new Set(marks.map(mark => mark.shape))).toEqual(new Set(["circle"]));
+    expect(new Set(marks.map(mark => mark.radius)).size).toBe(1);
+    const sorted = marks.slice().sort((a, b) => a.cost - b.cost);
+    expect(sorted[0].cost).toBeLessThan(sorted.at(-1).cost);
+    expect(sorted[0].fill).not.toEqual(sorted.at(-1).fill);
+    await expect(chart.getByRole("tooltip")).toBeHidden();
+    await points.last().focus();
+    await expect(chart.getByRole("tooltip")).toContainText(await points.last().getAttribute("data-week"));
+    await page.keyboard.press("Escape");
+    await expect(chart.getByRole("tooltip")).toBeHidden();
+  });
+
   test(`mobile sample entry and readable evidence (${locale})`, { tag: "@mobile-only" }, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     const prefix = locale === "en" ? "/en" : "";
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     // 폰에서도 운영 플래너 예시를 첫 진입으로 제공하고 다른 분석은 이어서 찾는다.
     await expect(page.locator(".home-entry__situations")).toBeVisible();
     const mobile = page.locator(".mobile-quick-start").first();
@@ -65,6 +94,7 @@ for (const locale of ["ko", "en"]) {
     test.skip(!representative, "Covered by the representative home-preview environments");
     if (testInfo.project.use.viewport.width === 768) await page.setViewportSize({ width: 980, height: 1000 });
     await page.goto(locale === "en" ? "/en" : "/");
+    await openLibraryOverview(page);
     await expect(page.locator(".home-result-preview")).toBeVisible();
     await expect(page.locator(".home-result-preview > h2")).toHaveText(locale === "en" ? "Planner preview" : "운영 플래너 미리보기");
     await page.evaluate(() => document.fonts.ready);
@@ -189,6 +219,7 @@ for (const variant of [
     await page.addInitScript(light => localStorage.setItem("mkt-library-theme", light ? "light" : "dark"), variant.light);
     const prefix = variant.locale === "en" ? "/en" : "";
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     await expect(page.locator(".home-hero-capabilities li")).toHaveCount(3);
     await page.evaluate(() => document.fonts.ready);
     // 금액 중간 줄바꿈은 가로 넘침 검사만으로 잡히지 않는다.

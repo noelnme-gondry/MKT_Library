@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { openDochiSample } from "./support/dochiSample";
 import { test, expect } from "@playwright/test";
 import path from "node:path";
@@ -36,6 +37,7 @@ for (const locale of ["ko", "en"]) {
   });
   test(`library question entry and persistent navigation (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     await expect(page.locator(".home-entry__situations")).toBeVisible();
     await expect(page.getByRole("dialog")).toBeHidden();
     // Legacy centered-hero rules must not distort the approved card layout.
@@ -52,6 +54,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     await expect(page.locator(".home-entry__situations li:not(.home-entry__all-tile) a")).toHaveCount(toolIndexByStage(locale).length);
     await expect(page.locator("#dochi-upload")).toBeHidden();
     await expect(page.locator(".home-reading-list__articles a")).toHaveCount(3);
@@ -69,10 +72,14 @@ for (const locale of ["ko", "en"]) {
       await expect(toggle).toBeFocused();
       await toggle.click();
     }
+    const rail = page.locator(".planner-rail");
+    await expect(rail.locator(".rail-planner")).toHaveAttribute("href", `${prefix}/tools/operations-planner`);
+    await expect(rail.locator(`a[href="${prefix}/blog"]`)).toBeHidden();
+    for (const group of await rail.locator("details > summary").all()) await group.click();
     for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start"]) {
-      await expect(page.locator(`.library-nav-item[href="${prefix}${path}"]`)).toBeVisible();
+      await expect(page.locator(`.planner-rail a[href="${prefix}${path}"]`)).toBeVisible();
     }
-    await page.locator(`.library-nav-item[href="${prefix}/blog"]`).click();
+    await page.locator(`.planner-rail a[href="${prefix}/blog"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/blog$`));
     await expect(page.locator("main h1")).toBeVisible();
     if (mobile) await expect(page.getByRole("dialog")).toBeHidden();

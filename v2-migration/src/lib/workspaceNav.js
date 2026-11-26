@@ -15,8 +15,8 @@ export const WORKSPACE_NAV = [
     id: "home",
     group: "home",
     href: "/",
-    ko: { name: "홈", desc: "지금 볼 것과 다음 행동" },
-    en: { name: "Home", desc: "What to check now" },
+    ko: { name: "캠페인 효율 진단", desc: "CSV로 전주 대비 지출과 CPA 비교" },
+    en: { name: "Campaign diagnosis", desc: "Compare spend and CPA week over week" },
   },
   {
     id: "operations", group: "work", href: "/tools/operations-planner",

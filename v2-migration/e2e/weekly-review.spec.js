@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { enablePaidReports } from "./support/paidReports";
 import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import { expect, test } from "@playwright/test";
@@ -151,6 +152,7 @@ async function dochiToWeekly(page, locale) {
     if (locale === "en") localStorage.setItem("mkt-library-theme", "light");
   }, locale);
   await page.goto(en ? "/en" : "/");
+  await openLibraryOverview(page);
   // 홈에서 리뷰 입구가 보여야 한다. 폰(≤480px) 헤더는 한 줄이라 입구가 ••• 메뉴 안에 있다(mobile-header.spec.js).
   if ((page.viewportSize()?.width || 0) <= 480) {
     await page.locator(".header-utility-menu__trigger").click();
@@ -166,13 +168,14 @@ async function dochiToWeekly(page, locale) {
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
   await page.locator(".home-planner-entry").getByRole("link", { name: en ? "Plan with my data" : "내 데이터로 운영 계획", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/tools/operations-planner$`));
-  await expect(page.locator('.operations-planner .csv-uploader[data-hydrated="true"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: en ? "Diagnose my CSV" : "내 CSV로 진단하기", exact: true })).toBeVisible();
   // 홈 대표 행동은 운영 플래너다. 기존 통합 분석→결정 저장 흐름은
   // 공용 내 데이터 진입 링크로 계속 확인한다. 이전 페이지의 메뉴/업로더를
   // 조작하지 않도록 각 라우트의 도착과 준비 상태를 먼저 확인한다.
   const menu = page.locator(".header-sidebar-toggle");
   if (await menu.getAttribute("aria-haspopup") === "dialog") await menu.click();
-  await page.locator(`.library-nav-item[href="${en ? "/en" : ""}/start"]`).click();
+  await page.getByText(en ? "Analysis tools" : "분석 도구", { exact: true }).and(page.locator(".planner-rail summary")).click();
+  await page.locator(`.planner-rail a[href="${en ? "/en" : ""}/start"]`).click();
   await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/start$`));
   await expect(page.getByRole("heading", { name: en ? "Find an analysis" : "분석 찾기", level: 1, exact: true })).toBeVisible();
   const intake = page.locator('.csv-uploader[data-hydrated="true"]');

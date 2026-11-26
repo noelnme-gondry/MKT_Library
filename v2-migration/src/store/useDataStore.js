@@ -1089,6 +1089,8 @@ export const useAppStore = create(persist((set, get) => ({
     mapping: {},
     fileName: "",
   },
+  plannerSession: null,
+  plannerGeneration: 0,
   activeDataGroup: "efficiency",
   // Writes the ACTIVE group's slice AND updates the mirror to the SAME object
   // reference, so consumer selectors (s => s.csvData) fire on identity change.
@@ -1410,6 +1412,15 @@ export const useAppStore = create(persist((set, get) => ({
 }));
 
 // 소유한 상태 참조가 바뀔 때만 기록한다. CSV 원본은 serializeProject 대상이 아니다.
+// CSV diagnosis stays in memory while navigating between the home and planner.
+// Project changes, file replacement and file clearing invalidate that session.
+useAppStore.subscribe((state, before) => {
+  if (state.plannerSession && (state.projectSwitching || state.activeProjectId !== before.activeProjectId ||
+      state.csvGroups.efficiency?.raw !== before.csvGroups.efficiency?.raw)) {
+    useAppStore.setState({plannerSession: null, plannerGeneration: state.plannerGeneration + 1});
+  }
+});
+
 const PROJECT_STATE_FIELDS = ["decisionRecords", "eventMarkers", "viewConfig", "customMetrics", "customCharts", "dashboardFilterGroups", "csvGroups"];
 useAppStore.subscribe((state, previous) => {
   if (!state.projectsReady || !state.decisionPersistenceEnabled || state.projectSwitching || previous.workspaceRestoreStatus === "loading" || state.activeProjectId !== previous.activeProjectId || PROJECT_STATE_FIELDS.every(key => state[key] === previous[key])) return;

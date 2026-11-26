@@ -47,19 +47,32 @@ function withEditorialJourney(name, params) {
   try {
     const storage = window.sessionStorage;
     if (!storage) return params;
+    if (name === "diagnosis_entry_view" && params.source === "blog" && !storage.getItem(EDITORIAL_JOURNEY_KEY) && document.referrer) {
+      // A reader can follow the server-rendered link before the click handler hydrates.
+      const referrer = new URL(document.referrer);
+      const match = /^\/(en\/)?blog\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/.exec(referrer.pathname);
+      if (referrer.origin === window.location.origin && match && params.locale === (match[1] ? "en" : "ko")) {
+        storage.setItem(EDITORIAL_JOURNEY_KEY, JSON.stringify({ content_slug: match[2], content_type: "blog", locale: params.locale, tool_id: params.tool_id, createdAt: Date.now() }));
+      }
+    }
+    if (name === "diagnosis_entry_view" && params.source !== "blog") {
+      const previous = JSON.parse(storage.getItem(EDITORIAL_JOURNEY_KEY) || "null");
+      if (previous?.tool_id === "campaign-diagnosis") storage.removeItem(EDITORIAL_JOURNEY_KEY);
+      return params;
+    }
     if (name === "blog_tool_cta_clicked") {
       storage.removeItem(EDITORIAL_JOURNEY_KEY);
       if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.content_slug || "")
         && ["blog", "glossary", "calculator", "compare"].includes(params.content_type)
         && ["ko", "en"].includes(params.locale)
-        && (params.tool_id === "weekly-review" || /^[59]-\d+(?:-[a-z-]+)?$/.test(params.tool_id || ""))) {
+        && (params.tool_id === "weekly-review" || params.tool_id === "campaign-diagnosis" || /^[59]-\d+(?:-[a-z-]+)?$/.test(params.tool_id || ""))) {
         storage.setItem(EDITORIAL_JOURNEY_KEY, JSON.stringify({
           content_slug: params.content_slug, content_type: params.content_type,
           locale: params.locale, tool_id: params.tool_id, createdAt: Date.now(),
           ...(typeof params.placement === "string" && /^[a-z_]{1,64}$/.test(params.placement) ? { placement: params.placement } : {}),
         }));
       }
-    } else if (name === "blog_sample_result_viewed" || (EDITORIAL_FUNNEL_EVENTS.has(name) && params.source !== "demo")) {
+    } else if (name === "blog_sample_result_viewed" || (params.tool_id === "campaign-diagnosis" && name.startsWith("diagnosis_")) || (EDITORIAL_FUNNEL_EVENTS.has(name) && params.source !== "demo")) {
       const stored = storage.getItem(EDITORIAL_JOURNEY_KEY);
       if (!stored) return params;
       const journey = JSON.parse(stored);

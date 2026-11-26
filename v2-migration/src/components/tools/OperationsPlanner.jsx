@@ -1,5 +1,12 @@
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
+import DiagnosisWorkbench, { DiagnosisReport, hasComparableTotals } from "@/components/diagnosis/DiagnosisWorkbench";
+import { usePlannerEntry, usePlannerEntryReady } from "@/components/diagnosis/usePlannerEntry";
+import PlannerViews from "@/components/diagnosis/PlannerViews";
+import { analyzeDiagnosis } from "@/lib/campaignDiagnosis";
+import { readPlannerDiagnosis } from "@/lib/operations/diagnosisBridge";
+import { trackDiagnosis } from "@/lib/trackDiagnosis";
 import { getMappedRows, getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { fmtCurrency, fmtNum, fmtPct, sourceCurrencyOf } from "@/utils/format";
 import { useAppStore } from "@/store/useDataStore";
@@ -45,7 +52,7 @@ function EvidenceTable({ title, columns, rows, locale, emptyText }) {
   </div>;
 }
 
-function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomBasis, currency, locale = "ko", onInspectMapping, dataOpen, setDataOpen }) {
+export function OperationsResults({ initialChangeLimit = .2, csvData, sourceRows, grain, filter, periods, denomBasis, currency, locale = "ko", onInspectMapping, dataOpen, setDataOpen }) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const metric = effectiveDenomBasis(csvData, denomBasis);
   const metricName = metric === "actions" ? "CPA" : "CPI";
@@ -57,7 +64,7 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   const [creativeSelection, setCreativeSelection] = useState(null);
   const [replanning, setReplanning] = useState(false);
   const [failure, setFailure] = useState(null);
-  const [options, setOptions] = useState({ mode: "maintain", horizon: "week", targetTotal: null, changeLimit: .2 });
+  const [options, setOptions] = useState({ mode: "maintain", horizon: "week", targetTotal: null, changeLimit: initialChangeLimit });
   const optionsRef = useRef(options);
   const limit = options.changeLimit;
   // 매핑/기간 변경 때 이전 결과를 먼저 숨긴다. 계산은 분석 게이트 안에서만,
@@ -149,7 +156,7 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
   return <OperationsActionLoop brief={brief} plan={plan} history={bundle.history} signals={bundle.signals} rows={bundle.rows} {...{ metric, currency, locale, isDemo, view, setView }}
     overview={chooseReview => <><OperationsPlanBoard rows={recommendationRows} {...{ brief, plan, options, money, pct, outcomeName, metricName, locale, holdMessages, metric, currency, isDemo }} signals={bundle.signals} today={localToday()} sourceThrough={bundle.history.end || bundle.history.dates.at(-1) || ""} onChange={changeOptions} selected={campaign?.id} onSelect={setSelected} busy={replanning} />
       <OperationsDecisionEvidence {...{ brief, plan, campaign, creative, setSelected, setCreativeSelection, metricName, outcomeName, currency, locale, periods, isDemo, money, number, pct, chooseReview }} signals={bundle.signals} />
-      <ModalDialog open={dataOpen} onClose={() => setDataOpen(false)} ariaLabel={tr("입력·상세 데이터", "Inputs and detailed data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2>{tr("입력과 지표 계산", "Inputs and metric calculations")}</h2><OperationsMetricEvidence inDialog evidence={bundle.evidence} {...{ currency, locale }} onInspectMapping={() => { setDataOpen(false); onInspectMapping(); }} /><button type="button" className="btn ghost" onClick={() => setDataOpen(false)}>{tr("닫기", "Close")}</button></ModalDialog></>}
+      <ModalDialog open={dataOpen} onClose={() => setDataOpen(false)} ariaLabel={tr("입력·상세 데이터", "Inputs and detailed data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><h2>{tr("입력과 지표 계산", "Inputs and metric calculations")}</h2><OperationsMetricEvidence inDialog evidence={bundle.evidence} {...{ currency, locale }} onInspectMapping={onInspectMapping ? () => { setDataOpen(false); onInspectMapping(); } : undefined} /><button type="button" className="btn ghost" onClick={() => setDataOpen(false)}>{tr("닫기", "Close")}</button></ModalDialog></>}
     evidence={() => <ResultActionCard title={tr("선택 기간의 성과와 원본 근거", "Performance and source evidence for the selected periods")} headline={headline} tone={deteriorated.length ? "bad" : "neutral"}
     locale={locale} toolId={OPERATIONS_TOOL_ID} analysisKey="operations" resultState={brief.recentObservations ? "ready" : "insufficient"} issues={notes}
     stats={[{ label: tr("최근 광고비", "Recent spend"), value: money(brief.current.cost), detail: `${tr("직전", "Prior")} ${money(brief.previous.cost)}` },
@@ -201,11 +208,29 @@ function OperationsResults({ csvData, sourceRows, grain, filter, periods, denomB
 }
 
 
+function FileDiagnosis({csvData, filter, sourceRows, periods, denomBasis, locale}) {
+  const result = useMemo(() => {
+    try {
+      const data = readPlannerDiagnosis(csvData, filter, effectiveDenomBasis(csvData,denomBasis), operationsSourceGrain(sourceRows), locale);
+      return { meta:data.meta, report:analyzeDiagnosis(data.rows,{...data.meta, periods}) };
+    } catch (error) { return {error:error.message}; }
+  }, [csvData, filter, sourceRows, periods, denomBasis, locale]);
+  const source = isDemoData(csvData) ? "demo" : "upload";
+  useEffect(() => {
+    trackDiagnosis(result.report && hasComparableTotals(result.report) ? "result_view" : "result_blocked",source,locale);
+  }, [result,source,locale]);
+  if (result.error) return <p role="status">{result.error}</p>;
+  return <DiagnosisReport {...result} locale={locale} track={step=>trackDiagnosis(step,source,locale)} />;
+}
+
 export default function OperationsPlanner({ locale = "ko" }) {
+  usePlannerEntry(locale);
+  const interactive = usePlannerEntryReady();
   const en = locale === "en", tr = (ko, english) => en ? english : ko;
   const csvData = useAppStore(state => state.csvData);
   const filter = useAppStore(state => state.dashboardFilter);
   const denomBasis = useAppStore(state => state.denomBasis);
+  const session = useAppStore(state => state.plannerSession);
   const analyzed = useAppStore(state => state.isGroupAnalyzed(OPERATIONS_TOOL_ID));
   const windowDays = useAppStore(state => state.dashWindowDays);
   const setWindow = useAppStore(state => state.setDashWindowDays);
@@ -216,7 +241,9 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const periods = useMemo(() => operationsPeriods(sourceRows, filter, windowDays), [sourceRows, filter, windowDays]);
   const bounds = useMemo(() => dateBounds(sourceRows.flatMap(row => [row.date, row.periodEnd])), [sourceRows]);
   const [grain, setGrain] = useState("auto");
+  const [editingUnified, setEditingUnified] = useState(false);
   const [replaceSample, setReplaceSample] = useState(false);
+  const [legacyImport, setLegacyImport] = useState(false);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   // 입력 검증은 분석 조건의 일부다 — 결과 사이에 혼자 떠 있던 버튼을 조건 줄로 옮겼다.
   const [dataOpen, setDataOpen] = useState(false);
@@ -225,6 +252,7 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const appliedScope = Object.entries(scopeFilters(filter)).filter(([, values]) => values.length).map(([key, values]) => `${filterNames[key]} ${values.join(", ")}`).join(" · ") || tr("전체 대상", "All entities");
   const metricName = effectiveDenomBasis(csvData, denomBasis) === "actions" ? "CPA" : "CPI";
   const applyDemo = () => {
+    setEditingUnified(false);
     setReplaceSample(false);
     const state = useAppStore.getState();
     state.setDemoDisabled(false);
@@ -238,7 +266,7 @@ export default function OperationsPlanner({ locale = "ko" }) {
       platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set() });
   };
   const launchDemo = () => {
-    if (csvData.raw?.length && !isDemoData(csvData)) setReplaceSample(true);
+    if ((session && session.meta.source !== "example") || (csvData.raw?.length && !isDemoData(csvData))) setReplaceSample(true);
     else applyDemo();
   };
   // 공용 업로더가 접힌 상태로 재진입해도 명시적으로 선택한 예시 링크는 작동한다.
@@ -247,9 +275,31 @@ export default function OperationsPlanner({ locale = "ko" }) {
     const data = buildToolDemo(OPERATIONS_TOOL_ID, locale);
     downloadCsv(csvBody(data.headers, data.raw.map(row => data.headers.map(header => row[header]))), "fictional_operations_98days");
   };
+  const openLegacyImport = () => {
+    setEditingUnified(false);
+    if (ready) setConditionsOpen(true);
+    else setLegacyImport(true);
+  };
   const inspectMapping = () => {
     setConditionsOpen(true);
   };
+  const replaceDialog = (
+    <ModalDialog open={replaceSample} onClose={() => setReplaceSample(false)} ariaLabel={tr("예시 데이터로 교체", "Replace with sample data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
+      <h2>{tr("현재 파일을 예시로 교체할까요?", "Replace the current file with the sample?")}</h2>
+      <p>{tr("효율 도구에서 공유하는 현재 데이터가 바뀝니다. 내 파일을 다시 올리면 이어서 분석할 수 있습니다.", "This changes the dataset shared by efficiency tools. Upload your file again to continue its analysis.")}</p>
+      <button className="btn primary" type="button" onClick={applyDemo}>{tr("예시로 교체", "Replace with sample")}</button>
+      <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
+    </ModalDialog>
+  );
+  const showLegacyEntry = legacyImport && !ready;
+  if (!conditionsOpen && !showLegacyEntry && (!csvData.raw?.length || session || editingUnified)) return <>
+    {replaceDialog}
+    <DiagnosisWorkbench locale={locale} shared onEdit={()=>setEditingUnified(true)} />
+    <details className="diagnosis-directory"><summary>{tr("다른 입력 형식과 가이드 예시", "Other input formats and guide example")}</summary>
+      <button type="button" disabled={!interactive} onClick={openLegacyImport}>{tr("기존 형식·Google Sheets에서 불러오기", "Import a legacy report or Google Sheet")}</button>
+      <button type="button" disabled={!interactive} onClick={launchDemo}>{tr("가이드의 404행 예시 데이터로 결과 바로 보기", "Run the example and see results · 404-row guide")}</button>
+    </details>
+  </>;
   return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} showJourney={false} chips={ready ? <><a className="btn ghost" href="#performance-alerts">{tr("성과 알림 만들기", "Create performance alert")}</a><button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button></> : null}>
     <section className="ops-analysis-context" aria-label={tr("분석 조건", "Analysis settings")}>
       <div id="ops-analysis-settings" tabIndex={-1} className="ops-section-heading">
@@ -284,13 +334,10 @@ export default function OperationsPlanner({ locale = "ko" }) {
         <button type="button" className="btn secondary" onClick={() => setConditionsOpen(false)}>{tr("결과로 돌아가기", "Back to results")}</button>
       </div></ModalDialog>
     </section>
-    <ModalDialog open={replaceSample} onClose={() => setReplaceSample(false)} ariaLabel={tr("예시 데이터로 교체", "Replace with sample data")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
-      <h2>{tr("현재 파일을 예시로 교체할까요?", "Replace the current file with the sample?")}</h2>
-      <p>{tr("효율 도구에서 공유하는 현재 데이터가 바뀝니다. 내 파일을 다시 올리면 이어서 분석할 수 있습니다.", "This changes the dataset shared by efficiency tools. Upload your file again to continue its analysis.")}</p>
-      <button className="btn primary" type="button" onClick={applyDemo}>{tr("예시로 교체", "Replace with sample")}</button>
-      <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
-    </ModalDialog>
-    {ready && <OperationsResults {...{ csvData, sourceRows, grain, filter, periods, denomBasis, locale }} currency={sourceCurrencyOf(csvData)} onInspectMapping={inspectMapping} {...{ dataOpen, setDataOpen }} />}
+    {replaceDialog}
+    {ready && <PlannerViews locale={locale} initial="execution"
+      diagnosis={<FileDiagnosis {...{csvData,filter,sourceRows,periods,denomBasis,locale}} />}
+      execution={<OperationsResults {...{ csvData, sourceRows, grain, filter, periods, denomBasis, locale }} currency={sourceCurrencyOf(csvData)} onInspectMapping={inspectMapping} {...{ dataOpen, setDataOpen }} />} />}
     <PerformanceAlerts key={`alerts:${useAppStore.getState().activeProjectId}`} locale={locale} />
   </ToolPageShell>;
 }
