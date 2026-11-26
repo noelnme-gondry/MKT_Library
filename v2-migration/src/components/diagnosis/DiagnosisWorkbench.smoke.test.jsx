@@ -58,7 +58,8 @@ describe("CSV diagnosis workbench", () => {
 
 it("resumes a confirmed dataset in the planner and clears it on a workspace data reset", async () => {
   const { useAppStore } = await import("@/store/useDataStore");
-  useAppStore.setState({ plannerSession: null, plannerGeneration: 0 });
+  const before = useAppStore.getState();
+  useAppStore.setState({ plannerSession: null, plannerGeneration: 0, projectsReady: true });
   sampleFetch();
   try {
     const home = render(<DiagnosisWorkbench locale="en" shared />);
@@ -73,7 +74,8 @@ it("resumes a confirmed dataset in the planner and clears it on a workspace data
     expect(useAppStore.getState().plannerSession).toBeNull();
     expect(screen.queryByText(/Overall CPA rose/)).toBeNull();
   } finally {
-    useAppStore.setState({ plannerSession: null });
+    cleanup();
+    useAppStore.setState(before);
   }
 });
 
