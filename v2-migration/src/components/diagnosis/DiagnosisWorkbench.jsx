@@ -203,7 +203,7 @@ export default function DiagnosisWorkbench({ locale = "ko", initialExample = fal
           ? <>Find where your<br/>ad spend loses efficiency.</>
           : <>광고비, 어디에서<br/>비효율이 생겼을까요?</>}</h2>}
         {!dataset && <p>{en ? "Compare last week with this week in one CSV. See which channels spent more, what changed your CPA and where to test a budget shift." : "광고 데이터 CSV 한 장으로 지난주와 이번 주를 비교하세요. 어느 매체에서 광고비가 늘었고, 그만큼 성과가 따라왔는지 살펴볼 수 있습니다."}</p>}
-        <DiagnosisImport key={generation} restored={dataset?.form} locale={locale} initialExample={initialExample} onData={onData} onReset={onReset}/>
+        <DiagnosisImport shared={shared} key={generation} restored={dataset?.form} locale={locale} initialExample={initialExample} onData={onData} onReset={onReset}/>
         {!dataset && <p className={s.requirements}>{en ? "Prepare dates, channel or campaign, spend and a count of one outcome. Include last week and this week." : "지난주와 이번 주의 날짜, 매체나 캠페인, 집행액, 비교할 성과 건수를 준비해 주세요."}</p>}
       </div>
       {!dataset && <ExamplePreview locale={locale}/>}

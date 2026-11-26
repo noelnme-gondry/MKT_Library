@@ -1,6 +1,6 @@
 "use client";
 
-import { useClientReady } from "@/lib/useClientReady";
+import { usePlannerEntryReady } from "./usePlannerEntry";
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ArrowUpFromLine, ChartNoAxesCombined, FileDown } from "lucide-react";
@@ -15,8 +15,8 @@ import styles from "./DiagnosisImport.module.css";
 const primaryFields = DIAGNOSIS_FIELDS.slice(0, 5);
 const optionalFields = DIAGNOSIS_FIELDS.slice(5);
 
-export default function DiagnosisImport({ locale = "ko", initialExample = false, restored, onData, onReset }) {
-  const interactive = useClientReady();
+export default function DiagnosisImport({ locale = "ko", initialExample = false, shared = false, restored, onData, onReset }) {
+  const interactive = usePlannerEntryReady(shared);
   const en = locale === "en";
   const t = (ko, english) => en ? english : ko;
   const input = useRef(null);
@@ -74,9 +74,9 @@ export default function DiagnosisImport({ locale = "ko", initialExample = false,
   useEffect(() => {
     const state = generation;
     const ticket = state.current;
-    if (initialExample) queueMicrotask(() => { if (generation.current === ticket) initialLoad(); });
+    if (initialExample && interactive) queueMicrotask(() => { if (generation.current === ticket) initialLoad(); });
     return () => { state.current += 1; };
-  }, [initialExample]);
+  }, [initialExample, interactive]);
 
   async function pickFile(e) {
     const file = e.target.files?.[0];
@@ -140,7 +140,7 @@ export default function DiagnosisImport({ locale = "ko", initialExample = false,
   }
 
   return <div className={styles.intake} aria-busy={busy}>
-    <input ref={input} type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" onChange={pickFile}
+    <input ref={input} type="file" disabled={!interactive} accept=".csv,.tsv,text/csv,text/tab-separated-values" onChange={pickFile}
       aria-label={t("진단할 CSV 파일", "CSV file to diagnose")} hidden />
     {active ? <div className={styles.strip}>
       <p><strong>{active.source === "example" ? t("예시 데이터", "Example data") : t("내 CSV", "Your CSV")}</strong>

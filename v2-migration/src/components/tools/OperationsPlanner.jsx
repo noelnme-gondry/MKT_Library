@@ -1,9 +1,8 @@
 "use client";
 
-import { useClientReady } from "@/lib/useClientReady";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DiagnosisWorkbench, { DiagnosisReport, hasComparableTotals } from "@/components/diagnosis/DiagnosisWorkbench";
-import { usePlannerEntry } from "@/components/diagnosis/usePlannerEntry";
+import { usePlannerEntry, usePlannerEntryReady } from "@/components/diagnosis/usePlannerEntry";
 import PlannerViews from "@/components/diagnosis/PlannerViews";
 import { analyzeDiagnosis } from "@/lib/campaignDiagnosis";
 import { readPlannerDiagnosis } from "@/lib/operations/diagnosisBridge";
@@ -226,7 +225,7 @@ function FileDiagnosis({csvData, filter, sourceRows, periods, denomBasis, locale
 
 export default function OperationsPlanner({ locale = "ko" }) {
   usePlannerEntry(locale);
-  const interactive = useClientReady();
+  const interactive = usePlannerEntryReady();
   const en = locale === "en", tr = (ko, english) => en ? english : ko;
   const csvData = useAppStore(state => state.csvData);
   const filter = useAppStore(state => state.dashboardFilter);

@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import DiagnosisImport from "./DiagnosisImport";
+import { useAppStore } from "@/store/useDataStore";
 import { trackDiagnosis } from "@/lib/trackDiagnosis";
 
 vi.mock("@/lib/trackDiagnosis", () => ({trackDiagnosis:vi.fn()}));
@@ -34,6 +35,23 @@ describe("browser-only diagnosis intake", () => {
     await waitFor(() => expect(onData).toHaveBeenCalledTimes(1));
     expect(onData.mock.calls[0][0]).toMatchObject([{platform:"iOS",organic:7}]);
     expect(screen.getByText(/1 of 2 rows selected/)).toBeTruthy();
+  });
+  it("keeps shared intake disabled while the saved project is being restored", () => {
+    const before = useAppStore.getState();
+    useAppStore.setState({ decisionPersistenceEnabled: true, projectsReady: false, projectSwitching: true, projectError: null });
+    try {
+      render(<DiagnosisImport locale="en" shared onData={vi.fn()} />);
+      const upload = screen.getByRole("button", { name: "Diagnose my CSV" });
+      const demo = screen.getByRole("button", { name: "Try an example" });
+      expect(upload.disabled).toBe(true);
+      expect(demo.disabled).toBe(true);
+      act(() => useAppStore.setState({ projectsReady: true, projectSwitching: false }));
+      expect(upload.disabled).toBe(false);
+      expect(demo.disabled).toBe(false);
+    } finally {
+      cleanup();
+      useAppStore.setState(before);
+    }
   });
   it("separates the example from uploaded data in event parameters", async () => {
     const onData=vi.fn();
