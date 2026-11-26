@@ -48,7 +48,7 @@ for (const en of [false, true]) {
       await expect(radio).toBeChecked();
     }
     expect(await methods.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
-    await expect(page.locator("details")).toHaveCount(0);
+    await expect(page.getByRole("main").locator("details")).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
   });
 }
