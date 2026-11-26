@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { enablePaidReports } from "./support/paidReports";
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations, expectPageHierarchy } from "./support/quality";
@@ -9,6 +10,7 @@ for (const locale of ["ko", "en"]) {
   test(`home to demo result and workbook (${locale})${tag}`, async ({ page }) => {
     await enablePaidReports(page);
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     await expect(page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true })).toBeHidden();
     // 대표 플래너 체험 외에 상황별 다른 분석 진입과 워크북 출력도 보존한다.
     const situation = page.locator('.home-entry__situations li:not(.home-entry__all-tile) a').first();

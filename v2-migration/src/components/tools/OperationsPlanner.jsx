@@ -241,6 +241,7 @@ export default function OperationsPlanner({ locale = "ko" }) {
   const [grain, setGrain] = useState("auto");
   const [editingUnified, setEditingUnified] = useState(false);
   const [replaceSample, setReplaceSample] = useState(false);
+  const [legacyImport, setLegacyImport] = useState(false);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   // 입력 검증은 분석 조건의 일부다 — 결과 사이에 혼자 떠 있던 버튼을 조건 줄로 옮겼다.
   const [dataOpen, setDataOpen] = useState(false);
@@ -272,6 +273,11 @@ export default function OperationsPlanner({ locale = "ko" }) {
     const data = buildToolDemo(OPERATIONS_TOOL_ID, locale);
     downloadCsv(csvBody(data.headers, data.raw.map(row => data.headers.map(header => row[header]))), "fictional_operations_98days");
   };
+  const openLegacyImport = () => {
+    setEditingUnified(false);
+    if (ready) setConditionsOpen(true);
+    else setLegacyImport(true);
+  };
   const inspectMapping = () => {
     setConditionsOpen(true);
   };
@@ -283,11 +289,12 @@ export default function OperationsPlanner({ locale = "ko" }) {
       <button className="btn ghost" type="button" onClick={() => setReplaceSample(false)}>{tr("현재 파일 유지", "Keep current file")}</button>
     </ModalDialog>
   );
-  if ((!csvData.raw?.length || session || editingUnified) && !conditionsOpen) return <>
+  const showLegacyEntry = legacyImport && !ready;
+  if (!conditionsOpen && !showLegacyEntry && (!csvData.raw?.length || session || editingUnified)) return <>
     {replaceDialog}
     <DiagnosisWorkbench locale={locale} shared onEdit={()=>setEditingUnified(true)} />
     <details className="diagnosis-directory"><summary>{tr("다른 입력 형식과 가이드 예시", "Other input formats and guide example")}</summary>
-      <button type="button" onClick={()=>setConditionsOpen(true)}>{tr("기존 형식·Google Sheets에서 불러오기", "Import a legacy report or Google Sheet")}</button>
+      <button type="button" onClick={openLegacyImport}>{tr("기존 형식·Google Sheets에서 불러오기", "Import a legacy report or Google Sheet")}</button>
       <button type="button" onClick={launchDemo}>{tr("가이드의 404행 예시 데이터로 결과 바로 보기", "Run the example and see results · 404-row guide")}</button>
     </details>
   </>;

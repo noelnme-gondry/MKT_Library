@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { test, expect } from "@playwright/test";
 
 for (const en of [false, true]) {
@@ -5,6 +6,7 @@ for (const en of [false, true]) {
   test(`home entry and shared utility dialog remain coherent (${en ? "en" : "ko"})`, async ({ page }, testInfo) => {
     if (testInfo.project.use.viewport.width === 768) await page.setViewportSize({ width: 980, height: 1000 });
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     const intro = page.locator(".dc-hero__intro");
     const preview = page.locator(".home-result-preview");
     await expect(page.locator(".operations-sample-preview__budget")).toBeVisible();

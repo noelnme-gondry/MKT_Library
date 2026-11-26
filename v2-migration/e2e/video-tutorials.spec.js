@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { test, expect } from "@playwright/test";
 import { blogConversionFor } from "../src/lib/blogConversion";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
@@ -52,6 +53,7 @@ for (const locale of ["ko", "en"]) {
   }
   test(`hero keeps readable copy and semantic phrases together (${locale})`, async ({ page }) => {
     await page.goto(`${prefix}/`);
+    await openLibraryOverview(page);
     await page.evaluate(async () => { await document.fonts.ready; });
     const deck = page.locator(".dc-hero__deck");
     // 승인된 추상 배경은 제목보다 짧은 본문 열을 쓴다. 부모 폭을 채우도록 강제하면

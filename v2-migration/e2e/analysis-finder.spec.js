@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
@@ -65,6 +66,7 @@ for (const locale of ["ko", "en"]) {
       window.gtag = (...args) => window.dataLayer.push(args);
     });
     await page.goto(prefix || "/");
+    await openLibraryOverview(page);
     await expect(page.locator(".home-entry__situations li:not(.home-entry__all-tile) a")).toHaveCount(7);
     await page.waitForLoadState("networkidle");
     await page.locator(".home-entry__situations li:not(.home-entry__all-tile) a", { hasText: budget.title }).click();

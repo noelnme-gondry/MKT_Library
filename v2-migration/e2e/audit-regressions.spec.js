@@ -19,7 +19,7 @@ for (const locale of ["ko", "en"]) {
     for (const theme of ["light", "dark"]) {
       await page.addInitScript(value => localStorage.setItem("mkt-library-theme", value), theme);
       await page.goto(prefix || "/");
-      await expect(page.locator(".home-entry__situations")).toBeVisible();
+      await expect(page.getByRole("button", { name: locale === "en" ? "Diagnose my CSV" : "내 CSV로 진단하기", exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(768);
     }
   });

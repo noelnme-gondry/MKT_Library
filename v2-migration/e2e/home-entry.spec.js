@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { test, expect } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 import { toolIndexByStage } from "../src/lib/toolIndex";
@@ -12,6 +13,7 @@ async function checkHome(page, locale) {
     if (lang === "en") localStorage.setItem("mkt-library-theme", "light");
   }, locale);
   await page.goto(en ? "/en" : "/");
+  await openLibraryOverview(page);
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
   // 홈: 상황 7개 + 파일 놓기. 상황을 키보드로 골라 분석 찾기로 간다(product-ssot §1.1c).
   const stages = toolIndexByStage(locale);
@@ -44,9 +46,9 @@ async function checkHome(page, locale) {
   await page.locator('.finder-card[data-tool-id="5-31"] .finder-card__tool').first().focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/tools\/operations-planner$/);
-  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: en ? "Diagnose my CSV" : "내 CSV로 진단하기", exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: en ? "Diagnose my CSV" : "내 CSV로 진단하기", exact: true })).toBeVisible();
   await expect(page.locator(".dochi-workspace")).toHaveCount(0);
   expect(hydrationErrors).toEqual([]);
 }

@@ -1,3 +1,4 @@
+import { openLibraryOverview } from "./support/libraryOverview";
 import { test, expect } from "@playwright/test";
 
 async function heroLayout(page) {
@@ -40,6 +41,7 @@ function expectReadableHero(layout) {
 for (const path of ["/", "/en", "/compare", "/en/compare"]) {
   test(`landing uses available width and reflows readable content (${path})`, async ({ page }, testInfo) => {
     await page.goto(path);
+    if (path === "/" || path === "/en") await openLibraryOverview(page);
     await page.evaluate(() => document.fonts.ready);
     const initialWidth = testInfo.project.use.viewport.width;
     // Effective CSS widths for wide displays and 80–200% zoom on a 1440px window.
