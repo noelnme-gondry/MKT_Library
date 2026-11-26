@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { refreshAccount } from "@/lib/account/accountClient";
@@ -22,12 +22,19 @@ export function AlertVerdict({ rule, locale = "ko" }) {
   const en = locale === "en", result = evaluateAlert(rule);
   return <div className="performance-alerts__verdict" data-alert-status={result.status}><strong>{result.status === "triggered" ? (en ? "Condition met" : "조건 충족") : result.status === "clear" ? (en ? "Condition not met" : "조건 미충족") : (en ? "Cannot check" : "확인 불가")}</strong><span>{result.status === "unavailable" ? ISSUES[en ? "en" : "ko"][result.issue] : `${alertNumber(rule, result.value)} · ${result.change >= 0 ? "+" : ""}${result.change.toFixed(1)}% ${en ? "vs reference" : "기준 대비"}`}</span></div>;
 }
-export default function PerformanceAlerts({ locale = "ko", manage = false }) {
+export default function PerformanceAlerts({ locale = "ko", manage = false, plannerData }) {
   const en = locale === "en", t = (ko, eng) => en ? eng : ko;
   const projectId = useAppStore(state => state.activeProjectId);
   const projects = useAppStore(state => state.projects);
-  const data = useAppStore(state => state.csvGroups.efficiency);
-  const ready = useAppStore(state => state.activeDataGroup === "efficiency" && state.isGroupAnalyzed("5-31"));
+  const workspaceData = useAppStore(state => state.csvGroups.efficiency);
+  const workspaceReady = useAppStore(state => state.activeDataGroup === "efficiency" && state.isGroupAnalyzed("5-31"));
+  const data = plannerData ?? workspaceData;
+  const ready = plannerData ? Boolean(plannerData.raw?.length) : workspaceReady;
+  const activeInput = useRef(null);
+  useEffect(() => {
+    activeInput.current = data;
+    return () => { activeInput.current = null; };
+  }, [data]);
   const storage = useAppStore(state => state.decisionPersistenceEnabled);
   const switching = useAppStore(state => state.projectSwitching || !state.projectsReady);
   const entitlement = useAppStore(state => state.entitlement);
@@ -67,12 +74,18 @@ export default function PerformanceAlerts({ locale = "ko", manage = false }) {
       const rule = checkAlert(makeRule(), data);
       const sourceRaw = data.raw;
       const saved = await saveAlertRule({ projectId: project?.id, projectName, rule, sourceData: data, entitlement: useAppStore.getState().entitlement,
-        shouldSave: () => { const live = useAppStore.getState(); return live.activeProjectId === projectId && live.csvGroups.efficiency?.raw === sourceRaw && live.csvGroups.efficiency?.mapping === data.mapping && live.csvGroups.efficiency?.currency === data.currency && !live.projectSwitching && live.decisionPersistenceEnabled && hasPaidAccess(live.entitlement); } });
+        shouldSave: () => {
+          const live = useAppStore.getState();
+          const currentSource = plannerData ? activeInput.current : live.csvGroups.efficiency;
+          return live.activeProjectId === projectId && currentSource?.raw === sourceRaw &&
+            currentSource.mapping === data.mapping && currentSource.currency === data.currency &&
+            !live.projectSwitching && live.decisionPersistenceEnabled && hasPaidAccess(live.entitlement);
+        } });
       await useAppStore.getState().refreshProjects();
       if (!project && useAppStore.getState().activeProjectId === projectId) useAppStore.setState({ activeProjectId: saved.id });
       setEditingId(rule.id); setSelected(rule.id); setPreview(null); setDirty(false);
       setMessage(t(`‘${saved.name}’에 저장했습니다. 다음 실제 CSV를 분석할 때 확인합니다.`, `Saved in “${saved.name}”. Checked when the next real CSV is analyzed.`));
-      useAppStore.getState().persistWorkspaceGroup("efficiency", saved.id);
+      if (!plannerData) useAppStore.getState().persistWorkspaceGroup("efficiency", saved.id);
     } catch (error) { setMessage(error.message === "DEMO" ? t("예시 조건은 미리보기만 가능합니다. 실제 CSV로 조건을 저장하세요.", "Samples support preview only. Save conditions with a real CSV.") : error.message === "STORAGE_REQUIRED" ? t("프로젝트 기기 저장을 켜야 조건을 저장할 수 있습니다.", "Enable project device storage to save conditions.") : t("저장하지 못했습니다. 프로젝트 이름·컬럼·통화·저장 공간과 조건 20개 한도를 확인하세요. 초안은 유지됩니다.", "Could not save. Check the project name, columns, currency, storage and 20-rule limit. Your draft is retained.")); }
     finally { setBusy(false); }
   };

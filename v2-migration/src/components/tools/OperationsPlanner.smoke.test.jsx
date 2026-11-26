@@ -360,6 +360,7 @@ describe("operations planner built-in demo", () => {
   it.each(["ko", "en"])("loads computed results into the active CSV mirror on the same route (%s)", async locale => {
     useAppStore.getState().setDisplayCurrency("USD");
     render(<OperationsPlanner locale={locale} />);
+    fireEvent.click(screen.getByText(locale === "en" ? "Other input formats and guide example" : "다른 입력 형식과 가이드 예시"));
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? /Run the example and see results/ : /예시 데이터로 결과 바로 보기/ }));
     const expected = buildToolDemo("5-31", locale);
     const state = useAppStore.getState();

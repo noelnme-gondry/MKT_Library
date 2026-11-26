@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { trackProductEvent } from "@/lib/analytics";
 import ToolNextStepPanel from "@/components/ToolNextStepPanel";
 import ToolConnections from "@/components/ToolConnections";
 import ProjectHandoffNote from "@/components/ProjectHandoffNote";
@@ -50,7 +52,16 @@ export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [
   if (!hasConnections && !hasLongform && !hasEvidence && !hasHandoff && !hasContinuity) return null;
 
   // 효율 분석 파일럿: 다음 분석은 도구별 연결 계약에서 파생하고 참고 자료는 읽기 창으로 분리한다.
-  if (Boolean(TOOL_GROUP[toolId]) && (toolId.startsWith("5-") || toolId.startsWith("9-"))) return <ToolNextStepPanel toolId={toolId} locale={lang} evidenceLinks={evidenceLinks} hasHandoff={hasHandoff} />;
+  if (Boolean(TOOL_GROUP[toolId]) && (toolId.startsWith("5-") || toolId.startsWith("9-"))) return (
+    <>
+      {toolId !== "5-31" && <p className="article-diagnosis-link">
+        <Link href={lang === "en" ? "/en/tools/operations-planner?from=tool" : "/tools/operations-planner?from=tool"} onClick={() => trackProductEvent("diagnosis_tool_entry_clicked", {
+          tool_id: "campaign-diagnosis", source_tool_id: toolId, locale: lang, placement: "tool_outro",
+        })}>{lang === "en" ? "Compare weekly spend and CPA with your CSV" : "내 CSV로 전주 대비 집행액과 CPA 비교하기"} →</Link>
+      </p>}
+      <ToolNextStepPanel toolId={toolId} locale={lang} evidenceLinks={evidenceLinks} hasHandoff={hasHandoff} />
+    </>
+  );
 
   // 분석 전에도 존재하는 영역이므로 완료를 선언하지 않고 다음에 볼 내용의 이름을 쓴다.
   const boundaryLabel = withConnections ? T.analysis : T.reference;

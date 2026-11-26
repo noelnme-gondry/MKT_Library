@@ -6,12 +6,12 @@ import { SITE_URL } from "./routeMap";
 const COPY = {
   ko: {
     title: "퍼포먼스 마케팅·마케팅 분석 도구 | Growth Opt Playbook",
-    description: "퍼포먼스 마케팅을 위한 무료 마케팅 분석 도구. CSV로 성과 변동·ROAS·예산·소재를 점검하고 다음 행동과 결과를 검토하세요.",
+    description: "퍼포먼스 마케팅을 위한 무료 마케팅 분석 도구. 광고 CSV 한 장으로 전주 대비 비용·전환·CPA를 비교하고 매체별 증액과 소재 변경의 결과를 확인하세요.",
     socialDescription: "성과 원인부터 다음 행동과 실제 결과 검토까지 잇는 무료 퍼포먼스 마케팅 워크스페이스",
   },
   en: {
     title: "Performance Marketing Analysis Tools | Growth Opt Playbook",
-    description: "Free performance marketing analysis tools. Review campaign CSVs for ROAS, performance changes, budgets and creatives, then revisit outcomes.",
+    description: "Free performance marketing analysis tools. Upload a campaign CSV to compare weekly spend, conversions and CPA and review budget and creative changes.",
     socialDescription: "A free performance marketing workspace connecting analysis, decisions, and outcome reviews.",
   },
 };

@@ -32,7 +32,7 @@ export default function OperationsMetricEvidence({ evidence, currency, locale = 
   return <section className="operations-workbench__group operations-metric-evidence" aria-labelledby="ops-inputs-title">
     <header className="operations-brief__heading"><div><h3 id="ops-inputs-title" tabIndex={-1}>{tr("지표와 입력 근거", "Metrics and input evidence")}</h3>
       <p>{tr("지표를 선택해 실제 사용한 컬럼과 계산 상태를 확인하세요.", "Select a metric to inspect its source columns and calculation status.")}</p></div>
-      <button type="button" className="btn ghost" onClick={onInspectMapping}>{tr("현재 매핑 확인", "Inspect current mapping")}</button></header>
+      {onInspectMapping && <button type="button" className="btn ghost" onClick={onInspectMapping}>{tr("현재 매핑 확인", "Inspect current mapping")}</button>}</header>
     <p className="operations-metric-evidence__scope">{evidence.period.start} — {evidence.period.end} · {fmtNum(evidence.observations)}{tr("행 · 현재 공용 필터 기준", " rows · current shared filters")}</p>
     {evidence.invalidDateCount > 0 && <p className="callout" role="status">{tr("날짜를 식별할 수 없는 행이 있어 부분 합계로 계산하지 않았습니다.", "Some dates cannot be identified, so metrics were not calculated from partial totals.")}</p>}
     <div className="operations-metric-evidence__layout">

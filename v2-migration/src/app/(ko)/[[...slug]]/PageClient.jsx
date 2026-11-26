@@ -13,7 +13,7 @@ import GlobalModals from "@/components/GlobalModals";
 import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
 import GuideAnswer from "@/components/GuideAnswer";
 import SubscriptionPage from "@/components/SubscriptionPage";
-import LandingPage from "@/components/LandingPage";
+import DiagnosisHome from "@/components/diagnosis/DiagnosisHome";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
@@ -112,7 +112,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
-            {routeId === "home" && <><LandingPage reading={reading} /></>}
+            {routeId === "home" && <><DiagnosisHome reading={reading} /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
             {routeId === "projects" && <ProjectsPage locale="ko" />}
