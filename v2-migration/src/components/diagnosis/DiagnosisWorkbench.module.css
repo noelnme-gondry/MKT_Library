@@ -15,7 +15,8 @@
 .workbench button:focus-visible, .workbench select:focus-visible, .explain:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .intro { display: grid; grid-template-columns: minmax(0,1.12fr) minmax(0,.88fr); align-items: start; gap: clamp(30px,5vw,80px); border-top: 2px solid var(--ink); padding-top: clamp(32px,5.5vw,72px); }
 .introCopy, .entityList, .detail, .plotArea, .explain { min-width: 0; }
-.introCopy h1 { font-size: clamp(36px,4.55vw,68px); letter-spacing:-.058em; line-height:1.13; font-weight:600; word-break:keep-all; overflow-wrap:anywhere; }
+.introCopy .plannerLabel { font: inherit; font-weight: 700; }
+.introQuestion { font-size: clamp(36px,4.55vw,68px); letter-spacing:-.058em; line-height:1.13; font-weight:600; word-break:keep-all; overflow-wrap:anywhere; }
 .introCopy > p { margin-block: 22px 26px; font-size: clamp(16px,1.3vw,19px); max-width: 41ch; color: var(--ink-2); line-height:1.72; text-wrap:pretty; word-break:keep-all; overflow-wrap:anywhere; }
 .preview { border-block: 1px solid var(--rule-2); align-self:start; padding: 18px 0; }
 .previewTop,.previewBottom,.barTitle { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px 16px; }
@@ -115,7 +116,7 @@
 @media (max-width: 680px) {
   .workbench { padding:18px 14px 48px; }
   .intro { grid-template-columns:minmax(0,1fr); gap:28px; padding-top:26px; }
-  .introCopy h1 { font-size:36px; } .introCopy > p { margin-block:14px 20px; }
+  .introQuestion { font-size:36px; } .introCopy > p { margin-block:14px 20px; }
   .activeHead h1 { font-size:24px; }
   .preview { padding-top:14px; } .preview h2 { font-size:22px; }
   .kpis { grid-template-columns:minmax(0,1fr); }

@@ -1,4 +1,4 @@
-import { openLibraryOverview } from "./support/libraryOverview";
+import { openLegacyPlannerImport, openLibraryOverview } from "./support/libraryOverview";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
@@ -22,8 +22,7 @@ function csvFixture({ gap = false, days = 70 } = {}) {
 
 async function openOperations(page, en, options = {}) {
   await page.goto(`${en ? "/en" : ""}/tools/operations-planner`);
-  await page.locator("details.diagnosis-directory > summary").click();
-  await page.getByRole("button", { name: en ? "Import a legacy report or Google Sheet" : "기존 형식·Google Sheets에서 불러오기", exact: true }).click();
+  await openLegacyPlannerImport(page, en);
   const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
   await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "synthetic-operations.csv", mimeType: "text/csv", buffer: csvFixture(options) });
   await uploader.getByRole("button", { name: en ? "KRW ₩" : "원 ₩", exact: true }).click();

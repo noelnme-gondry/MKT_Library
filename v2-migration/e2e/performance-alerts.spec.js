@@ -1,3 +1,4 @@
+import { openLegacyPlannerImport } from "./support/libraryOverview";
 import sharp from "sharp";
 import { writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -26,7 +27,9 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
     const secondName = en ? "All-channel target CPR" : "전체 CPR 목표 초과";
     await enableReviewLogin(page);
     const errors = []; page.on("pageerror", error => errors.push(error.message));
-    await page.goto(`${prefix}/tools/operations-planner`); await upload(page, en);
+    await page.goto(`${prefix}/tools/operations-planner`);
+    await openLegacyPlannerImport(page, en);
+    await upload(page, en);
     const manager = page.locator("#performance-alerts");
     await manager.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름", exact: true }).fill("Alert test project");
     await manager.getByRole("textbox", { name: en ? "Condition name" : "조건 이름", exact: true }).fill(firstName);
@@ -107,6 +110,7 @@ for (const scenario of [{ en: false, tag: "" }, { en: false, tag: " @mobile-only
 test("sum alert keeps the daily trend and the complete seven-day total with a missing baseline day", async ({ page }) => {
   await enableReviewLogin(page);
   await page.goto("/tools/operations-planner");
+  await openLegacyPlannerImport(page, false);
   const lines = ["Date,Channel,Campaign,Cost,Installs,Impressions,Clicks"];
   for (let i = 0; i <= 14; i++) {
     if (i === 1) continue;

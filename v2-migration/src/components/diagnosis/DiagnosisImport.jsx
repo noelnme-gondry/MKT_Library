@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useSyncExternalStore, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useClientReady } from "@/lib/useClientReady";
+
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { ArrowUpFromLine, ChartNoAxesCombined, FileDown } from "lucide-react";
 import { csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 import {
@@ -10,14 +12,11 @@ import {
 import { trackDiagnosis } from "@/lib/trackDiagnosis";
 import styles from "./DiagnosisImport.module.css";
 
-const subscribeToMount = () => () => {};
-const mounted = () => true;
-const server = () => false;
 const primaryFields = DIAGNOSIS_FIELDS.slice(0, 5);
 const optionalFields = DIAGNOSIS_FIELDS.slice(5);
 
 export default function DiagnosisImport({ locale = "ko", initialExample = false, restored, onData, onReset }) {
-  const interactive = useSyncExternalStore(subscribeToMount, mounted, server);
+  const interactive = useClientReady();
   const en = locale === "en";
   const t = (ko, english) => en ? english : ko;
   const input = useRef(null);

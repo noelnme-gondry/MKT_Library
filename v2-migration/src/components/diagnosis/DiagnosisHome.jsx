@@ -1,5 +1,7 @@
 "use client";
 
+import { useClientReady } from "@/lib/useClientReady";
+
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import DiagnosisWorkbench from "./DiagnosisWorkbench";
@@ -8,6 +10,7 @@ import { usePlannerEntry } from "./usePlannerEntry";
 const LibraryOverview = dynamic(() => import("@/components/LandingPage"));
 
 export default function DiagnosisHome({ locale = "ko", reading }) {
+  const interactive = useClientReady();
   const [showOverview, setShowOverview] = useState(false);
   usePlannerEntry(locale);
   const en = locale === "en";
@@ -15,7 +18,7 @@ export default function DiagnosisHome({ locale = "ko", reading }) {
     <>
       {showOverview ? <LibraryOverview locale={locale} reading={reading} /> : <DiagnosisWorkbench locale={locale} shared />}
       <div className="diagnosis-directory">
-        <button type="button" onClick={() => {
+        <button type="button" disabled={!interactive} onClick={() => {
           setShowOverview(!showOverview);
           document.getElementById("main-content")?.focus();
           window.scrollTo(0, 0);

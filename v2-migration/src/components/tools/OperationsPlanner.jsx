@@ -1,4 +1,6 @@
 "use client";
+
+import { useClientReady } from "@/lib/useClientReady";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DiagnosisWorkbench, { DiagnosisReport, hasComparableTotals } from "@/components/diagnosis/DiagnosisWorkbench";
 import { usePlannerEntry } from "@/components/diagnosis/usePlannerEntry";
@@ -224,6 +226,7 @@ function FileDiagnosis({csvData, filter, sourceRows, periods, denomBasis, locale
 
 export default function OperationsPlanner({ locale = "ko" }) {
   usePlannerEntry(locale);
+  const interactive = useClientReady();
   const en = locale === "en", tr = (ko, english) => en ? english : ko;
   const csvData = useAppStore(state => state.csvData);
   const filter = useAppStore(state => state.dashboardFilter);
@@ -294,8 +297,8 @@ export default function OperationsPlanner({ locale = "ko" }) {
     {replaceDialog}
     <DiagnosisWorkbench locale={locale} shared onEdit={()=>setEditingUnified(true)} />
     <details className="diagnosis-directory"><summary>{tr("다른 입력 형식과 가이드 예시", "Other input formats and guide example")}</summary>
-      <button type="button" onClick={openLegacyImport}>{tr("기존 형식·Google Sheets에서 불러오기", "Import a legacy report or Google Sheet")}</button>
-      <button type="button" onClick={launchDemo}>{tr("가이드의 404행 예시 데이터로 결과 바로 보기", "Run the example and see results · 404-row guide")}</button>
+      <button type="button" disabled={!interactive} onClick={openLegacyImport}>{tr("기존 형식·Google Sheets에서 불러오기", "Import a legacy report or Google Sheet")}</button>
+      <button type="button" disabled={!interactive} onClick={launchDemo}>{tr("가이드의 404행 예시 데이터로 결과 바로 보기", "Run the example and see results · 404-row guide")}</button>
     </details>
   </>;
   return <ToolPageShell toolId={OPERATIONS_TOOL_ID} locale={locale} className="operations-planner" stickyHeader={false} showBrief={false} showJourney={false} chips={ready ? <><a className="btn ghost" href="#performance-alerts">{tr("성과 알림 만들기", "Create performance alert")}</a><button type="button" className="btn secondary" onClick={() => setConditionsOpen(true)}>{tr("파일·대상·지표 변경", "File, scope & metric")}</button></> : null}>

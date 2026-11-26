@@ -16,6 +16,10 @@ for (const prefix of ["", "/en"]) {
       await expect(article.locator(`a[href="${path}?example=1"]`)).toBeVisible();
       await page.locator(".blog-conversion-entry button[type=submit]").click();
       await expect(page).toHaveURL(url => url.pathname === path);
+      if (guide.tool === "mmm-contribution") {
+        // Wait for the 132-week model to finish fitting before reading its estimates.
+        await expect(page.locator("main canvas:visible").first()).toBeVisible({ timeout: 45_000 });
+      }
       for (const value of guide.values) await expect(page.locator("main")).toContainText(value);
       if (guide.tool === "budget-allocation") {
         await page.getByRole("tab", { name: prefix ? "Curves" : "곡선", exact: true }).click();
